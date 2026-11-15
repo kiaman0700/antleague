@@ -34,3 +34,17 @@ describe('PC 배치', () => {
     expect(t.filter((x) => x === 'minmax(0, 1fr)')).toHaveLength(1);
   });
 });
+
+describe('저장된 배치 검사', async () => {
+  const { validZones } = await import('../prefs');
+  it('정상 배치는 통과', () => expect(validZones(base)).toBe(true));
+  it('조각이 빠지거나 두 번이면 복구 대상', () => {
+    expect(validZones({ ...base, right: ['news'] })).toBe(false);
+    expect(validZones({ ...base, right: ['news', 'cards', 'list'] })).toBe(false);
+  });
+  it('날짜 줄 외 조각이 위 줄에 있으면 복구 대상', () => expect(validZones({ top: ['timeline', 'list'], left: [], center: ['detail'], right: ['news', 'cards'] })).toBe(false));
+  it('이상한 값', () => {
+    expect(validZones(null)).toBe(false);
+    expect(validZones({ top: 'x' })).toBe(false);
+  });
+});

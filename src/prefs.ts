@@ -88,6 +88,18 @@ const KEY = 'stockduel.prefs';
 const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, regionOrder: null, chart: 'live', chartType: 'auto', layout: DEFAULT_LAYOUT };
 const DEFAULT: Prefs = { enabled: false, ...BASE };
 
+const PANELS: PcPanel[] = ['timeline', 'list', 'detail', 'news', 'cards'];
+/** 배치가 온전한지: 모든 조각이 정확히 한 번, 날짜 줄은 위 줄에만 */
+export function validZones(z: unknown): boolean {
+  if (!z || typeof z !== 'object') return false;
+  const zz = z as Record<string, unknown>;
+  const keys: PcZone[] = ['top', 'left', 'center', 'right'];
+  if (!keys.every((k) => Array.isArray(zz[k]))) return false;
+  const flat = keys.flatMap((k) => zz[k] as string[]);
+  if (flat.length !== PANELS.length || !PANELS.every((p) => flat.includes(p))) return false;
+  return (zz.top as string[]).every((p) => p === 'timeline');
+}
+
 function read(): Prefs {
   try {
     const s = localStorage.getItem(KEY);
@@ -95,6 +107,15 @@ function read(): Prefs {
     const v = { ...DEFAULT, ...(JSON.parse(s) as Partial<Prefs>) };
     // 저장된 배치가 예전 것이면 빠진 항목만 기본값으로 채움
     v.layout = { ...DEFAULT_LAYOUT, ...(v.layout ?? {}) };
+    // 깨진 배치(조각이 빠지거나 두 번 들어감, 이상한 값)는 기본으로 복구
+    if (!validZones(v.layout.pcZones)) v.layout.pcZones = DEFAULT_LAYOUT.pcZones;
+    if (!v.layout.pcColW || typeof v.layout.pcColW !== 'object') v.layout.pcColW = {};
+    if (!v.layout.pcFlex || typeof v.layout.pcFlex !== 'object') v.layout.pcFlex = {};
+    if (!Array.isArray(v.layout.pcHidden)) v.layout.pcHidden = [];
+    const okXY = (p: unknown) => !!p && typeof p === 'object' && Number.isFinite((p as { x: number }).x) && Number.isFinite((p as { y: number }).y);
+    if (!okXY(v.layout.toastXY)) v.layout.toastXY = null;
+    if (!okXY(v.layout.mToastXY)) v.layout.mToastXY = null;
+    if (!Array.isArray(v.layout.mTabs) || [...DEFAULT_LAYOUT.mTabs].sort().join() !== [...v.layout.mTabs].sort().join()) v.layout.mTabs = DEFAULT_LAYOUT.mTabs;
     return v;
   } catch {
     return DEFAULT;

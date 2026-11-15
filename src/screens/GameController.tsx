@@ -1209,7 +1209,7 @@ export function GameController({ session, onExit }: Props) {
       <Drawer open={drawer === 'assets'} title={easy ? '내 재산' : '자산'} onClose={() => setDrawer(null)}>
         {assets}
       </Drawer>
-      <Drawer open={drawer === 'cards'} title="🃏 찬스 카드 · 상점" onClose={() => setDrawer(null)}>
+      <Drawer open={drawer === 'cards'} title="찬스 카드 · 상점" onClose={() => setDrawer(null)}>
         {cards}
       </Drawer>
       {overlays}

@@ -95,7 +95,8 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
   const prefs = effective(usePrefs());
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('default');
-  const [holdOpen, setHoldOpen] = useState(true);
+  // 화면 높이가 낮으면(작은 노트북) 처음엔 접어서 종목 목록이 더 보이게
+  const [holdOpen, setHoldOpen] = useState(() => typeof window === 'undefined' || window.innerHeight >= 820 || window.innerWidth < 960);
   const { region, sub } = filter;
 
   const rows = useMemo(() => {
@@ -189,7 +190,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                 {arrow(totalPl)} {sign(totalPl)}
                 {wonShort(Math.abs(totalPl))} ({pct(totalCost ? totalPl / totalCost : 0)})
               </span>
-              <span className="muted">{holdOpen ? '▴' : '▾'}</span>
+              <Icon name={holdOpen ? 'up' : 'down'} size={14} className="muted" />
             </span>
           )}
         </button>
@@ -202,8 +203,10 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                     <FitText>{s.name}</FitText>
                   </b>
                   <small>
-                    {num(h.qty)}주 · 평균 {s.currency === 'USD' ? '≈' : ''}
-                    {num(Math.round(h.avgCost))}원
+                    <FitText>
+                      {num(h.qty)}주 · 평균 {s.currency === 'USD' ? '≈' : ''}
+                      {num(Math.round(h.avgCost))}원
+                    </FitText>
                   </small>
                 </span>
                 <span className="pin-val">

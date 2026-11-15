@@ -215,7 +215,8 @@ export function Drawer({ open, title, onClose, children }: { open: boolean; titl
     return () => window.removeEventListener('keydown', k);
   }, [open, onClose]);
   return (
-    <div className={'drawer-bg' + (open ? ' open' : '')} onClick={onClose} aria-hidden={!open}>
+    // 닫힌 서랍은 키보드(Tab)로도 들어가지 않게 inert
+    <div className={'drawer-bg' + (open ? ' open' : '')} onClick={onClose} aria-hidden={!open} {...(!open ? { inert: '' } : {})}>
       <aside className="drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={typeof title === 'string' ? title : undefined}>
         <div className="drawer-head">
           <b>{title}</b>

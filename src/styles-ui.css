@@ -1617,3 +1617,73 @@ button.tag:hover,
   width: max-content;
   max-width: min(440px, calc(100vw - 24px));
 }
+
+/* ============ 터치 기기: 작은 버튼의 누르는 영역만 넓힘 (모양은 그대로) ============ */
+@media (pointer: coarse), (max-width: 700px) {
+  .star,
+  .term-btn,
+  .linkish-soft,
+  .linkish,
+  .pill.link,
+  .dd-btn,
+  .rel-chip,
+  .es-btn {
+    position: relative;
+  }
+  .star::after,
+  .term-btn::after,
+  .linkish-soft::after,
+  .linkish::after,
+  .pill.link::after,
+  .dd-btn::after,
+  .rel-chip::after,
+  .es-btn::after {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
+  .star::after,
+  .es-btn::after {
+    inset: -10px;
+  }
+}
+
+/* ============ 화면 오류 안내 ============ */
+.crash {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg, #0d0f14);
+  color: var(--text, #e8ebf2);
+}
+.crash-box {
+  max-width: 420px;
+  text-align: center;
+}
+.crash-box h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+/* PC 위쪽 시장 지표: 두 줄로 넘어가지 않게 한 줄 + 넘치면 옆으로 밀기 */
+.desk .hud-macro {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  justify-content: safe center;
+}
+.desk .hud-macro::-webkit-scrollbar {
+  display: none;
+}
+.desk .hud-macro > * {
+  flex: 0 0 auto;
+}
