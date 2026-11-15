@@ -6,7 +6,7 @@ import { useRouter, type Route } from './router';
 import { GameController } from './screens/GameController';
 import { Lobby, type ResumeInfo } from './screens/Lobby';
 import { WaitingRoom } from './screens/WaitingRoom';
-import { loadUi, type UiMode } from './session';
+import { loadNick, loadUi, type UiMode } from './session';
 
 /** 새로고침하거나 주소를 직접 열었을 때 서버/저장소 정보로 화면 복원 */
 async function resolvePath(path: string): Promise<{ route: Route; url?: string }> {
@@ -69,6 +69,15 @@ export default function App() {
     case 'game':
       return <GameController key={`${route.session.mode}-${route.session.roomId}-${route.session.playerId}`} session={route.session} onExit={() => navigate({ kind: 'lobby' })} />;
     default:
+      // 커스텀 모드 화면 편집: 실제 게임 화면(저장 안 되는 가상 게임)에서 바로 편집
+      if (route.kind === 'lobby' && route.page === 'customize')
+        return (
+          <GameController
+            key="customize"
+            session={{ mode: 'solo', roomId: null, playerId: 'me', nickname: loadNick() || '나', ui: loadUi(), demo: true }}
+            onExit={() => navigate({ kind: 'lobby', page: 'home' }, { replace: true })}
+          />
+        );
       return (
         <Lobby
           page={route.page ?? 'home'}

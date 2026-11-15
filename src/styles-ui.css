@@ -499,3 +499,167 @@ button.tag:hover,
   border-color: rgba(247, 197, 72, 0.45);
   background: var(--surface-2);
 }
+
+/* ============ 화면 편집 모드 ============ */
+.edit-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: rgba(21, 25, 34, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(247, 197, 72, 0.5);
+  border-radius: 14px;
+}
+.eb-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.eb-text small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.eb-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.eb-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.eb-start select {
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 5px 8px;
+  color: var(--text);
+}
+.edit-slot {
+  position: relative;
+  outline: 2px dashed rgba(247, 197, 72, 0.55);
+  outline-offset: 2px;
+  border-radius: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+.edit-slot.off > .es-body {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.es-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(247, 197, 72, 0.14);
+  font-size: 12px;
+}
+.es-bar b {
+  color: var(--gold);
+}
+.es-off {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  border-radius: 99px;
+  padding: 0 6px;
+}
+.es-tools {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+.es-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--text);
+}
+.es-btn:hover {
+  border-color: rgba(247, 197, 72, 0.6);
+  color: var(--gold);
+}
+/* PC 칸: 편집 틀이 칸 높이를 그대로 채우게 */
+.board > .edit-slot.es-col {
+  display: flex;
+  flex-direction: column;
+}
+.board > .edit-slot.es-col > .es-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.board > .edit-slot.es-col > .es-body > .pane {
+  flex: 1;
+  min-height: 0;
+}
+.p-news > .edit-slot.es-grow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.p-news > .edit-slot.es-grow > .es-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.p-news .es-body > .news-scroll {
+  flex: 1;
+  min-height: 0;
+}
+/* 모바일 아래 탭 순서 화살표 */
+.nav-move {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 2px;
+}
+.nav-move i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--gold);
+  color: #1a1300;
+}
+.nav-move i.dis {
+  opacity: 0.25;
+}
+.m-game.editing .bottom-nav {
+  padding-top: 14px;
+}
+.m-row.only-menu {
+  justify-content: flex-end;
+}
+/* 아래 탭 아이콘용 span 규칙(세로 격자)이 화살표 묶음에 적용되지 않게 */
+.m-game .bottom-nav button span.nav-move {
+  display: inline-flex;
+  flex-direction: row;
+  color: inherit;
+  opacity: 1;
+}

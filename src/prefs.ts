@@ -6,6 +6,41 @@ import { useSyncExternalStore } from 'react';
 import { setMoneyUnit, type MoneyUnit } from './lib/format';
 import type { UiMode } from './session';
 
+/** 화면 배치 (커스텀 모드에서 '화면 편집'으로 바꿈) */
+export type MTab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
+export type MHeaderRow = 'ticker' | 'schedule' | 'assets';
+export type PcCol = 'list' | 'detail' | 'side';
+export type PcSide = 'news' | 'cards';
+export interface Layout {
+  /** 모바일 아래 탭 순서 */
+  mTabs: MTab[];
+  /** 게임을 열면 처음 보이는 탭 */
+  mStart: MTab;
+  /** 모바일 위쪽 줄 순서와 보이기 */
+  mHeader: { id: MHeaderRow; on: boolean }[];
+  /** PC 세 칸 순서 */
+  pcCols: PcCol[];
+  /** PC 오른쪽 칸 안 순서와 보이기 */
+  pcSide: { id: PcSide; on: boolean }[];
+  /** PC 날짜 줄 보이기 */
+  pcTimeline: boolean;
+}
+export const DEFAULT_LAYOUT: Layout = {
+  mTabs: ['list', 'detail', 'news', 'assets', 'cards'],
+  mStart: 'news',
+  mHeader: [
+    { id: 'ticker', on: true },
+    { id: 'schedule', on: true },
+    { id: 'assets', on: true },
+  ],
+  pcCols: ['list', 'detail', 'side'],
+  pcSide: [
+    { id: 'news', on: true },
+    { id: 'cards', on: true },
+  ],
+  pcTimeline: true,
+};
+
 export interface Prefs {
   /** 커스텀 모드 사용 중 (끄면 아래 설정은 저장만 되고 모드 기본값을 씀) */
   enabled: boolean;
@@ -17,17 +52,23 @@ export interface Prefs {
   chart: 'live' | 'daily';
   /** 일별 차트 모양: auto = 모드 기본(초보 라인, 일반 캔들) */
   chartType: 'auto' | 'line' | 'candle' | 'ohlc';
+  /** 화면 배치 */
+  layout: Layout;
 }
 
 const KEY = 'stockduel.prefs';
-const DEFAULT: Prefs = { enabled: false, money: 'auto', sectorPins: null, chart: 'live', chartType: 'auto' };
 /** 커스텀을 끈 상태에서 쓰는 값 = 모드 기본 */
-const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, chart: 'live', chartType: 'auto' };
+const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, chart: 'live', chartType: 'auto', layout: DEFAULT_LAYOUT };
+const DEFAULT: Prefs = { enabled: false, ...BASE };
 
 function read(): Prefs {
   try {
     const s = localStorage.getItem(KEY);
-    return s ? { ...DEFAULT, ...(JSON.parse(s) as Partial<Prefs>) } : DEFAULT;
+    if (!s) return DEFAULT;
+    const v = { ...DEFAULT, ...(JSON.parse(s) as Partial<Prefs>) };
+    // 저장된 배치가 예전 것이면 빠진 항목만 기본값으로 채움
+    v.layout = { ...DEFAULT_LAYOUT, ...(v.layout ?? {}) };
+    return v;
   } catch {
     return DEFAULT;
   }
@@ -56,6 +97,22 @@ export function resetPrefs() {
 export const isCustom = (p: Prefs) => p.enabled;
 /** 실제로 화면에 적용되는 값: 커스텀 모드면 내 설정, 아니면 모드 기본 */
 export const effective = (p: Prefs): Prefs => (p.enabled ? p : { ...p, ...BASE });
+/** 배치만 바꾸기 */
+export function setLayout(patch: Partial<Layout>) {
+  setPrefs({ layout: { ...current.layout, ...patch } });
+}
+/** 배치만 처음으로 */
+export function resetLayout() {
+  setPrefs({ layout: DEFAULT_LAYOUT });
+}
+/** 배열에서 i 번째를 d 만큼 옮긴 새 배열 */
+export function moved<T>(arr: T[], i: number, d: number): T[] {
+  const j = i + d;
+  if (j < 0 || j >= arr.length) return arr;
+  const next = [...arr];
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+}
 /** 지금 적용 중인 설정 (렌더 밖에서) */
 export const getEffective = () => effective(current);
 

@@ -148,6 +148,8 @@ const ICONS = {
   trend: TrendingUp,
   bank: Landmark,
   cart: ShoppingCart,
+  eye: Eye,
+  eyeOff: EyeOff,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

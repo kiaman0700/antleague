@@ -9,6 +9,8 @@ export const DEFAULT_SOLO_DAY = 180;
 export interface SoloSave {
   data: GameData;
   nickname: string;
+  /** 화면 편집용 가상 게임 — 저장하지 않음 */
+  demo?: boolean;
 }
 
 /** 새 하루의 마감 시각 (장 시작 3초 뒤부터 칸이 흐름) */
@@ -38,7 +40,17 @@ export function saveSolo(s: SoloSave | null) {
   }
 }
 
-export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY): SoloSave {
+/** 화면 편집용 가상 게임: 몇 날이 지난 상태로 만들고 저장하지 않음 (하던 연습 게임을 덮어쓰지 않게) */
+export function makeDemo(nickname: string): SoloSave {
+  const s = newSolo(nickname || '나', 20, 300, false);
+  const d = s.data;
+  d.room = { ...d.room, day: 4 };
+  d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 20, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
+  d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 5, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
+  return { ...s, demo: true };
+}
+
+export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true): SoloSave {
   const seed = Math.floor(Math.random() * 2_000_000_000);
   const sec = (SOLO_DAY_OPTIONS as readonly number[]).includes(daySec) ? daySec : DEFAULT_SOLO_DAY;
   const dl = freshDeadline(sec, Date.now());
@@ -52,7 +64,7 @@ export function newSolo(nickname: string, totalDays: number, daySec: number = DE
       orders: [],
     },
   };
-  saveSolo(s);
+  if (persist) saveSolo(s);
   return s;
 }
 
@@ -96,7 +108,7 @@ export function soloSync(s: SoloSave, now = Date.now()): SoloSave {
   if (d.room.deadline !== null && now >= d.room.deadline) changed = advance(d, now) || changed;
   if (!changed) return s;
   const out = { ...s, data: d };
-  saveSolo(out);
+  if (!s.demo) saveSolo(out);
   return out;
 }
 
@@ -141,6 +153,6 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
       throw new GameError('알 수 없는 요청이에요.');
   }
   const out = { ...s, data: d };
-  saveSolo(out);
+  if (!s.demo) saveSolo(out);
   return out;
 }

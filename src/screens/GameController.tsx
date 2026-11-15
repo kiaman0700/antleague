@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
-import { applyMoneyUnit, isCustom, setPrefs, usePrefs } from '../prefs';
+import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab, type PcCol } from '../prefs';
 import { loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
@@ -11,7 +11,8 @@ import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
-import { loadSolo, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { loadSolo, makeDemo, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { EditSlot } from '../components/EditSlot';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -31,12 +32,17 @@ interface Props {
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
 const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
+const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '뉴스', assets: '내 재산', cards: '카드' };
+const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'news', assets: 'wallet', cards: 'cards' };
+const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', schedule: '일정', assets: '내 재산 요약' };
+const COL_LABEL: Record<PcCol, string> = { list: '종목 목록', detail: '차트·주문', side: '뉴스·카드' };
+const COL_WIDTH: Record<PcCol, string> = { list: 'minmax(260px, 300px)', detail: 'minmax(0, 1fr)', side: 'minmax(280px, 320px)' };
 
 /** 둘이서: 서버(/api/game) · 혼자: 브라우저 안의 같은 엔진 */
 function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
-  const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : loadSolo()));
+  const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : session.demo ? makeDemo(session.nickname) : loadSolo()));
   const [soloNow, setSoloNow] = useState(() => Date.now());
   useEffect(() => {
     if (multi) return;
@@ -72,10 +78,10 @@ function useGameSource(session: Session) {
 }
 
 /** 모바일: 탭 = 페이지. 주소(#news 등)와 연결해서 뒤로 가기로 이전 탭으로 */
-function useMobileTab(mobile: boolean) {
+function useMobileTab(mobile: boolean, start: Tab = 'news') {
   const fromHash = (): Tab => {
     const h = location.hash.slice(1) as Tab;
-    return TABS.includes(h) ? h : 'news';
+    return TABS.includes(h) ? h : start;
   };
   const [tab, setTabState] = useState<Tab>(fromHash);
   useEffect(() => {
@@ -109,10 +115,17 @@ export function GameController({ session, onExit }: Props) {
   const [ui, setUiState] = useState<UiMode>(session.ui);
   const prefs = usePrefs();
   const [prefsOpen, setPrefsOpen] = useState(false);
+  // 화면 편집 모드: 실제 게임 화면에서 배치를 바꿈 (가상 게임이면 처음부터 편집 중)
+  const [editing, setEditing] = useState(!!session.demo);
+  const layout = effective(prefs).layout;
+  const startEdit = () => {
+    setPrefs({ enabled: true });
+    setEditing(true);
+  };
   // 모든 금액 표시 단위 (초보 만원 · 일반 원 · 내 설정)
   applyMoneyUnit(prefs, ui);
   const [selected, setSelected] = useState(STOCKS[0].symbol);
-  const [tab, setTab] = useMobileTab(mobile);
+  const [tab, setTab] = useMobileTab(mobile, effective(prefs).layout.mStart);
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
@@ -666,14 +679,14 @@ export function GameController({ session, onExit }: Props) {
         <button className={!prefs.enabled && !easy ? 'on' : ''} onClick={() => (setPrefs({ enabled: false }), setUi('pro'))}>
           일반
         </button>
-        <button className={prefs.enabled ? 'on' : ''} onClick={() => setPrefs({ enabled: true })} title="내가 설정한 화면">
+        <button className={prefs.enabled ? 'on' : ''} onClick={() => setPrefs({ enabled: true })} title="내가 설정한 화면 (오른쪽 조절 버튼으로 편집)">
           커스텀
         </button>
       </div>
       <button className="icon-btn" onClick={() => setTutorial(true)} aria-label="도움말" title="도움말">
         <Icon name="help" size={18} />
       </button>
-      <button className={'icon-btn' + (isCustom(prefs) ? ' on' : '')} onClick={() => setPrefsOpen(true)} aria-label="내 화면 설정" title="내 화면 설정">
+      <button className={'icon-btn' + (isCustom(prefs) ? ' on' : '')} onClick={startEdit} aria-label="화면 편집" title="화면 편집 (커스텀 모드)">
         <Icon name="sliders" size={18} />
       </button>
       <button
@@ -700,14 +713,104 @@ export function GameController({ session, onExit }: Props) {
   const myRank = rows.findIndex((r) => r.me) + 1;
   const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
 
+
+  const editBar = editing ? (
+    <div className="edit-bar" role="region" aria-label="화면 편집">
+      <div className="eb-text">
+        <b>
+          <Icon name="sliders" size={16} /> 화면 편집 중
+        </b>
+        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기. 아래 탭도 바꿀 수 있어요' : '화살표로 칸 순서, 눈 모양으로 보이기/숨기기'}</small>
+      </div>
+      <div className="eb-actions">
+        {mobile && (
+          <label className="eb-start">
+            처음 탭
+            <select value={layout.mStart} onChange={(e) => setLayout({ mStart: e.target.value as MTab })}>
+              {layout.mTabs.map((t) => (
+                <option key={t} value={t}>
+                  {TAB_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
+          <Icon name="settings" size={14} /> 옵션
+        </button>
+        <button className="btn sm ghost" onClick={resetLayout}>
+          배치 처음으로
+        </button>
+        <button className="btn sm primary" onClick={() => (session.demo ? onExit() : setEditing(false))}>
+          <Icon name="check" size={14} /> 완료
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   /* ================= 모바일 ================= */
   if (mobile) {
     const q = quote(m, selected, displayDay, displayClosed);
     const held = portfolio.holdings[selected]?.qty ?? 0;
+
+    // 위쪽 줄들 (화면 편집으로 순서·보이기를 바꿈)
+    const headerRows: Record<MHeaderRow, React.ReactNode> = {
+      ticker: (
+        <>
+          <div className="m-row">
+            <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
+            <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
+              <span><Icon name="settings" size={18} /></span>
+              <small>설정</small>
+            </button>
+          </div>
+        </>
+      ),
+      schedule: (
+        <>
+          <ScheduleStrip market={m} day={day} onOpen={() => setSchedSheet(true)} />
+        </>
+      ),
+      assets: (
+        <>
+          <button className="m-asum" onClick={() => setTab('assets')} aria-label="내 재산 보기">
+            <span>
+              <small>현금</small>
+              <b>{wonShort(portfolio.cash)}</b>
+            </span>
+            <span>
+              <small>주식</small>
+              <b>{wonShort(equity - portfolio.cash)}</b>
+            </span>
+            <span>
+              <small>오늘</small>
+              <b className={tone(todayPnl)}>
+                {todayPnl >= 0 ? '+' : ''}
+                {wonShort(todayPnl)}
+              </b>
+            </span>
+            {portfolio.dividendIncome > 0 && (
+              <span>
+                <small>배당</small>
+                <b className="up">+{wonShort(portfolio.dividendIncome)}</b>
+              </span>
+            )}
+            {openOrderCount > 0 && (
+              <span>
+                <small>예약</small>
+                <b>{openOrderCount}건</b>
+              </span>
+            )}
+            <i>›</i>
+          </button>
+        </>
+      ),
+    };
     return (
-      <div className={'m-game ui-' + ui}>
-        {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 */}
-        <header className={'m-top' + (headerCollapsed || tab === 'detail' ? ' collapsed' : '')}>
+      <div className={'m-game ui-' + ui + (editing ? ' editing' : '')}>
+        {editBar}
+        {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 (편집 중에는 펼쳐 둠) */}
+        <header className={'m-top' + (!editing && (headerCollapsed || tab === 'detail') ? ' collapsed' : '')}>
           {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
           <div className="m-hero">
             <div className="mh-left">
@@ -766,47 +869,30 @@ export function GameController({ session, onExit }: Props) {
             <span className="mp-left">{total - day - 1 > 0 ? `${total - day - 1}일 남음` : '마지막 날'}</span>
           </div>
           <div className="m-top-more">
-          {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
-          <div className="m-row">
-            <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
-            <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
-              <span><Icon name="settings" size={18} /></span>
-              <small>설정</small>
-            </button>
-          </div>
-          {/* ③ 일정 전용 영역 */}
-          <ScheduleStrip market={m} day={day} onOpen={() => setSchedSheet(true)} />
-          {/* ④ 내 재산 */}
-          <button className="m-asum" onClick={() => setTab('assets')} aria-label="내 재산 보기">
-            <span>
-              <small>현금</small>
-              <b>{wonShort(portfolio.cash)}</b>
-            </span>
-            <span>
-              <small>주식</small>
-              <b>{wonShort(equity - portfolio.cash)}</b>
-            </span>
-            <span>
-              <small>오늘</small>
-              <b className={tone(todayPnl)}>
-                {todayPnl >= 0 ? '+' : ''}
-                {wonShort(todayPnl)}
-              </b>
-            </span>
-            {portfolio.dividendIncome > 0 && (
-              <span>
-                <small>배당</small>
-                <b className="up">+{wonShort(portfolio.dividendIncome)}</b>
-              </span>
-            )}
-            {openOrderCount > 0 && (
-              <span>
-                <small>예약</small>
-                <b>{openOrderCount}건</b>
-              </span>
-            )}
-            <i>›</i>
-          </button>
+          {layout.mHeader.map((row, i) => (
+            <EditSlot
+              key={row.id}
+              editing={editing}
+              label={HEADER_LABEL[row.id]}
+              hidden={!row.on}
+              onPrev={i > 0 ? () => setLayout({ mHeader: moved(layout.mHeader, i, -1) }) : undefined}
+              onNext={i < layout.mHeader.length - 1 ? () => setLayout({ mHeader: moved(layout.mHeader, i, 1) }) : undefined}
+              onToggle={() => setLayout({ mHeader: layout.mHeader.map((x) => (x.id === row.id ? { ...x, on: !x.on } : x)) })}
+            >
+              {headerRows[row.id]}
+            </EditSlot>
+          ))}
+          {/* 시장 줄을 숨겨도 설정 버튼은 남김 */}
+          {!editing && !layout.mHeader.find((r) => r.id === 'ticker')?.on && (
+            <div className="m-row only-menu">
+              <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
+                <span>
+                  <Icon name="settings" size={18} />
+                </span>
+                <small>설정</small>
+              </button>
+            </div>
+          )}
           </div>
         </header>
 
@@ -848,23 +934,25 @@ export function GameController({ session, onExit }: Props) {
         )}
 
         <nav className="bottom-nav five">
-          {(
-            [
-              ['list', 'list', '종목'],
-              ['detail', 'chart', '차트'],
-              ['news', 'news', '뉴스'],
-              ['assets', 'wallet', easy ? '내 재산' : '자산'],
-              ['cards', 'cards', '카드'],
-            ] as [Tab, IconName, string][]
-          ).map(([t, i, l]) => (
+          {layout.mTabs.map((t, i) => (
             <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
               <span>
-                <Icon name={i} size={22} />
+                <Icon name={TAB_ICON[t]} size={22} />
               </span>
-              {l}
+              {t === 'assets' ? (easy ? '내 재산' : '자산') : TAB_LABEL[t]}
               {t === 'news' && newsSymbols.size > 0 && tab !== 'news' && <i className="nav-dot" />}
               {t === 'cards' && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
               {t === 'assets' && myOrders.some((o) => o.status === 'open' && o.day === day) && <i className="nav-dot gold" />}
+              {editing && (
+                <span className="nav-move" onClick={(e) => e.stopPropagation()}>
+                  <i role="button" aria-label={`${TAB_LABEL[t]} 왼쪽으로`} className={i === 0 ? 'dis' : ''} onClick={() => i > 0 && setLayout({ mTabs: moved(layout.mTabs, i, -1) })}>
+                    <Icon name="left" size={12} />
+                  </i>
+                  <i role="button" aria-label={`${TAB_LABEL[t]} 오른쪽으로`} className={i === layout.mTabs.length - 1 ? 'dis' : ''} onClick={() => i < layout.mTabs.length - 1 && setLayout({ mTabs: moved(layout.mTabs, i, 1) })}>
+                    <Icon name="right" size={12} />
+                  </i>
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -928,7 +1016,8 @@ export function GameController({ session, onExit }: Props) {
 
   /* ================= PC ================= */
   return (
-    <div className={'game desk ui-' + ui}>
+    <div className={'game desk ui-' + ui + (editing ? ' editing' : '')}>
+      {editBar}
       <header className="hud">
         <div className="hud-left">
           <div className="brand-sm">주식 대결</div>
@@ -989,28 +1078,65 @@ export function GameController({ session, onExit }: Props) {
         </button>
       </section>
 
-      <Timeline market={m} day={day} onSelect={selectStock} />
+      <EditSlot editing={editing} label="날짜 줄" hidden={!layout.pcTimeline} onToggle={() => setLayout({ pcTimeline: !layout.pcTimeline })}>
+        <Timeline market={m} day={day} onSelect={selectStock} />
+      </EditSlot>
 
-      <main className="board">
-        <section className="pane p-list">{browser}</section>
-        <section className="pane p-detail">{detail}</section>
-        <section className="pane p-news">
-          <div className="news-scroll">
-            {effectsOnMe.map((t, i) => (
-              <div key={i} className="effect-banner">
-                {t}
-              </div>
-            ))}
-            {newsPanel}
-          </div>
-          <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
-        </section>
+      <main className="board" style={{ gridTemplateColumns: layout.pcCols.map((c) => COL_WIDTH[c]).join(' ') }}>
+        {layout.pcCols.map((c, i) => (
+          <EditSlot
+            key={c}
+            editing={editing}
+            label={COL_LABEL[c]}
+            dir="h"
+            className="es-col"
+            onPrev={i > 0 ? () => setLayout({ pcCols: moved(layout.pcCols, i, -1) }) : undefined}
+            onNext={i < layout.pcCols.length - 1 ? () => setLayout({ pcCols: moved(layout.pcCols, i, 1) }) : undefined}
+          >
+            {c === 'list' && <section className="pane p-list">{browser}</section>}
+            {c === 'detail' && <section className="pane p-detail">{detail}</section>}
+            {c === 'side' && (
+              <section className="pane p-news">
+                {layout.pcSide.map((sd, j) => (
+                  <EditSlot
+                    key={sd.id}
+                    editing={editing}
+                    label={sd.id === 'news' ? '뉴스' : '찬스 카드'}
+                    hidden={!sd.on}
+                    className={sd.id === 'news' ? 'es-grow' : undefined}
+                    onPrev={j > 0 ? () => setLayout({ pcSide: moved(layout.pcSide, j, -1) }) : undefined}
+                    onNext={j < layout.pcSide.length - 1 ? () => setLayout({ pcSide: moved(layout.pcSide, j, 1) }) : undefined}
+                    onToggle={() => setLayout({ pcSide: layout.pcSide.map((x) => (x.id === sd.id ? { ...x, on: !x.on } : x)) })}
+                  >
+                    {sd.id === 'news' ? (
+                      <div className="news-scroll">
+                        {effectsOnMe.map((t, k) => (
+                          <div key={k} className="effect-banner">
+                            {t}
+                          </div>
+                        ))}
+                        {newsPanel}
+                      </div>
+                    ) : (
+                      <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
+                    )}
+                  </EditSlot>
+                ))}
+              </section>
+            )}
+          </EditSlot>
+        ))}
       </main>
       <div className="kbd-hint muted">
         <kbd>/</kbd> 검색 · <kbd>↑</kbd>
         <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문 · <kbd>Esc</kbd> 닫기
       </div>
 
+      {prefsOpen && (
+        <Sheet title="커스텀 모드 옵션" onClose={() => setPrefsOpen(false)}>
+          <PrefsPanel ui={ui} />
+        </Sheet>
+      )}
       <Drawer open={drawer === 'assets'} title={easy ? '내 재산' : '자산'} onClose={() => setDrawer(null)}>
         {assets}
       </Drawer>

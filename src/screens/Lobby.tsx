@@ -37,7 +37,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records';
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize';
 
 interface Props {
   page: LobbyPage;
@@ -49,7 +49,7 @@ interface Props {
 type Joined = { roomId: string; playerId: string; code: string };
 
 /** 화면 모드: 초보 / 일반 / 커스텀. 커스텀은 '바탕 모드'(초보·일반) 위에 내 설정을 덮어씀 */
-export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: UiMode) => void }) {
+export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChange: (m: UiMode) => void; onEdit?: () => void }) {
   const prefs = usePrefs();
   const [open, setOpen] = useState(false);
   const custom = prefs.enabled;
@@ -75,7 +75,17 @@ export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: U
           <b>커스텀 모드</b>
           <small>{custom ? `내가 설정한 화면을 써요 · 바탕 ${value === 'easy' ? '초보' : '일반'}` : '금액 단위·차트·업종 순서를 내 마음대로'}</small>
         </button>
-        <button className="mp-gear icon-btn sm" aria-label="커스텀 모드 설정" title="커스텀 모드 설정" onClick={() => setOpen(true)}>
+        <button
+          className="mp-gear icon-btn sm"
+          aria-label="커스텀 모드 화면 편집"
+          title="실제 게임 화면에서 편집"
+          onClick={() => {
+            // 홈: 실제 게임 화면(가상 게임)으로 가서 편집. 대기실 등: 설정 창
+            setPrefs({ enabled: true });
+            if (onEdit) onEdit();
+            else setOpen(true);
+          }}
+        >
           <Icon name="settings" size={16} />
         </button>
       </div>
@@ -413,7 +423,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         </label>
         <div className="field">
           <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
-          <ModePicker value={profile.ui} onChange={profile.setUi} />
+          <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
         </div>
       </section>
 
