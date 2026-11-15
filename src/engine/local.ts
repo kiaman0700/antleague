@@ -25,18 +25,21 @@ export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
  * 튜토리얼 시나리오: 첫날 아침에 '좋은 기업 뉴스'가 있는 시장을 골라 고정.
  * 시간은 흐르지 않고(장 마감은 직접), 봇이 함께 함
  */
+/** 튜토리얼은 미리 정한 장면(첫날 오를 좋은 뉴스)을 찾아야 해서 비밀값 없는 v3 규칙 */
+const TUTORIAL_VERSION = 3;
+
 export function makeTutorial(nickname: string): SoloSave {
   let seed = 7000;
   let pick: { symbol: string; headline: string } | null = null;
   for (; seed < 9000 && !pick; seed++) {
-    const m = marketFor(seed, 6, CURRENT_RULES_VERSION);
+    const m = marketFor(seed, 6, TUTORIAL_VERSION);
     const n = m.news.find((x) => x.day === 0 && x.kind === 'company' && x.tone === 'good' && !x.rumor && !x.fake && x.at == null && x.symbol && !STOCK_MAP[x.symbol].etf);
     if (n && m.bars[n.symbol!][0].close > m.bars[n.symbol!][0].open) pick = { symbol: n.symbol!, headline: n.headline };
   }
   seed--;
   const now = new Date().toISOString();
   const data: GameData = {
-    room: { id: 'tutorial', code: 'TUTOR0', seed, status: 'playing', total_days: 6, turn_seconds: 180, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: CURRENT_RULES_VERSION },
+    room: { id: 'tutorial', code: 'TUTOR0', seed, status: 'playing', total_days: 6, turn_seconds: 180, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: TUTORIAL_VERSION },
     players: [
       { id: 'me', room_id: 'tutorial', nickname: nickname || '나', mode: 'easy', ready: true, ended_day: -1, created_at: '1', version: 0 },
       { id: TUTORIAL_BOT.id, room_id: 'tutorial', nickname: TUTORIAL_BOT.nickname, mode: 'easy', ready: true, ended_day: -1, created_at: '2', version: 0 },
@@ -49,7 +52,7 @@ export function makeTutorial(nickname: string): SoloSave {
     ],
     orders: [],
   };
-  const m = marketFor(seed, 6, CURRENT_RULES_VERSION);
+  const m = marketFor(seed, 6, TUTORIAL_VERSION);
   // 봇: 첫날 지수 ETF 를 조금 삼
   data.trades.push({ id: 'tut-b1', player_id: TUTORIAL_BOT.id, day: 0, symbol: 'KIDX', side: 'buy', qty: 200, price: m.bars.KIDX[0].open, fee: 0.0015, created_at: now });
   return { nickname: nickname || '나', data, tutorial: pick ?? { symbol: 'CORE', headline: '' } };
@@ -127,11 +130,18 @@ export function makeDemo(nickname: string): SoloSave {
   const dl = frozenAt + 150_000;
   d.room = { ...d.room, day: 4, deadline: dl, day_deadline: dl };
   // 예약 주문도 하나 보이게
-  const nanoOpen = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1).bars.NANO[4].open;
+  const nanoOpen = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt).bars.NANO[4].open;
   d.orders.push({ id: 'demo-o1', player_id: 'me', day: 4, symbol: 'NANO', side: 'buy', qty: 10, limit_price: Math.round((nanoOpen * 0.95) / 50) * 50, fee: 0.0015, status: 'open', created_at: new Date(frozenAt - 60_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 20, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 5, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
   return { ...s, demo: true, frozenAt };
+}
+
+/** 연습 게임 시장 비밀값 (128비트) */
+function randomSalt(): string {
+  const b = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(b);
+  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
 export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true): SoloSave {
@@ -141,7 +151,7 @@ export function newSolo(nickname: string, totalDays: number, daySec: number = DE
   const s: SoloSave = {
     nickname,
     data: {
-      room: { id: 'solo', code: 'SOLO00', seed, status: 'playing', total_days: totalDays, turn_seconds: sec, day: 0, deadline: dl, day_deadline: dl, host_id: 'me', version: CURRENT_RULES_VERSION },
+      room: { id: 'solo', code: 'SOLO00', seed, salt: randomSalt(), status: 'playing', total_days: totalDays, turn_seconds: sec, day: 0, deadline: dl, day_deadline: dl, host_id: 'me', version: CURRENT_RULES_VERSION },
       players: [{ id: 'me', room_id: 'solo', nickname, mode: 'easy', ready: true, ended_day: -1, created_at: new Date().toISOString(), version: 0 }],
       trades: [],
       items: [],

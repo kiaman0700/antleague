@@ -9,7 +9,7 @@
  *
  * 이 함수는 서버(진짜 가격)와 혼자 연습에서만 쓴다. 화면으로는 지금 칸까지만 잘라서 보낸다.
  */
-import { gaussian, mulberry32 } from '../lib/rng.js';
+import { gaussian, mulberry32, seeded, type Rng } from '../lib/rng.js';
 import { KR_INDEX_BASE, roundPrice, roundUsd, US_INDEX_BASE, type Bar, type Market } from './market.js';
 import { CAP_WEIGHT, COMPANIES, etfMembers, SECTOR_MAP, STOCK_MAP } from './stocks.js';
 
@@ -55,9 +55,13 @@ function cached(key: string, make: () => number[]) {
   return v;
 }
 
+/** v4: 방 비밀값을 키로 쓰고 128비트 난수로 (지금까지의 칸으로 나머지 흐름을 역산하지 못하게) */
+const sk = (m: Market) => m.salt ?? String(m.seed);
+const rngOf = (m: Market, key: string): Rng => (m.salt ? seeded(key) : mulberry32(hash(key)));
+
 /** 양 끝이 0인 무작위 흐름 (로그 수익률 단위, 하루 동안 표준편차 ≈ amp) */
-function bridge(seedKey: string, n: number, amp: number): number[] {
-  const rng = mulberry32(hash(seedKey));
+function bridge(m: Market, seedKey: string, n: number, amp: number): number[] {
+  const rng = rngOf(m, seedKey);
   const w = [0];
   for (let j = 1; j <= n; j++) w.push(w[j - 1] + gaussian(rng));
   const scale = amp / Math.sqrt(n);
@@ -66,16 +70,16 @@ function bridge(seedKey: string, n: number, amp: number): number[] {
 
 /** 시장 공통 흐름 (한국·미국 같은 시간에 열림. 미국은 한국과 일부 같이 움직임) */
 function marketFlow(m: Market, region: 'KR' | 'US', day: number, n: number) {
-  return cached(`mf:${m.seed}:${m.totalDays}:${region}:${day}:${n}`, () => {
-    const kr = bridge(`${m.seed}:mf:KR:${day}:${n}`, n, 0.01);
+  return cached(`mf:${sk(m)}:${m.totalDays}:${region}:${day}:${n}`, () => {
+    const kr = bridge(m, `${sk(m)}:mf:KR:${day}:${n}`, n, 0.01);
     if (region === 'KR') return kr;
-    const us = bridge(`${m.seed}:mf:US:${day}:${n}`, n, 0.01);
+    const us = bridge(m, `${sk(m)}:mf:US:${day}:${n}`, n, 0.01);
     return us.map((v, j) => 0.85 * v + 0.3 * kr[j]);
   });
 }
 /** 업종 공통 흐름 */
 function sectorFlow(m: Market, sector: string, day: number, n: number) {
-  return cached(`sf:${m.seed}:${m.totalDays}:${sector}:${day}:${n}`, () => bridge(`${m.seed}:sf:${sector}:${day}:${n}`, n, 0.009));
+  return cached(`sf:${sk(m)}:${m.totalDays}:${sector}:${day}:${n}`, () => bridge(m, `${sk(m)}:sf:${sector}:${day}:${n}`, n, 0.009));
 }
 
 /**
@@ -83,7 +87,7 @@ function sectorFlow(m: Market, sector: string, day: number, n: number) {
  * cur='usd' 면 미국 주식의 달러 가격. 시장 데이터(m)는 서버의 전체 시장이어야 함(장중 흐름 포함).
  */
 export function dayTicks(m: Market, symbol: string, day: number, n: number, cur: 'krw' | 'usd' = 'krw'): number[] {
-  return cached(`${m.seed}:${m.totalDays}:${m.version ?? 1}:${symbol}:${day}:${n}:${cur}`, () => {
+  return cached(`${sk(m)}:${m.totalDays}:${m.version ?? 1}:${symbol}:${day}:${n}:${cur}`, () => {
     const def = STOCK_MAP[symbol];
     const bar: Bar | undefined = (cur === 'usd' ? m.usd[symbol] : m.bars[symbol])?.[day];
     if (!bar || !def) throw new Error('no bar');
@@ -114,7 +118,7 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
             beta: sec.beta * def.sectorBeta,
             sb: def.sectorBeta,
           };
-    return fineTicks(bar, n, mulberry32(hash(`${m.seed}:${symbol}:${day}:${n}`)), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0);
+    return fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0);
   });
 }
 
@@ -122,7 +126,7 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
  * 지수 장중 칸 = 종목 칸의 가중 평균 (v1 균등, v2 시가총액). 시가·종가는 그날 지수와 정확히 같다
  */
 export function indexTicks(m: Market, which: 'kr' | 'us', day: number, n: number): number[] {
-  return cached(`idx:${m.seed}:${m.totalDays}:${m.version ?? 1}:${which}:${day}:${n}`, () => {
+  return cached(`idx:${sk(m)}:${m.totalDays}:${m.version ?? 1}:${which}:${day}:${n}`, () => {
     const bars = which === 'kr' ? m.index : m.usIndex;
     const bar = bars[day];
     const prevLevel = day === 0 ? (which === 'kr' ? KR_INDEX_BASE : US_INDEX_BASE) : bars[day - 1].close;

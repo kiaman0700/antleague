@@ -1,4 +1,4 @@
-import { gaussian, mulberry32, pick, range, type Rng } from '../lib/rng.js';
+import { gaussian, mulberry32, pick, range, seeded, type Rng } from '../lib/rng.js';
 import * as T from './news.js';
 import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
@@ -59,6 +59,8 @@ export interface Macro {
 
 export interface Market {
   seed: number;
+  /** v4 비밀값 — 서버 안에서만. 화면 데이터(sliceMarket)에는 절대 넣지 않음 */
+  salt?: string;
   totalDays: number;
   /** 첫날 시가 이전 기준가 (원) */
   base: Record<string, number>;
@@ -155,8 +157,14 @@ export function relatedForSector(id: string): string[] {
  * 같은 (seed, totalDays, version)이면 항상 같은 시장.
  * version 2 는 v1 과 같은 난수 흐름 위에 연관성을 더한다 (v1 방의 가격은 절대 바뀌지 않음)
  */
-export function generateMarket(seed: number, totalDays: number, version = 1): Market {
-  const rng = mulberry32(seed);
+export function generateMarket(seed: number, totalDays: number, version = 1, salt?: string): Market {
+  /**
+   * v4: 방마다 서버에만 있는 128비트 비밀값(salt)으로 난수를 만듦.
+   * (32비트 시드는 첫날 공개되는 금리·환율·뉴스로 몇 분 만에 역산돼 미래 가격이 드러날 수 있었음)
+   */
+  const S = version >= 4 && salt ? salt : null;
+  const R = (tag: string, legacy: () => Rng) => (S ? seeded(`${S}:${tag}`) : legacy());
+  const rng = R('main', () => mulberry32(seed));
   const v2 = version >= 2;
   /**
    * v3 (밸런스): 아침 갭 방향이 그날 결과를 알려주지 않게 시가·장중 잡음을 따로 뽑고,
@@ -165,8 +173,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
    */
   const v3 = version >= 3;
   // v2 전용 난수 (장세 전환) — v1 난수 흐름은 건드리지 않음
-  const rng2 = mulberry32((seed ^ 0x5f3759df) >>> 0);
-  const rng3 = mulberry32((seed ^ 0x2c1b3c6d) >>> 0);
+  const rng2 = R('regime', () => mulberry32((seed ^ 0x5f3759df) >>> 0));
+  const rng3 = R('v3', () => mulberry32((seed ^ 0x2c1b3c6d) >>> 0));
   let regime = 0; // -1 하락장, 0 보합, 1 상승장
   let prevUsRet = 0;
   let prevKrRet = 0;
@@ -201,7 +209,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
   let krLevel = KR_INDEX_BASE;
   let usLevel = US_INDEX_BASE;
 
-  const { events, dividends } = planCalendar(seed, totalDays);
+  const { events, dividends } = planCalendar(seed, totalDays, S ? seeded(`${S}:cal`) : undefined);
   const isEvent = (day: number, kind: EventKind) => events.some((e) => e.day === day && e.kind === kind);
 
   for (let day = 0; day < totalDays; day++) {
@@ -537,13 +545,13 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
   }
 
   for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
-  decorateNews(seed, totalDays, news, bars, indexBars, v3);
-  return { seed, totalDays, version, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
+  decorateNews(seed, totalDays, news, bars, indexBars, v3, S ? seeded(`${S}:news`) : undefined);
+  return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
 }
 
 /** 미리 공지되는 일정: 연준·금통위·실적 시즌·옵션 만기·배당 기준일 */
-export function planCalendar(seed: number, totalDays: number): { events: MarketEvent[]; dividends: Dividend[] } {
-  const r = mulberry32((seed ^ 0x5bd1e995) >>> 0);
+export function planCalendar(seed: number, totalDays: number, rngIn?: Rng): { events: MarketEvent[]; dividends: Dividend[] } {
+  const r = rngIn ?? mulberry32((seed ^ 0x5bd1e995) >>> 0);
   const events: MarketEvent[] = [];
   const dividends: Dividend[] = [];
   const taken = new Set<number>();
@@ -648,8 +656,8 @@ export function stockName(sym: string) {
  * 가격을 만드는 난수와 다른 난수를 써서, 이 함수가 바뀌어도 같은 시드의 가격은 그대로다.
  * 여기서 더하는 기사는 가격에 영향을 주지 않는다.
  */
-function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: Record<string, Bar[]>, indexBars: Bar[], v3 = false) {
-  const rng = mulberry32((seed ^ 0x6e657773) >>> 0);
+function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: Record<string, Bar[]>, indexBars: Bar[], v3 = false, rngIn?: Rng) {
+  const rng = rngIn ?? mulberry32((seed ^ 0x6e657773) >>> 0);
   for (const n of news) {
     if (n.rumor) continue;
     if (v3 && n.at != null) continue; // 이미 정한 장중 속보

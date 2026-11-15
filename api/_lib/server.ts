@@ -181,6 +181,8 @@ async function loadGame(roomId: string): Promise<GameData> {
       seed: s.seed,
       // 006 마이그레이션 전이거나 예전 방이면 1
       version: s.rules_version ?? 1,
+      // v4: 시장 비밀값 (011 전이면 없음 → v3 와 같은 난수)
+      salt: s.salt ?? null,
       status: r.status,
       total_days: r.total_days,
       // 예전 '무제한'(0) 방은 최대 시간으로 진행
@@ -233,6 +235,18 @@ const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() 
 async function touchRoom(roomId: string) {
   const res = await db().from('rooms').update({ rev: randomInt(2_000_000_000) }).eq('id', roomId);
   if (res.error && !/rev/.test(res.error.message)) console.error('[api] touch', res.error.message);
+}
+
+/**
+ * 방 비밀 저장: 최신 규칙(v4)은 128비트 시장 비밀값(salt)과 함께.
+ * 마이그레이션 전이면 할 수 있는 만큼(v3 → v1)으로 내려서 저장
+ */
+async function insertSecret(row: { room_id: string; seed: number; password_hash: string | null }) {
+  const sb = db();
+  let sec = await sb.from('room_secrets').insert({ ...row, rules_version: CURRENT_RULES_VERSION, salt: randomBytes(16).toString('hex') });
+  if (sec.error && /salt/.test(sec.error.message)) sec = await sb.from('room_secrets').insert({ ...row, rules_version: 3 });
+  if (sec.error && /rules_version/.test(sec.error.message)) sec = await sb.from('room_secrets').insert(row);
+  must(sec, 'secret');
 }
 
 /** 시장 키를 섞을 방별 비밀값 (서버 비밀 키로 만든 HMAC — 화면은 절대 알 수 없음) */
@@ -351,9 +365,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
       // 새 방은 최신 시장 규칙(v2). rules_version 컬럼이 아직 없으면(006 적용 전) 빼고 저장 → v1
       const secretRow = { room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash };
-      let sec = await sb.from('room_secrets').insert({ ...secretRow, rules_version: CURRENT_RULES_VERSION });
-      if (sec.error && /rules_version/.test(sec.error.message)) sec = await sb.from('room_secrets').insert(secretRow);
-      must(sec, 'secret');
+      await insertSecret(secretRow);
       const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'host') as { id: string };
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
       return { roomId: room.id, playerId: p.id, code: room.code };
@@ -593,7 +605,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         else if (!/duplicate/i.test(res.error.message)) must(res, 'rematch room');
       }
       if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
-      must(await sb.from('room_secrets').insert({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: secret?.password_hash ?? null, rules_version: CURRENT_RULES_VERSION }), 'secret');
+      await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: secret?.password_hash ?? null });
       const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname: me.nickname, mode: me.mode, ready: true }).select('id').single(), 'host') as { id: string };
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
       // 동시에 두 명이 눌렀으면 먼저 붙은 방만 남김
