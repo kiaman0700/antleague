@@ -74,7 +74,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
         <button className="mp-main" onClick={() => setPrefs({ enabled: true })}>
           <span className="mp-emoji"><Icon name="sliders" size={22} /></span>
           <b>커스텀 모드</b>
-          <small>{custom ? `내가 설정한 화면을 써요 · 바탕 ${value === 'easy' ? '초보' : '일반'}` : '금액 단위·차트·업종 순서를 내 마음대로'}</small>
+          <small>{custom ? `내 화면 사용 중 · 바탕 ${value === 'easy' ? '초보' : '일반'}` : '내 화면으로 바꿔 쓰기'}</small>
         </button>
         <button
           className="mp-gear icon-btn sm"
@@ -437,7 +437,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         <button className="tile" disabled={!online} onClick={need(() => go('create'))}>
           <i><Icon name="plus" size={24} /></i>
           <b>방 만들기</b>
-          <small>인원·길이·제한 시간 설정</small>
+          <small>인원·길이·시간 설정</small>
         </button>
         <button className="tile" disabled={!online} onClick={need(() => setModal('code'))}>
           <i><Icon name="key" size={24} /></i>
@@ -447,7 +447,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         <button className="tile" onClick={need(() => setModal('practice'))}>
           <i><Icon name="target" size={24} /></i>
           <b>혼자 연습</b>
-          <small>실시간 장 · 마감은 내 마음대로</small>
+          <small>나만의 속도로</small>
         </button>
       </nav>
 

@@ -329,7 +329,7 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
           <button key={i} role="listitem" className={'sched-chip k-' + e.kind + (dd === 0 ? ' today' : dd <= 2 ? ' soon' : '')} onClick={onOpen}>
             <b>{dd === 0 ? '오늘' : 'D-' + dd}</b>
             <span>
-              <Icon name={EV_ICON2[e.kind]} size={13} /> {EV_SHORT[e.kind]}
+              <Icon name={EV_ICON2[e.kind]} size={13} className={'ev ev-' + e.kind} /> {EV_SHORT[e.kind]}
             </span>
           </button>
         );

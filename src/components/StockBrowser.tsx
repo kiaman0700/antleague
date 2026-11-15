@@ -8,6 +8,7 @@ import { num, pct, tone, wonShort } from '../lib/format';
 import { Sparkline } from './Chart';
 import { reorderSubset, SlideChips } from './SlideChips';
 import { FitText } from './FitText';
+import { Dropdown } from './Dropdown';
 import { effective, setPrefs, usePrefs } from '../prefs';
 
 export interface BrowserFilter {
@@ -279,12 +280,17 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         <span className="muted">
           {rows.length}개{newsSymbols.size > 0 && <span className="news-legend"> · <i /> 오늘 뉴스</span>}
         </span>
-        <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">
-          <option value="default">기본순</option>
-          <option value="up">많이 오른 순</option>
-          <option value="down">많이 내린 순</option>
-          <option value="price">가격 높은 순</option>
-        </select>
+        <Dropdown
+          label="정렬"
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'default', label: '기본순', icon: 'list' },
+            { value: 'up', label: '많이 오른 순', icon: 'trend' },
+            { value: 'down', label: '많이 내린 순', icon: 'activity' },
+            { value: 'price', label: '가격 높은 순', icon: 'coins' },
+          ]}
+        />
       </div>
 
       <div className="stock-list">

@@ -945,3 +945,122 @@ button.tag:hover,
   background: var(--gold);
   vertical-align: -1px;
 }
+
+/* ============ 고르기 목록 (정렬 등) ============ */
+.dropdown {
+  position: relative;
+}
+.dd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.dd-btn:hover,
+.dropdown.open .dd-btn {
+  border-color: rgba(247, 197, 72, 0.5);
+  color: var(--text);
+}
+.dd-caret {
+  transition: transform 0.15s;
+}
+.dropdown.open .dd-caret {
+  transform: rotate(180deg);
+}
+.dd-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 168px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: fade 0.12s ease-out;
+}
+.dd-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.dd-list li.hi {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+.dd-list li.on {
+  color: var(--gold);
+  font-weight: 700;
+}
+.dd-check {
+  margin-left: auto;
+}
+
+/* 날짜 줄 아이콘 뜻: 칸이 넉넉할 때만 (모자라면 숨김) */
+.tl-info {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.tl-info .tl-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-legend {
+  display: none;
+  margin-left: auto;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.tl-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.tl-legend .ico {
+  color: #93c5fd;
+}
+@container (min-width: 760px) {
+  .tl-legend {
+    display: inline-flex;
+  }
+}
+/* 홈 메뉴 타일 설명은 한 줄 */
+.tile small {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 일정 종류별 아이콘 색 (날짜 줄·일정 칩·아이콘 뜻 공통) */
+.ico.ev-fomc { color: #4ade80 !important; }
+.ico.ev-bok { color: #60a5fa !important; }
+.ico.ev-earnings { color: #c084fc !important; }
+.ico.ev-expiry { color: #fb923c !important; }
+.ico.ev-dividend { color: var(--gold) !important; }
+/* 지난 날은 흐리게 */
+.tl-cell.past .ico.ev {
+  opacity: 0.45;
+}

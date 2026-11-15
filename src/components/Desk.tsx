@@ -74,6 +74,7 @@ export function AssetSummary({
 /* ---------------- 일정 타임라인 (가로 띠) ---------------- */
 
 const EV_ICON: Record<EventKind, IconName> = { fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
+const EV_LABEL: Record<EventKind, string> = { fomc: '미 연준', bok: '한은', earnings: '실적', expiry: '옵션 만기', dividend: '배당' };
 
 export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
   const next = market.events.find((e) => e.day >= day) ?? null;
@@ -95,7 +96,7 @@ export function Timeline({ market, day, onSelect }: { market: Market; day: numbe
       <div className="tl-track" role="list" aria-label="게임 일정" ref={trackRef}>
         {Array.from({ length: market.totalDays }, (_, d) => {
           const evs = market.events.filter((e) => e.day === d);
-          const icons = [...new Set(evs.map((e) => EV_ICON[e.kind]))];
+          const kinds = [...new Set(evs.map((e) => e.kind))];
           return (
             <button
               key={d}
@@ -105,7 +106,7 @@ export function Timeline({ market, day, onSelect }: { market: Market; day: numbe
               title={evs.map((e) => e.title).join(', ') || `${d + 1}일차`}
             >
               <small>{d + 1}</small>
-              <span>{icons.length ? icons.slice(0, 2).map((n) => <Icon key={n} name={n} size={12} />) : '·'}</span>
+              <span>{kinds.length ? kinds.slice(0, 2).map((k) => <Icon key={k} name={EV_ICON[k]} size={12} className={'ev ev-' + k} />) : '·'}</span>
             </button>
           );
         })}
@@ -130,6 +131,14 @@ export function Timeline({ market, day, onSelect }: { market: Market; day: numbe
             ))}
           </>
         )}
+        {/* 아이콘 뜻 (자리가 넉넉할 때만 보임) */}
+        <span className="tl-legend" aria-label="날짜 줄 아이콘 뜻">
+          {(Object.keys(EV_ICON) as EventKind[]).map((k) => (
+            <span key={k}>
+              <Icon name={EV_ICON[k]} size={12} className={'ev ev-' + k} /> {EV_LABEL[k]}
+            </span>
+          ))}
+        </span>
       </div>
     </div>
   );
