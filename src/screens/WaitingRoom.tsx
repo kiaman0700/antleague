@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, useLiveView } from '../net/api';
 import { loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
 import { ModePicker } from './Lobby';
+import { Icon } from '../components/Icon';
 
 interface Props {
   roomId: string;
@@ -81,13 +82,13 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     <div className="waiting">
       <div className="panel pad center">
         <h2 className="room-title">
-          {room.isPrivate && <span title="비밀방">🔒 </span>}
+          {room.isPrivate && <span title="비밀방"><Icon name="lock" size={16} /> </span>}
           {room.title}
         </h2>
         <p className="muted">초대 코드</p>
         <div className="big-code">{room.code}</div>
         <button className="btn sm" onClick={copy}>
-          {copied ? '복사됐어요!' : '🔗 초대 링크 보내기'}
+          {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
         </button>
         <p className="muted small">
           최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 고민 시간 {turnLabel}
@@ -101,7 +102,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           if (!p)
             return (
               <div key={i} className="slot empty">
-                <div className="avatar">⏳</div>
+                <div className="avatar empty"><Icon name="userPlus" size={18} /></div>
                 <b>빈 자리</b>
                 <small>초대를 기다리는 중</small>
               </div>
@@ -109,13 +110,13 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           const host = room.hostId === p.id;
           return (
             <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
-              <div className="avatar">{p.id === playerId ? '🙂' : ["😎","🤠","🦊","🐯","🐼","🐸"][i % 6]}</div>
+              <div className={'avatar c' + (i % 6)}>{p.nickname.slice(0, 1)}</div>
               <b>
                 {p.nickname}
                 {p.id === playerId && <em> (나)</em>}
               </b>
-              <small>{host ? '👑 방장' : p.ready ? '준비 완료' : '대기 중'}</small>
-              <small className="muted">{p.mode === 'easy' ? '🌱 초보' : '📊 일반'}</small>
+              <small>{host ? <><Icon name="crown" size={12} /> 방장</> : p.ready ? <><Icon name="check" size={12} /> 준비 완료</> : '대기 중'}</small>
+              <small className="muted">{p.mode === 'easy' ? '초보 모드' : '일반 모드'}</small>
             </div>
           );
         })}

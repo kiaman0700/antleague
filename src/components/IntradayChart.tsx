@@ -57,9 +57,7 @@ export function IntradayChart({ ticks, n, prevClose, fmt, newsTicks = [], tall =
         .map((t, i) => (
           <g key={i} className={'news-mark ' + t.tone}>
             <line x1={x(t.tick)} x2={x(t.tick)} y1={padT} y2={padT + plotH} />
-            <text x={x(t.tick)} y={padT + 10} textAnchor="middle">
-              📰
-            </text>
+            <circle cx={x(t.tick)} cy={padT + 6} r={4} />
           </g>
         ))}
       <circle cx={nowX} cy={y(last)} r={9} className="now-pulse" />

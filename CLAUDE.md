@@ -55,8 +55,8 @@ npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드
 ## DB (Supabase)
 `supabase/schema.sql` = 전체 스키마(초기화용, 데이터 삭제됨). 추가 변경은 번호 붙인 파일로:
 `002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — 적용 완료.
-`005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) — 적용 완료.
-새 마이그레이션은 파일을 만들고 사용자에게 내용을 보여 준 뒤, 확인받으면 `npm run db -- apply` 로 적용 (또는 사용자가 SQL Editor 에서 직접).
+`005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) · `006_rules_version.sql`(room_secrets.rules_version, 새 방=2) — 적용 완료.
+새 마이그레이션은 파일을 만들고(여러 번 실행해도 안전하게) **승인 없이** `npm run db -- apply` 로 직접 적용한 뒤 보고 (사용자 지시, 2026-11-16). 배포(main 푸시)도 검수 통과 후 직접.
 서버는 마이그레이션 전에도 죽지 않게(없는 테이블이면 빈 목록 등) 방어적으로 작성.
 
 ## 배포

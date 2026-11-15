@@ -299,3 +299,59 @@ button.spy-row {
     flex-direction: column;
   }
 }
+
+/* 내 보유: 손익을 색 배지로 한눈에 */
+.pl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.06);
+}
+.pl-pill.up {
+  color: var(--up);
+  background: var(--up-soft);
+}
+.pl-pill.down {
+  color: var(--down);
+  background: var(--down-soft);
+}
+.pinned-head .ph-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pin-row {
+  position: relative;
+  padding-left: 12px;
+}
+.pin-row::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--line-2);
+}
+.pin-row.up::before {
+  background: var(--up);
+}
+.pin-row.down::before {
+  background: var(--down);
+}
+.pin-val {
+  gap: 3px;
+}
+/* 줄 전체는 기본 글자색 (색 띠·배지만 손익 색) */
+.pin-row.up,
+.pin-row.down {
+  color: var(--text);
+}

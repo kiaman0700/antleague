@@ -352,15 +352,6 @@
 
 /* ============ 게임 화면: 화면 크기에 맞추기 ============ */
 
-/* PC: 시장 구분 칩은 한 줄로 (넘치면 옆으로 밀기, 스크롤바는 숨김) → 종목 목록 칸을 넓게 */
-.desk .regions {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.desk .regions::-webkit-scrollbar {
-  display: none;
-}
 .desk .pinned.closed,
 .desk .pinned {
   flex-shrink: 0;
@@ -400,4 +391,64 @@
     overflow-x: auto;
     scrollbar-width: none;
   }
+}
+
+/* ============ 잘리는 곳 없이: 칩 줄은 줄바꿈 + "+N" ============ */
+.fit-chips {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 12px 6px;
+  min-width: 0;
+}
+.fit-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: hidden;
+}
+.fit-chips.open .fit-track {
+  overflow: visible;
+}
+.fit-more {
+  flex-shrink: 0;
+  white-space: nowrap;
+  border-style: dashed !important;
+}
+.sched-wrap .fit-chips {
+  margin: 0;
+}
+@media (max-width: 960px) {
+  .fit-chips {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+/* 시장 구분 칩: 칸 폭에 맞춰 줄바꿈, 좁으면 칩을 조금 작게 */
+.desk .regions .chip {
+  padding: 5px 10px;
+  font-size: 12.5px;
+}
+
+/* 수량 입력칸이 칸보다 넓어지지 않게 */
+.qty-box {
+  min-width: 0;
+}
+.qty-box input {
+  width: 100%;
+}
+
+/* PC 날짜 줄: 칸 수에 맞춰 칸 폭이 줄어듦 (옆 스크롤 없음) */
+.desk .tl-track {
+  overflow: visible;
+  max-width: none;
+  min-width: 0;
+}
+.desk .tl-cell {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: 40px;
 }

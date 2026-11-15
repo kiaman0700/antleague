@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon, type IconName } from '../components/Icon';
+import { PrefsPanel, Sheet } from '../components/PrefsPanel';
+import { applyMoneyUnit, isCustom, setPrefs, usePrefs } from '../prefs';
 import { loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
@@ -104,6 +107,10 @@ export function GameController({ session, onExit }: Props) {
   const [closing, setClosing] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [ui, setUiState] = useState<UiMode>(session.ui);
+  const prefs = usePrefs();
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  // 모든 금액 표시 단위 (초보 만원 · 일반 원 · 내 설정)
+  applyMoneyUnit(prefs, ui);
   const [selected, setSelected] = useState(STOCKS[0].symbol);
   const [tab, setTab] = useMobileTab(mobile);
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
@@ -198,7 +205,7 @@ export function GameController({ session, onExit }: Props) {
   const tradeState = {
     allowed: canAct && !frozen && remaining !== 0,
     reason: frozen
-      ? '🧊 상대의 거래 정지 카드! 오늘은 사고팔 수 없어요'
+      ? '상대의 거래 정지 카드! 오늘은 사고팔 수 없어요'
       : closing !== null
         ? '장이 마감됐어요'
         : endedToday
@@ -247,7 +254,7 @@ export function GameController({ session, onExit }: Props) {
     for (const n of breaking) {
       if (seenBreaking.current.has(key(n))) continue;
       seenBreaking.current.add(key(n));
-      showToast(`📰 속보 · ${n.headline.replace('[루머] ', '')}`, 'warn');
+      showToast(`속보 · ${n.headline.replace('[루머] ', '')}`, 'warn');
       play('news');
     }
   }, [market, showToast]);
@@ -260,7 +267,7 @@ export function GameController({ session, onExit }: Props) {
     if (seenOrders.current) {
       for (const o of view.myOrders) {
         const before = seenOrders.current.get(o.id!);
-        if (before === 'open' && o.status === 'filled') showToast(`⏳ 예약 체결! ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
+        if (before === 'open' && o.status === 'filled') showToast(`예약 체결! ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
       }
     }
     seenOrders.current = cur;
@@ -287,14 +294,14 @@ export function GameController({ session, onExit }: Props) {
     run('placeOrder', { symbol, side, qty, limit }, () => {
       play('tap');
       setSheet(null);
-      showToast(`⏳ 예약 완료 · 장중에 가격이 닿으면 체결돼요`);
+      showToast(`예약 완료 · 장중에 가격이 닿으면 체결돼요`);
     });
   const cancelOrder = (orderId: string) => run('cancelOrder', { orderId }, () => showToast('예약 주문을 취소했어요'));
 
   const buyItem = (kind: ItemKind) =>
     run('buyItem', { kind }, () => {
       play('item');
-      showToast(`${ITEM_MAP[kind].emoji} ${ITEM_MAP[kind].name} 카드를 샀어요`);
+      showToast(`${ITEM_MAP[kind].name} 카드를 샀어요`);
     });
   const useCard = (kind: ItemKind, given?: ItemRow['payload']) => {
     let payload: NonNullable<ItemRow['payload']> = { ...(given ?? {}) };
@@ -315,10 +322,10 @@ export function GameController({ session, onExit }: Props) {
       const d = ITEM_MAP[kind];
       showToast(
         kind === 'bonus'
-          ? `🎁 용돈 봉투! 현금 ${(BONUS_AMOUNT / 10000).toLocaleString()}만원이 들어왔어요`
+          ? `용돈 봉투! 현금 ${wonShort(BONUS_AMOUNT)}이 들어왔어요`
           : d.type === 'info'
-            ? `${d.emoji} ${d.name} 결과가 뉴스에 나왔어요`
-            : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`,
+            ? `${d.name} 결과가 뉴스에 나왔어요`
+            : `${d.name} 발동! 내일 상대에게 적용돼요`,
       );
       if (d.type === 'info') {
         setTab('news');
@@ -480,10 +487,10 @@ export function GameController({ session, onExit }: Props) {
   const oppEnded = opponent ? opponent.endedDay >= day : false;
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
-  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '🧊 오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '💸 수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '📵 정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
+  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '📵 정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
   const ev = nextEvent(m, day);
   const timerText = remaining !== null && closing === null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
-  const endLabel = endedToday ? '↩ 마감 취소' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →';
+  const endLabel = endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
 
   const macroChip = (label: string, k: 'rate' | 'usRate' | 'fx' | 'oil', fmt: (v: number) => string, term = label) => {
     const d = macro[k] - prevMacro[k];
@@ -653,15 +660,21 @@ export function GameController({ session, onExit }: Props) {
   const settings = (
     <>
       <div className="mode-toggle" role="group" aria-label="화면 모드">
-        <button className={easy ? 'on' : ''} onClick={() => setUi('easy')}>
+        <button className={!prefs.enabled && easy ? 'on' : ''} onClick={() => (setPrefs({ enabled: false }), setUi('easy'))}>
           초보
         </button>
-        <button className={!easy ? 'on' : ''} onClick={() => setUi('pro')}>
+        <button className={!prefs.enabled && !easy ? 'on' : ''} onClick={() => (setPrefs({ enabled: false }), setUi('pro'))}>
           일반
+        </button>
+        <button className={prefs.enabled ? 'on' : ''} onClick={() => setPrefs({ enabled: true })} title="내가 설정한 화면">
+          커스텀
         </button>
       </div>
       <button className="icon-btn" onClick={() => setTutorial(true)} aria-label="도움말" title="도움말">
-        ?
+        <Icon name="help" size={18} />
+      </button>
+      <button className={'icon-btn' + (isCustom(prefs) ? ' on' : '')} onClick={() => setPrefsOpen(true)} aria-label="내 화면 설정" title="내 화면 설정">
+        <Icon name="sliders" size={18} />
       </button>
       <button
         className="icon-btn"
@@ -672,10 +685,10 @@ export function GameController({ session, onExit }: Props) {
         aria-label="소리"
         title="소리"
       >
-        {muted ? '🔇' : '🔊'}
+        <Icon name={muted ? 'mute' : 'sound'} size={18} />
       </button>
       <button className="icon-btn" onClick={onExit} aria-label="로비로" title="로비로">
-        ⎋
+        <Icon name="exit" size={18} />
       </button>
     </>
   );
@@ -722,7 +735,7 @@ export function GameController({ session, onExit }: Props) {
                     {opponent.nickname}보다 {equity >= opponent.equity ? '+' : '−'}
                     {wonShort(Math.abs(equity - opponent.equity))}
                   </span>
-                  <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? '✓ 마감' : '고민 중'}</span>
+                  <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중'}</span>
                 </button>
               ) : (
                 <span className="mh-cmp muted">상대를 기다리는 중</span>
@@ -736,8 +749,8 @@ export function GameController({ session, onExit }: Props) {
               <b>{endedToday ? '마감 취소' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
               <small>
                 {endedToday
-                  ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ⏱' + timerText : ''}`
-                  : `${day + 1}일차${timerText ? ' · ⏱' + timerText : ''}`}
+                  ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ' + timerText : ''}`
+                  : `${day + 1}일차${timerText ? ' · ' + timerText : ''}`}
               </small>
             </button>
           </div>
@@ -757,7 +770,7 @@ export function GameController({ session, onExit }: Props) {
           <div className="m-row">
             <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
             <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
-              <span>⚙️</span>
+              <span><Icon name="settings" size={18} /></span>
               <small>설정</small>
             </button>
           </div>
@@ -837,15 +850,17 @@ export function GameController({ session, onExit }: Props) {
         <nav className="bottom-nav five">
           {(
             [
-              ['list', '📋', '종목'],
-              ['detail', '📈', '차트'],
-              ['news', '📰', '뉴스'],
-              ['assets', '💰', easy ? '내 재산' : '자산'],
-              ['cards', '🃏', '카드'],
-            ] as [Tab, string, string][]
+              ['list', 'list', '종목'],
+              ['detail', 'chart', '차트'],
+              ['news', 'news', '뉴스'],
+              ['assets', 'wallet', easy ? '내 재산' : '자산'],
+              ['cards', 'cards', '카드'],
+            ] as [Tab, IconName, string][]
           ).map(([t, i, l]) => (
             <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-              <span>{i}</span>
+              <span>
+                <Icon name={i} size={22} />
+              </span>
               {l}
               {t === 'news' && newsSymbols.size > 0 && tab !== 'news' && <i className="nav-dot" />}
               {t === 'cards' && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
@@ -877,16 +892,16 @@ export function GameController({ session, onExit }: Props) {
           )}
         </BottomSheet>
 
-        <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="📊 오늘의 시장">
+        <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="오늘의 시장">
           <MarketGridPinnable market={m} day={displayDay} closed={displayClosed} pins={pins} onTogglePin={togglePin} />
-          <p className="muted small sheet-note">📌를 누르면 상단에 계속 고정돼요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
+          <p className="muted small sheet-note">핀을 누르면 상단에 계속 고정돼요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
         </BottomSheet>
 
-        <BottomSheet open={schedSheet} onClose={() => setSchedSheet(false)} title="📅 다가오는 일정">
+        <BottomSheet open={schedSheet} onClose={() => setSchedSheet(false)} title="다가오는 일정">
           <Calendar market={m} day={day} hideTitle onSelect={(sym) => (setSchedSheet(false), selectStock(sym))} />
         </BottomSheet>
 
-        <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="🏆 실시간 순위">
+        <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="실시간 순위">
           <RankList rows={rows} />
         </BottomSheet>
 
@@ -897,6 +912,16 @@ export function GameController({ session, onExit }: Props) {
         </BottomSheet>
 
         {overlays}
+        {prefsOpen && (
+          <Sheet title="커스텀 모드 설정" onClose={() => setPrefsOpen(false)}>
+            <PrefsPanel ui={ui} />
+            {!prefs.enabled && (
+              <button className="btn primary full" onClick={() => (setPrefs({ enabled: true }), setPrefsOpen(false))}>
+                커스텀 모드로 쓰기
+              </button>
+            )}
+          </Sheet>
+        )}
       </div>
     );
   }
@@ -911,7 +936,7 @@ export function GameController({ session, onExit }: Props) {
             <b>{day + 1}일차</b>
             <span>/ {total}</span>
           </div>
-          {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
+          {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}><Icon name="timer" size={14} /> {timerText}</div>}
         </div>
         <div className="hud-macro">{macroChips}</div>
         <div className="hud-right">{settings}</div>
@@ -935,7 +960,7 @@ export function GameController({ session, onExit }: Props) {
               </div>
               <div className="score-opp">
                 <small>
-                  {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓ 마감' : '고민 중…'}</em>}
+                  {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중…'}</em>}
                 </small>
                 <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
                 <span className={tone(oppRet)}>{opponent ? pct(oppRet) : ''}</span>
@@ -986,7 +1011,7 @@ export function GameController({ session, onExit }: Props) {
         <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문 · <kbd>Esc</kbd> 닫기
       </div>
 
-      <Drawer open={drawer === 'assets'} title={`💰 ${easy ? '내 재산' : '자산'}`} onClose={() => setDrawer(null)}>
+      <Drawer open={drawer === 'assets'} title={easy ? '내 재산' : '자산'} onClose={() => setDrawer(null)}>
         {assets}
       </Drawer>
       <Drawer open={drawer === 'cards'} title="🃏 찬스 카드 · 상점" onClose={() => setDrawer(null)}>

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon, SectorIcon } from './Icon';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
 import { fmtUsd, quote } from '../game/quote';
 import { regionOf, riskOf, SECTOR_MAP, STOCK_SECTORS, STOCKS, type Region } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { Sparkline } from './Chart';
+import { Sheet } from './PrefsPanel';
+import { effective, setPrefs, usePrefs } from '../prefs';
 
 export interface BrowserFilter {
   region: RegionTab;
@@ -40,52 +43,44 @@ function chosung(s: string) {
 
 const ETF_GROUPS = ['지수', '레버리지·인버스', '테마', '원자재·환율'] as const;
 
-/** 가로로 넘치는 칩 줄: 좌우 화살표 + 가장자리 흐림 + 드래그/휠 스크롤 */
-export function ScrollChips({ children }: { children: React.ReactNode }) {
+/**
+ * 칩 줄: 숨겨진 가로 스크롤 없이 화면 폭에 맞춰 줄바꿈.
+ * rows 줄까지만 보이고, 넘치면 "+N" 버튼 → 누르면 전부 펼침(또는 onMore 가 있으면 그걸 실행)
+ */
+export function ScrollChips({ children, rows = 1, onMore, moreLabel }: { children: React.ReactNode; rows?: number; onMore?: () => void; moreLabel?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [edge, setEdge] = useState({ l: false, r: false });
-  const update = () => {
-    const el = ref.current;
-    if (!el) return;
-    const l = el.scrollLeft > 4;
-    const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
-    // 값이 바뀔 때만 갱신 (무한 렌더 방지)
-    setEdge((p) => (p.l === l && p.r === r ? p : { l, r }));
-  };
+  const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(0);
+  const [maxH, setMaxH] = useState<number | undefined>(undefined);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    update();
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
-        el.scrollLeft += e.deltaY;
-        e.preventDefault();
-      }
+    const measure = () => {
+      const kids = [...el.children] as HTMLElement[];
+      if (!kids.length) return setHidden(0);
+      const tops = [...new Set(kids.map((k) => k.offsetTop))].sort((x, y) => x - y);
+      const lastTop = tops[Math.min(rows, tops.length) - 1];
+      const lastRow = kids.filter((k) => k.offsetTop === lastTop);
+      const bottom = Math.max(...lastRow.map((k) => k.offsetTop + k.offsetHeight)) - kids[0].offsetTop;
+      const h = kids.filter((k) => k.offsetTop > lastTop).length;
+      // 값이 바뀔 때만 갱신 (무한 렌더 방지)
+      setHidden((p) => (p === h ? p : h));
+      setMaxH((p) => (p === bottom ? p : bottom));
     };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    const ro = new ResizeObserver(update);
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      ro.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [children]);
-  const by = (dx: number) => ref.current?.scrollBy({ left: dx, behavior: 'smooth' });
+    return () => ro.disconnect();
+  }, [children, rows]);
+  const showBtn = open || hidden > 0;
   return (
-    <div className={'scroll-chips' + (edge.l ? ' fade-l' : '') + (edge.r ? ' fade-r' : '')}>
-      {edge.l && (
-        <button className="sc-arrow l" onClick={() => by(-160)} aria-label="왼쪽으로">
-          ‹
-        </button>
-      )}
-      <div className="sc-track" ref={ref} onScroll={update}>
+    <div className={'fit-chips' + (open ? ' open' : '')}>
+      <div className="fit-track" ref={ref} style={open || !maxH ? undefined : { maxHeight: maxH }}>
         {children}
       </div>
-      {edge.r && (
-        <button className="sc-arrow r" onClick={() => by(160)} aria-label="오른쪽으로">
-          ›
+      {showBtn && (
+        <button className="chip fit-more" onClick={() => (onMore && !open ? onMore() : setOpen((o) => !o))} aria-expanded={open} aria-label={open ? '접기' : `나머지 ${hidden}개 더 보기`}>
+          {open ? '접기 ▴' : moreLabel ? `${moreLabel} +${hidden}` : `+${hidden} ▾`}
         </button>
       )}
     </div>
@@ -93,6 +88,8 @@ export function ScrollChips({ children }: { children: React.ReactNode }) {
 }
 
 export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWatch, selected, onSelect, newsSymbols, filter, onFilter }: Props) {
+  const prefs = effective(usePrefs());
+  const [sectorSheet, setSectorSheet] = useState(false);
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('default');
   const [holdOpen, setHoldOpen] = useState(true);
@@ -129,23 +126,46 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
     { id: 'all', label: '전체' },
     { id: 'KR', label: '🇰🇷 국내' },
     { id: 'US', label: '🇺🇸 미국' },
-    { id: 'ETF', label: '🧺 ETF' },
-    { id: 'watch', label: `★ 관심${watch.length ? ' ' + watch.length : ''}` },
+    { id: 'ETF', label: 'ETF' },
+    { id: 'watch', label: `관심${watch.length ? ' ' + watch.length : ''}` },
     { id: 'held', label: `보유${Object.keys(portfolio.holdings).length ? ' ' + Object.keys(portfolio.holdings).length : ''}` },
-    { id: 'news', label: '📰 오늘 뉴스' },
+    { id: 'news', label: '오늘 뉴스' },
   ];
-  const subs: { id: string; label: string }[] =
+  const isSectorRow = region === 'KR' || region === 'US' || region === 'all';
+  const allSubs: { id: string; label: string }[] =
     region === 'ETF'
       ? ETF_GROUPS.map((g) => ({ id: g, label: g }))
-      : region === 'KR' || region === 'US' || region === 'all'
-        ? STOCK_SECTORS.filter((s) => region === 'all' || s.region === region).map((s) => ({ id: s.id, label: `${s.emoji} ${s.name}` }))
+      : isSectorRow
+        ? STOCK_SECTORS.filter((s) => region === 'all' || s.region === region).map((s) => ({ id: s.id, label: s.name }))
         : [];
+  // 순서: 지금 고른 것 → 내가 고정한 업종(내 순서) → 나머지
+  const pins = isSectorRow ? (prefs.sectorPins ?? []) : [];
+  const rank = (id: string) => (id === sub ? -1 : pins.includes(id) ? pins.indexOf(id) : 1000);
+  const subs = [...allSubs].sort((a, b) => rank(a.id) - rank(b.id));
 
   const grouped = region !== 'watch' && region !== 'held' && region !== 'news' && sort === 'default' && !q.trim() && !sub;
   const groupKey = (s: (typeof STOCKS)[number]) => (s.etf ? 'etf:' + s.etf.group : s.sector);
-  const groupLabel = (s: (typeof STOCKS)[number]) => (s.etf ? `🧺 ETF · ${s.etf.group}` : `${SECTOR_MAP[s.sector].emoji} ${SECTOR_MAP[s.sector].name}`);
+  const groupLabel = (s: (typeof STOCKS)[number]) =>
+    s.etf ? (
+      <>
+        <Icon name="cards" size={13} /> ETF · {s.etf.group}
+      </>
+    ) : (
+      <>
+        <SectorIcon id={s.sector} /> {SECTOR_MAP[s.sector].name}
+      </>
+    );
 
-  const holdings = Object.entries(portfolio.holdings);
+  const holdings = Object.entries(portfolio.holdings).map(([sym, h]) => {
+    const qd = quote(market, sym, day, closed);
+    const value = h.qty * qd.krw;
+    const pl = value - h.qty * h.avgCost;
+    return { sym, h, value, pl, r: qd.krw / h.avgCost - 1, s: STOCKS.find((x) => x.symbol === sym)! };
+  });
+  const totalPl = holdings.reduce((a, x) => a + x.pl, 0);
+  const totalCost = holdings.reduce((a, x) => a + x.h.qty * x.h.avgCost, 0);
+  const sign = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '');
+  const arrow = (v: number) => (v > 0 ? '▲' : v < 0 ? '▼' : '');
 
   return (
     <div className="browser">
@@ -153,29 +173,40 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
       <div className={'pinned' + (holdOpen ? '' : ' closed')}>
         <button className="pinned-head" onClick={() => setHoldOpen((o) => !o)}>
           <span>
-            💼 내 보유 <b>{holdings.length}</b>
+            <Icon name="briefcase" /> 내 보유 <b>{holdings.length}</b>
           </span>
-          <span className="muted">{holdings.length === 0 ? '아직 가진 종목이 없어요' : holdOpen ? '접기 ▴' : '펼치기 ▾'}</span>
+          {holdings.length === 0 ? (
+            <span className="muted">아직 가진 종목이 없어요</span>
+          ) : (
+            <span className="ph-right">
+              <span className={'pl-pill ' + tone(totalPl)}>
+                {arrow(totalPl)} {sign(totalPl)}
+                {wonShort(Math.abs(totalPl))} ({pct(totalCost ? totalPl / totalCost : 0)})
+              </span>
+              <span className="muted">{holdOpen ? '▴' : '▾'}</span>
+            </span>
+          )}
         </button>
         {holdOpen && holdings.length > 0 && (
           <div className="pinned-list">
-            {holdings.map(([sym, h]) => {
-              const qd = quote(market, sym, day, closed);
-              const r = qd.krw / h.avgCost - 1;
-              const s = STOCKS.find((x) => x.symbol === sym)!;
-              return (
-                <button key={sym} className={'pin-row' + (sym === selected ? ' sel' : '')} onClick={() => onSelect(sym)}>
-                  <span className="pin-name">
-                    <b>{s.name}</b>
-                    <small>{num(h.qty)}주</small>
+            {holdings.map(({ sym, h, value, pl, r, s }) => (
+              <button key={sym} className={'pin-row ' + tone(pl) + (sym === selected ? ' sel' : '')} onClick={() => onSelect(sym)}>
+                <span className="pin-name">
+                  <b>{s.name}</b>
+                  <small>
+                    {num(h.qty)}주 · 평균 {s.currency === 'USD' ? '≈' : ''}
+                    {num(Math.round(h.avgCost))}원
+                  </small>
+                </span>
+                <span className="pin-val">
+                  <b>{wonShort(value)}</b>
+                  <span className={'pl-pill ' + tone(pl)}>
+                    {arrow(pl)} {sign(pl)}
+                    {wonShort(Math.abs(pl))} · {pct(r)}
                   </span>
-                  <span className="pin-val">
-                    <b>{wonShort(h.qty * qd.krw)}</b>
-                    <small className={tone(r)}>{pct(r)}</small>
-                  </span>
-                </button>
-              );
-            })}
+                </span>
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -187,29 +218,65 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="종목·업종·ETF 검색 (초성 OK)" maxLength={30} />
         {q && (
           <button className="clear" onClick={() => setQ('')} aria-label="검색어 지우기">
-            ✕
+            <Icon name="x" />
           </button>
         )}
       </div>
 
       <div className="regions" role="tablist">
-        {regions.map((c) => (
-          <button key={c.id} role="tab" aria-selected={region === c.id} className={'chip' + (region === c.id ? ' on' : '')} onClick={() => onFilter({ region: c.id, sub: null })}>
-            {c.label}
-          </button>
-        ))}
+        <ScrollChips rows={1} moreLabel="더보기">
+          {regions.map((c) => (
+            <button key={c.id} role="tab" aria-selected={region === c.id} className={'chip' + (region === c.id ? ' on' : '')} onClick={() => onFilter({ region: c.id, sub: null })}>
+              {c.id === 'ETF' && <Icon name="cards" size={13} />}
+              {c.id === 'watch' && <Icon name="star" size={13} />}
+              {c.id === 'held' && <Icon name="briefcase" size={13} />}
+              {c.id === 'news' && <Icon name="news" size={13} />} {c.label}
+            </button>
+          ))}
+        </ScrollChips>
       </div>
       {subs.length > 0 && (
-        <ScrollChips>
+        // 한 줄만: 고른 것 → 자주 보는 업종 → 나머지 중 들어가는 만큼, 나머지는 '전체' 시트에서
+        <ScrollChips rows={1} onMore={() => setSectorSheet(true)} moreLabel={isSectorRow ? '전체 업종' : '더보기'}>
           <button className={'chip sm' + (!sub ? ' on-soft' : '')} onClick={() => onFilter({ region, sub: null })}>
             모두
           </button>
           {subs.map((c) => (
-            <button key={c.id} className={'chip sm' + (sub === c.id ? ' on-soft' : '')} onClick={() => onFilter({ region, sub: c.id })}>
-              {c.label}
+            <button key={c.id} className={'chip sm' + (sub === c.id ? ' on-soft' : '') + (pins.includes(c.id) ? ' pinned-chip' : '')} onClick={() => onFilter({ region, sub: c.id })}>
+              {isSectorRow && <SectorIcon id={c.id} />} {c.label}
             </button>
           ))}
         </ScrollChips>
+      )}
+      {sectorSheet && (
+        <Sheet title={isSectorRow ? '업종 고르기' : '분류 고르기'} onClose={() => setSectorSheet(false)}>
+          {isSectorRow && <p className="muted small">별을 누르면 '자주 보는 업종'으로 목록 맨 앞에 고정돼요. 순서는 내 화면 설정에서 바꿀 수 있어요.</p>}
+          <div className="sector-grid">
+            {allSubs.map((c) => (
+              <div key={c.id} className={'sg-item' + (sub === c.id ? ' on' : '')}>
+                <button
+                  className="sg-pick"
+                  onClick={() => {
+                    onFilter({ region, sub: c.id });
+                    setSectorSheet(false);
+                  }}
+                >
+                  {isSectorRow && <SectorIcon id={c.id} size={18} />}
+                  <span>{c.label}</span>
+                </button>
+                {isSectorRow && (
+                  <button
+                    className={'sg-pin' + (pins.includes(c.id) ? ' on' : '')}
+                    aria-label={pins.includes(c.id) ? `${c.label} 고정 해제` : `${c.label} 자주 보는 업종으로 고정`}
+                    onClick={() => setPrefs({ sectorPins: pins.includes(c.id) ? pins.filter((x) => x !== c.id) : [...pins, c.id] })}
+                  >
+                    <Icon name="star" size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Sheet>
       )}
 
       <div className="sortbar">
@@ -224,7 +291,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
 
       <div className="stock-list">
         {rows.length === 0 && (
-          <p className="empty">{region === 'watch' ? '☆를 눌러 관심 종목을 추가해 보세요' : region === 'held' ? '아직 가진 종목이 없어요' : '찾는 종목이 없어요'}</p>
+          <p className="empty">{region === 'watch' ? '별을 눌러 관심 종목을 추가해 보세요' : region === 'held' ? '아직 가진 종목이 없어요' : '찾는 종목이 없어요'}</p>
         )}
         {rows.map(({ s, krw, usd, ch }, i) => {
           const showHeader = grouped && (i === 0 || groupKey(rows[i - 1].s) !== groupKey(s));
@@ -250,7 +317,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                   }}
                   aria-label="관심 종목"
                 >
-                  {watch.includes(s.symbol) ? '★' : '☆'}
+                  <Icon name="star" size={15} className={watch.includes(s.symbol) ? 'filled' : ''} />
                 </button>
                 <div className="sname">
                   <b>

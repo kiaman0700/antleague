@@ -179,3 +179,33 @@ export function etfMembers(e: EtfDef): string[] {
   }
   return [];
 }
+
+/**
+ * 지수 비중(시가총액 크기). 큰 회사가 지수를 더 크게 움직인다 (시장 v2)
+ * 없는 종목은 1
+ */
+export const CAP_WEIGHT: Record<string, number> = {
+  CORE: 10, NANO: 3, WAFR: 1, NEOT: 4, CLOD: 1.5, PAYS: 1, VOLT: 4, LITH: 1.5, HDMR: 4, PART: 1,
+  HBIO: 3, GENE: 1, CARE: 1, SUNE: 1, OILK: 2, SKYA: 1.5, TRVL: 0.5, PIXL: 1.5, STAR: 1, MOVI: 0.5,
+  MLKY: 1, MART: 1, RAMN: 0.8, KBNK: 3, SECU: 1, BILD: 1, HOME: 0.6, BLOK: 0.5, MINE: 0.5,
+  NXRA: 6, QNTX: 3, STRM: 2, HYPR: 5, ORBT: 1.5, VOLA: 3, MEGA: 2, FIZZ: 1.5,
+};
+
+/**
+ * 회사 단위 연결(공급망·경쟁·고객). A 에 뉴스가 나면 B 가 w 만큼 같이 움직인다 (시장 v2)
+ * 예: 완성차가 잘 팔리면 부품사·배터리도 오름
+ */
+export const COMPANY_LINKS: Record<string, Record<string, number>> = {
+  HDMR: { PART: 0.6, VOLT: 0.3 },
+  VOLT: { LITH: 0.5, HDMR: 0.15 },
+  VOLA: { VOLT: 0.3, LITH: 0.25 },
+  CORE: { WAFR: 0.5, NANO: 0.3 },
+  HYPR: { CORE: 0.25, ORBT: 0.4, WAFR: 0.2 },
+  NXRA: { NEOT: 0.15, HYPR: 0.15 },
+  SKYA: { TRVL: 0.4 },
+  KBNK: { SECU: 0.3 },
+  BILD: { HOME: 0.3 },
+  MINE: { BLOK: 0.4 },
+  MART: { MLKY: 0.2, RAMN: 0.2 },
+  PIXL: { STAR: 0.15 },
+};

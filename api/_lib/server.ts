@@ -69,6 +69,7 @@ import {
   cleanTurn,
   finalResults,
   GameError,
+  CURRENT_RULES_VERSION,
   dayClock,
   graceDeadline,
   LEGACY_TURN_SECONDS,
@@ -139,7 +140,7 @@ async function loadGame(roomId: string): Promise<GameData> {
   const sb = db();
   const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
-    sb.from('room_secrets').select('seed').eq('room_id', roomId).maybeSingle(),
+    sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
     sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
@@ -153,6 +154,8 @@ async function loadGame(roomId: string): Promise<GameData> {
       id: r.id,
       code: r.code,
       seed: s.seed,
+      // 006 마이그레이션 전이거나 예전 방이면 1
+      version: s.rules_version ?? 1,
       status: r.status,
       total_days: r.total_days,
       // 예전 '무제한'(0) 방은 최대 시간으로 진행
@@ -281,7 +284,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         else if (!/duplicate/i.test(res.error.message)) must(res, 'create room');
       }
       if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
-      must(await sb.from('room_secrets').insert({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash }), 'secret');
+      // 새 방은 최신 시장 규칙(v2). rules_version 컬럼이 아직 없으면(006 적용 전) 빼고 저장 → v1
+      const secretRow = { room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash };
+      let sec = await sb.from('room_secrets').insert({ ...secretRow, rules_version: CURRENT_RULES_VERSION });
+      if (sec.error && /rules_version/.test(sec.error.message)) sec = await sb.from('room_secrets').insert(secretRow);
+      must(sec, 'secret');
       const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'host') as { id: string };
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
       return { roomId: room.id, playerId: p.id, code: room.code };

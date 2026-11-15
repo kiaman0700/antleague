@@ -1,5 +1,6 @@
 /** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { CardIcon, Icon, type IconName } from './Icon';
 import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
 import { STOCK_MAP } from '../game/stocks';
@@ -54,13 +55,13 @@ export function AssetSummary({
       </div>
       {dividends > 0 && (
         <div className="asum-item">
-          <small>💰 배당</small>
+          <small><Icon name="coins" size={12} /> 배당</small>
           <b className="up">+{wonShort(dividends)}</b>
         </div>
       )}
       {openOrders > 0 && (
         <div className="asum-item">
-          <small>⏳ 예약</small>
+          <small><Icon name="hourglass" size={12} /> 예약</small>
           <b>{openOrders}건</b>
         </div>
       )}
@@ -71,7 +72,7 @@ export function AssetSummary({
 
 /* ---------------- 일정 타임라인 (가로 띠) ---------------- */
 
-const EV_ICON: Record<EventKind, string> = { fomc: '💵', bok: '🏛️', earnings: '📊', expiry: '⚠️', dividend: '💰' };
+const EV_ICON: Record<EventKind, IconName> = { fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
 
 export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
   const next = market.events.find((e) => e.day >= day) ?? null;
@@ -103,7 +104,7 @@ export function Timeline({ market, day, onSelect }: { market: Market; day: numbe
               title={evs.map((e) => e.title).join(', ') || `${d + 1}일차`}
             >
               <small>{d + 1}</small>
-              <span>{icons.join('') || '·'}</span>
+              <span>{icons.length ? icons.slice(0, 2).map((n) => <Icon key={n} name={n} size={12} />) : '·'}</span>
             </button>
           );
         })}
@@ -162,7 +163,7 @@ export function CardTray({
           🃏 찬스 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
         </b>
         <button className="btn sm" onClick={onOpen}>
-          🛒 상점 · 전체
+          <Icon name="cart" /> 상점 · 전체
         </button>
       </div>
       <div className="tray-cards">
@@ -172,7 +173,7 @@ export function CardTray({
           const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
           return (
             <div key={k} className={'tcard t-' + d.type} title={d.desc}>
-              <span className="tc-emoji">{d.emoji}</span>
+              <span className="tc-emoji"><CardIcon kind={d.kind} size={18} /></span>
               <span className="tc-name">
                 {d.name}
                 {n > 1 && <em> ×{n}</em>}
@@ -207,7 +208,7 @@ export function Drawer({ open, title, onClose, children }: { open: boolean; titl
         <div className="drawer-head">
           <b>{title}</b>
           <button className="icon-btn" onClick={onClose} aria-label="닫기">
-            ✕
+            <Icon name="x" size={18} />
           </button>
         </div>
         <div className="drawer-body">{open && children}</div>

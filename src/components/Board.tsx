@@ -1,4 +1,5 @@
 import { useEffect as useEffectT, useState as useStateT } from 'react';
+import { CardIcon, Icon, type IconName } from './Icon';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
 import type { PublicPlayer } from '../engine/engine';
 import { ITEM_MAP, type ItemKind } from '../game/items';
@@ -10,7 +11,8 @@ import { ScrollChips } from './StockBrowser';
 import { Term } from './Term';
 
 export const PLAYER_COLORS = ['var(--me)', 'var(--opp)', '#34d399', '#60a5fa', '#f472b6', '#fb923c'];
-const MEDAL = ['🥇', '🥈', '🥉'];
+/** 순위 표시: 1~3위는 금·은·동 동그라미, 나머지는 숫자 */
+const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
 export interface RankRow {
   id: string;
@@ -33,7 +35,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
     <div className="rank-strip" role="list" aria-label="순위">
       {rows.map((r, i) => (
         <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + (i === 0 ? ' lead' : '')}>
-          <span className="rk">{MEDAL[i] ?? `${i + 1}위`}</span>
+          <span className="rk">{rankBadge(i)}</span>
           <span className="rn">
             <b>{r.nickname}</b>
             <small className={tone(r.equity / START_CASH - 1)}>
@@ -41,7 +43,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
             </small>
           </span>
           <span className={'rs' + (r.ended ? ' ok' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
-            {r.ended ? '✓' : '…'}
+            {r.ended ? <Icon name="check" size={13} /> : '…'}
           </span>
         </div>
       ))}
@@ -61,13 +63,13 @@ export function EndStatus({ rows, countdown, compact }: { rows: RankRow[]; count
       <span className="es-list">
         {rows.map((r) => (
           <span key={r.id} className={'es-p' + (r.ended ? ' ok' : '') + (r.me ? ' me' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
-            <i>{r.ended ? '✓' : '…'}</i>
+            <i>{r.ended ? <Icon name="check" size={12} /> : '…'}</i>
             {r.nickname}
           </span>
         ))}
       </span>
       {hint && <small className="es-hint">{hint}</small>}
-      {countdown && <small className="es-hint hurry">⏱ 카운트다운 중!</small>}
+      {countdown && <small className="es-hint hurry"><Icon name="timer" size={12} /> 카운트다운 중!</small>}
     </div>
   );
 }
@@ -79,13 +81,13 @@ export function RankList({ rows }: { rows: RankRow[] }) {
     <div className="rank-list">
       {rows.map((r, i) => (
         <div key={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
-          <span className="rk">{MEDAL[i] ?? i + 1}</span>
+          <span className="rk">{rankBadge(i)}</span>
           <span className="rn">
             <b>
               {r.nickname}
               {r.me && <em> (나)</em>}
             </b>
-            <small>{r.ended ? '✓ 장 마감' : '고민 중…'}</small>
+            <small>{r.ended ? <><Icon name="check" size={12} /> 장 마감</> : '고민 중…'}</small>
           </span>
           <span className="rv">
             <b>{wonShort(r.equity)}</b>
@@ -105,7 +107,7 @@ export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind;
     <div className="modal-bg" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>
-          {d.emoji} {d.name} — 누구에게?
+          <CardIcon kind={kind} /> {d.name} — 누구에게?
         </h3>
         <p className="muted small">{d.desc}</p>
         <div className="target-list">
@@ -242,7 +244,7 @@ export function MarketTicker({ market, day, closed, pins, onOpen }: { market: Ma
         return (
           <span key={i} className={'tk' + (sl.pinned ? ' tk-pinned' : '')}>
             {sl.pinned ? (
-              <i className="tk-pin" aria-label="고정됨">📌</i>
+              <i className="tk-pin" aria-label="고정됨"><Icon name="star" size={10} /></i>
             ) : (
               <i className="tk-dots" aria-hidden>
                 {sl.keys.map((_, j) => (
@@ -281,7 +283,7 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
                 aria-label={on ? '고정 해제' : '상단에 고정'}
                 title={on ? '고정 해제' : pins.length >= MAX_PINS ? `최대 ${MAX_PINS}개까지 고정` : '상단에 고정'}
               >
-                📌
+                <Icon name="star" size={14} />
               </button>
             </div>
             <b>{t.value}</b>
@@ -296,7 +298,7 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
 
 /* ---------------- 일정 전용 띠 ---------------- */
 
-const EV_ICON2: Record<string, string> = { fomc: '💵', bok: '🏛️', earnings: '📊', expiry: '⚠️', dividend: '💰' };
+const EV_ICON2: Record<string, IconName> = { fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
 
 const EV_SHORT: Record<string, string> = { fomc: '미 연준 금리', bok: '한은 금통위', earnings: '실적 시즌', expiry: '옵션 만기', dividend: '배당 기준일' };
 
@@ -314,24 +316,19 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
   });
   return (
     <div className="sched-wrap" role="list" aria-label="다가오는 일정">
-      <ScrollChips>
-      {evs.length === 0 && <span className="sched-none">📅 남은 일정이 없어요</span>}
+      <ScrollChips onMore={onOpen} moreLabel="일정">
+      {evs.length === 0 && <span className="sched-none"><Icon name="calendar" size={13} /> 남은 일정이 없어요</span>}
       {evs.map((e, i) => {
         const dd = e.day - day;
         return (
           <button key={i} role="listitem" className={'sched-chip k-' + e.kind + (dd === 0 ? ' today' : dd <= 2 ? ' soon' : '')} onClick={onOpen}>
             <b>{dd === 0 ? '오늘' : 'D-' + dd}</b>
             <span>
-              {EV_ICON2[e.kind]} {EV_SHORT[e.kind]}
+              <Icon name={EV_ICON2[e.kind]} size={13} /> {EV_SHORT[e.kind]}
             </span>
           </button>
         );
       })}
-      {evs.length > 0 && (
-        <button className="sched-all" onClick={onOpen} aria-label="전체 일정 보기">
-          전체 ›
-        </button>
-      )}
       </ScrollChips>
     </div>
   );

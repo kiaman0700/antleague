@@ -4,6 +4,9 @@ import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
+import { BadgeIcon, Icon } from '../components/Icon';
+import { PrefsPanel, Sheet } from '../components/PrefsPanel';
+import { isCustom, setPrefs, usePrefs } from '../prefs';
 import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
 
 export interface ResumeInfo {
@@ -45,19 +48,58 @@ interface Props {
 
 type Joined = { roomId: string; playerId: string; code: string };
 
+/** 화면 모드: 초보 / 일반 / 커스텀. 커스텀은 '바탕 모드'(초보·일반) 위에 내 설정을 덮어씀 */
 export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: UiMode) => void }) {
+  const prefs = usePrefs();
+  const [open, setOpen] = useState(false);
+  const custom = prefs.enabled;
+  const pick = (m: UiMode) => {
+    setPrefs({ enabled: false });
+    onChange(m);
+  };
   return (
-    <div className="mode-pick">
-      <button className={value === 'easy' ? 'on' : ''} onClick={() => onChange('easy')}>
-        <span className="mp-emoji">🌱</span>
+    <div className="mode-pick three">
+      <button className={!custom && value === 'easy' ? 'on' : ''} onClick={() => pick('easy')}>
+        <span className="mp-emoji"><Icon name="book" size={22} /></span>
         <b>초보 모드</b>
         <small>쉬운 말 · 금액으로 사기 · 용어 설명 · 첫 판 안내</small>
       </button>
-      <button className={value === 'pro' ? 'on' : ''} onClick={() => onChange('pro')}>
-        <span className="mp-emoji">📊</span>
+      <button className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
+        <span className="mp-emoji"><Icon name="bars" size={22} /></span>
         <b>일반 모드</b>
         <small>캔들 차트 · 수량 주문 · 시가/고가/저가 정보</small>
       </button>
+      <div className={'mp-custom' + (custom ? ' on' : '')}>
+        <button className="mp-main" onClick={() => setPrefs({ enabled: true })}>
+          <span className="mp-emoji"><Icon name="sliders" size={22} /></span>
+          <b>커스텀 모드</b>
+          <small>{custom ? `내가 설정한 화면을 써요 · 바탕 ${value === 'easy' ? '초보' : '일반'}` : '금액 단위·차트·업종 순서를 내 마음대로'}</small>
+        </button>
+        <button className="mp-gear icon-btn sm" aria-label="커스텀 모드 설정" title="커스텀 모드 설정" onClick={() => setOpen(true)}>
+          <Icon name="settings" size={16} />
+        </button>
+      </div>
+      {open && (
+        <Sheet title={<><Icon name="sliders" size={18} /> 커스텀 모드 설정</>} onClose={() => setOpen(false)}>
+          <div className="field">
+            <span>바탕 모드 (쉬운 말·주문 방식)</span>
+            <div className="seg two">
+              <button className={value === 'easy' ? 'on' : ''} onClick={() => onChange('easy')}>
+                <b>초보</b>
+              </button>
+              <button className={value === 'pro' ? 'on' : ''} onClick={() => onChange('pro')}>
+                <b>일반</b>
+              </button>
+            </div>
+          </div>
+          <PrefsPanel ui={value} />
+          {!custom && (
+            <button className="btn primary full" onClick={() => (setPrefs({ enabled: true }), setOpen(false))}>
+              커스텀 모드로 쓰기
+            </button>
+          )}
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -105,7 +147,7 @@ function PageHead({ title, onBack, right }: { title: string; onBack: () => void;
   return (
     <header className="page-head">
       <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
-        ←
+        <Icon name="back" size={18} />
       </button>
       <h2>{title}</h2>
       <div className="ph-right">{right}</div>
@@ -145,7 +187,7 @@ function CodeJoin({ initial, profile, onJoined, onClose }: { initial: string; pr
     }
   };
   return (
-    <Modal title="🔑 코드로 입장" onClose={onClose}>
+    <Modal title={<><Icon name="key" size={18} /> 코드로 입장</>} onClose={onClose}>
       <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
       <form
         className="join"
@@ -178,7 +220,7 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
   const [daySec, setDaySec] = useState<number>(DEFAULT_SOLO_DAY);
   const [err, setErr] = useState('');
   return (
-    <Modal title="🎯 혼자 연습하기" onClose={onClose}>
+    <Modal title={<><Icon name="target" size={18} /> 혼자 연습하기</>} onClose={onClose}>
       <p className="muted small">혼자서 같은 규칙으로 연습해요. 장중에 가격이 실시간으로 움직이고, 다 정했으면 "장 마감"으로 남은 시간을 건너뛸 수 있어요. 이 기기에 저장돼요.</p>
       <div className="field">
         <span>게임 길이</span>
@@ -217,7 +259,7 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
 
 function HowTo({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="📖 이렇게 놀아요" onClose={onClose}>
+    <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
       <ol className="howto">
         <li>
           <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, 가끔 <b>장중 속보</b>도 떠요.
@@ -246,7 +288,8 @@ function HowTo({ onClose }: { onClose: () => void }) {
 
 function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
   const profile = useProfile();
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs'>(null);
+  const prefs = usePrefs();
   const [nickErr, setNickErr] = useState(false);
   const [resume, setResume] = useState<ResumeInfo | null>(null);
   const [openRooms, setOpenRooms] = useState<number | null>(null);
@@ -322,7 +365,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
                 {resume.status === 'waiting' ? '대기실로' : '이어하기'}
               </button>
               <button className="icon-btn sm" aria-label="닫기" onClick={() => setResume(null)}>
-                ✕
+                <Icon name="x" />
               </button>
             </div>
           )}
@@ -346,7 +389,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
                   setSoloSave(null);
                 }}
               >
-                🗑
+                <Icon name="x" />
               </button>
             </div>
           )}
@@ -376,22 +419,22 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
 
       <nav className="home-actions">
         <button className="tile primary" disabled={!online} onClick={need(() => go('rooms'))}>
-          <i>🔎</i>
+          <i><Icon name="search" size={24} /></i>
           <b>방 찾기</b>
           <small>{!online ? '온라인 설정 필요' : openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
         </button>
         <button className="tile" disabled={!online} onClick={need(() => go('create'))}>
-          <i>➕</i>
+          <i><Icon name="plus" size={24} /></i>
           <b>방 만들기</b>
           <small>인원·길이·제한 시간 설정</small>
         </button>
         <button className="tile" disabled={!online} onClick={need(() => setModal('code'))}>
-          <i>🔑</i>
+          <i><Icon name="key" size={24} /></i>
           <b>코드로 입장</b>
           <small>초대 코드 6자리</small>
         </button>
         <button className="tile" onClick={need(() => setModal('practice'))}>
-          <i>🎯</i>
+          <i><Icon name="target" size={24} /></i>
           <b>혼자 연습</b>
           <small>실시간 장 · 마감은 내 마음대로</small>
         </button>
@@ -399,11 +442,11 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
 
       <div className="home-links">
         <button className="btn ghost sm" onClick={() => setModal('howto')}>
-          📖 게임 방법
+          <Icon name="book" /> 게임 방법
         </button>
         {online && (
           <button className="btn ghost sm" onClick={() => go('records')}>
-            🏅 기록·업적
+            <Icon name="trophy" /> 기록·업적
           </button>
         )}
       </div>
@@ -411,6 +454,11 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
+      {modal === 'prefs' && (
+        <Sheet title={<><Icon name="sliders" size={18} /> 내 화면 설정</>} onClose={() => setModal(null)}>
+          <PrefsPanel ui={profile.ui} />
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -471,7 +519,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         onBack={() => go('home')}
         right={
           <button className="icon-btn" aria-label="새로고침" title="새로고침" onClick={load}>
-            ↻
+            <Icon name="refresh" size={18} />
           </button>
         }
       />
@@ -482,7 +530,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           [
             ['all', '전체'],
             ['open', '공개방'],
-            ['private', '🔒 비밀방'],
+            ['private', '비밀방'],
           ] as const
         ).map(([k, label]) => (
           <button key={k} className={'chip' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>
@@ -491,7 +539,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         ))}
         <span className="grow" />
         <button className="chip" onClick={() => setCodeOpen(true)}>
-          🔑 코드로 입장
+          <Icon name="key" /> 코드로 입장
         </button>
       </div>
 
@@ -501,11 +549,11 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         {rooms === null && <p className="muted small center">불러오는 중…</p>}
         {rooms !== null && shown.length === 0 && (
           <div className="empty-state">
-            <i>🪹</i>
+            <i><Icon name="door" size={32} /></i>
             <b>{rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
             <small>직접 방을 만들고 친구를 불러 보세요.</small>
             <button className="btn primary" onClick={() => go('create')}>
-              ➕ 방 만들기
+              <Icon name="plus" /> 방 만들기
             </button>
           </div>
         )}
@@ -515,7 +563,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
               <b>
                 {r.isPrivate && (
                   <span className="lock" title="비밀방">
-                    🔒
+                    <Icon name="lock" size={14} />
                   </span>
                 )}
                 {r.title}
@@ -540,7 +588,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
       </div>
 
       {pwRoom && (
-        <Modal title={`🔒 ${pwRoom.title}`} onClose={() => setPwRoom(null)}>
+        <Modal title={<><Icon name="lock" size={18} /> {pwRoom.title}</>} onClose={() => setPwRoom(null)}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -654,7 +702,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
               </button>
             ))}
           </div>
-          <small className="hint">⏱ 모두 마감하면 바로 다음 날로 가요. {graceText(maxPlayers)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요. 마감은 넘어가기 전까지 취소할 수 있어요.</small>
+          <small className="hint">모두 마감하면 바로 다음 날로 가요. {graceText(maxPlayers)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요. 마감은 넘어가기 전까지 취소할 수 있어요.</small>
         </div>
         <div className="estimate">
           <span>⌛ 예상 게임 시간</span>
@@ -667,11 +715,11 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <h3 className="sec-h">공개 설정</h3>
         <div className="seg two">
           <button className={!isPrivate ? 'on' : ''} onClick={() => setIsPrivate(false)}>
-            <b>🌐 공개방</b>
+            <b><Icon name="globe" /> 공개방</b>
             <small>누구나 목록에서 입장</small>
           </button>
           <button className={isPrivate ? 'on' : ''} onClick={() => setIsPrivate(true)}>
-            <b>🔒 비밀방</b>
+            <b><Icon name="lock" /> 비밀방</b>
             <small>비밀번호 또는 초대 코드</small>
           </button>
         </div>
@@ -730,7 +778,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history === null && <p className="muted small center">불러오는 중…</p>}
       {history !== null && list.length === 0 && (
         <div className="empty-state">
-          <i>🏁</i>
+          <i><Icon name="trophy" size={32} /></i>
           <b>아직 끝낸 게임이 없어요</b>
           <small>친구와 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
         </div>
@@ -769,12 +817,12 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history !== null && (
         <section className="panel pad">
           <h3>
-            🏅 업적 {myTitle && <span className="title-tag">{myTitle.emoji} {myTitle.name}</span>}
+            <Icon name="medal" /> 업적 {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>
           <div className="badge-grid">
             {BADGES.map((b) => (
               <div key={b.id} className={'bg-cell r' + b.rarity + (myBadges[b.id] ? ' got' : '')} title={b.desc}>
-                <i>{myBadges[b.id] ? b.emoji : '🔒'}</i>
+                <i>{myBadges[b.id] ? <BadgeIcon id={b.id} /> : <Icon name="lock" size={20} />}</i>
                 <b>{b.name}</b>
                 <small>{myBadges[b.id] ? '×' + myBadges[b.id] : b.desc}</small>
               </div>

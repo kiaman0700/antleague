@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { getEffective } from '../prefs';
+import { Icon, SectorIcon } from './Icon';
 import type { Market, NewsEvent } from '../game/market';
 import { releaseTick } from '../game/intraday';
 import { buyCost, maxBuyQty, sellProceeds, type Holding } from '../game/portfolio';
@@ -38,7 +40,7 @@ interface Props {
 
 export function StockDetail(props: Props) {
   const [full, setFull] = useState(false);
-  const [view, setView] = useState<'live' | 'daily'>('live');
+  const [view, setView] = useState<'live' | 'daily'>(() => getEffective().chart);
   // 세로 휴대폰은 화면이 길쭉하니 차트를 더 높게
   const tallChart = useIsMobile('(max-width: 600px) and (orientation: portrait)');
   const { ui, market, symbol, day, closed, cash, holding, news, watched, onToggleWatch, onSelect, onSelectSector, trade, onTrade, orders, reservedCash, onOrder, onCancel, inlineTrade } = props;
@@ -90,16 +92,16 @@ export function StockDetail(props: Props) {
         <div className="title-line">
           <h2>{s.name}</h2>
           <button className={'star big' + (watched ? ' on' : '')} onClick={onToggleWatch} aria-label="관심 종목">
-            {watched ? '★' : '☆'}
+            <Icon name="star" size={18} className={watched ? 'filled' : ''} />
           </button>
         </div>
         <div className="tags">
           {etf ? (
-            <span className="tag">🧺 ETF · {etf.group}</span>
+            <span className="tag"><Icon name="cards" size={12} /> ETF · {etf.group}</span>
           ) : (
             <button className="tag" onClick={() => onSelectSector(s.sector)}>
               {isUS ? '🇺🇸 ' : ''}
-              {sec.emoji} {sec.name}
+              <SectorIcon id={sec.id} /> {sec.name}
             </button>
           )}
           {etf && etf.lev !== 1 && <span className="tag warn-tag">{etf.lev > 0 ? `${etf.lev}배 레버리지` : '인버스(반대)'}</span>}
@@ -129,7 +131,7 @@ export function StockDetail(props: Props) {
           if (!next && !paid.length) return null;
           return (
             <div className="div-info">
-              💰 {next ? <>배당 기준일 <b>{next.day + 1}일차</b> · 배당률 약 <b>{next.yieldPct}%</b>{next.day === day ? ' (오늘 마감 때까지 들고 있으면 받아요)' : ''}</> : null}
+              <Icon name="coins" size={14} /> {next ? <>배당 기준일 <b>{next.day + 1}일차</b> · 배당률 약 <b>{next.yieldPct}%</b>{next.day === day ? ' (오늘 마감 때까지 들고 있으면 받아요)' : ''}</> : null}
               {paid.map((x) => (
                 <span key={x.day}> · {x.day + 1}일차 1주당 {num(x.perShare)}원 지급됨</span>
               ))}
@@ -177,7 +179,7 @@ export function StockDetail(props: Props) {
                 <span className={tone(diff)}>{pct(q.ch)}</span>
               </div>
               <button className="icon-btn" onClick={() => setFull(false)} aria-label="닫기">
-                ✕
+                <Icon name="x" size={18} />
               </button>
             </div>
             <ProChart ui={ui} symbol={symbol} bars={bars} totalDays={market.totalDays} liveOpenOnly={liveDaily} refLine={ref} markers={markers} fmt={chartFmt} tall />
@@ -296,7 +298,7 @@ export function StockDetail(props: Props) {
               </small>
               {linked.map((l) => (
                 <button key={l.id} className="pill link" onClick={() => onSelectSector(l.id)}>
-                  {l.emoji} {l.name}
+                  <SectorIcon id={l.id} /> {l.name}
                 </button>
               ))}
             </div>
@@ -306,7 +308,7 @@ export function StockDetail(props: Props) {
               <small>반대로 움직이는 업종</small>
               {inverse.map((l) => (
                 <button key={l.id} className="pill link" onClick={() => onSelectSector(l.id)}>
-                  {l.emoji} {l.name}
+                  <SectorIcon id={l.id} /> {l.name}
                 </button>
               ))}
             </div>
@@ -416,7 +418,7 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
           {easy ? '지금 가격으로' : '시장가(시가)'}
         </button>
         <button className={kind === 'limit' ? 'on' : ''} onClick={() => switchKind('limit')}>
-          {easy ? '⏳ 예약 주문' : '⏳ 지정가'}
+          <Icon name="hourglass" size={14} /> {easy ? '예약 주문' : '지정가'}
         </button>
       </div>
 

@@ -1,6 +1,6 @@
 import { gaussian, mulberry32, pick, range, type Rng } from '../lib/rng.js';
 import * as T from './news.js';
-import { COMPANIES, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
+import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
 /** 하루 장중 가격 포인트 수 (마감 애니메이션 / 라인차트용) */
 export const INTRADAY_POINTS = 8;
@@ -35,7 +35,7 @@ export interface NewsEvent {
   /** 장중 속보면 하루 중 공개 위치(0~1). 없으면 아침 뉴스. 공개 전에는 화면 데이터에 없음 */
   at?: number;
 }
-export type NewsLabel = '속보' | '단독' | '시황' | '특징주';
+export type NewsLabel = '속보' | '단독' | '시황' | '특징주' | '해외';
 
 export interface Bar {
   open: number;
@@ -77,6 +77,8 @@ export interface Market {
   events: MarketEvent[];
   /** 배당: 기준일 종가 기준으로 보유 수량 × perShare 지급. perShare 는 기준일이 지나야 공개 */
   dividends: Dividend[];
+  /** 시장 규칙 버전: 1 = 처음 규칙, 2 = 지수 시총 가중·공급망·미국장→다음 날 한국·장세 */
+  version?: number;
   /** 화면 전용: 오늘 장중 가격이 합쳐져 있으면 그 날·칸 (오늘 막대의 close = 지금 가격) */
   live?: { day: number; tick: number; n: number; startAt: number; endAt: number };
 }
@@ -149,9 +151,18 @@ export function relatedForSector(id: string): string[] {
 
 /* ---------------- 생성 ---------------- */
 
-/** 같은 (seed, totalDays)면 항상 같은 시장 — 두 기기가 서버 없이 같은 시장을 본다 */
-export function generateMarket(seed: number, totalDays: number): Market {
+/**
+ * 같은 (seed, totalDays, version)이면 항상 같은 시장.
+ * version 2 는 v1 과 같은 난수 흐름 위에 연관성을 더한다 (v1 방의 가격은 절대 바뀌지 않음)
+ */
+export function generateMarket(seed: number, totalDays: number, version = 1): Market {
   const rng = mulberry32(seed);
+  const v2 = version >= 2;
+  // v2 전용 난수 (장세 전환) — v1 난수 흐름은 건드리지 않음
+  const rng2 = mulberry32((seed ^ 0x5f3759df) >>> 0);
+  let regime = 0; // -1 하락장, 0 보합, 1 상승장
+  let prevUsRet = 0;
+  let prevKrRet = 0;
   const news: NewsEvent[] = [];
 
   let macro: Macro = {
@@ -205,6 +216,33 @@ export function generateMarket(seed: number, totalDays: number): Market {
     const pushMacro = (macroType: MacroType, headline: string, tone: 'good' | 'bad') =>
       news.push({ day, kind: 'macro', symbol: null, sector: null, macro: macroType, headline, rumor: false, tone, realTone: tone, related: MACRO_RELATED[macroType] });
 
+    if (v2) {
+      // 장세: 며칠씩 이어지는 상승장/하락장
+      if (rng2() < 0.18) regime = rng2() < 0.4 ? 0 : rng2() < 0.5 ? 1 : -1;
+      krSent += 0.0035 * regime;
+      usSent += 0.0035 * regime;
+      // 간밤 미국장 → 오늘 한국 시가
+      if (day > 0) {
+        krSent += 0.35 * prevUsRet;
+        if (Math.abs(prevUsRet) >= 0.01) {
+          const up = prevUsRet > 0;
+          news.push({
+            day,
+            kind: 'macro',
+            symbol: null,
+            sector: null,
+            macro: 'us',
+            headline: `뉴욕증시, 간밤 ${(Math.abs(prevUsRet) * 100).toFixed(1)}% ${up ? '상승' : '하락'} 마감… 국내 증시 ${up ? '훈풍' : '부담'}`,
+            rumor: false,
+            tone: up ? 'good' : 'bad',
+            realTone: up ? 'good' : 'bad',
+            related: MACRO_RELATED.us,
+            label: '해외',
+          });
+        }
+      }
+    }
+
     const count = day === 0 ? 2 : 1 + (rng() < 0.55 ? 1 : 0) + (rng() < 0.25 ? 1 : 0);
     for (let i = 0; i < count; i++) {
       const r = rng();
@@ -248,7 +286,7 @@ export function generateMarket(seed: number, totalDays: number): Market {
           const good = rng() < 0.5;
           const m = (good ? 1 : -1) * range(rng, 0.012, 0.028);
           usSent += m;
-          krSent += m * 0.4; // 미국 증시는 한국에도 영향
+          krSent += m * (v2 ? 0.15 : 0.4); // 미국 증시는 한국에도 영향 (v2: 대부분은 다음 날 아침에)
           pushMacro('us', pick(rng, good ? T.MACRO.usGood : T.MACRO.usBad), good ? 'good' : 'bad');
         }
       } else if (r < 0.5) {
@@ -291,6 +329,8 @@ export function generateMarket(seed: number, totalDays: number): Market {
         // 이미 소문이 퍼져 '재료 소멸' — 좋은 뉴스에도 떨어지는 경우
         if (!rumor && rng() < 0.12) mag = -mag * 0.3;
         addStock(s.symbol, mag);
+        // v2: 공급망·고객사로 번짐
+        if (v2) for (const [l, w] of Object.entries(COMPANY_LINKS[s.symbol] ?? {})) addStock(l, mag * w);
         for (const p of COMPANIES) if (p.sector === s.sector && p.symbol !== s.symbol) addStock(p.symbol, mag * 0.25);
         for (const [link, w] of Object.entries(sec.links)) addSec(link, mag * w * 0.3);
         const pool = earningsOnly
@@ -352,7 +392,8 @@ export function generateMarket(seed: number, totalDays: number): Market {
 
     // ---- 3) 업종 흐름 ----
     const global = gaussian(rng);
-    const nm = expiry ? 1.9 : 1;
+    // 옵션 만기일, (v2) 큰 하락 다음 날은 변동성이 커짐
+    const nm = (expiry ? 1.9 : 1) * (v2 && prevKrRet < -0.02 ? 1.4 : 1);
     const krNoise = 0.0003 + nm * (0.0055 * global + 0.006 * gaussian(rng));
     const usNoise = 0.0004 + nm * (0.0065 * global + 0.005 * gaussian(rng));
     const sectorRet: Record<string, { s: number; n: number }> = {};
@@ -399,9 +440,10 @@ export function generateMarket(seed: number, totalDays: number): Market {
         const kPath = path.map((p) => roundPrice(p * macro.fx));
         const kb = { open: kPath[0], close: kPath[kPath.length - 1], high: Math.max(...kPath), low: Math.min(...kPath), path: kPath };
         bars[s.symbol].push(kb);
-        usO += Math.log(open / prev);
-        usC += Math.log(close / prev);
-        usN++;
+        const wu = v2 ? (CAP_WEIGHT[s.symbol] ?? 1) : 1;
+        usO += wu * Math.log(open / prev);
+        usC += wu * Math.log(close / prev);
+        usN += wu;
       } else {
         const prev = last[s.symbol];
         // 실제 한국 시장처럼 하루 ±30% 가격제한폭(상한가/하한가)
@@ -410,9 +452,10 @@ export function generateMarket(seed: number, totalDays: number): Market {
         const close = roundPrice(lim(open * Math.exp(rDay)));
         const path = intradayPath(rng, open, close, vol).map((p, i, a) => (i === 0 || i === a.length - 1 ? p : roundPrice(lim(p))));
         bars[s.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
-        krO += Math.log(open / prev);
-        krC += Math.log(close / prev);
-        krN++;
+        const w = v2 ? (CAP_WEIGHT[s.symbol] ?? 1) : 1; // v2: 시가총액 가중
+        krO += w * Math.log(open / prev);
+        krC += w * Math.log(close / prev);
+        krN += w;
       }
       const b = bars[s.symbol][day];
       rOpenK[s.symbol] = Math.log(b.open / last[s.symbol]);
@@ -430,6 +473,8 @@ export function generateMarket(seed: number, totalDays: number): Market {
     const uc = usLevel * Math.exp(usC / usN);
     const up = intradayPath(rng, uo, uc, 0.006, false).map(round2);
     usIndexBars.push({ open: round2(uo), close: round2(uc), high: Math.max(...up), low: Math.min(...up), path: up });
+    prevUsRet = Math.log(uc / usLevel);
+    prevKrRet = Math.log(ic / (indexBars.length > 1 ? indexBars[indexBars.length - 2].close : KR_INDEX_BASE));
     usLevel = uc;
 
     // ---- 6) ETF: 담고 있는 것의 원화 수익률 × 배율 ----
@@ -459,7 +504,7 @@ export function generateMarket(seed: number, totalDays: number): Market {
 
   for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
   decorateNews(seed, totalDays, news, bars, indexBars);
-  return { seed, totalDays, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
+  return { seed, totalDays, version, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
 }
 
 /** 미리 공지되는 일정: 연준·금통위·실적 시즌·옵션 만기·배당 기준일 */
@@ -489,10 +534,10 @@ export function planCalendar(seed: number, totalDays: number): { events: MarketE
     if (start < 0) continue;
     for (let k = 0; k < 3; k++) {
       taken.add(start + k);
-      add(start + k, 'earnings', `📊 실적 발표 주간 (${k + 1}/3)`, '기업 실적 뉴스가 쏟아지고 주가 변동이 커져요.');
+      add(start + k, 'earnings', `실적 발표 주간 (${k + 1}/3)`, '기업 실적 뉴스가 쏟아지고 주가 변동이 커져요.');
     }
   }
-  if (totalDays >= 20) add(free(5, last), 'expiry', '⚠️ 옵션 만기일', '평소보다 주가가 크게 출렁이는 날이에요.');
+  if (totalDays >= 20) add(free(5, last), 'expiry', '옵션 만기일', '평소보다 주가가 크게 출렁이는 날이에요.');
 
   const divDays = totalDays >= 20 ? 2 : 1;
   for (let k = 0; k < divDays; k++) {
@@ -500,7 +545,7 @@ export function planCalendar(seed: number, totalDays: number): { events: MarketE
     if (day < 0) continue;
     const payers = [...DIVIDEND_PAYERS].sort(() => r() - 0.5).slice(0, 4 + Math.floor(r() * 3));
     for (const symbol of payers) dividends.push({ day, symbol, yieldPct: Math.round((1.5 + r() * 2.5) * 10) / 10, perShare: 0 });
-    add(day, 'dividend', '💰 배당 기준일', '이날 장 마감 때 가지고 있으면 배당금을 받아요.');
+    add(day, 'dividend', '배당 기준일', '이날 장 마감 때 가지고 있으면 배당금을 받아요.');
   }
   events.sort((a, b) => a.day - b.day);
   return { events, dividends };

@@ -29,6 +29,8 @@ export interface RoomRow {
   deadline: number | null;
   /** 오늘 원래 마감 시각 (카운트다운 전). 마감 취소로 기준 아래가 되면 이 시각으로 되돌림 */
   day_deadline?: number | null;
+  /** 시장·카드 규칙 버전 (없으면 1 = 예전 방) */
+  version?: number;
   host_id: string | null;
   title?: string;
   max_players?: number;
@@ -235,11 +237,14 @@ function cleanKind(v: unknown): ItemKind {
 /* ---------------- 시장 ---------------- */
 
 const marketCache = new Map<string, Market>();
-export function marketFor(seed: number, days: number): Market {
-  const key = `${seed}:${days}`;
+/** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
+export const CURRENT_RULES_VERSION = 2;
+
+export function marketFor(seed: number, days: number, version = 1): Market {
+  const key = `${seed}:${days}:${version}`;
   let m = marketCache.get(key);
   if (!m) {
-    m = generateMarket(seed, days);
+    m = generateMarket(seed, days, version);
     marketCache.set(key, m);
     if (marketCache.size > 50) marketCache.delete(marketCache.keys().next().value!);
   }
@@ -342,7 +347,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
 
 /** 지급이 끝난 배당만 (게임 종료 시 전부) */
 function paidDividends(d: GameData) {
-  const m = marketFor(d.room.seed, d.room.total_days);
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1);
   const finished = d.room.status === 'finished' || d.room.day >= d.room.total_days;
   return finished ? m.dividends : m.dividends.filter((x) => x.day < d.room.day);
 }
@@ -395,7 +400,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
 
   const finished = r.status === 'finished' || r.day >= r.total_days;
   const day = Math.min(r.day, r.total_days - 1);
-  const m = marketFor(r.seed, r.total_days);
+  const m = marketFor(r.seed, r.total_days, r.version ?? 1);
   const open = r.status === 'playing' && !finished;
   const clock = dayClock(r, now);
   const prices = open ? livePriceMap(d, m, now) : priceMap(m, day, finished);
@@ -418,14 +423,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
     const name = `${ITEM_MAP[e.kind].emoji} ${ITEM_MAP[e.kind].name}`;
     if (e.reflected) {
-      if (e.by === meId) base.notices.push({ key, text: `🪞 반사 거울이 ${nick(e.from)}의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
-      else if (e.from === meId) base.notices.push({ key, text: `🪞 ${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${josa(name, '이', '가')} 나에게 돌아왔어요!`, kind: 'warn' });
+      if (e.by === meId) base.notices.push({ key, text: `반사 거울이 ${nick(e.from)}의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
+      else if (e.from === meId) base.notices.push({ key, text: `${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${josa(name, '이', '가')} 나에게 돌아왔어요!`, kind: 'warn' });
       return;
     }
     if (e.to === meId) {
-      if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 ${nick(e.from)}의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
-      else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ ${josa(nick(e.from), '이', '가')} 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
-    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 🛡️ 방패에 ${josa(name, '이', '가')} 막혔어요`, kind: 'warn' });
+      if (e.blocked) base.notices.push({ key, text: `방패가 ${nick(e.from)}의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
+      else if (e.kind !== 'fake') base.notices.push({ key, text: `${josa(nick(e.from), '이', '가')} 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
+    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 방패에 ${josa(name, '이', '가')} 막혔어요`, kind: 'warn' });
   });
 
   const todayInfo = finished ? [] : mine.infoUses.filter((u) => u.day === r.day).map((u) => u.kind);
@@ -518,10 +523,10 @@ export function validateTrade(d: GameData, meId: string, now: number, input: { s
 
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
-  if (fx.some((e) => e.kind === 'freeze')) throw new GameError('🧊 거래 정지 카드 때문에 오늘은 거래할 수 없어요.', 409);
+  if (fx.some((e) => e.kind === 'freeze')) throw new GameError('거래 정지 카드 때문에 오늘은 거래할 수 없어요.', 409);
   const fee = fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE;
 
-  const m = marketFor(d.room.seed, d.room.total_days);
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1);
   const price = livePrice(d, m, symbol, now); // 가격은 오직 서버가 정한다 — 요청을 받은 순간의 칸
   const pf = portfolioOf(d, meId);
   if (side === 'buy' && buyCost(qty, price, fee) > pf.cash) throw new GameError('현금이 부족해요.');
@@ -629,7 +634,7 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
 }
 
 export function finalResults(d: GameData) {
-  const m = marketFor(d.room.seed, d.room.total_days);
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1);
   const prices = priceMap(m, d.room.total_days - 1, true);
   const players = sortedPlayers(d);
   const badges = computeAchievements({
@@ -666,10 +671,10 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
 
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
-  if (fx.some((e) => e.kind === 'freeze')) throw new GameError('🧊 거래 정지 카드 때문에 오늘은 주문할 수 없어요.', 409);
+  if (fx.some((e) => e.kind === 'freeze')) throw new GameError('거래 정지 카드 때문에 오늘은 주문할 수 없어요.', 409);
   const fee = fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE;
 
-  const m = marketFor(d.room.seed, d.room.total_days);
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1);
   const open = livePrice(d, m, symbol, now, STOCK_MAP[symbol].currency === 'USD' ? 'usd' : 'krw');
   const isUS = STOCK_MAP[symbol].currency === 'USD';
   const lim = isUS ? Math.round(limit * 100) / 100 : Math.round(limit);
@@ -708,7 +713,7 @@ export function validateCancelOrder(d: GameData, meId: string, now: number, inpu
  * final(하루 끝)이면 끝까지 안 닿은 주문은 만료. final 이 아니면 안 닿은 주문은 결과에 없음(그대로 대기)
  */
 export function resolveOrders(d: GameData, day: number, upto: number, final: boolean): { id: string; status: OrderRow['status']; trade?: Trade }[] {
-  const m = marketFor(d.room.seed, d.room.total_days);
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1);
   const fx = m.macro[day].fx;
   const clock = dayClock(d.room, 0);
   const open = d.orders.filter((o) => o.day === day && o.status === 'open').sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));

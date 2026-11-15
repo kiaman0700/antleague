@@ -1,0 +1,323 @@
+/* ============ 아이콘 · 내 화면 설정 · 순위 배지 (이모지 대체) ============ */
+
+.ico {
+  display: inline-block;
+  vertical-align: -0.18em;
+  flex-shrink: 0;
+}
+.chip .ico,
+.btn .ico,
+h3 .ico,
+h4 .ico {
+  margin-right: 2px;
+}
+.sector-ico {
+  color: var(--text-2);
+}
+.star .ico.filled,
+.ico.filled {
+  fill: var(--gold);
+  color: var(--gold);
+}
+
+/* 하단 탭: 이모지 회색 처리 대신 선 아이콘 색 */
+.m-game .bottom-nav button span {
+  filter: none;
+  opacity: 1;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.m-game .bottom-nav button.on span {
+  color: var(--gold);
+}
+
+/* 홈 메뉴 타일·모드 고르기 아이콘 */
+.tile i {
+  color: var(--text-2);
+}
+.tile.primary i {
+  color: var(--gold);
+}
+.mp-emoji {
+  color: var(--gold);
+  line-height: 1;
+}
+
+/* 순위 동그라미: 1 금 · 2 은 · 3 동 */
+.rank-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+.rank-badge.r1 {
+  background: linear-gradient(180deg, #ffe08a, #f5b83d);
+  color: #1a1300;
+}
+.rank-badge.r2 {
+  background: linear-gradient(180deg, #e6e9ef, #b7bdc8);
+  color: #1b1f27;
+}
+.rank-badge.r3 {
+  background: linear-gradient(180deg, #e7b48a, #b8794a);
+  color: #1d120a;
+}
+
+/* 대기실 아바타: 닉네임 첫 글자 + 색 */
+.avatar {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #10131a;
+}
+.avatar.empty {
+  color: var(--muted);
+  background: var(--bg-2);
+  border: 1px dashed var(--line-2);
+}
+.avatar.c0 {
+  background: var(--me);
+}
+.avatar.c1 {
+  background: var(--opp);
+}
+.avatar.c2 {
+  background: #34d399;
+}
+.avatar.c3 {
+  background: #60a5fa;
+}
+.avatar.c4 {
+  background: #f472b6;
+}
+.avatar.c5 {
+  background: #fb923c;
+}
+
+/* 설정·시트 */
+.sheet-modal {
+  max-width: 480px;
+}
+.sheet-modal.wide {
+  max-width: 640px;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.sheet-head h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prefs .field {
+  margin-top: 14px;
+}
+.pin-order {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pin-order li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+.pin-order .grow {
+  flex: 1;
+  font-weight: 600;
+}
+.pin-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.prefs-btn {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.badge-on {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+.icon-btn.on {
+  color: var(--gold);
+  border-color: rgba(247, 197, 72, 0.5);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+
+/* 업종 고르기 시트 */
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.sg-item {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.sg-item.on {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.sg-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-weight: 600;
+}
+.sg-pick span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sg-pin {
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  padding: 0 12px;
+}
+.sg-pin.on {
+  color: var(--gold);
+}
+.sg-pin.on .ico {
+  fill: var(--gold);
+}
+.chip.pinned-chip {
+  border-color: rgba(247, 197, 72, 0.45);
+}
+
+/* 장중 차트 속보 표시 */
+.chart.intraday .news-mark.good circle {
+  fill: var(--up);
+}
+.chart.intraday .news-mark.bad circle {
+  fill: var(--down);
+}
+
+/* 큰 글자·누르기 쉬운 크기 (시인성) */
+.chip {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+/* ============ 아이콘 + 글자 세로 가운데 정렬 (모든 곳) ============ */
+/* 아이콘이 들어 있는 글자 묶음은 가운데 정렬로 (기준선 맞춤 X) */
+:where(span, b, small, em, strong, i, a, label, button, .chip, .tag, .btn):has(> .ico) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+:where(h2, h3, h4, .reveal-title, .sec-title, .sec-head, .pinned-head, .effect-banner, .detector-sum, .panel-head):has(> .ico) {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}
+/* 버튼 안 가운데 정렬은 유지 */
+:where(.btn, .chip, .icon-btn):has(> .ico) {
+  justify-content: center;
+}
+.ico {
+  vertical-align: middle;
+}
+.tl-cell span {
+  display: inline-flex;
+  gap: 1px;
+  align-items: center;
+  justify-content: center;
+  min-height: 14px;
+}
+
+/* ============ 화면 모드: 초보 / 일반 / 커스텀 ============ */
+.mode-pick.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.mp-custom {
+  position: relative;
+  display: flex;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: var(--bg-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.mp-custom.on {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.mp-custom .mp-main {
+  flex: 1;
+  border: 0;
+  background: none;
+  padding: 16px 14px;
+  padding-right: 44px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mp-custom .mp-main small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.mp-gear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+/* 좁은 화면: 초보·일반 두 칸 + 커스텀은 아래 한 줄 */
+@media (max-width: 560px) {
+  .mode-pick.three {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mode-pick.three .mp-custom {
+    grid-column: 1 / -1;
+  }
+}
+.mode-toggle {
+  display: inline-flex;
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CardIcon, Icon, SectorIcon } from './Icon';
 import { ITEM_MAP, ITEMS, canBuy, canUse, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
@@ -61,7 +62,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     <div className="news-panel">
       {tomorrow && (
         <div className="reveal paper">
-          <div className="reveal-title">📰 내일 신문 (나만 보여요)</div>
+          <div className="reveal-title"><CardIcon kind="paper" size={15} /> 내일 신문 (나만 보여요)</div>
           {tomorrow.map((n, i) => (
             <div key={i} className="reveal-item">
               <div className={'reveal-line ' + n.tone}>{n.headline}</div>
@@ -72,21 +73,21 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
       {bestSector && (
         <div className="reveal analyst">
-          <div className="reveal-title">📈 애널리스트 콜</div>
+          <div className="reveal-title"><CardIcon kind="analyst" size={15} /> 애널리스트 콜</div>
           <div className="reveal-line">
             오늘 장에서 가장 강할 업종은{' '}
             <button className="linkish" onClick={() => onSelectSector(bestSector)}>
-              {SECTOR_MAP[bestSector].emoji} {SECTOR_MAP[bestSector].name}
+              <SectorIcon id={bestSector} /> {SECTOR_MAP[bestSector].name}
             </button>{' '}
             입니다.
           </div>
           <RelatedChips symbols={COMPANIES.filter((c) => c.sector === bestSector).map((c) => c.symbol)} change={change} onSelect={onSelect} />
         </div>
       )}
-      {blackout && <div className="effect-banner">📵 정보 차단 카드를 맞아서 오늘 아침 뉴스가 보이지 않아요</div>}
+      {blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 아침 뉴스가 보이지 않아요</div>}
       {scout && (
         <div className="reveal scout">
-          <div className="reveal-title">📊 차트 분석 (정확도 약 70%)</div>
+          <div className="reveal-title"><CardIcon kind="scout" size={15} /> 차트 분석 (정확도 약 70%)</div>
           <div className="reveal-line">
             <button className="linkish" onClick={() => onSelect(scout.symbol)}>
               {STOCK_MAP[scout.symbol].name}
@@ -97,7 +98,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
       {spy && (
         <div className="reveal spy">
-          <div className="reveal-title">👀 {spy.nickname}의 계좌</div>
+          <div className="reveal-title"><CardIcon kind="spy" size={15} /> {spy.nickname}의 계좌</div>
           <div className="reveal-line">
             현금 <b>{wonShort(spy.cash)}</b>
           </div>
@@ -117,7 +118,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       </h4>
       {rumorCheck && !blackout && today.length > 0 && (
         <div className="detector-sum">
-          🔍 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
+          <CardIcon kind="detector" size={15} /> 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
         </div>
       )}
       {today.map((n, i) => (
@@ -126,7 +127,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (
               <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>
-                {SECTOR_MAP[n.sector].emoji} {SECTOR_MAP[n.sector].name}
+                <SectorIcon id={n.sector} /> {SECTOR_MAP[n.sector].name}
               </button>
             )}
             {n.rumor && (
@@ -134,7 +135,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                 <Term k="루머" />
               </span>
             )}
-            {n.verdict && <span className={'verdict ' + n.verdict}>🔍 {n.verdict === 'true' ? '✅ 사실' : '❌ 가짜'}</span>}
+            {n.verdict && <span className={'verdict ' + n.verdict}><Icon name={n.verdict === 'true' ? 'check' : 'x'} size={12} /> {n.verdict === 'true' ? '사실' : '가짜'}</span>}
           </div>
           <div className="news-headline">
             <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
@@ -270,7 +271,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
           내 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
         </h4>
         <button className="btn sm" onClick={() => setShop((v) => !v)}>
-          {shop ? '닫기' : '🛒 상점'}
+          {shop ? '닫기' : <><Icon name="cart" /> 상점</>}
         </button>
       </div>
       <p className="muted small">
@@ -284,7 +285,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
           const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
           return (
             <div key={k} className={'card-item t-' + d.type}>
-              <div className="ci-emoji">{d.emoji}</div>
+              <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
               <div className="ci-body">
                 <b>
                   {d.name} {n > 1 && <span className="muted">×{n}</span>}
@@ -308,7 +309,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
             const why = canAct ? canBuy(mine, d.kind, cash) : '지금은 살 수 없어요';
             return (
               <div key={d.kind} className={'card-item t-' + d.type}>
-                <div className="ci-emoji">{d.emoji}</div>
+                <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
                 <div className="ci-body">
                   <b>
                     {d.name} <span className={'type-tag ' + d.type}>{{ info: '정보', attack: '방해', defense: '방어', bonus: '보너스' }[d.type]}</span>
@@ -336,14 +337,14 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
   return (
     <div className="modal-bg" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>📢 가짜 뉴스 만들기</h3>
+        <h3><CardIcon kind="fake" /> 가짜 뉴스 만들기</h3>
         <p className="muted small">내일 아침 상대 화면에만 진짜 뉴스처럼 떠요. 상대가 속으면 성공!</p>
         <label className="field">
           <span>어느 회사?</span>
           <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
             {COMPANIES.map((s) => (
               <option key={s.symbol} value={s.symbol}>
-                {SECTOR_MAP[s.sector].emoji} {s.name}
+                <SectorIcon id={s.sector} /> {s.name}
               </option>
             ))}
           </select>
@@ -404,8 +405,8 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
         <div className="muted">오늘 내 손익 · 총자산 {wonShort(myEquity)}</div>
         {(dividendToday > 0 || filledToday > 0) && (
           <div className="close-extra">
-            {dividendToday > 0 && <span>💰 배당 +{wonShort(dividendToday)}</span>}
-            {filledToday > 0 && <span>⏳ 예약 주문 {filledToday}건 체결</span>}
+            {dividendToday > 0 && <span><Icon name="coins" size={13} /> 배당 +{wonShort(dividendToday)}</span>}
+            {filledToday > 0 && <span><Icon name="hourglass" size={13} /> 예약 주문 {filledToday}건 체결</span>}
           </div>
         )}
         <div className="close-index">
@@ -446,7 +447,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
 /* ------------------------------ 튜토리얼 ------------------------------ */
 
 const STEPS = [
-  { t: '주식 대결에 온 걸 환영해요 👋', d: '1,000만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
+  { t: '주식 대결에 온 걸 환영해요', d: '1,000만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
   { t: '① 아침 뉴스를 읽어요', d: '매일 아침 뉴스가 나와요. 좋은 뉴스(▲)가 난 회사·업종은 오르는 경우가 많고, 같은 업종이나 연관 업종도 함께 움직여요. [루머]는 틀릴 수도 있어요!' },
   { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 금액 버튼(+10만원 등)으로 쉽게 살 수 있어요. 오늘은 아침 가격(시가)으로 거래돼요.' },
   { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 둘 다 누르면(또는 시간이 다 되면) 하루가 흘러 가격이 움직여요.' },

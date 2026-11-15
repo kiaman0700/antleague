@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { BadgeIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
 import { BADGE_MAP, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
@@ -19,7 +20,7 @@ interface Props {
 }
 
 const COLORS = PLAYER_COLORS;
-const MEDAL = ['🥇', '🥈', '🥉'];
+const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
 export function ResultScreen({ session, market, final, onExit }: Props) {
   const solo = session.mode === 'solo';
@@ -84,14 +85,14 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       let takeDay = -1;
       for (let d = 1; d < days; d++) if (leaderOn(d).id === champ.id && leaderOn(d - 1).id !== champ.id) takeDay = d;
       if (takeDay >= 0) {
-        out.push({ icon: '⚡', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
+        out.push({ icon: 'flame', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
       } else {
         let best = 0;
         let bd = 0;
         for (let d = 1; d < days; d++) if (gapOn(d) - gapOn(d - 1) > best) [best, bd] = [gapOn(d) - gapOn(d - 1), d];
-        out.push({ icon: '⚡', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
+        out.push({ icon: 'flame', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
-      out.push({ icon: '🔄', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
+      out.push({ icon: 'refresh', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
     }
     for (const r of results) {
       let best = 0;
@@ -103,8 +104,8 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
         if (dv > best) [best, bd] = [dv, d];
         if (dv < worst) [worst, wd] = [dv, d];
       }
-      if (best > 0) out.push({ icon: '🌟', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd });
-      if (worst < 0) out.push({ icon: '💥', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd });
+      if (best > 0) out.push({ icon: 'sparkles', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd });
+      if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd });
     }
     return out;
   }, [results, market]);
@@ -117,7 +118,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       <div className={'banner ' + (solo ? (me.ret > indexRet ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
         {solo ? (
           <>
-            <div className="crown">{me.ret > indexRet ? '🏆' : '📉'}</div>
+            <div className="crown"><Icon name={me.ret > indexRet ? 'trophy' : 'activity'} size={40} /></div>
             <h1>장 마감!</h1>
             <p>
               내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
@@ -128,7 +129,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
           <h1>상대 기록을 불러오지 못했어요</h1>
         ) : winner ? (
           <>
-            <div className="crown">👑</div>
+            <div className="crown"><Icon name="crown" size={40} /></div>
             <h1>{winner.nickname} 승리!</h1>
             <p>
               2위와 {wonShort(ranked[0].equity - ranked[1].equity)} 차이 · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
@@ -145,9 +146,9 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
           return (
           <div key={r.id} className={'panel score-card' + (winner?.id === r.id ? ' champ' : '')} style={{ borderTopColor: COLORS[i] }}>
             <small style={{ color: COLORS[i] }}>
-              {!solo && <span className="medal">{MEDAL[rankOf(r.id)] ?? `${rankOf(r.id) + 1}위`}</span>}
+              {!solo && <span className="medal">{rankBadge(rankOf(r.id))}</span>}
               {r.nickname}
-              {titleOf(final.badges[r.id] ?? []) && <span className="title-tag">{titleOf(final.badges[r.id] ?? [])!.emoji} {titleOf(final.badges[r.id] ?? [])!.name}</span>}
+              {titleOf(final.badges[r.id] ?? []) && <span className="title-tag"><BadgeIcon id={titleOf(final.badges[r.id] ?? [])!.id} size={13} /> {titleOf(final.badges[r.id] ?? [])!.name}</span>}
             </small>
             <b className="big-num">{won(r.equity)}</b>
             <span className={tone(r.ret)}>{pct(r.ret)}</span>
@@ -175,7 +176,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
                 )}
               </dd>
               <dt>쓴 카드</dt>
-              <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].emoji}${n > 1 ? '×' + n : ''}`).join(' ') : '-'}</dd>
+              <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].name}${n > 1 ? '×' + n : ''}`).join(', ') : '-'}</dd>
               {r.pf.itemSpend > 0 && (
                 <>
                   <dt>카드 구입비</dt>
@@ -185,7 +186,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
               {r.fakesReceived > 0 && (
                 <>
                   <dt>받은 가짜 뉴스</dt>
-                  <dd>📢 {r.fakesReceived}개</dd>
+                  <dd>{r.fakesReceived}개</dd>
                 </>
               )}
               <dt>마감 때 보유</dt>
@@ -203,7 +204,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       </div>
 
       <div className="panel pad">
-        <h3>🏅 이번 판 업적</h3>
+        <h3><Icon name="medal" /> 이번 판 업적</h3>
         <div className="badge-cols">
           {results.map((r, i) => (
             <div key={r.id}>
@@ -214,7 +215,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
                   const b = BADGE_MAP[id];
                   return (
                     <span key={id} className={'badge r' + b.rarity} title={b.desc}>
-                      <i>{b.emoji}</i>
+                      <i><BadgeIcon id={b.id} /></i>
                       <b>{b.name}</b>
                       <small>{b.desc}</small>
                     </span>
@@ -227,21 +228,21 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       </div>
 
       <div className="panel pad">
-        <h3>✨ 하이라이트</h3>
+        <h3><Icon name="sparkles" /> 하이라이트</h3>
         <div className="hl-grid">
           {highlights.map((h, i) => (
             <button key={i} className="hl-card" onClick={() => h.day !== undefined && setReplayDay(h.day)}>
-              <span className="hl-icon">{h.icon}</span>
+              <span className="hl-icon"><Icon name={h.icon as IconName} size={18} /></span>
               <b>{h.title}</b>
               <span>{h.text}</span>
-              {h.day !== undefined && <small className="muted">📰 {headline(h.day)}</small>}
+              {h.day !== undefined && <small className="muted"><Icon name="news" size={12} /> {headline(h.day)}</small>}
             </button>
           ))}
         </div>
       </div>
 
       <div className="panel pad">
-        <h3>🎬 하루별 리플레이</h3>
+        <h3><Icon name="play" /> 하루별 리플레이</h3>
         <div className="replay">
           {Array.from({ length: market.totalDays }, (_, d) => {
             const deltas = results.map((r) => r.hist[d + 1] - r.hist[d]);
@@ -309,7 +310,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
           {stockRank.map(({ s, r }) => (
             <div key={s.symbol}>
               <span>
-                {SECTOR_MAP[s.sector].emoji} {s.name}
+                <SectorIcon id={s.sector} /> {s.name}
               </span>
               <b className={tone(r)}>{pct(r, 1)}</b>
             </div>

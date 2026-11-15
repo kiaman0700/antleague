@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Icon } from './Icon';
 import type { OrderRow } from '../engine/engine';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
@@ -22,7 +23,7 @@ export function Calendar({ market, day, onSelect, compact = false, hideTitle = f
   if (!shown.length) return null;
   return (
     <div className="calendar">
-      {!hideTitle && <h4 className="sec-head">📅 다가오는 일정</h4>}
+      {!hideTitle && <h4 className="sec-head"><Icon name="calendar" /> 다가오는 일정</h4>}
       {shown.map((e, i) => {
         const payers = e.kind === 'dividend' ? market.dividends.filter((d) => d.day === e.day) : [];
         return (
@@ -76,7 +77,7 @@ export function OrdersAndDividends({
   const price = (o: OrderRow) => (STOCK_MAP[o.symbol].currency === 'USD' ? fmtUsd(o.limit_price) : num(o.limit_price) + '원');
   return (
     <div className="orders-div">
-      <h4 className="sec-title">⏳ 예약 주문</h4>
+      <h4 className="sec-title"><Icon name="hourglass" /> 예약 주문</h4>
       {open.length === 0 && recent.length === 0 && <p className="empty small">예약 주문이 없어요. 종목 화면에서 걸 수 있어요.</p>}
       {open.map((o) => (
         <div key={o.id} className={'oo-row ' + o.side}>
@@ -98,7 +99,7 @@ export function OrdersAndDividends({
       ))}
       {portfolio.dividendLog.length > 0 && (
         <>
-          <h4 className="sec-title">💰 받은 배당 {wonShort(portfolio.dividendIncome)}</h4>
+          <h4 className="sec-title"><Icon name="coins" /> 받은 배당 {wonShort(portfolio.dividendIncome)}</h4>
           {portfolio.dividendLog.map((d, i) => (
             <div key={i} className="oo-row done">
               <span>
@@ -135,7 +136,7 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
         <div className="sheet-head">
           <b>{title}</b>
           <button className="icon-btn" onClick={onClose} aria-label="닫기">
-            ✕
+            <Icon name="x" size={18} />
           </button>
         </div>
         <div className="sheet-body">{children}</div>

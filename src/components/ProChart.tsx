@@ -7,6 +7,8 @@
  * - 그리기: 수평선, 추세선, 지우기 (종목별로 이 기기에 저장)
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from './Icon';
+import { getEffective } from '../prefs';
 import type { Bar } from '../game/market';
 import { pct } from '../lib/format';
 import type { UiMode } from '../session';
@@ -67,12 +69,15 @@ export function ProChart({ ui, symbol, bars, totalDays, liveOpenOnly, refLine, m
 
   // 설정: 초보=라인, 일반=캔들이 기본. 바꾼 건 모드별로 기억
   const prefKey = `stockduel.chart.${ui}`;
-  const [type, setType] = useState<ChartType>(() => load<{ type: ChartType }>(prefKey, { type: ui === 'easy' ? 'line' : 'candle' }).type);
+  // 내 화면 설정에서 차트 모양을 정했으면 그걸 기본으로
+  const fixedType = getEffective().chartType;
+  const [type, setType] = useState<ChartType>(() => (fixedType !== 'auto' ? fixedType : load<{ type: ChartType }>(prefKey, { type: ui === 'easy' ? 'line' : 'candle' }).type));
   const [inds, setInds] = useState<Indicator[]>(() => load(`stockduel.ind.${ui}`, ui === 'pro' ? ['ma5'] : []));
   useEffect(() => save(prefKey, { type }), [prefKey, type]);
   useEffect(() => save(`stockduel.ind.${ui}`, inds), [ui, inds]);
   useEffect(() => {
-    setType(load<{ type: ChartType }>(`stockduel.chart.${ui}`, { type: ui === 'easy' ? 'line' : 'candle' }).type);
+    const fixed = getEffective().chartType;
+    setType(fixed !== 'auto' ? fixed : load<{ type: ChartType }>(`stockduel.chart.${ui}`, { type: ui === 'easy' ? 'line' : 'candle' }).type);
     setInds(load(`stockduel.ind.${ui}`, ui === 'pro' ? ['ma5'] : []));
   }, [ui]);
 
@@ -348,11 +353,11 @@ export function ProChart({ ui, symbol, bars, totalDays, liveOpenOnly, refLine, m
             ╱
           </button>
           <button className={'pc-ic' + (tool === 'erase' ? ' on' : '')} onClick={() => (setTool(tool === 'erase' ? 'none' : 'erase'), setPending(null))} title="선 지우기" disabled={!drawings.length}>
-            ⌫
+            <Icon name="x" size={15} />
           </button>
           {onExpand && (
             <button className="pc-ic" onClick={onExpand} title="크게 보기">
-              ⛶
+              <Icon name="grid" size={15} />
             </button>
           )}
         </div>
