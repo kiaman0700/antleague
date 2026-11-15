@@ -2061,3 +2061,19 @@ button.tag:hover,
     white-space: normal;
   }
 }
+
+/* 큰 모니터(1920 넘게): 게임 화면을 더 넓게 써서 양옆이 비지 않게 */
+@media (min-width: 1700px) {
+  .game {
+    max-width: min(2200px, 94vw);
+  }
+}
+/* 넓은 칸에서 차트 글자가 지나치게 커지지 않게 높이 상한 (비율 유지, 가운데) */
+.desk .pchart .pc-svg {
+  max-height: min(46vh, 440px);
+}
+.desk .p-detail svg.chart {
+  max-height: min(46vh, 440px);
+  display: block;
+  margin: 0 auto;
+}

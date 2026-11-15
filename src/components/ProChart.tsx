@@ -59,7 +59,8 @@ interface Props {
 const W = 680;
 
 export function ProChart({ ui, symbol, bars, totalDays, liveOpenOnly, refLine, markers = [], fmt = (v) => Math.round(v).toLocaleString('ko-KR'), tall = false, onExpand }: Props) {
-  const H = tall ? 420 : 300;
+  // 차트 높이: 화면이 높을수록 크게 (작은 노트북에서도 너무 납작하지 않게 기본 2:1 이상)
+  const H = tall ? 420 : typeof window !== 'undefined' && window.innerHeight >= 1000 ? 380 : 330;
   const padL = 8;
   const padR = 68;
   const padT = 14;
