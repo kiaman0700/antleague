@@ -307,6 +307,74 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
   );
 }
 
+/** 의견 보내기: 버그·아이디어·개인정보 요청 → 운영자만 봄 */
+function Feedback({ onClose }: { onClose: () => void }) {
+  const [kind, setKind] = useState<'bug' | 'idea' | 'privacy' | 'etc'>('bug');
+  const [text, setText] = useState('');
+  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [err, setErr] = useState('');
+  const send = async () => {
+    setErr('');
+    if (text.trim().length < 2) return setErr('내용을 조금 더 적어 주세요.');
+    setState('busy');
+    try {
+      await api('feedback', { kind, text: text.trim(), page: location.pathname });
+      setState('done');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setState('idle');
+    }
+  };
+  const KINDS = [
+    ['bug', '버그·불편'],
+    ['idea', '아이디어'],
+    ['privacy', '개인정보'],
+    ['etc', '기타'],
+  ] as const;
+  return (
+    <Modal title={<><Icon name="news" size={18} /> 의견 보내기</>} onClose={onClose}>
+      {state === 'done' ? (
+        <>
+          <p>보내 주셔서 고마워요! 꼼꼼히 읽어 볼게요.</p>
+          <div className="modal-actions">
+            <button className="btn primary" onClick={onClose}>
+              닫기
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="seg fb-kind">
+            {KINDS.map(([k, l]) => (
+              <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="fb-text"
+            value={text}
+            maxLength={1000}
+            rows={5}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={kind === 'bug' ? '어떤 화면에서 무엇을 했을 때 어떻게 됐는지 적어 주세요' : '자유롭게 적어 주세요'}
+          />
+          <small className="muted">{text.length}/1000 · 개인정보(이름·연락처)는 적지 말아 주세요</small>
+          {err && <p className="error">{err}</p>}
+          <div className="modal-actions">
+            <button className="btn ghost" onClick={onClose}>
+              취소
+            </button>
+            <button className="btn primary" onClick={send} disabled={state === 'busy' || !online}>
+              {state === 'busy' ? '보내는 중…' : '보내기'}
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 /** 개인정보 처리 안내 — 이 게임이 실제로 저장하는 것만 */
 function Privacy({ onClose }: { onClose: () => void }) {
   return (
@@ -324,6 +392,10 @@ function Privacy({ onClose }: { onClose: () => void }) {
         <h4>지우기</h4>
         <p>
           홈 → <b>기록·업적</b> → <b>내 데이터 지우기</b>에서 언제든 모두 지울 수 있어요. 끝난 게임의 순위표에는 닉네임과 수익률만 남아요.
+        </p>
+        <h4>문의</h4>
+        <p>
+          궁금한 점, 버그, 개인정보 관련 요청은 홈 아래 <b>의견 보내기</b>로 남겨 주세요. 보낸 내용은 운영자만 볼 수 있어요.
         </p>
       </div>
       <div className="modal-actions">
@@ -366,7 +438,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
 
 function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
   const profile = useProfile();
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs' | 'privacy'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs' | 'privacy' | 'feedback'>(null);
   const prefs = usePrefs();
   const [nickErr, setNickErr] = useState(false);
   const [resume, setResume] = useState<ResumeInfo | null>(null);
@@ -535,6 +607,10 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         )}
       </div>
       <p className="home-foot">
+        <button className="linkish-soft" onClick={() => setModal('feedback')}>
+          의견 보내기
+        </button>
+        <span className="muted"> · </span>
         <button className="linkish-soft" onClick={() => setModal('privacy')}>
           개인정보 처리 안내
         </button>
@@ -544,6 +620,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
+      {modal === 'feedback' && <Feedback onClose={() => setModal(null)} />}
       {modal === 'prefs' && (
         <Sheet title={<><Icon name="sliders" size={18} /> 내 화면 설정</>} onClose={() => setModal(null)}>
           <PrefsPanel ui={profile.ui} />

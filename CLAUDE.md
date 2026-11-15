@@ -56,7 +56,7 @@ npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드
 `supabase/schema.sql` = 전체 스키마(초기화용, 데이터 삭제됨). 추가 변경은 번호 붙인 파일로:
 `002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — 적용 완료.
 `005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) · `006_rules_version.sql`(room_secrets.rules_version, 새 방=2) — 적용 완료.
-`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) — 적용 완료.
+`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) · `012_guest_log.sql`(손님 계정 생성 기록, IP 해시) · `013_feedback.sql`(의견 보내기) — 적용 완료.
 새 마이그레이션은 파일을 만들고(여러 번 실행해도 안전하게) **승인 없이** `npm run db -- apply` 로 직접 적용한 뒤 보고 (사용자 지시, 2026-11-16). 배포(main 푸시)도 검수 통과 후 직접.
 서버는 마이그레이션 전에도 죽지 않게(없는 테이블이면 빈 목록 등) 방어적으로 작성.
 
@@ -73,6 +73,8 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 시뮬레이터: `sim/` (`node sim/build.mjs sim/run.ts && node sim/.out/run.mjs news duel multi cards --n=0.3`). 규칙·가격 바꾸면 다시 돌려 확인
 - 시장 키(marketKey)는 서버 비밀값 HMAC(keySalt)으로만 섞음 — 시드 등 비밀은 화면에 보이는 어떤 해시에도 넣지 않기
 - 기권(left_game)한 사람은 거래·마감 취소 불가. 자리 비움은 바로 건너뛰지 않고 카운트다운 기준에서만 빠짐
+- 익명 로그인이 IP 당 제한(429)에 걸리면 서버 손님 계정(`action:'guest'`, 관리자 API로 가짜 이메일 계정 → 비밀번호 로그인)으로 대체. 같은 IP 시간당 60·전체 3000 (guest_log)
+- 이용자 의견: `npm run db -- feedback` 으로 읽기
 - e2e 계정은 `scripts/e2e/.accounts.json` 에 저장해 재사용 (익명 계정 생성이 IP 당 시간 제한)
 - 상대 재산은 화면 데이터에서 10만원 단위·오늘 거래 횟수 숨김(보유 역산 방지). 자리 비움 = 90초 응답 없음(AWAY_MS), 나감(기권) = left_game. 남은 사람 기준으로 마감·카운트다운
 

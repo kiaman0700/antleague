@@ -2,6 +2,7 @@
 //   npm run db -- check                      연결 확인 + 적용된 마이그레이션 상태 (읽기만)
 //   npm run db -- show supabase/005_x.sql    적용할 SQL 내용만 보여 줌 (실행 안 함)
 //   npm run db -- apply supabase/005_x.sql   SQL 을 한 트랜잭션으로 적용 (실패하면 전부 되돌림)
+//   npm run db -- feedback                   이용자가 보낸 의견 보기 (읽기만)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,8 +66,15 @@ try {
     } finally {
       await c.end();
     }
+  } else if (cmd === 'feedback') {
+    // 이용자가 보낸 의견 최근 30개 (읽기만)
+    const c = await connect();
+    const r = await c.query('select id, kind, body, page, created_at from public.feedback order by created_at desc limit 30');
+    for (const f of r.rows) console.log(`#${f.id} [${f.kind}] ${new Date(f.created_at).toLocaleString('ko-KR')} ${f.page ?? ''}\n  ${f.body.split('\n').join('\n  ')}`);
+    if (!r.rows.length) console.log('아직 받은 의견이 없어요.');
+    await c.end();
   } else {
-    console.log('사용법: npm run db -- check | show <파일> | apply <파일>');
+    console.log('사용법: npm run db -- check | show <파일> | apply <파일> | feedback');
   }
 } catch (e) {
   // 연결 주소(비밀번호 포함)가 오류 메시지에 섞이지 않게 메시지만

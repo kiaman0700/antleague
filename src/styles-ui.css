@@ -1966,3 +1966,25 @@ button.tag:hover,
 .asum-item b {
   white-space: nowrap;
 }
+
+/* 의견 보내기 */
+.fb-kind {
+  margin-bottom: 10px;
+}
+.fb-text {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 110px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+}
+.fb-text:focus {
+  outline: none;
+  border-color: var(--gold);
+}

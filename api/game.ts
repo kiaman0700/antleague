@@ -34,6 +34,8 @@ export async function POST(request: Request): Promise<Response> {
   }
   const auth = request.headers.get('authorization');
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-  const res = await handle(body, token);
+  // 손님 계정 만들기 제한용 접속 IP (Vercel 이 붙여 주는 값)
+  const ip = (request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim().slice(0, 64);
+  const res = await handle(body, token, ip);
   return json(res.status, res.body);
 }

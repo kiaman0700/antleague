@@ -51,6 +51,18 @@ async function session() {
       used.add(c.tokens.length - 1);
       return data.session.access_token;
     }
+    // 익명 로그인이 막히면 게임과 같은 대체 경로(서버 손님 계정)로
+    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'guest' }) }).catch(() => null);
+    if (r?.ok) {
+      const g = await r.json();
+      const { data: d2, error: e2 } = await sb.auth.signInWithPassword(g);
+      if (!e2 && d2.session) {
+        c.tokens.push(d2.session.refresh_token);
+        saveCache(c);
+        used.add(c.tokens.length - 1);
+        return d2.session.access_token;
+      }
+    }
     if (!c.tokens.length) throw error;
   }
   // 이번 실행에서 아직 안 쓴 계정을 차례로 (다 썼으면 처음부터 다시 — 테스트마다 새 방을 쓰므로 괜찮음)

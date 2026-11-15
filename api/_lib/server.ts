@@ -635,6 +635,19 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return { ok: true };
     }
 
+    case 'feedback': {
+      // 의견 보내기 (문의·버그·삭제 요청). 10분에 3번
+      rateLimit(uid + ':feedback', 3, 600_000);
+      const kind = ['bug', 'idea', 'privacy', 'etc'].includes(b.kind as string) ? (b.kind as string) : 'etc';
+      // 줄바꿈·탭 말고 보이지 않는 제어 문자는 뺌
+      const text = typeof b.text === 'string' ? [...b.text.normalize('NFC')].filter((ch) => ch.charCodeAt(0) === 10 || ch.charCodeAt(0) === 9 || ch.charCodeAt(0) >= 32).join('').trim() : '';
+      if (text.length < 2 || text.length > 1000) throw new GameError('내용을 2~1000자로 적어 주세요.');
+      const page = typeof b.page === 'string' ? b.page.slice(0, 60) : null;
+      const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page });
+      if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
+      return { ok: true };
+    }
+
     case 'kick': {
       // 대기실에서 방장이 다른 사람을 내보냄 (준비 안 하고 자리만 차지하는 경우)
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
@@ -741,8 +754,38 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 }
 
 /** 요청 진입점: 토큰 검증 → 요청 제한 → 액션 */
-export async function handle(body: unknown, token: string | null): Promise<ApiResult> {
+/**
+ * 손님 계정 (익명 로그인이 막혔을 때의 대체 경로).
+ * Supabase 익명 로그인은 같은 인터넷(IP) 당 시간마다 수십 명으로 막혀 PC방·학교에서 접속이 안 될 수 있음 →
+ * 서버가 무작위 이메일·비밀번호 계정을 만들어 주고(관리자 API), 브라우저는 그걸로 로그인 (로그인 한도가 훨씬 넉넉함).
+ * 개인정보 없음(가짜 이메일). 같은 IP 에서 10분에 20개까지
+ */
+async function createGuest(ip: string) {
+  rateLimit('guest:' + ip, 20, 600_000);
+  // DB 기준 제한 (서버 인스턴스가 바뀌어도 유지): 같은 IP 시간당 60개, 전체 시간당 3000개
+  const ipHash = createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('guest-ip:' + ip).digest('hex').slice(0, 32);
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const [mine, all] = await Promise.all([
+    db().from('guest_log').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since),
+    db().from('guest_log').select('id', { count: 'exact', head: true }).gte('created_at', since),
+  ]);
+  if (!mine.error && (mine.count ?? 0) >= 60) throw new GameError('같은 인터넷에서 접속이 너무 많아요. 잠시 후 다시 시도해 주세요.', 429);
+  if (!all.error && (all.count ?? 0) >= 3000) throw new GameError('지금 접속이 몰려 있어요. 잠시 후 다시 시도해 주세요.', 429);
+  const id = randomBytes(12).toString('hex');
+  const email = `guest-${id}@guest.invalid`;
+  const password = randomBytes(24).toString('base64url');
+  const res = await db().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { guest: true } });
+  if (res.error) {
+    console.error('[api] guest', res.error.message);
+    throw new GameError('접속용 계정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
+  }
+  await db().from('guest_log').insert({ ip_hash: ipHash });
+  return { email, password };
+}
+
+export async function handle(body: unknown, token: string | null, ip = 'unknown'): Promise<ApiResult> {
   try {
+    if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
     const { data, error } = await db().auth.getUser(token);
     if (error || !data.user) return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
