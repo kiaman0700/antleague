@@ -1627,6 +1627,7 @@ button.tag:hover,
   .pill.link,
   .dd-btn,
   .rel-chip,
+  .mh-cmp,
   .es-btn {
     position: relative;
   }
@@ -1637,6 +1638,7 @@ button.tag:hover,
   .pill.link::after,
   .dd-btn::after,
   .rel-chip::after,
+  .mh-cmp::after,
   .es-btn::after {
     content: '';
     position: absolute;
@@ -1902,4 +1904,65 @@ button.tag:hover,
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+}
+
+/* 대기실 자리: 프로필은 동그라미 (늘어나지 않게) */
+.slot .avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 20px;
+  align-self: center;
+  flex: 0 0 auto;
+}
+.slot {
+  align-items: center;
+  text-align: center;
+}
+
+/* ============ PC 3인 이상 점수 줄: [순위(넓게)] / [마감 현황][재산 요약] + 오른쪽 장 마감 ============ */
+.desk .desk-score:has(.rank-strip) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  row-gap: 8px;
+  align-items: center;
+}
+.desk .desk-score:has(.rank-strip) > .rank-strip {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  min-width: 0;
+}
+.desk .desk-score:has(.rank-strip) > .end-status {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+.desk .desk-score:has(.rank-strip) > .asum {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+}
+.desk .desk-score:has(.rank-strip) > .end-turn {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: stretch;
+  width: auto;
+  min-width: 150px;
+}
+/* 순위 칩: 사람 수만큼 나눠 쓰고, 넘치면 옆으로 */
+.desk .rank-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.desk .rank-strip::-webkit-scrollbar {
+  display: none;
+}
+.desk .rank-strip .rank-chip {
+  flex: 1 1 0;
+  min-width: 170px;
+}
+.asum-item b {
+  white-space: nowrap;
 }
