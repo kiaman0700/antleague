@@ -14,7 +14,8 @@ interface Props {
 }
 
 export function IntradayChart({ ticks, n, prevClose, fmt, newsTicks = [], tall = false }: Props) {
-  const H = tall ? 300 : 220;
+  // 화면이 높을수록 크게, 작은 노트북에서도 너무 납작하지 않게 (680:280 이상)
+  const H = tall ? 300 : typeof window !== 'undefined' && window.innerHeight >= 1000 ? 330 : 280;
   const padL = 8;
   const padR = 76;
   const padT = 14;

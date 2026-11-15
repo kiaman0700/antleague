@@ -2077,3 +2077,13 @@ button.tag:hover,
   display: block;
   margin: 0 auto;
 }
+/* 차트 칸 높이에 맞춰 차트 높이 조절: 제목·가격·바로가기 바를 빼고 남는 만큼 (작은 노트북에서 차트가 바에 가리지 않게) */
+.desk .pane.p-detail {
+  container-type: size;
+  container-name: detail;
+}
+@container detail (max-height: 640px) {
+  .desk .p-detail svg.chart {
+    max-height: max(150px, calc(100cqh - 295px));
+  }
+}
