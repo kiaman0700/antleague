@@ -21,12 +21,16 @@ export interface RankRow {
   equity: number;
   ended: boolean;
   me: boolean;
+  /** on = 접속 중, away = 자리 비움, left = 나감(기권) */
+  status: 'on' | 'away' | 'left';
 }
+
+const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number): RankRow[] {
   return players
-    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId }))
+    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on') }))
     .sort((a, b) => b.equity - a.equity);
 }
 
@@ -45,9 +49,15 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
               {wonShort(r.equity)} · {pct(r.equity / START_CASH - 1, 1)}
             </small>
           </span>
-          <span className={'rs' + (r.ended ? ' ok' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
-            {r.ended ? <Icon name="check" size={13} /> : '…'}
-          </span>
+          {r.status !== 'on' ? (
+            <span className={'rs gone ' + r.status} title={r.status === 'left' ? '게임에서 나갔어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
+              {STATUS_TEXT[r.status]}
+            </span>
+          ) : (
+            <span className={'rs' + (r.ended ? ' ok' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
+              {r.ended ? <Icon name="check" size={13} /> : '…'}
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -55,7 +65,10 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
 }
 
 /** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
-export function EndStatus({ rows, countdown, compact }: { rows: RankRow[]; countdown: boolean; compact?: boolean }) {
+export function EndStatus({ rows: all, countdown, compact }: { rows: RankRow[]; countdown: boolean; compact?: boolean }) {
+  // 나간·자리 비운 사람은 기다리지 않으므로 마감 인원 계산에서 뺌
+  const rows = all.filter((r) => r.status === 'on');
+  const gone = all.filter((r) => r.status !== 'on');
   const done = rows.filter((r) => r.ended).length;
   const hint = !countdown && done < rows.length ? `${graceText(rows.length)} 카운트다운` : null;
   return (
@@ -67,6 +80,14 @@ export function EndStatus({ rows, countdown, compact }: { rows: RankRow[]; count
         {rows.map((r) => (
           <span key={r.id} className={'es-p' + (r.ended ? ' ok' : '') + (r.me ? ' me' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
             <i>{r.ended ? <Icon name="check" size={12} /> : '…'}</i>
+            {r.nickname}
+          </span>
+        ))}
+        {gone.map((r) => (
+          <span key={r.id} className={'es-p gone ' + r.status} title={r.status === 'left' ? '나갔어요' : '자리 비움 — 기다리지 않아요'}>
+            <i>
+              <Icon name="door" size={12} />
+            </i>
             {r.nickname}
           </span>
         ))}

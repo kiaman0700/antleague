@@ -48,6 +48,24 @@ function pwFail(key: string) {
   else e.n++;
 }
 
+/** 방 기준 비밀번호 시도 제한(모든 사용자 합산, DB): 1시간에 20번 — 계정을 새로 만들거나 서버가 바뀌어도 유지 */
+async function roomPwState(roomId: string) {
+  const res = await db().from('rooms').select('pw_fails, pw_fail_at').eq('id', roomId).maybeSingle();
+  if (res.error || !res.data) return null; // 007 전이면 메모리 제한만
+  const r = res.data as { pw_fails: number; pw_fail_at: string | null };
+  const fresh = !!r.pw_fail_at && Date.now() - new Date(r.pw_fail_at).getTime() < 3600_000;
+  return { fails: fresh ? r.pw_fails : 0, since: fresh ? r.pw_fail_at : null };
+}
+async function roomPwGuard(roomId: string) {
+  const st = await roomPwState(roomId);
+  if (st && st.fails >= 20) throw new GameError('이 방은 비밀번호 시도가 너무 많아 잠시 잠겼어요. 나중에 다시 시도해 주세요.', 429);
+}
+async function roomPwFail(roomId: string) {
+  const st = await roomPwState(roomId);
+  if (!st) return;
+  await db().from('rooms').update({ pw_fails: st.fails + 1, pw_fail_at: st.since ?? new Date().toISOString() }).eq('id', roomId);
+}
+
 /** 방에 새 플레이어 추가 (인원·닉네임 검사) */
 async function addToRoom(room: { id: string; code: string; status: string; max_players: number }, uid: string, nickname: string, mode: string) {
   const sb = db();
@@ -57,7 +75,10 @@ async function addToRoom(room: { id: string; code: string; status: string; max_p
   if (room.status !== 'waiting') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
   if (players.length >= room.max_players) throw new GameError(`방이 가득 찼어요 (최대 ${room.max_players}명).`, 409);
   if (players.some((p) => p.nickname === nickname)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
-  const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single(), 'join') as { id: string };
+  const ins = await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single();
+  if (ins.error && /players_room_nick_uq/i.test(ins.error.message)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
+  const p = must(ins, 'join') as { id: string };
+  await touchRoom(room.id);
   return { roomId: room.id, playerId: p.id, code: room.code };
 }
 import {
@@ -75,6 +96,7 @@ import {
   LEGACY_TURN_SECONDS,
   restoreDeadline,
   validateCancelEnd,
+  validateLeave,
   nextRoomState,
   resolveOrders,
   validateBuyItem,
@@ -141,11 +163,14 @@ async function loadGame(roomId: string): Promise<GameData> {
   const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
-    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId),
+    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
   ]);
+  // 007 마이그레이션 전이면 나감·접속 컬럼 없이 다시 읽음
+  let pl = players as { data: unknown; error: { message: string } | null };
+  if (pl.error && /left_game|last_seen/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId);
   const r = must(room, 'room');
   const s = must(secret, 'secret');
   if (!r || !s) throw new GameError('방을 찾을 수 없어요.', 404);
@@ -169,7 +194,7 @@ async function loadGame(roomId: string): Promise<GameData> {
       max_players: r.max_players,
       is_private: r.is_private,
     } as RoomRow,
-    players: must(players, 'players') as PlayerRow[],
+    players: must(pl, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
     items: (must(items, 'items') as ItemRow[]).map((i) => ({ ...i, cost: Number(i.cost) })),
     // orders 테이블이 아직 없으면(마이그레이션 전) 빈 목록으로
@@ -201,6 +226,27 @@ async function bumpPlayer(d: GameData, playerId: string, patch: Record<string, u
 const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() : null);
 
 /**
+ * 방 변경 신호: 마감·준비·입장·나감처럼 모두에게 공개된 변화만 rooms.rev 를 바꿔 실시간으로 알림.
+ * (players 행 변화는 거래·카드 시점을 드러내므로 브라우저가 구독하지 않음 — 007)
+ */
+async function touchRoom(roomId: string) {
+  const res = await db().from('rooms').update({ rev: randomInt(2_000_000_000) }).eq('id', roomId);
+  if (res.error && !/rev/.test(res.error.message)) console.error('[api] touch', res.error.message);
+}
+
+/** 접속 기록 (자리 비움 판단용). 20초에 한 번만 씀 */
+async function seen(d: GameData, playerId: string) {
+  const me = d.players.find((p) => p.id === playerId);
+  if (!me || me.left_game || d.room.status !== 'playing') return;
+  const last = me.last_seen ? new Date(me.last_seen).getTime() : 0;
+  if (Date.now() - last < 20_000) return;
+  const now = new Date().toISOString();
+  const res = await db().from('players').update({ last_seen: now }).eq('id', playerId);
+  if (res.error && !/last_seen/.test(res.error.message)) console.error('[api] seen', res.error.message);
+  me.last_seen = now;
+}
+
+/**
  * 오늘(day)·진행 중인 방만 갱신. day_deadline 컬럼이 아직 없으면(005 마이그레이션 전) 그 값만 빼고 다시 시도.
  * 바뀐 행 수를 돌려줌
  */
@@ -224,7 +270,19 @@ async function ensureDeadline(d: GameData): Promise<boolean> {
 /** 예약 주문 결과 저장 — 주문마다 '아직 open 인 것만' 바꿔서 두 번 체결되지 않게. 체결 시각은 가격이 닿은 칸의 시각 */
 async function applyOrders(d: GameData, results: ReturnType<typeof resolveOrders>): Promise<number> {
   let changed = 0;
+  const bumped = new Set<string>();
   for (const r of results) {
+    // 체결로 현금이 바뀌는 사람은 버전을 올려 둠 → 같은 순간의 직접 거래와 겹치면 한쪽만 성공 (현금이 마이너스 되지 않게)
+    if (r.trade && !bumped.has(r.trade.player_id)) {
+      try {
+        await bumpPlayer(d, r.trade.player_id);
+        const pl = d.players.find((x) => x.id === r.trade!.player_id);
+        if (pl) pl.version += 1;
+        bumped.add(r.trade.player_id);
+      } catch {
+        continue; // 다음 요청 때 새 데이터로 다시 판단
+      }
+    }
     const upd = must(
       await db().from('orders').update({ status: r.status, fill_price: r.trade?.price ?? null }).eq('id', r.id).eq('status', 'open').select('id'),
       'order status',
@@ -344,10 +402,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (room.is_private && !mine) {
         const key = uid + ':' + room.id;
         pwGuard(key);
+        await roomPwGuard(room.id);
         const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', room.id).maybeSingle(), 'pw') as { password_hash: string | null } | null;
         const pw = typeof b.password === 'string' ? b.password.slice(0, 40) : '';
         if (!checkPassword(pw, secret?.password_hash ?? null)) {
           pwFail(key);
+          await roomPwFail(room.id);
           throw new GameError('비밀번호가 맞지 않아요.', 403);
         }
       }
@@ -356,7 +416,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
     case 'resume': {
       const rows = must(
-        await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status)').eq('user_id', uid).neq('rooms.status', 'finished').order('created_at', { ascending: false }).limit(1),
+        await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status)').eq('user_id', uid).eq('left_game', false).neq('rooms.status', 'finished').order('created_at', { ascending: false }).limit(1),
         'resume',
       ) as unknown as { id: string; nickname: string; mode: string; rooms: { id: string; code: string; status: string } }[];
       const r = rows[0];
@@ -377,6 +437,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'state': {
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
       let d = await loadGame(roomId);
+      await seen(d, playerId);
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
@@ -392,15 +453,58 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (room.status !== 'waiting') throw new GameError('이미 시작한 방이에요.', 409);
       }
       must(await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId), action);
+      if (action === 'ready') await touchRoom(roomId);
       return { ok: true };
     }
 
     case 'leave': {
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
       const room = must(await sb.from('rooms').select('status, host_id').eq('id', roomId).single(), 'room') as { status: string; host_id: string };
-      if (room.status !== 'waiting') return { ok: true }; // 진행 중인 게임은 기록 보존
-      if (room.host_id === playerId) must(await sb.from('rooms').delete().eq('id', roomId), 'delete room');
-      else must(await sb.from('players').delete().eq('id', playerId), 'leave');
+      if (room.status === 'playing') {
+        // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
+        const d = await loadGame(roomId);
+        const patch = validateLeave(d, playerId);
+        const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
+        if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
+        else must(res, 'leave');
+        const fresh = await loadGame(roomId);
+        if (!(await maybeAdvance(fresh))) {
+          const grace = graceDeadline(fresh, Date.now());
+          if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
+        }
+        await touchRoom(roomId);
+        return { ok: true };
+      }
+      if (room.status !== 'waiting') return { ok: true }; // 끝난 게임은 기록 보존
+      if (room.host_id === playerId) {
+        // 방장이 나가면 먼저 들어온 다음 사람에게 방장을 넘김 (아무도 없으면 방 삭제)
+        const others = must(await sb.from('players').select('id').eq('room_id', roomId).neq('id', playerId).order('created_at').limit(1), 'others') as { id: string }[];
+        if (!others.length) {
+          must(await sb.from('rooms').delete().eq('id', roomId), 'delete room');
+          return { ok: true };
+        }
+        must(await sb.from('players').delete().eq('id', playerId), 'leave');
+        must(await sb.from('players').update({ ready: true }).eq('id', others[0].id), 'new host ready');
+        must(await sb.from('rooms').update({ host_id: others[0].id }).eq('id', roomId), 'new host');
+        await touchRoom(roomId);
+        return { ok: true };
+      }
+      must(await sb.from('players').delete().eq('id', playerId), 'leave');
+      await touchRoom(roomId);
+      return { ok: true };
+    }
+
+    case 'kick': {
+      // 대기실에서 방장이 다른 사람을 내보냄 (준비 안 하고 자리만 차지하는 경우)
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const room = must(await sb.from('rooms').select('status, host_id').eq('id', roomId).single(), 'room') as { status: string; host_id: string };
+      if (room.host_id !== playerId) throw new GameError('방장만 내보낼 수 있어요.', 403);
+      if (room.status !== 'waiting') throw new GameError('게임이 시작된 뒤에는 내보낼 수 없어요.', 409);
+      const target = typeof b.target === 'string' ? b.target : '';
+      if (!/^[0-9a-f-]{36}$/i.test(target) || target === playerId) throw new GameError('내보낼 사람을 골라 주세요.');
+      const del = must(await sb.from('players').delete().eq('id', target).eq('room_id', roomId).select('id'), 'kick') as unknown[];
+      if (!del.length) throw new GameError('이미 나간 사람이에요.', 404);
+      await touchRoom(roomId);
       return { ok: true };
     }
 
@@ -466,6 +570,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const grace = graceDeadline(fresh, Date.now());
         if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
       }
+      await touchRoom(roomId);
       return { ok: true };
     }
 
@@ -478,6 +583,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const fresh = await loadGame(roomId);
       const back = restoreDeadline(fresh);
       if (back !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(back) }, 'restore');
+      await touchRoom(roomId);
       return { ok: true };
     }
 
@@ -496,7 +602,9 @@ export async function handle(body: unknown, token: string | null): Promise<ApiRe
     if (!body || typeof body !== 'object' || Array.isArray(body)) return { status: 400, body: { error: '잘못된 요청이에요.' } };
     const b = body as Body;
     const action = typeof b.action === 'string' ? b.action : '';
-    rateLimit(uid, action === 'state' ? 60 : 40, 20_000);
+    // 화면 갱신과 행동(거래·마감 등)은 따로 셈 → 붐비는 방에서도 갱신 때문에 거래가 막히지 않게
+    if (action === 'state') rateLimit(uid + ':state', 60, 20_000);
+    else rateLimit(uid + ':act', 40, 20_000);
     const result = await act(action, b, uid);
     return { status: 200, body: result };
   } catch (e) {

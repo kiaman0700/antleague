@@ -192,25 +192,31 @@ if (run('cards')) {
     for (let s = 0; s < n; s++) baseGames.push(playGame(SEED0 + 9000 + s, 20, Array.from({ length: P }, (_, i) => base('b' + i))));
     baseBy[P] = baseGames;
     for (const kind of kinds) {
-      const gain: number[] = [];
-      const dmg: number[] = [];
+      let gain = 0;
+      let dmg = 0;
+      let spend = 0;
+      let uses = 0;
+      let bad = 0;
       let winB = 0;
       let winV = 0;
+      const spent = (g: GameLog) => g.buys.filter((x) => x.pid === 'p0').reduce((t, x) => t + x.cost, 0);
+      const used = (g: GameLog) => g.uses.filter((x) => x.pid === 'p0' && x.kind === kind).length;
       for (let s = 0; s < n; s++) {
         const b = baseGames[s];
         const v = playGame(SEED0 + 9000 + s, 20, [newsBot({ name: 'x', news: { verdict: true, skipRecap: true, rumorW: 0.4 }, useInfo: true, plan: { kind, days, target: 'leader' } }), ...Array.from({ length: P - 1 }, (_, i) => base('b' + (i + 1)))]);
-        gain.push(v.final.p0 - b.final.p0);
+        gain += v.final.p0 - b.final.p0;
+        spend += spent(v) - spent(b);
+        uses += used(v) - used(b);
+        bad += v.effects.filter((e) => e.from === 'p0' && e.kind === kind && (e.blocked || e.reflected)).length;
         // 공격 대상이 된 사람들의 손해 합
-        let d = 0;
-        for (const id of b.ids.slice(1)) d += b.final[id] - v.final[id];
-        dmg.push(d);
+        for (const id of b.ids.slice(1)) dmg += b.final[id] - v.final[id];
         winB += b.winShare.p0;
         winV += v.winShare.p0;
       }
-      const cost = 2 * ITEM_MAP[kind].cost;
-      rows.push([`${ITEM_MAP[kind].name} (${man(ITEM_MAP[kind].cost)})`, man(mean(gain)), man(mean(gain) + cost), man(mean(dmg)), `${pct(winB / n)} → ${pct(winV / n)}`]);
+      const u = Math.max(1, uses);
+      rows.push([`${ITEM_MAP[kind].name} (${man(ITEM_MAP[kind].cost)})`, (uses / n).toFixed(2), man(gain / u), man((gain + spend) / u), man(dmg / u), ITEM_MAP[kind].type === 'attack' ? pct(bad / u) : '-', `${pct(winB / n)} → ${pct(winV / n)}`]);
     }
-    table(['카드 (1장 값)', '쓴 사람 순이익(2장, 비용 포함)', '쓴 사람 총이익(비용 제외)', '상대들 손해 합', '쓴 사람 승률'], rows);
+    table(['카드 (1장 값)', '판당 추가 사용', '1장당 순이익(값 포함)', '1장당 총이익(값 빼고)', '1장당 상대들 손해', '막힘/반사', '쓴 사람 승률'], rows);
   }
 
   // 방해 카드는 상대 전략에 따라 효과가 다름

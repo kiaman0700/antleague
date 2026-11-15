@@ -13,7 +13,15 @@ export async function POST(request: Request): Promise<Response> {
   // 다른 사이트에서 사용자 브라우저를 이용해 요청하는 것(CSRF) 차단
   const origin = request.headers.get('origin');
   const host = request.headers.get('host');
-  if (origin && host && new URL(origin).host !== host) return json(403, { error: '허용되지 않은 요청이에요.' });
+  if (origin && host) {
+    let ok = false;
+    try {
+      ok = new URL(origin).host === host;
+    } catch {
+      ok = false; // 'null' 같은 이상한 Origin
+    }
+    if (!ok) return json(403, { error: '허용되지 않은 요청이에요.' });
+  }
   if (!(request.headers.get('content-type') ?? '').includes('application/json')) return json(415, { error: '잘못된 요청 형식이에요.' });
 
   const text = await request.text();

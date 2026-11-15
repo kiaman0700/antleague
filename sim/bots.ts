@@ -252,6 +252,31 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
   };
 }
 
+/* ---------------- 시가 갭 따라가기 (뉴스 안 봄) ---------------- */
+
+/** 화면에 보이는 전일 종가와 오늘 시가만 보고, 가장 많이 갭 상승한 종목을 사서 장 마감 직전에 판다 */
+export const gapBot = (minGap = 0.015, picks = 3): Bot => ({
+  name: 'gap',
+  act: (c) => {
+    useBonus(c);
+    if (c.view.effectsToday.includes('freeze')) return;
+    if (c.isLast) return c.sellAll();
+    if (c.tick !== 0) return;
+    const fee = c.feeRate();
+    const gaps = STOCKS.map((s) => {
+      const bars = c.market.bars[s.symbol];
+      const prev = c.day === 0 ? c.market.base[s.symbol] : bars[c.day - 1].close;
+      return [s.symbol, bars[c.day].open / prev - 1] as const;
+    })
+      .filter(([, g]) => g >= minGap + 2 * fee)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, picks);
+    if (!gaps.length) return;
+    const per = (c.cash() * 0.98) / gaps.length;
+    for (const [sym] of gaps) c.buyCash(sym, per);
+  },
+});
+
 /* ---------------- 기본 원형 ---------------- */
 
 export const ARCHETYPES: Record<string, () => Bot> = {
@@ -259,6 +284,7 @@ export const ARCHETYPES: Record<string, () => Bot> = {
   hold: () => holdBot('KIDX', 'hold'),
   lev: () => holdBot('KLEV', 'lev'),
   random: randomBot,
+  gap: () => gapBot(),
   news: () => newsBot({ name: 'news', news: { verdict: false, skipRecap: false, rumorW: 1 } }),
   smart: () => newsBot({ name: 'smart', news: { verdict: true, skipRecap: true, rumorW: 0.4 }, useInfo: true, buyInfo: ['detector', 'paper', 'analyst'] }),
   aggro: () => newsBot({ name: 'aggro', news: { verdict: true, skipRecap: true, rumorW: 0.4 }, useInfo: true, attack: ['fee', 'freeze', 'blackout', 'fake'], useFreeAttacks: true }),

@@ -69,10 +69,35 @@ function botActs(d: GameData) {
 /** 새 하루의 마감 시각 (장 시작 3초 뒤부터 칸이 흐름) */
 const freshDeadline = (daySec: number, now: number) => now + (daySec + 3) * 1000;
 
+/** 연습 저장이 쓸 수 있는 모양인지 */
+export function validSave(v: unknown): v is SoloSave {
+  const d = (v as SoloSave | null)?.data;
+  const r = d?.room;
+  return (
+    !!r &&
+    typeof r.seed === 'number' &&
+    Number.isFinite(r.seed) &&
+    Number.isInteger(r.day) &&
+    Number.isInteger(r.total_days) &&
+    r.total_days > 0 &&
+    r.day >= 0 &&
+    r.day <= r.total_days &&
+    Array.isArray(d.players) &&
+    d.players.length > 0 &&
+    Array.isArray(d.trades) &&
+    Array.isArray(d.items)
+  );
+}
+
 export function loadSolo(): SoloSave | null {
   try {
     const s = localStorage.getItem(KEY);
     const v = s ? (JSON.parse(s) as SoloSave) : null;
+    // 모양이 깨진 저장은 버림 (계속 오류 화면이 뜨지 않게)
+    if (v && !validSave(v)) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
     if (v && !v.data.orders) v.data.orders = [];
     // 예전 연습 저장(시간 제한 없음)은 하루 3분 실시간으로 이어서
     if (v && v.data.room.status === 'playing' && (v.data.room.turn_seconds <= 0 || v.data.room.deadline == null)) {

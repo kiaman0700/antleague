@@ -41,6 +41,22 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             >
               화면 배치 초기화
             </button>
+            {location.pathname.startsWith('/practice') && (
+              <button
+                className="btn ghost"
+                onClick={() => {
+                  if (!window.confirm('연습 게임 저장을 지울까요? 되돌릴 수 없어요.')) return;
+                  try {
+                    localStorage.removeItem('stockduel.solo2');
+                  } catch {
+                    /* 무시 */
+                  }
+                  location.assign('/');
+                }}
+              >
+                연습 저장 지우기
+              </button>
+            )}
           </div>
         </div>
       </div>

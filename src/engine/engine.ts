@@ -48,6 +48,10 @@ export interface PlayerRow {
   ended_day: number;
   created_at: string;
   version: number;
+  /** 게임 중 나감(기권) — 007 마이그레이션 */
+  left_game?: boolean;
+  /** 마지막으로 화면을 받아 간 시각 (자리 비움 판단) — 서버만 */
+  last_seen?: string | null;
 }
 
 /** 지정가(예약) 주문 — 그날 장중 가격이 닿으면 지정한 가격에 체결, 못 닿으면 장 마감 때 만료 */
@@ -82,8 +86,12 @@ export interface PublicPlayer {
   mode: UiMode;
   ready: boolean;
   endedDay: number;
+  /** 나는 정확한 값, 상대는 10만원 단위(5초마다 바뀌는 정확한 값으로 보유 종목을 역산하지 못하게) */
   equity: number;
+  /** 상대는 어제까지의 거래 횟수만 (오늘 언제 거래했는지 드러나지 않게) */
   tradeCount: number;
+  /** on = 접속 중, away = 자리 비움(오래 응답 없음), left = 나감(기권) */
+  status: 'on' | 'away' | 'left';
 }
 
 export interface Notice {
@@ -275,8 +283,17 @@ function fakeNews(e: Effect, i: number): NewsEvent {
     tone,
     realTone: tone,
     related: relatedForCompany(s),
+    // 진짜 기업 기사처럼 가끔 [단독] 머리말 (진짜 기사의 비율과 비슷하게)
+    label: ((e.usedDay * 31 + i * 17 + sym.charCodeAt(0)) % 4 === 0 ? '단독' : undefined),
     fake: true,
   };
+}
+
+/** 짧은 해시 (시장 키에 비밀 정보 개수를 그대로 드러내지 않게) */
+function hashKey(str: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36);
 }
 
 /** 뉴스가 가짜인지 (표시 없는 가짜 기사·상대의 가짜 뉴스 카드·틀린 루머) */
@@ -383,7 +400,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private },
     serverNow: now,
     meId,
-    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0 })),
+    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
     market: null,
     live: null,
     marketKey: 'waiting',
@@ -409,13 +426,20 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
 
   base.players = players.map((p) => {
     const pf = portfolioOf(d, p.id);
-    return { ...base.players.find((x) => x.id === p.id)!, equity: Math.round(equityWith(pf, prices)), tradeCount: d.trades.filter((t) => t.player_id === p.id).length };
+    const exact = Math.round(equityWith(pf, prices));
+    const mine = p.id === meId || finished;
+    return {
+      ...base.players.find((x) => x.id === p.id)!,
+      equity: mine ? exact : Math.round(exact / 100_000) * 100_000,
+      tradeCount: d.trades.filter((t) => t.player_id === p.id && (mine || t.day < r.day)).length,
+    };
   });
   base.myTrades = d.trades.filter((t) => t.player_id === meId);
   base.myOrders = d.orders.filter((o) => o.player_id === meId);
   base.myItemRows = d.items.filter((r) => r.player_id === meId);
   base.myItems = mine;
-  base.effectsToday = finished ? [] : activeEffects(items, meId, r.day).map((e) => e.kind);
+  // 가짜 뉴스는 받은 사람에게도 비밀 → 효과 목록에서 뺌
+  base.effectsToday = finished ? [] : activeEffects(items, meId, r.day).map((e) => e.kind).filter((k) => k !== 'fake');
 
   // 알림: 나를 노린 방해(가짜 뉴스는 비밀), 방패로 막은 것, 내 공격이 막힌 것
   const nick = (id: string) => players.find((p) => p.id === id)?.nickname ?? '상대';
@@ -481,7 +505,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   base.reveals.blackout = blackout;
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   const releasedNow = open ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
-  const marketKey = `${r.status}:${r.day}:${rumorCheck ? 1 : 0}:${fakes.length}:${blackout ? 1 : 0}:${releasedNow}`;
+  // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
+  const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${r.seed}|${meId}|${rumorCheck ? 1 : 0}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
   if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n });
   if (open) {
@@ -581,7 +606,22 @@ export function validateEndTurn(d: GameData, meId: string, now: number) {
   return { playerId: me.id, day: d.room.day };
 }
 
-const endedCount = (d: GameData) => d.players.filter((p) => p.ended_day >= d.room.day).length;
+/** 이 시간 넘게 화면을 받아 가지 않으면 '자리 비움' — 남은 사람들이 그 사람을 기다리지 않음 */
+export const AWAY_MS = 90_000;
+/** 지금 게임에 참여 중인지 (나가지 않았고 최근에 접속). 기록이 없으면(예전 데이터) 참여 중으로 봄 */
+export function isActive(p: PlayerRow, now: number): boolean {
+  if (p.left_game) return false;
+  if (!p.last_seen) return true;
+  return now - new Date(p.last_seen).getTime() < AWAY_MS;
+}
+const activePlayers = (d: GameData, now: number) => d.players.filter((p) => isActive(p, now));
+const endedCount = (d: GameData, now: number) => activePlayers(d, now).filter((p) => p.ended_day >= d.room.day).length;
+
+/** 게임 중 나가기 = 기권: 남은 날 모두 마감한 것으로 (기록과 순위에는 그대로 남음) */
+export function validateLeave(d: GameData, meId: string): { left_game: true; ended_day: number } {
+  if (!d.players.some((p) => p.id === meId)) throw new GameError('이 방의 플레이어가 아니에요.', 403);
+  return { left_game: true, ended_day: d.room.total_days };
+}
 
 /**
  * 마감 인원이 기준(graceRule)에 닿으면 카운트다운 마감 시각을 돌려준다.
@@ -590,9 +630,10 @@ const endedCount = (d: GameData) => d.players.filter((p) => p.ended_day >= d.roo
 export function graceDeadline(d: GameData, now: number): number | null {
   const r = d.room;
   if (r.status !== 'playing') return null;
-  const ended = endedCount(d);
-  const rule = graceRule(d.players.length);
-  if (ended === d.players.length || ended < rule.need) return null;
+  const active = activePlayers(d, now).length;
+  const ended = endedCount(d, now);
+  const rule = graceRule(active);
+  if (active === 0 || ended === active || ended < rule.need) return null;
   const target = now + rule.seconds * 1000;
   return r.deadline === null || target < r.deadline ? target : null;
 }
@@ -603,10 +644,10 @@ export function isCountdown(r: RoomRow) {
 }
 
 /** 마감 취소로 기준 아래가 됐으면 원래 마감 시각을 돌려준다 (되돌릴 필요 없으면 null) */
-export function restoreDeadline(d: GameData): number | null {
+export function restoreDeadline(d: GameData, now = Date.now()): number | null {
   const r = d.room;
   if (r.status !== 'playing' || !isCountdown(r)) return null;
-  return endedCount(d) < graceRule(d.players.length).need ? r.day_deadline! : null;
+  return endedCount(d, now) < graceRule(activePlayers(d, now).length).need ? r.day_deadline! : null;
 }
 
 /** 장 마감 취소 — 다음 날로 넘어가기 전이면 언제든. 시간이 이미 다 됐으면 불가 */
@@ -624,7 +665,9 @@ export function validateCancelEnd(d: GameData, meId: string, now: number) {
 export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | 'status' | 'deadline' | 'day_deadline'> | null {
   const r = d.room;
   if (r.status !== 'playing') return null;
-  const allEnded = d.players.length > 0 && d.players.every((p) => p.ended_day >= r.day);
+  // 참여 중인 사람(나감·자리 비움 제외)이 모두 마감하면 바로. 아무도 없으면 시간까지 기다림
+  const active = activePlayers(d, now);
+  const allEnded = active.length > 0 && active.every((p) => p.ended_day >= r.day);
   const timeUp = r.deadline !== null && now >= r.deadline;
   if (!allEnded && !timeUp) return null;
   const day = r.day + 1;

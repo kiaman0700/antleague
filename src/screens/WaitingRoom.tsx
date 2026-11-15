@@ -27,6 +27,20 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     }
   }, [view, roomId, playerId, nickname, ui, onStart]);
 
+  // 방장이 내보냈거나 방이 사라졌으면 멈춘 화면 대신 바로 안내
+  const gone = !!error && /참가하지 않았어요|찾을 수 없어요|잘못된 방/.test(error);
+  if (gone) {
+    return (
+      <div className="center-msg">
+        <Icon name="door" size={28} />
+        <p>방에서 나오게 됐어요</p>
+        <p className="muted small">방장이 방을 닫았거나 나를 내보냈어요. 다른 방을 찾아보세요.</p>
+        <button className="btn primary" onClick={onLeave}>
+          로비로
+        </button>
+      </div>
+    );
+  }
   if (!view) {
     return (
       <div className="center-msg">
@@ -117,6 +131,16 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
               </b>
               <small>{host ? <><Icon name="crown" size={12} /> 방장</> : p.ready ? <><Icon name="check" size={12} /> 준비 완료</> : '대기 중'}</small>
               <small className="muted">{p.mode === 'easy' ? '초보 모드' : '일반 모드'}</small>
+              {isHost && p.id !== playerId && (
+                <button
+                  className="slot-kick"
+                  onClick={() => window.confirm(`${p.nickname} 님을 내보낼까요?`) && run(() => api('kick', { roomId, target: p.id }))}
+                  aria-label={`${p.nickname} 내보내기`}
+                  title="내보내기"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              )}
             </div>
           );
         })}

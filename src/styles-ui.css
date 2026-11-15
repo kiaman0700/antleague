@@ -1687,3 +1687,82 @@ button.tag:hover,
 .desk .hud-macro > * {
   flex: 0 0 auto;
 }
+
+/* ============ 연결 상태 · 나가기 · 자리 비움 ============ */
+.net-banner {
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 96;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #3a2a12;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: calc(100vw - 24px);
+  box-shadow: var(--shadow);
+}
+.exit-ask {
+  display: grid;
+  gap: 10px;
+}
+.exit-ask .btn {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  text-align: left;
+  padding: 12px 14px;
+  height: auto;
+}
+.exit-ask .btn small {
+  grid-column: 2;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: normal;
+  line-height: 1.4;
+}
+.btn.danger {
+  border-color: rgba(240, 68, 82, 0.55);
+  color: #ff9aa5;
+}
+.btn.danger:hover {
+  background: rgba(240, 68, 82, 0.12);
+}
+.rs.gone {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.es-p.gone {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.slot {
+  position: relative;
+}
+.slot-kick {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+}
+.slot-kick:hover {
+  border-color: rgba(240, 68, 82, 0.5);
+  color: #ff9aa5;
+}

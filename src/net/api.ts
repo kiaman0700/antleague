@@ -88,16 +88,23 @@ export function useLiveView(roomId: string | null): LiveView {
     keyRef.current = undefined;
     refresh();
     const poll = setInterval(refresh, 2500);
+    // 실시간 알림이 몰려도 한 번만 다시 받기 (0.3초 모아서)
+    let t: number | undefined;
+    const soon = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(refresh, 300);
+    };
     let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null;
     if (supabase) {
       channel = supabase
         .channel('room-' + roomId)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, () => refresh())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, () => refresh())
+        // 방(rooms) 변화만 구독: 마감·준비·입장·나감 같은 공개된 변화. 상대의 거래·카드 시점은 알 수 없게 players 는 구독하지 않음
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, soon)
         .subscribe();
     }
     return () => {
       clearInterval(poll);
+      window.clearTimeout(t);
       if (channel && supabase) supabase.removeChannel(channel);
     };
   }, [roomId, refresh]);

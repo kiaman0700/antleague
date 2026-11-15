@@ -145,6 +145,18 @@ export function GameController({ session, onExit }: Props) {
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
+  const [exitAsk, setExitAsk] = useState(false);
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
   const [tutorial, setTutorial] = useState(() => !session.demo && !session.tutorial && session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
@@ -419,6 +431,8 @@ export function GameController({ session, onExit }: Props) {
     setTimeout(() => setBubbles((b) => b.filter((x) => x.id !== r.id)), 3500);
   };
   const sendReaction = useReactions(solo ? null : session.roomId, me, (r) => {
+    // 이 방 참가자가 보낸 것만 (방 ID 만 아는 외부인·다른 사람 사칭 무시)
+    if (!view?.players.some((p) => p.id === r.from)) return;
     play('react');
     pushBubble(r);
   });
@@ -673,6 +687,34 @@ export function GameController({ session, onExit }: Props) {
   };
   const overlays = (
     <>
+      {/* 연결이 끊기면 바로 알림 (가격이 멈춘 걸 모르고 기다리지 않게) */}
+      {session.mode === 'multi' && (!online || error) && (
+        <div className="net-banner" role="alert">
+          <Icon name="warn" size={14} /> {online ? '연결이 불안정해요 · 다시 연결하는 중…' : '인터넷이 끊겼어요 · 연결되면 자동으로 이어져요'}
+        </div>
+      )}
+      {exitAsk && (
+        <Sheet title="게임에서 나갈까요?" onClose={() => setExitAsk(false)}>
+          <div className="exit-ask">
+            <button className="btn full" onClick={() => (setExitAsk(false), onExit())}>
+              <Icon name="back" size={16} /> 잠깐 로비로
+              <small>게임은 계속 진행돼요. 홈의 '이어하기'로 다시 들어올 수 있어요</small>
+            </button>
+            <button
+              className="btn full danger"
+              onClick={() => {
+                setExitAsk(false);
+                api('leave', { roomId: session.roomId })
+                  .catch(() => {})
+                  .finally(onExit);
+              }}
+            >
+              <Icon name="door" size={16} /> 기권하고 나가기
+              <small>지금 재산으로 순위에 남고, 남은 사람들은 더 이상 나를 기다리지 않아요. 다시 들어올 수 없어요</small>
+            </button>
+          </div>
+        </Sheet>
+      )}
       <ToastSpot
         toast={toast}
         editing={editing}
@@ -768,7 +810,7 @@ export function GameController({ session, onExit }: Props) {
       >
         <Icon name={muted ? 'mute' : 'sound'} size={18} />
       </button>
-      <button className="icon-btn" onClick={onExit} aria-label="로비로" title="로비로">
+      <button className="icon-btn" onClick={() => (session.mode === 'multi' && room?.status === 'playing' ? setExitAsk(true) : onExit())} aria-label="로비로" title="로비로">
         <Icon name="exit" size={18} />
       </button>
     </>

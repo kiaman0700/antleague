@@ -82,15 +82,18 @@ describe('화면 데이터: 지금 칸까지만', () => {
     }
     expect(checked).toBe(5);
   });
-  it('상대 재산도 지금 가격으로 계산', () => {
+  it('상대 재산은 지금 가격 기준이지만 10만원 단위로만 (칸마다 역산 불가), 내 재산은 정확히', () => {
     const d = game();
     d.trades.push({ player_id: 'b', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
+    d.trades.push({ player_id: 'a', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
     const v0 = buildView(d, 'a', at(0));
     const v1 = buildView(d, 'a', at(30));
     const m = generateMarket(SEED, 20);
     const t = dayTicks(m, 'NEOT', 2, N);
-    const eq = (v: typeof v0) => v.players.find((p) => p.id === 'b')!.equity;
-    expect(eq(v1) - eq(v0)).toBe(100 * (t[30] - t[0]));
+    const eq = (v: typeof v0, id: string) => v.players.find((p) => p.id === id)!.equity;
+    expect(eq(v1, 'a') - eq(v0, 'a')).toBe(100 * (t[30] - t[0]));
+    expect(eq(v0, 'b') % 100_000 === 0 && eq(v1, 'b') % 100_000 === 0).toBe(true);
+    expect(Math.abs(eq(v1, 'b') - (eq(v1, 'a')))).toBeLessThanOrEqual(50_000);
   });
 });
 
