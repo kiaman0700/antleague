@@ -216,7 +216,7 @@ export function MarketTicker({ market, day, closed, pins, onOpen }: { market: Ma
         const t = byKey[k];
         const flat = t.ch === null || Math.abs(t.ch) < 1e-9;
         return (
-          <span key={i} className={'tk' + (sl.pinned ? ' pinned' : '')}>
+          <span key={i} className={'tk' + (sl.pinned ? ' tk-pinned' : '')}>
             {sl.pinned ? (
               <i className="tk-pin" aria-label="고정됨">📌</i>
             ) : (
@@ -245,7 +245,7 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
       {marketTiles(market, day, closed).map((t) => {
         const on = pins.includes(t.key);
         return (
-          <div key={t.key} className={'mtile' + (on ? ' pinned' : '')}>
+          <div key={t.key} className={'mtile' + (on ? ' mtile-pinned' : '')}>
             <div className="mt-top">
               <small>
                 <Term k={t.term}>{t.label}</Term>

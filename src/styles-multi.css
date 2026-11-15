@@ -395,7 +395,7 @@
     transform: translateY(5px);
   }
 }
-.tk.pinned {
+.tk.tk-pinned {
   background: linear-gradient(160deg, rgba(247, 197, 72, 0.1), var(--surface) 70%);
   border-color: rgba(247, 197, 72, 0.28);
 }
@@ -574,7 +574,7 @@
 }
 
 /* 시장 시트: 고정 버튼 */
-.mtile.pinned {
+.mtile.mtile-pinned {
   border-color: rgba(247, 197, 72, 0.55);
 }
 .mt-top {
