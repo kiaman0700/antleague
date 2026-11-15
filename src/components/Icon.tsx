@@ -178,7 +178,7 @@ const SECTOR_ICONS: Record<string, LucideIcon> = {
 };
 export function SectorIcon({ id, size = 14 }: { id: string; size?: number }) {
   const C = SECTOR_ICONS[id] ?? Layers;
-  return <C size={size} strokeWidth={2} className="ico sector-ico" aria-hidden />;
+  return <C size={size} strokeWidth={2} className={'ico sector-ico s-' + id} aria-hidden />;
 }
 
 const CARD_ICONS: Record<string, LucideIcon> = {
