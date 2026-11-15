@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { FitText } from '../components/FitText';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
@@ -576,7 +577,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
                     <Icon name="lock" size={14} />
                   </span>
                 )}
-                {r.title}
+                <FitText>{r.title}</FitText>
               </b>
               <small>
                 방장 {r.host} · {r.totalDays}일 · 하루 {turnLabel(r.turnSeconds)}

@@ -24,6 +24,8 @@ export interface Layout {
   pcSide: { id: PcSide; on: boolean }[];
   /** PC 날짜 줄 보이기 */
   pcTimeline: boolean;
+  /** 속보·알림이 뜨는 위치 */
+  toastPos: 'top' | 'bottom';
 }
 export const DEFAULT_LAYOUT: Layout = {
   mTabs: ['list', 'detail', 'news', 'assets', 'cards'],
@@ -39,6 +41,7 @@ export const DEFAULT_LAYOUT: Layout = {
     { id: 'cards', on: true },
   ],
   pcTimeline: true,
+  toastPos: 'top',
 };
 
 export interface Prefs {

@@ -43,9 +43,10 @@ function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
   const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : session.demo ? makeDemo(session.nickname) : loadSolo()));
-  const [soloNow, setSoloNow] = useState(() => Date.now());
+  const [soloNow, setSoloNow] = useState(() => solo?.frozenAt ?? Date.now());
   useEffect(() => {
-    if (multi) return;
+    // 화면 편집용 가상 게임은 멈춘 장면 (시간·가격·날짜 고정)
+    if (multi || session.demo) return;
     const id = setInterval(() => {
       const t = Date.now();
       setSoloNow(t);
@@ -58,6 +59,7 @@ function useGameSource(session: Session) {
 
   const act = useCallback(
     async (action: string, payload: Record<string, unknown> = {}) => {
+      if (session.demo) throw new Error('화면 편집 중에는 거래·카드를 쓸 수 없어요');
       setBusy(true);
       try {
         if (multi) {
@@ -70,7 +72,7 @@ function useGameSource(session: Session) {
         setBusy(false);
       }
     },
-    [multi, session.roomId, live, solo],
+    [multi, session.roomId, session.demo, live, solo],
   );
 
   if (multi) return { view: live.view, market: live.market, offset: live.offset, error: live.error, act, busy };
@@ -129,7 +131,7 @@ export function GameController({ session, onExit }: Props) {
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
-  const [tutorial, setTutorial] = useState(() => session.ui === 'easy' && !tutorialSeen());
+  const [tutorial, setTutorial] = useState(() => !session.demo && session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
@@ -160,6 +162,7 @@ export function GameController({ session, onExit }: Props) {
   }, []);
 
   useEffect(() => {
+    if (session.demo) return; // 멈춘 장면
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, []);
@@ -253,6 +256,27 @@ export function GameController({ session, onExit }: Props) {
       play(n.text.includes('방패') ? 'blocked' : 'attack');
     }
   }, [view, showToast]);
+
+  // 새로 들어온 기사: 1분 동안 뉴스 창에서 강조 (처음 화면을 열 때 있던 건 제외)
+  const knownNews = useRef<Set<string> | null>(null);
+  const [freshNews, setFreshNews] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!market) return;
+    const keys = market.news.map((n) => n.day + ':' + n.headline);
+    if (knownNews.current === null) {
+      knownNews.current = new Set(keys);
+      return;
+    }
+    const added = keys.filter((k) => !knownNews.current!.has(k));
+    if (!added.length) return;
+    added.forEach((k) => knownNews.current!.add(k));
+    setFreshNews((m) => {
+      const next = new Map(m);
+      added.forEach((k) => next.set(k, Date.now()));
+      return next;
+    });
+  }, [market]);
+  const freshSet = useMemo(() => new Set([...freshNews].filter(([, t]) => now - t < 60_000).map(([k]) => k)), [freshNews, now]);
 
   // 장중 속보 알림 — 처음 화면을 열 때 이미 떠 있던 건 알리지 않음
   const seenBreaking = useRef<Set<string> | null>(null);
@@ -578,6 +602,7 @@ export function GameController({ session, onExit }: Props) {
   );
   const newsPanel = (
     <NewsPanel
+      fresh={freshSet}
       ui={ui}
       day={day}
       news={news}
@@ -616,7 +641,8 @@ export function GameController({ session, onExit }: Props) {
   );
   const overlays = (
     <>
-      {toast && <div className={'toast ' + toast.kind}>{toast.text}</div>}
+      {toast && <div className={'toast ' + toast.kind + (layout.toastPos === 'bottom' ? ' at-bottom' : '')}>{toast.text}</div>}
+      {editing && !toast && <div className={'toast warn sample' + (layout.toastPos === 'bottom' ? ' at-bottom' : '')}>속보·알림은 여기에 떠요</div>}
       {closing !== null && (
         <DayCloseOverlay
           market={m}
@@ -736,6 +762,13 @@ export function GameController({ session, onExit }: Props) {
             </select>
           </label>
         )}
+        <label className="eb-start">
+          속보 알림
+          <select value={layout.toastPos} onChange={(e) => setLayout({ toastPos: e.target.value as 'top' | 'bottom' })}>
+            <option value="top">위</option>
+            <option value="bottom">아래</option>
+          </select>
+        </label>
         <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
           <Icon name="settings" size={14} /> 옵션
         </button>

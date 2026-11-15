@@ -1,4 +1,5 @@
 import { useEffect as useEffectT, useState as useStateT } from 'react';
+import { FitText } from './FitText';
 import { CardIcon, Icon, type IconName } from './Icon';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
 import type { PublicPlayer } from '../engine/engine';
@@ -37,7 +38,9 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
         <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + (i === 0 ? ' lead' : '')}>
           <span className="rk">{rankBadge(i)}</span>
           <span className="rn">
-            <b>{r.nickname}</b>
+            <b>
+              <FitText>{r.nickname}</FitText>
+            </b>
             <small className={tone(r.equity / START_CASH - 1)}>
               {wonShort(r.equity)} · {pct(r.equity / START_CASH - 1, 1)}
             </small>
@@ -84,8 +87,10 @@ export function RankList({ rows }: { rows: RankRow[] }) {
           <span className="rk">{rankBadge(i)}</span>
           <span className="rn">
             <b>
-              {r.nickname}
-              {r.me && <em> (나)</em>}
+              <FitText>
+                {r.nickname}
+                {r.me && <em> (나)</em>}
+              </FitText>
             </b>
             <small>{r.ended ? <><Icon name="check" size={12} /> 장 마감</> : '고민 중…'}</small>
           </span>

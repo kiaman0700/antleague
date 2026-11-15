@@ -1,5 +1,6 @@
 /** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { FitText } from './FitText';
 import { CardIcon, Icon, type IconName } from './Icon';
 import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
@@ -175,8 +176,10 @@ export function CardTray({
             <div key={k} className={'tcard t-' + d.type} title={d.desc}>
               <span className="tc-emoji"><CardIcon kind={d.kind} size={18} /></span>
               <span className="tc-name">
-                {d.name}
-                {n > 1 && <em> ×{n}</em>}
+                <FitText>
+                  {d.name}
+                  {n > 1 && <em> ×{n}</em>}
+                </FitText>
               </span>
               {ITEM_MAP[k].passive ? (
                 <span className="tc-auto">자동</span>

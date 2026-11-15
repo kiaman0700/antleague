@@ -7,6 +7,7 @@ import { regionOf, riskOf, SECTOR_MAP, STOCK_SECTORS, STOCKS, type Region } from
 import { num, pct, tone, wonShort } from '../lib/format';
 import { Sparkline } from './Chart';
 import { reorderSubset, SlideChips } from './SlideChips';
+import { FitText } from './FitText';
 import { effective, setPrefs, usePrefs } from '../prefs';
 
 export interface BrowserFilter {
@@ -195,7 +196,9 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
             {holdings.map(({ sym, h, value, pl, r, s }) => (
               <button key={sym} className={'pin-row ' + tone(pl) + (sym === selected ? ' sel' : '')} onClick={() => onSelect(sym)}>
                 <span className="pin-name">
-                  <b>{s.name}</b>
+                  <b>
+                    <FitText>{s.name}</FitText>
+                  </b>
                   <small>
                     {num(h.qty)}주 · 평균 {s.currency === 'USD' ? '≈' : ''}
                     {num(Math.round(h.avgCost))}원
@@ -273,7 +276,9 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
       {editing && <p className="slide-hint">칩을 끌어서 순서를 바꿀 수 있어요</p>}
 
       <div className="sortbar">
-        <span className="muted">{rows.length}개</span>
+        <span className="muted">
+          {rows.length}개{newsSymbols.size > 0 && <span className="news-legend"> · <i /> 오늘 뉴스</span>}
+        </span>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">
           <option value="default">기본순</option>
           <option value="up">많이 오른 순</option>
@@ -296,7 +301,9 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
             <div key={s.symbol}>
               {showHeader && <div className="group-head">{groupLabel(s)}</div>}
               <div
-                className={'srow' + (s.symbol === selected ? ' sel' : '')}
+                className={'srow' + (s.symbol === selected ? ' sel' : '') + (newsSymbols.has(s.symbol) ? ' has-news' : '')}
+                // 오늘 이 종목 관련 뉴스가 있으면 줄 왼쪽에 노란 세로 줄 (글자 공간을 쓰지 않음)
+                title={newsSymbols.has(s.symbol) ? '오늘 이 종목 관련 뉴스가 있어요' : undefined}
                 onClick={() => onSelect(s.symbol)}
                 role="button"
                 tabIndex={0}
@@ -314,9 +321,8 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                 </button>
                 <div className="sname">
                   <b>
-                    {/* 이름만 줄임표로 줄이고, 뉴스 점은 항상 온전히 보이게 */}
-                    <span className="nm">{s.name}</span>
-                    {newsSymbols.has(s.symbol) && <i className="dot-news" title="오늘 이 종목 관련 뉴스가 있어요" aria-label="오늘 뉴스 있음" />}
+                    {/* 길면 옆으로 지나가며 끝까지 보여 줌 */}
+                    <FitText>{s.name}</FitText>
                   </b>
                   <small>
                     {usd !== null && <span className="flag">US · </span>}
@@ -325,7 +331,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                     {h && <span className="held"> · {num(h.qty)}주</span>}
                   </small>
                 </div>
-                <Sparkline values={series} up={(usd ?? krw) >= series[0]} />
+                <Sparkline values={series} up={(usd ?? krw) >= series[0]} width={44} />
                 <div className="sprice">
                   <b>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
                   <small className={tone(ch)}>{pct(ch)}</small>

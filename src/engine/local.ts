@@ -1,5 +1,5 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
-import { buildView, CURRENT_RULES_VERSION, dayClock, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
+import { buildView, CURRENT_RULES_VERSION, dayClock, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
 
 const KEY = 'stockduel.solo2';
 /** 혼자 연습 하루 길이 선택지(초) */
@@ -9,8 +9,10 @@ export const DEFAULT_SOLO_DAY = 180;
 export interface SoloSave {
   data: GameData;
   nickname: string;
-  /** 화면 편집용 가상 게임 — 저장하지 않음 */
+  /** 화면 편집용 가상 게임 — 저장하지 않음, 시간이 흐르지 않음 */
   demo?: boolean;
+  /** 멈춘 장면의 시각 */
+  frozenAt?: number;
 }
 
 /** 새 하루의 마감 시각 (장 시작 3초 뒤부터 칸이 흐름) */
@@ -44,10 +46,16 @@ export function saveSolo(s: SoloSave | null) {
 export function makeDemo(nickname: string): SoloSave {
   const s = newSolo(nickname || '나', 20, 300, false);
   const d = s.data;
-  d.room = { ...d.room, day: 4 };
+  // 멈춘 한 장면: 5일차 장 한가운데 (장중 차트가 절반쯤 그려진 상태)
+  const frozenAt = Date.now();
+  const dl = frozenAt + 150_000;
+  d.room = { ...d.room, day: 4, deadline: dl, day_deadline: dl };
+  // 예약 주문도 하나 보이게
+  const nanoOpen = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1).bars.NANO[4].open;
+  d.orders.push({ id: 'demo-o1', player_id: 'me', day: 4, symbol: 'NANO', side: 'buy', qty: 10, limit_price: Math.round((nanoOpen * 0.95) / 50) * 50, fee: 0.0015, status: 'open', created_at: new Date(frozenAt - 60_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 20, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 5, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
-  return { ...s, demo: true };
+  return { ...s, demo: true, frozenAt };
 }
 
 export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true): SoloSave {

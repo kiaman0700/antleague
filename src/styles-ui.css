@@ -796,3 +796,152 @@ button.tag:hover,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ============ 길면 옆으로 지나가는 글자 ============ */
+.fit-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ft-in {
+  display: inline-block;
+  white-space: nowrap;
+}
+.fit-text.sliding {
+  mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent);
+}
+.fit-text.sliding .ft-in {
+  animation: ft-slide var(--ft-t, 4s) ease-in-out infinite alternate;
+}
+@keyframes ft-slide {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(var(--ft-d, 0));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fit-text.sliding .ft-in {
+    animation: none;
+  }
+  .fit-text.sliding {
+    text-overflow: ellipsis;
+  }
+}
+
+/* 종목 줄: 이름 칸을 넓게 (미니 차트 44px, 가격 76px) */
+.srow {
+  grid-template-columns: 22px minmax(0, 1fr) 44px 76px;
+}
+@media (max-width: 1280px) {
+  .srow {
+    grid-template-columns: 22px minmax(0, 1fr) 76px;
+  }
+}
+.sname b {
+  display: block;
+}
+.sname small {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+/* 오늘 뉴스 있음 배지 (점 대신) */
+.news-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 5px;
+  margin-right: 4px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  color: #1a1300;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.news-tag .ico {
+  color: #1a1300;
+}
+.m-page .sname b {
+  font-size: 15px;
+}
+/* 지나가는 글자가 들어가는 곳은 칸 폭 안에서 */
+.rr-main b,
+.rank-chip .rn b,
+.rank-row .rn b,
+.tc-name,
+.pin-name b {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.rr-main b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============ 속보·알림 위치 ============ */
+.toast.at-bottom {
+  top: auto;
+  bottom: 24px;
+}
+.m-game ~ .toast.at-bottom,
+.m-game .toast.at-bottom {
+  bottom: calc(76px + env(safe-area-inset-bottom));
+}
+.toast.sample {
+  pointer-events: none;
+  opacity: 0.85;
+  border-style: dashed;
+  animation: none;
+}
+
+/* ============ 새 뉴스·속보 강조 (1분) ============ */
+.news-card.fresh {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 1px rgba(247, 197, 72, 0.35), 0 0 18px rgba(247, 197, 72, 0.18);
+  animation: fresh-in 0.5s ease-out;
+}
+@keyframes fresh-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0.4;
+  }
+}
+.new-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #1a1300;
+  background: var(--gold);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-card.fresh {
+    animation: none;
+  }
+}
+
+/* 오늘 뉴스 있는 종목: 줄 왼쪽 노란 세로 줄 (이름 칸을 차지하지 않음) */
+.srow.has-news {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.news-legend i {
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--gold);
+  vertical-align: -1px;
+}

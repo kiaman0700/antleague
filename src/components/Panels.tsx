@@ -24,6 +24,8 @@ interface NewsProps {
   change: (symbol: string) => number;
   onSelect: (symbol: string) => void;
   onSelectSector: (sector: string) => void;
+  /** 방금 새로 들어온 기사 (일+제목) — 강조 표시 */
+  fresh?: Set<string>;
 }
 
 const KIND_LABEL = { macro: '시장', sector: '업종', company: '기업' } as const;
@@ -53,7 +55,8 @@ function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change
   );
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh }: NewsProps) {
+  const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
   const today = news.filter((n) => n.day === day);
   const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
@@ -121,9 +124,11 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           <CardIcon kind="detector" size={15} /> 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
         </div>
       )}
-      {today.map((n, i) => (
-        <div key={i} className={'news-card ' + n.tone}>
+      {/* 새로 들어온 기사를 맨 위로 */}
+      {[...today].sort((a, b) => Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
+        <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '')}>
           <div className="news-meta">
+            {isFresh(n) && <span className="new-badge">NEW</span>}
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (
               <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>
