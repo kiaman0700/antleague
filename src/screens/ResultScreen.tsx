@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Chart } from '../components/Chart';
+import { LineChart } from '../components/Chart';
+import { deriveItems, ITEM_MAP, type ItemKind, type ItemRow } from '../game/items';
 import type { Market } from '../game/market';
-import { computePortfolio, equityHistory, START_CASH, Trade } from '../game/portfolio';
-import { STOCK_MAP } from '../game/stocks';
+import { computePortfolio, equityHistory, START_CASH, type Trade } from '../game/portfolio';
+import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { pct, tone, won, wonShort } from '../lib/format';
-import { fetchTrades, finishRoom, Player } from '../net/room';
+import { play } from '../lib/sound';
+import { fetchTrades, saveResult, type Player } from '../net/room';
 import type { Session } from '../session';
 
 interface Props {
@@ -12,14 +14,17 @@ interface Props {
   market: Market;
   myTrades: Trade[];
   players: Player[];
+  itemRows: ItemRow[];
   onExit: () => void;
 }
 
 const COLORS = ['var(--me)', 'var(--opp)'];
 
-export function ResultScreen({ session, market, myTrades, players, onExit }: Props) {
-  const [allTrades, setAllTrades] = useState<Trade[] | null>(session.mode === 'solo' ? myTrades : null);
+export function ResultScreen({ session, market, myTrades, players, itemRows, onExit }: Props) {
+  const solo = session.mode === 'solo';
+  const [allTrades, setAllTrades] = useState<Trade[] | null>(solo ? myTrades : null);
   const [err, setErr] = useState('');
+  const last = market.totalDays - 1;
 
   const load = () => {
     if (!session.roomId) return;
@@ -28,73 +33,65 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
       .then(setAllTrades)
       .catch((e) => setErr(String(e.message ?? e)));
   };
-
-  // 상대의 마지막 거래가 저장될 시간을 조금 기다렸다가 불러옴
   useEffect(() => {
-    if (session.mode !== 'multi') return;
-    const t = setTimeout(load, 1500);
+    if (solo) return;
+    const t = setTimeout(load, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const final = market.totalTicks;
-
   const results = useMemo(() => {
     if (!allTrades) return null;
-    const people =
-      session.mode === 'solo'
-        ? [{ id: session.playerId, nickname: session.nickname }]
-        : [...players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
+    const people = solo
+      ? [{ id: session.playerId, nickname: session.nickname }]
+      : [...players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
+    const items = deriveItems(session.seed, people.map((p) => p.id), itemRows, last, market.totalDays, solo);
     return people.map((p) => {
       const trades = allTrades.filter((t) => t.player_id === p.id);
-      const pf = computePortfolio(trades);
-      const hist = equityHistory(trades, market.prices, final);
-      const equity = hist[final];
-      // 게임 종료 시점 보유분은 종가에 판 것으로 보고 손익 계산
+      const spends = itemRows.filter((r) => r.player_id === p.id && r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost }));
+      const pf = computePortfolio(trades, spends);
+      const hist = equityHistory(trades, spends, market);
+      const equity = hist[hist.length - 1];
       const closed = [
         ...pf.closed,
         ...Object.entries(pf.holdings).map(([symbol, h]) => {
-          const pnl = h.qty * market.prices[symbol][final] - h.avgCost * h.qty;
-          return { symbol, tick: final, qty: h.qty, pnl, pnlPct: pnl / (h.avgCost * h.qty) };
+          const pnl = h.qty * market.bars[symbol][last].close - h.avgCost * h.qty;
+          return { symbol, day: last, qty: h.qty, pnl, pnlPct: pnl / (h.avgCost * h.qty) };
         }),
       ];
       const best = closed.reduce<(typeof closed)[number] | null>((a, c) => (!a || c.pnl > a.pnl ? c : a), null);
       const worst = closed.reduce<(typeof closed)[number] | null>((a, c) => (!a || c.pnl < a.pnl ? c : a), null);
-      return { id: p.id, nickname: p.nickname, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst };
+      const used = (Object.entries(items.players[p.id]?.used ?? {}) as [ItemKind, number][]).filter(([, n]) => n > 0);
+      const fakesReceived = items.effects.filter((e) => e.to === p.id && e.kind === 'fake' && !e.blocked).length;
+      return { id: p.id, nickname: p.nickname, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
-  }, [allTrades, players, session, market, final]);
+  }, [allTrades, players, session, market, itemRows, solo, last]);
 
   const winner =
-    results && results.length === 2
-      ? results[0].equity === results[1].equity
-        ? null
-        : results[0].equity > results[1].equity
-          ? results[0]
-          : results[1]
-      : null;
+    results && results.length === 2 ? (results[0].equity === results[1].equity ? null : results[0].equity > results[1].equity ? results[0] : results[1]) : null;
 
+  const saved = useMemo(() => ({ done: false }), []);
   useEffect(() => {
-    if (!results || session.mode !== 'multi' || results.length !== 2 || !session.roomId) return;
-    finishRoom(
+    if (!results || solo || results.length !== 2 || !session.roomId || saved.done) return;
+    saved.done = true;
+    saveResult(
       session.roomId,
       results.map((r) => ({ nickname: r.nickname, equity: Math.round(r.equity), ret: r.ret })),
       winner?.nickname ?? null,
     ).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [results]);
+    play(winner?.id === session.playerId ? 'win' : 'lose');
+  }, [results, solo, session, winner, saved]);
 
-  // 시장 전체 성적 (가장 많이 오른/내린 종목)
+  const indexRet = market.index[last].close / 2500 - 1;
   const stockRank = useMemo(
-    () =>
-      Object.entries(market.prices)
-        .map(([sym, p]) => ({ sym, r: p[final] / p[0] - 1 }))
-        .sort((a, b) => b.r - a.r),
-    [market, final],
+    () => STOCKS.map((s) => ({ s, r: market.bars[s.symbol][last].close / market.base[s.symbol] - 1 })).sort((a, b) => b.r - a.r),
+    [market, last],
   );
 
   if (!results) {
     return (
       <div className="center-msg">
+        <div className="spinner" />
         <p>결과 집계 중…</p>
         {err && (
           <>
@@ -113,13 +110,15 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
 
   return (
     <div className="result">
-      <div className={'banner ' + (session.mode === 'solo' ? '' : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
-        {session.mode === 'solo' ? (
+      <div className={'banner ' + (solo ? (me.ret > indexRet ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
+        {solo ? (
           <>
+            <div className="crown">{me.ret > indexRet ? '🏆' : '📉'}</div>
             <h1>장 마감!</h1>
             <p>
-              최종 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b>
+              내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
             </p>
+            <p>{me.ret > indexRet ? '시장보다 잘했어요!' : '이번엔 시장이 이겼네요. 다시 도전!'}</p>
           </>
         ) : results.length < 2 ? (
           <h1>상대 기록을 불러오지 못했어요</h1>
@@ -127,7 +126,9 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
           <>
             <div className="crown">👑</div>
             <h1>{winner.nickname} 승리!</h1>
-            <p>{iWon ? '축하해요! 오늘의 투자왕' : '다음 판엔 꼭 이겨봐요'}</p>
+            <p>
+              {wonShort(Math.abs(results[0].equity - results[1].equity))} 차이 · {iWon ? '오늘의 투자왕!' : '다음 판엔 꼭 이겨봐요'}
+            </p>
           </>
         ) : (
           <h1>무승부!</h1>
@@ -136,9 +137,9 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
 
       <div className="score-cards">
         {results.map((r, i) => (
-          <div key={r.id} className={'card score' + (winner?.id === r.id ? ' champ' : '')} style={{ borderColor: COLORS[i] }}>
+          <div key={r.id} className={'panel score-card' + (winner?.id === r.id ? ' champ' : '')} style={{ borderTopColor: COLORS[i] }}>
             <small style={{ color: COLORS[i] }}>{r.nickname}</small>
-            <b>{won(r.equity)}</b>
+            <b className="big-num">{won(r.equity)}</b>
             <span className={tone(r.ret)}>{pct(r.ret)}</span>
             <dl>
               <dt>거래 횟수</dt>
@@ -147,7 +148,7 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
               <dd>
                 {r.best && r.best.pnl > 0 ? (
                   <>
-                    {STOCK_MAP[r.best.symbol].name} <span className="up">{wonShort(r.best.pnl)}</span>
+                    {STOCK_MAP[r.best.symbol].name} <span className="up">+{wonShort(r.best.pnl)}</span>
                   </>
                 ) : (
                   '-'
@@ -163,7 +164,21 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
                   '-'
                 )}
               </dd>
-              <dt>마감 보유</dt>
+              <dt>쓴 카드</dt>
+              <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].emoji}${n > 1 ? '×' + n : ''}`).join(' ') : '-'}</dd>
+              {r.pf.itemSpend > 0 && (
+                <>
+                  <dt>카드 구입비</dt>
+                  <dd>{wonShort(r.pf.itemSpend)}</dd>
+                </>
+              )}
+              {r.fakesReceived > 0 && (
+                <>
+                  <dt>받은 가짜 뉴스</dt>
+                  <dd>📢 {r.fakesReceived}개</dd>
+                </>
+              )}
+              <dt>마감 때 보유</dt>
               <dd>
                 {Object.keys(r.pf.holdings).length === 0
                   ? '전부 현금'
@@ -176,7 +191,7 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
         ))}
       </div>
 
-      <div className="card">
+      <div className="panel pad">
         <h3>자산 추이</h3>
         <div className="legend">
           {results.map((r, i) => (
@@ -185,22 +200,24 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
             </span>
           ))}
         </div>
-        <Chart
-          series={results.map((r, i) => ({ values: r.hist, color: COLORS[i] }))}
-          length={final}
-          height={240}
+        <LineChart
+          series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
+          totalDays={market.totalDays}
           refLine={{ value: START_CASH, label: '시작 1,000만원' }}
-          formatY={(v) => wonShort(v)}
+          fmt={(v) => wonShort(v)}
+          fill={false}
         />
       </div>
 
-      <div className="card">
-        <h3>이번 시장 종목 성적</h3>
+      <div className="panel pad">
+        <h3>
+          이번 시장 성적 <span className="muted small">종합지수 {pct(indexRet)}</span>
+        </h3>
         <div className="stock-rank">
-          {stockRank.map(({ sym, r }) => (
-            <div key={sym}>
+          {stockRank.map(({ s, r }) => (
+            <div key={s.symbol}>
               <span>
-                {STOCK_MAP[sym].emoji} {STOCK_MAP[sym].name}
+                {SECTOR_MAP[s.sector].emoji} {s.name}
               </span>
               <b className={tone(r)}>{pct(r, 1)}</b>
             </div>
@@ -208,9 +225,9 @@ export function ResultScreen({ session, market, myTrades, players, onExit }: Pro
         </div>
       </div>
 
-      <div className="actions center">
-        <button className="btn primary big" onClick={onExit}>
-          로비로 (한 판 더!)
+      <div className="center-actions">
+        <button className="btn primary xl" onClick={onExit}>
+          한 판 더!
         </button>
       </div>
     </div>
