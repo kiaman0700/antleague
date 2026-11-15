@@ -1,3 +1,4 @@
+import { useEffect as useEffectT, useState as useStateT } from 'react';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
 import type { PublicPlayer } from '../engine/engine';
 import { ITEM_MAP, type ItemKind } from '../game/items';
@@ -152,5 +153,135 @@ export function MarketGrid({ market, day, closed, compact = false }: { market: M
         </div>
       ))}
     </div>
+  );
+}
+
+/* ---------------- 모바일 상단 시장 티커: 그룹별로 돌아가며 보여주고, 고정한 건 그대로 ---------------- */
+
+
+const GROUPS: string[][] = [
+  ['kr', 'us'],
+  ['rate', 'usRate'],
+  ['fx', 'oil'],
+];
+const PIN_KEY = 'stockduel.pins';
+export const MAX_PINS = 3;
+
+export function loadPins(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(PIN_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, MAX_PINS) : [];
+  } catch {
+    return [];
+  }
+}
+export function savePins(p: string[]) {
+  try {
+    localStorage.setItem(PIN_KEY, JSON.stringify(p.slice(0, MAX_PINS)));
+  } catch {
+    /* 무시 */
+  }
+}
+
+export function MarketTicker({ market, day, closed, pins, onOpen }: { market: Market; day: number; closed: boolean; pins: string[]; onOpen: () => void }) {
+  const tiles = marketTiles(market, day, closed);
+  const byKey = Object.fromEntries(tiles.map((t) => [t.key, t]));
+  const [tick, setTick] = useStateT(0);
+  useEffectT(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 고정한 것 먼저, 남는 칸은 그룹별로 돌아가며
+  const slots: { keys: string[]; pinned: boolean }[] = pins.filter((k) => byKey[k]).map((k) => ({ keys: [k], pinned: true }));
+  for (const g of GROUPS) {
+    if (slots.length >= 3) break;
+    const rest = g.filter((k) => !pins.includes(k));
+    if (rest.length) slots.push({ keys: rest, pinned: false });
+  }
+
+  return (
+    <button className="ticker" onClick={onOpen} aria-label="오늘의 시장 자세히 보기">
+      {slots.map((sl, i) => {
+        const k = sl.keys[tick % sl.keys.length];
+        const t = byKey[k];
+        const flat = t.ch === null || Math.abs(t.ch) < 1e-9;
+        return (
+          <span key={i + k} className={'tk' + (sl.pinned ? ' pinned' : '')}>
+            <small>
+              {sl.pinned && '📌'}
+              {t.label}
+            </small>
+            <b>{t.value}</b>
+            <em className={flat ? 'flat' : tone(t.ch!)}>{flat ? '–' : t.chText}</em>
+          </span>
+        );
+      })}
+    </button>
+  );
+}
+
+/** 고정 버튼이 있는 시장 그리드 (시트용) */
+export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: { market: Market; day: number; closed: boolean; pins: string[]; onTogglePin: (k: string) => void }) {
+  return (
+    <div className="mgrid">
+      {marketTiles(market, day, closed).map((t) => {
+        const on = pins.includes(t.key);
+        return (
+          <div key={t.key} className={'mtile' + (on ? ' pinned' : '')}>
+            <div className="mt-top">
+              <small>
+                <Term k={t.term}>{t.label}</Term>
+              </small>
+              <button
+                className={'pin-btn' + (on ? ' on' : '')}
+                onClick={() => onTogglePin(t.key)}
+                disabled={!on && pins.length >= MAX_PINS}
+                aria-label={on ? '고정 해제' : '상단에 고정'}
+                title={on ? '고정 해제' : pins.length >= MAX_PINS ? `최대 ${MAX_PINS}개까지 고정` : '상단에 고정'}
+              >
+                📌
+              </button>
+            </div>
+            <b>{t.value}</b>
+            <span className={t.ch === null || Math.abs(t.ch) < 1e-9 ? 'flat' : tone(t.ch)}>{t.chText}</span>
+            <em>{t.hint}</em>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------- 일정 전용 띠 ---------------- */
+
+const EV_ICON2: Record<string, string> = { fomc: '💵', bok: '🏛️', earnings: '📊', expiry: '⚠️', dividend: '💰' };
+
+export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: number; onOpen: () => void }) {
+  // 같은 날 같은 종류는 하나로
+  const seen = new Set<string>();
+  const evs = market.events.filter((e) => {
+    if (e.day < day) return false;
+    const k = e.day + e.kind;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    // 이어지는 실적 발표 주간은 첫날만
+    if (e.kind === 'earnings' && e.day - 1 >= day && market.events.some((x) => x.kind === 'earnings' && x.day === e.day - 1)) return false;
+    return true;
+  });
+  return (
+    <button className="sched" onClick={onOpen} aria-label="일정 보기">
+      <span className="sched-ic">📅</span>
+      <span className="sched-track">
+        {evs.length === 0 && <span className="muted">남은 일정이 없어요</span>}
+        {evs.slice(0, 4).map((e, i) => (
+          <span key={i} className={'sched-ev' + (e.day === day ? ' today' : '')}>
+            <b>{e.day === day ? '오늘' : `D-${e.day - day}`}</b>
+            {EV_ICON2[e.kind]} {e.title.replace(/^\S+\s/, '').replace(/ \(\d\/3\)/, '')}
+          </span>
+        ))}
+      </span>
+      <i>›</i>
+    </button>
   );
 }

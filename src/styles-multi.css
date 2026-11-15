@@ -356,3 +356,162 @@
 .sheet-note {
   margin: 4px 2px 0;
 }
+
+/* ============ 모바일 상단: 시장 티커 · 날짜 박스 · 일정 띠 ============ */
+.m-top .m-row {
+  gap: 8px;
+}
+.ticker {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+}
+.tk {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 5px 8px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  animation: tk-in 0.35s ease-out;
+}
+@keyframes tk-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.tk.pinned {
+  border-color: rgba(247, 197, 72, 0.45);
+}
+.tk small {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tk b {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tk em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+}
+.m-score.with-day {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+.ms-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 10px;
+  line-height: 1.15;
+  min-width: 64px;
+}
+.ms-day b {
+  font-size: 18px;
+}
+.ms-day b span {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.ms-day em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.ms-day em.hurry {
+  color: var(--up);
+  animation: pulse 1s ease-in-out infinite;
+}
+.ms-day em.muted {
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 10px;
+}
+.sched {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  background: rgba(167, 139, 250, 0.08);
+  border-radius: 12px;
+  padding: 7px 10px;
+  text-align: left;
+  min-width: 0;
+}
+.sched-ic {
+  flex-shrink: 0;
+}
+.sched-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(90deg, #000 85%, transparent);
+  font-size: 12px;
+}
+.sched-ev {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+.sched-ev b {
+  color: #d6c9ff;
+  margin-right: 4px;
+}
+.sched-ev.today b {
+  color: var(--gold);
+}
+.sched > i {
+  font-style: normal;
+  color: var(--muted);
+}
+/* 시장 시트: 고정 버튼 */
+.mtile.pinned {
+  border-color: rgba(247, 197, 72, 0.55);
+}
+.mt-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pin-btn {
+  border: 0;
+  background: none;
+  font-size: 14px;
+  filter: grayscale(1);
+  opacity: 0.4;
+  padding: 2px 4px;
+  min-width: 32px;
+  min-height: 28px;
+}
+.pin-btn.on {
+  filter: none;
+  opacity: 1;
+}
+.pin-btn:disabled {
+  opacity: 0.15;
+}

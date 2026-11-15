@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MarketGrid, marketTiles, RankList, rankRows, RankStrip, TargetPicker } from '../components/Board';
+import { loadPins, MarketGrid, MarketGridPinnable, MarketTicker, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
@@ -102,6 +102,13 @@ export function GameController({ session, onExit }: Props) {
   const [menu, setMenu] = useState(false);
   const [rankSheet, setRankSheet] = useState(false);
   const [marketSheet, setMarketSheet] = useState(false);
+  const [pins, setPins] = useState<string[]>(loadPins);
+  const togglePin = (k: string) =>
+    setPins((p) => {
+      const next = p.includes(k) ? p.filter((x) => x !== k) : [...p, k].slice(0, 3);
+      savePins(next);
+      return next;
+    });
   const [targetPick, setTargetPick] = useState<ItemKind | null>(null);
   const [fakeTarget, setFakeTarget] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<null | 'assets' | 'cards'>(null);
@@ -607,25 +614,22 @@ export function GameController({ session, onExit }: Props) {
     return (
       <div className={'m-game ui-' + ui}>
         <header className="m-top">
+          {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
           <div className="m-row">
-            <div className="daypill">
-              <b>{day + 1}일차</b>
-              <span>/ {total}</span>
-            </div>
-            {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
-            <button className={'mkt-chip ' + tone(marketTiles(m, displayDay, displayClosed)[0].ch ?? 0)} onClick={() => setMarketSheet(true)} aria-label="시장 지표 보기">
-              📊 국내 {pct(marketTiles(m, displayDay, displayClosed)[0].ch ?? 0)}
-            </button>
-            {ev && (
-              <button className="ev-chip" onClick={() => setTab('news')}>
-                {dDay(ev.day, day)} {ev.title.replace(/ \(\d\/3\)/, '')}
-              </button>
-            )}
+            <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
             <button className="icon-btn m-menu" onClick={() => setMenu(true)} aria-label="메뉴">
               ⋯
             </button>
           </div>
-          <div className="m-score">
+          {/* ② 날짜 · 점수 · 장 마감 */}
+          <div className="m-score with-day">
+            <div className="ms-day">
+              <b>
+                {day + 1}
+                <span>/{total}일</span>
+              </b>
+              {timerText ? <em className={remaining! <= 10 ? 'hurry' : ''}>⏱ {timerText}</em> : <em className="muted">{solo ? '연습' : '시간 제한 없음'}</em>}
+            </div>
             <div className="ms-me">
               <small>나</small>
               <b>{wonShort(equity)}</b>
@@ -662,6 +666,9 @@ export function GameController({ session, onExit }: Props) {
               <div className="tug-mid" />
             </div>
           )}
+          {/* ③ 일정 전용 영역 */}
+          <ScheduleStrip market={m} day={day} onOpen={() => setTab('news')} />
+          {/* ④ 내 재산 */}
           <button className="m-asum" onClick={() => setTab('assets')} aria-label="내 재산 보기">
             <span>
               <small>현금</small>
@@ -778,8 +785,8 @@ export function GameController({ session, onExit }: Props) {
         </BottomSheet>
 
         <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="📊 오늘의 시장">
-          <MarketGrid market={m} day={displayDay} closed={displayClosed} />
-          <p className="muted small sheet-note">화살표는 어제와 비교한 변화예요. 아래 줄은 보통 어떤 업종에 영향을 주는지예요.</p>
+          <MarketGridPinnable market={m} day={displayDay} closed={displayClosed} pins={pins} onTogglePin={togglePin} />
+          <p className="muted small sheet-note">📌를 누르면 상단에 계속 고정돼요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
         </BottomSheet>
 
         <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="🏆 실시간 순위">
