@@ -861,7 +861,11 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       >
         <Icon name={muted ? 'mute' : 'sound'} size={18} />
       </button>
-      <button className="icon-btn" onClick={() => (session.mode === 'multi' && room?.status === 'playing' ? setExitAsk(true) : onExit())} aria-label="로비로" title="로비로">
+      <button className="icon-btn" onClick={() => {
+          setMenu(false);
+          if (session.mode === 'multi' && room?.status === 'playing') setExitAsk(true);
+          else onExit();
+        }} aria-label="로비로" title="로비로">
         <Icon name="exit" size={18} />
       </button>
     </>
