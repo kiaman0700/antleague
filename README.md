@@ -50,7 +50,9 @@ Vercel 프로젝트 → Settings → Environment Variables 에 위 3개를 등�
 ## 테스트
 
 ```bash
-npm test
+npm test                 # 단위 테스트
+npm run e2e              # 실제 서버 테스트 (npm run dev 실행 중일 때)
+BASE=https://배포주소 npm run e2e   # 배포본 테스트
 ```
 
 시장 생성 결정성, 업종 연동, 포트폴리오 계산, 그리고 보안 규칙(시드·미래가격 비노출, 서버 가격 체결, 잘못된 입력 거절)을 검증합니다.
