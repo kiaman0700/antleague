@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LineChart } from '../components/Chart';
 import { BADGE_MAP, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
-import type { View } from '../engine/engine';
+import { josa, type View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
 import { computePortfolio, equityHistory, START_CASH } from '../game/portfolio';
@@ -84,14 +84,14 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       let takeDay = -1;
       for (let d = 1; d < days; d++) if (leaderOn(d).id === champ.id && leaderOn(d - 1).id !== champ.id) takeDay = d;
       if (takeDay >= 0) {
-        out.push({ icon: '⚡', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${champ.nickname}이(가) 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
+        out.push({ icon: '⚡', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
       } else {
         let best = 0;
         let bd = 0;
         for (let d = 1; d < days; d++) if (gapOn(d) - gapOn(d - 1) > best) [best, bd] = [gapOn(d) - gapOn(d - 1), d];
-        out.push({ icon: '⚡', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${champ.nickname}이(가) 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
+        out.push({ icon: '⚡', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
-      out.push({ icon: '🔄', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${champ.nickname}이(가) 끝까지 1위였어요` });
+      out.push({ icon: '🔄', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
     }
     for (const r of results) {
       let best = 0;

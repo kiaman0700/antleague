@@ -101,3 +101,14 @@ describe('새 카드', () => {
     if (v.reveals.blackout) expect(v.market!.news.some((n) => n.day === 3)).toBe(false);
   });
 });
+
+describe('조사', () => {
+  it('받침에 따라 이/가, 을/를', async () => {
+    const { josa } = await import('./engine.js');
+    expect(josa('거래 정지', '이', '가')).toBe('거래 정지가');
+    expect(josa('🛡️ 방패', '을', '를')).toBe('🛡️ 방패를');
+    expect(josa('철수', '이', '가')).toBe('철수가');
+    expect(josa('민정', '이', '가')).toBe('민정이');
+    expect(josa('📵 정보 차단', '을', '를')).toBe('📵 정보 차단을');
+  });
+});

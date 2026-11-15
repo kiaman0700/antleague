@@ -122,6 +122,14 @@ export class GameError extends Error {
   }
 }
 
+/** 한국어 조사: 받침이 있으면 a(이/을), 없으면 b(가/를). 한글이 아니면 받침 없는 것으로 */
+export function josa(word: string, a: string, b: string) {
+  const ch = word.trim().slice(-1);
+  const code = ch.charCodeAt(0) - 0xac00;
+  const batchim = code >= 0 && code < 11172 && code % 28 !== 0;
+  return word + (batchim ? a : b);
+}
+
 /* ---------------- 입력 검증 ---------------- */
 
 export const DAY_CHOICES = [10, 20, 30];
@@ -318,14 +326,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
     const name = `${ITEM_MAP[e.kind].emoji} ${ITEM_MAP[e.kind].name}`;
     if (e.reflected) {
-      if (e.by === meId) base.notices.push({ key, text: `🪞 반사 거울이 ${nick(e.from)}의 ${name}을(를) 되돌려 보냈어요!`, kind: 'ok' });
-      else if (e.from === meId) base.notices.push({ key, text: `🪞 ${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${name}이(가) 나에게 돌아왔어요!`, kind: 'warn' });
+      if (e.by === meId) base.notices.push({ key, text: `🪞 반사 거울이 ${nick(e.from)}의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
+      else if (e.from === meId) base.notices.push({ key, text: `🪞 ${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${josa(name, '이', '가')} 나에게 돌아왔어요!`, kind: 'warn' });
       return;
     }
     if (e.to === meId) {
-      if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 ${nick(e.from)}의 ${name}을(를) 막았어요!`, kind: 'ok' });
-      else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ ${nick(e.from)}이(가) 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
-    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 🛡️ 방패에 ${name}이(가) 막혔어요`, kind: 'warn' });
+      if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 ${nick(e.from)}의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
+      else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ ${josa(nick(e.from), '이', '가')} 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
+    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 🛡️ 방패에 ${josa(name, '이', '가')} 막혔어요`, kind: 'warn' });
   });
 
   const todayInfo = finished ? [] : mine.infoUses.filter((u) => u.day === r.day).map((u) => u.kind);
