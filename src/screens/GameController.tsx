@@ -102,6 +102,8 @@ export function GameController({ session, onExit }: Props) {
   const [menu, setMenu] = useState(false);
   const [rankSheet, setRankSheet] = useState(false);
   const [marketSheet, setMarketSheet] = useState(false);
+  const [schedSheet, setSchedSheet] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [pins, setPins] = useState<string[]>(loadPins);
   const togglePin = (k: string) =>
     setPins((p) => {
@@ -331,6 +333,34 @@ export function GameController({ session, onExit }: Props) {
     saveUi(m);
     if (!solo) api('mode', { roomId: session.roomId, mode: m }).catch(() => {});
   };
+
+  // ---------- 모바일: 아래로 스크롤하면 상단을 접고, 위로 올리면 다시 펼침 ----------
+  useEffect(() => {
+    if (!mobile) return;
+    let last = window.scrollY;
+    let lockUntil = 0;
+    let collapsed = false;
+    const set = (v: boolean) => {
+      if (v === collapsed) return;
+      collapsed = v;
+      setHeaderCollapsed(v);
+      // 접히고 펴지면서 페이지 높이가 바뀌어 생기는 가짜 스크롤은 잠깐 무시
+      lockUntil = Date.now() + 400;
+    };
+    const on = () => {
+      const yy = window.scrollY;
+      if (Date.now() < lockUntil) {
+        last = yy;
+        return;
+      }
+      if (yy < 40) set(false);
+      else if (yy > last + 6) set(true);
+      else if (yy < last - 30) set(false);
+      if (Math.abs(yy - last) > 6 || yy < 40) last = yy;
+    };
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, [mobile]);
 
   // ---------- PC 단축키 ----------
   useEffect(() => {
@@ -613,14 +643,7 @@ export function GameController({ session, onExit }: Props) {
     const held = portfolio.holdings[selected]?.qty ?? 0;
     return (
       <div className={'m-game ui-' + ui}>
-        <header className="m-top">
-          {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
-          <div className="m-row">
-            <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
-            <button className="icon-btn m-menu" onClick={() => setMenu(true)} aria-label="메뉴">
-              ⋯
-            </button>
-          </div>
+        <header className={'m-top' + (headerCollapsed ? ' collapsed' : '')}>
           {/* ② 날짜 · 점수 · 장 마감 */}
           <div className="m-score with-day">
             <div className="ms-day">
@@ -666,8 +689,16 @@ export function GameController({ session, onExit }: Props) {
               <div className="tug-mid" />
             </div>
           )}
+          <div className="m-top-more">
+          {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
+          <div className="m-row">
+            <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
+            <button className="icon-btn m-menu" onClick={() => setMenu(true)} aria-label="메뉴">
+              ⋯
+            </button>
+          </div>
           {/* ③ 일정 전용 영역 */}
-          <ScheduleStrip market={m} day={day} onOpen={() => setTab('news')} />
+          <ScheduleStrip market={m} day={day} onOpen={() => setSchedSheet(true)} />
           {/* ④ 내 재산 */}
           <button className="m-asum" onClick={() => setTab('assets')} aria-label="내 재산 보기">
             <span>
@@ -699,6 +730,7 @@ export function GameController({ session, onExit }: Props) {
             )}
             <i>›</i>
           </button>
+          </div>
         </header>
 
         <main className={'m-page p-' + tab}>
@@ -706,7 +738,6 @@ export function GameController({ session, onExit }: Props) {
           {tab === 'detail' && detail}
           {tab === 'news' && (
             <>
-              <Timeline market={m} day={day} onSelect={selectStock} />
               <MarketGrid market={m} day={displayDay} closed={displayClosed} compact />
               {effectsOnMe.map((t, i) => (
                 <div key={i} className="effect-banner">
@@ -720,7 +751,6 @@ export function GameController({ session, onExit }: Props) {
           {tab === 'assets' && (
             <>
               {assets}
-              <Calendar market={m} day={day} onSelect={selectStock} compact />
             </>
           )}
           {tab === 'cards' && cards}
@@ -787,6 +817,10 @@ export function GameController({ session, onExit }: Props) {
         <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="📊 오늘의 시장">
           <MarketGridPinnable market={m} day={displayDay} closed={displayClosed} pins={pins} onTogglePin={togglePin} />
           <p className="muted small sheet-note">📌를 누르면 상단에 계속 고정돼요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
+        </BottomSheet>
+
+        <BottomSheet open={schedSheet} onClose={() => setSchedSheet(false)} title="📅 다가오는 일정">
+          <Calendar market={m} day={day} onSelect={(sym) => (setSchedSheet(false), selectStock(sym))} />
         </BottomSheet>
 
         <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="🏆 실시간 순위">

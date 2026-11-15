@@ -273,31 +273,39 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
 
 const EV_ICON2: Record<string, string> = { fomc: '💵', bok: '🏛️', earnings: '📊', expiry: '⚠️', dividend: '💰' };
 
+const EV_SHORT: Record<string, string> = { fomc: '미 연준 금리', bok: '한은 금통위', earnings: '실적 시즌', expiry: '옵션 만기', dividend: '배당 기준일' };
+
+/** 모바일 상단 일정 영역: 짧은 칩을 가로로 넘겨 보고, 누르면 전체 일정 */
 export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: number; onOpen: () => void }) {
-  // 같은 날 같은 종류는 하나로
   const seen = new Set<string>();
   const evs = market.events.filter((e) => {
     if (e.day < day) return false;
     const k = e.day + e.kind;
     if (seen.has(k)) return false;
     seen.add(k);
-    // 이어지는 실적 발표 주간은 첫날만
+    // 이어지는 실적 발표 주간은 첫날만 (진행 중이면 오늘로)
     if (e.kind === 'earnings' && e.day - 1 >= day && market.events.some((x) => x.kind === 'earnings' && x.day === e.day - 1)) return false;
     return true;
   });
   return (
-    <button className="sched" onClick={onOpen} aria-label="일정 보기">
-      <span className="sched-ic">📅</span>
-      <span className="sched-track">
-        {evs.length === 0 && <span className="muted">남은 일정이 없어요</span>}
-        {evs.slice(0, 4).map((e, i) => (
-          <span key={i} className={'sched-ev' + (e.day === day ? ' today' : '')}>
-            <b>{e.day === day ? '오늘' : `D-${e.day - day}`}</b>
-            {EV_ICON2[e.kind]} {e.title.replace(/^\S+\s/, '').replace(/ \(\d\/3\)/, '')}
-          </span>
-        ))}
-      </span>
-      <i>›</i>
-    </button>
+    <div className="sched" role="list" aria-label="다가오는 일정">
+      {evs.length === 0 && <span className="sched-none">📅 남은 일정이 없어요</span>}
+      {evs.map((e, i) => {
+        const dd = e.day - day;
+        return (
+          <button key={i} role="listitem" className={'sched-chip k-' + e.kind + (dd === 0 ? ' today' : dd <= 2 ? ' soon' : '')} onClick={onOpen}>
+            <b>{dd === 0 ? '오늘' : 'D-' + dd}</b>
+            <span>
+              {EV_ICON2[e.kind]} {EV_SHORT[e.kind]}
+            </span>
+          </button>
+        );
+      })}
+      {evs.length > 0 && (
+        <button className="sched-all" onClick={onOpen} aria-label="전체 일정 보기">
+          전체 ›
+        </button>
+      )}
+    </div>
   );
 }
