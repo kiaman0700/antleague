@@ -29,7 +29,7 @@ const TITLES: Record<Route['kind'], string> = {
   resolve: '주식 대결',
 };
 
-const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize' };
+const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies' };
 /** 주소만으로 열 수 있는 화면(로비 페이지)인지 */
 function routeFromPath(path: string): Route {
   const page = LOBBY_PAGES[path.replace(/\/+$/, '') || '/'];

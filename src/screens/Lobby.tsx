@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
+import { Companies } from './Companies';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
@@ -38,7 +39,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize';
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies';
 
 interface Props {
   page: LobbyPage;
@@ -452,8 +453,11 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       </nav>
 
       <div className="home-links">
+        <button className="btn ghost sm" onClick={() => go('companies')}>
+          <Icon name="book" /> 기업 도감
+        </button>
         <button className="btn ghost sm" onClick={() => setModal('howto')}>
-          <Icon name="book" /> 게임 방법
+          <Icon name="help" /> 게임 방법
         </button>
         {online && (
           <button className="btn ghost sm" onClick={() => go('records')}>
@@ -849,5 +853,6 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   if (page === 'rooms') return <Rooms go={go} onWaiting={onWaiting} />;
   if (page === 'create') return <Create go={go} onWaiting={onWaiting} />;
   if (page === 'records') return <Records go={go} />;
+  if (page === 'companies') return <Companies onBack={() => go('home')} />;
   return <Home go={go} onWaiting={onWaiting} onGame={onGame} />;
 }
