@@ -1,3 +1,4 @@
+import { ITEM_MAP } from '../game/items.js';
 import { describe, expect, it } from 'vitest';
 import { dayTicks } from '../game/intraday.js';
 import { generateMarket } from '../game/market.js';
@@ -105,7 +106,7 @@ describe('카드·턴 검증', () => {
   it('카드 구매 비용은 서버가 정한다', () => {
     const d = game();
     const row = validateBuyItem(d, 'a', now, { kind: 'detector', cost: 0 } as never);
-    expect(row.cost).toBe(150_000);
+    expect(row.cost).toBe(ITEM_MAP.detector.cost);
   });
   it('둘 다 마감하거나 시간이 지나야 다음 날', () => {
     const d = game();

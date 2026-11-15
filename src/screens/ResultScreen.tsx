@@ -17,18 +17,34 @@ interface Props {
   market: Market;
   final: NonNullable<View['final']>;
   onExit: () => void;
+  /** 한 판 더(같은 사람들과) — 누가 이미 만들었으면 nextCode 가 있음 */
+  nextCode?: string | null;
+  onRematch?: () => Promise<void>;
 }
 
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit }: Props) {
+export function ResultScreen({ session, market, final, onExit, nextCode, onRematch }: Props) {
+  const [rematching, setRematching] = useState(false);
+  const [rematchErr, setRematchErr] = useState('');
+  const rematch = async () => {
+    if (!onRematch) return;
+    setRematching(true);
+    setRematchErr('');
+    try {
+      await onRematch();
+    } catch (e) {
+      setRematchErr(e instanceof Error ? e.message : String(e));
+      setRematching(false);
+    }
+  };
   const solo = session.mode === 'solo';
   const last = market.totalDays - 1;
 
   const results = useMemo(() => {
     const people = [...final.players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
-    const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2);
+    const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2, market.version ?? 1);
     return people.map((p) => {
       const trades = final.trades.filter((t) => t.player_id === p.id);
       const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id));
@@ -319,9 +335,22 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       </div>
 
       <div className="center-actions">
-        <button className="btn primary xl" onClick={onExit}>
-          한 판 더!
-        </button>
+        {onRematch ? (
+          <>
+            {nextCode && <p className="rematch-note">다시 하기 방이 열렸어요! 같은 설정으로 바로 붙어요</p>}
+            <button className="btn primary xl" onClick={rematch} disabled={rematching}>
+              {rematching ? '방으로 가는 중…' : nextCode ? '다시 하기 방 입장' : '같은 사람들과 한 판 더!'}
+            </button>
+            <button className="btn ghost" onClick={onExit}>
+              로비로
+            </button>
+            {rematchErr && <p className="error">{rematchErr}</p>}
+          </>
+        ) : (
+          <button className="btn primary xl" onClick={onExit}>
+            한 판 더!
+          </button>
+        )}
       </div>
     </div>
   );

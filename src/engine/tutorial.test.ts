@@ -10,17 +10,20 @@ describe('튜토리얼 게임', () => {
     const v = soloView(t);
     expect(v.players.map((p) => p.nickname)).toContain(TUTORIAL_BOT.nickname);
     expect(v.market!.news.some((n) => n.day === 0 && n.symbol === t.tutorial!.symbol && n.tone === 'good')).toBe(true);
-    expect(v.myItems.inventory.detector).toBe(1);
-    expect(v.myItems.inventory.shield).toBe(1);
+    // 무료 카드가 더 있을 수 있으니 '최소 1장'
+    expect(v.myItems.inventory.detector ?? 0).toBeGreaterThanOrEqual(1);
+    expect(v.myItems.inventory.shield ?? 0).toBeGreaterThanOrEqual(1);
     expect(v.room.deadline).toBeNull(); // 시간이 흐르지 않음
   });
   it('장 마감하면 봇도 같이 마감해 다음 날로, 봇의 수수료 폭탄을 내 방패가 막는다', () => {
-    const t = soloAct(makeTutorial('나'), 'endTurn', {});
+    const t0 = makeTutorial('나');
+    const shields = soloView(t0).myItems.inventory.shield ?? 0;
+    const t = soloAct(t0, 'endTurn', {});
     expect(t.data.room.day).toBe(1);
     const v = soloView(t);
     expect(v.notices.some((n) => n.text.includes('방패') && n.text.includes(TUTORIAL_BOT.nickname))).toBe(true);
     expect(v.effectsToday).not.toContain('fee');
-    expect(v.myItems.inventory.shield ?? 0).toBe(0);
+    expect(v.myItems.inventory.shield ?? 0).toBe(shields - 1);
   });
   it('튜토리얼은 하던 연습 게임을 덮어쓰지 않는다', () => {
     soloAct(makeTutorial('나'), 'endTurn', {});

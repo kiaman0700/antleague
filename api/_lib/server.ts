@@ -193,6 +193,7 @@ async function loadGame(roomId: string): Promise<GameData> {
       title: r.title,
       max_players: r.max_players,
       is_private: r.is_private,
+      next_code: r.next_code ?? null,
     } as RoomRow,
     players: must(pl, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
@@ -492,6 +493,82 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       must(await sb.from('players').delete().eq('id', playerId), 'leave');
       await touchRoom(roomId);
       return { ok: true };
+    }
+
+    case 'rejoinCode': {
+      // 다른 기기에서 이어하기: 방 코드 + 비밀값. 비밀값은 해시만 저장, 새로 받으면 예전 코드는 못 씀
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      rateLimit(uid + ':rejoinCode', 5, 600_000);
+      const room = must(await sb.from('rooms').select('code, status').eq('id', roomId).single(), 'room') as { code: string; status: string };
+      if (room.status === 'finished') throw new GameError('끝난 게임이에요.', 409);
+      let secret = '';
+      for (let i = 0; i < 10; i++) secret += CODE_CHARS[randomInt(CODE_CHARS.length)];
+      const res = await sb.from('players').update({ rejoin_hash: hashPassword(secret) }).eq('id', playerId);
+      if (res.error && /rejoin_hash/.test(res.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
+      must(res, 'rejoin code');
+      return { code: `${room.code}-${secret}` };
+    }
+
+    case 'rejoin': {
+      // 이어하기 코드로 내 자리를 이 기기(계정)로 옮김 — 한 번 쓰면 끝
+      rateLimit(uid + ':rejoin', 8, 600_000);
+      const raw = typeof b.code === 'string' ? b.code.toUpperCase().replace(/\s/g, '') : '';
+      const m = /^([A-Z0-9]{6})-([A-Z0-9]{10})$/.exec(raw);
+      if (!m) throw new GameError('이어하기 코드는 "방코드-10자리" 모양이에요.');
+      pwGuard(uid + ':rejoin');
+      const room = must(await sb.from('rooms').select('id, code, status').eq('code', m[1]).maybeSingle(), 'find room') as { id: string; code: string; status: string } | null;
+      const fail = () => {
+        pwFail(uid + ':rejoin');
+        return new GameError('이어하기 코드가 맞지 않아요.', 403);
+      };
+      if (!room || room.status === 'finished') throw fail();
+      const ps = must(await sb.from('players').select('id, user_id, nickname, mode, rejoin_hash').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string; mode: string; rejoin_hash: string | null }[];
+      const hit = ps.find((p) => p.rejoin_hash && checkPassword(m[2], p.rejoin_hash));
+      if (!hit) throw fail();
+      const mine = ps.find((p) => p.user_id === uid);
+      if (mine && mine.id !== hit.id) throw new GameError('이 기기는 이미 이 방에 다른 자리로 들어와 있어요.', 409);
+      must(await sb.from('players').update({ user_id: uid, rejoin_hash: null }).eq('id', hit.id).eq('rejoin_hash', hit.rejoin_hash!), 'rejoin');
+      return { roomId: room.id, playerId: hit.id, code: room.code, status: room.status, nickname: hit.nickname, mode: hit.mode };
+    }
+
+    case 'rematch': {
+      // 한 판 더: 끝난 방과 같은 설정으로 새 방. 이미 누가 만들었으면 그 코드로 (같은 방 사람만)
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const old = must(await sb.from('rooms').select('status, total_days, turn_seconds, title, max_players, is_private, next_code').eq('id', roomId).single(), 'room') as {
+        status: string; total_days: number; turn_seconds: number; title: string; max_players: number; is_private: boolean; next_code: string | null;
+      };
+      if (old.status !== 'finished') throw new GameError('게임이 끝난 뒤에 할 수 있어요.', 409);
+      const me = must(await sb.from('players').select('nickname, mode').eq('id', playerId).single(), 'me') as { nickname: string; mode: string };
+      if (old.next_code) {
+        const nr = must(await sb.from('rooms').select('id, code, status, max_players').eq('code', old.next_code).maybeSingle(), 'next') as { id: string; code: string; status: string; max_players: number } | null;
+        if (!nr) throw new GameError('다시 하기 방이 사라졌어요.', 404);
+        return addToRoom(nr, uid, me.nickname, me.mode);
+      }
+      const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', roomId).maybeSingle(), 'pw') as { password_hash: string | null } | null;
+      let room: { id: string; code: string } | null = null;
+      for (let i = 0; i < 5 && !room; i++) {
+        const res = await sb
+          .from('rooms')
+          .insert({ code: newCode(), total_days: old.total_days, turn_seconds: old.turn_seconds > 0 ? old.turn_seconds : 180, title: old.title, max_players: old.max_players, is_private: old.is_private })
+          .select('id, code')
+          .single();
+        if (!res.error) room = res.data;
+        else if (!/duplicate/i.test(res.error.message)) must(res, 'rematch room');
+      }
+      if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
+      must(await sb.from('room_secrets').insert({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: secret?.password_hash ?? null, rules_version: CURRENT_RULES_VERSION }), 'secret');
+      const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname: me.nickname, mode: me.mode, ready: true }).select('id').single(), 'host') as { id: string };
+      must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
+      // 동시에 두 명이 눌렀으면 먼저 붙은 방만 남김
+      const linked = must(await sb.from('rooms').update({ next_code: room.code }).eq('id', roomId).is('next_code', null).select('id'), 'link') as unknown[];
+      if (!linked.length) {
+        await sb.from('rooms').delete().eq('id', room.id);
+        const again = must(await sb.from('rooms').select('next_code').eq('id', roomId).single(), 'again') as { next_code: string };
+        const nr = must(await sb.from('rooms').select('id, code, status, max_players').eq('code', again.next_code).maybeSingle(), 'next') as { id: string; code: string; status: string; max_players: number } | null;
+        if (!nr) throw new GameError('다시 하기 방이 사라졌어요.', 404);
+        return addToRoom(nr, uid, me.nickname, me.mode);
+      }
+      return { roomId: room.id, playerId: p.id, code: room.code };
     }
 
     case 'kick': {

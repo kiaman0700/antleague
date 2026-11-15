@@ -36,10 +36,13 @@ function hash(s: string) {
   return h >>> 0;
 }
 
-/** 속보 시점(at) 전에는 하루 흐름의 15%만 진행, 속보 뒤에 나머지가 몰림 */
-function warp(f: number, at: number | null) {
+/**
+ * 속보 시점(at) 전에는 하루 흐름의 15%만 진행, 속보 뒤에 나머지가 몰림.
+ * jump(v3): 속보가 뜨는 칸에서 바로 그만큼 뛰고(실제 시장처럼) 나머지만 천천히 → 보고 따라 사도 이미 많이 오른 뒤
+ */
+function warp(f: number, at: number | null, jump = 0) {
   if (at === null) return f;
-  return f < at ? (0.15 * f) / at : 0.15 + (0.85 * (f - at)) / (1 - at);
+  return f < at ? (0.15 * f) / at : 0.15 + jump + ((0.85 - jump) * (f - at)) / (1 - at);
 }
 
 const cache = new Map<string, number[]>();
@@ -111,7 +114,7 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
             beta: sec.beta * def.sectorBeta,
             sb: def.sectorBeta,
           };
-    return fineTicks(bar, n, mulberry32(hash(`${m.seed}:${symbol}:${day}:${n}`)), releaseOf(m, symbol, day), round, flow);
+    return fineTicks(bar, n, mulberry32(hash(`${m.seed}:${symbol}:${day}:${n}`)), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0);
   });
 }
 
@@ -156,6 +159,7 @@ function fineTicks(
   at: number | null,
   round: (v: number) => number,
   flow: { mk: number[]; sf: number[]; beta: number; sb: number } | null,
+  jump = 0,
 ): number[] {
   const lo = Math.log(bar.open);
   const lc = Math.log(bar.close);
@@ -166,7 +170,7 @@ function fineTicks(
   const trend: number[] = [];
   const dev: number[] = [];
   for (let j = 0; j <= n; j++) {
-    trend.push(lo + warp(j / n, at) * (lc - lo));
+    trend.push(lo + warp(j / n, at, jump) * (lc - lo));
     const common = flow ? flow.beta * flow.mk[j] + flow.sb * flow.sf[j] : 0;
     dev.push(common + (w[j] - (j / n) * w[n]) * idioAmp);
   }

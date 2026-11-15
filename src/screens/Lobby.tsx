@@ -50,6 +50,16 @@ interface Props {
 
 type Joined = { roomId: string; playerId: string; code: string };
 
+/** 이어하기 코드로 자리를 옮긴 뒤: 대기 중이면 대기실, 진행 중이면 바로 게임 */
+function rejoined(
+  r: { roomId: string; playerId: string; code: string; status: string; nickname: string; mode: string },
+  onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void,
+  onGame?: (s: Session) => void,
+) {
+  if (r.status === 'playing' && onGame) onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname: r.nickname, ui: (r.mode as UiMode) ?? 'easy' });
+  else onWaiting(r.roomId, r.playerId, r.nickname, r.code);
+}
+
 /** 화면 모드: 초보 / 일반 / 커스텀. 커스텀은 '바탕 모드'(초보·일반) 위에 내 설정을 덮어씀 */
 export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChange: (m: UiMode) => void; onEdit?: () => void }) {
   const prefs = usePrefs();
@@ -181,14 +191,42 @@ function NickGate({ profile }: { profile: ReturnType<typeof useProfile> }) {
   );
 }
 
-function CodeJoin({ initial, profile, onJoined, onClose }: { initial: string; profile: ReturnType<typeof useProfile>; onJoined: (r: Joined) => void; onClose: () => void }) {
+type Rejoined = { roomId: string; playerId: string; code: string; status: string; nickname: string; mode: string };
+
+function CodeJoin({
+  initial,
+  profile,
+  onJoined,
+  onRejoin,
+  onClose,
+}: {
+  initial: string;
+  profile: ReturnType<typeof useProfile>;
+  onJoined: (r: Joined) => void;
+  onRejoin: (r: Rejoined) => void;
+  onClose: () => void;
+}) {
   const [code, setCode] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // 방 코드(6자리) 또는 다른 기기에서 받은 이어하기 코드(방코드-10자리)
+  const isRejoin = code.includes('-');
+  const valid = isRejoin ? /^[A-Z0-9]{6}-[A-Z0-9]{10}$/.test(code) : code.length === 6;
   const submit = async () => {
     setErr('');
+    if (!valid) return setErr(isRejoin ? '이어하기 코드는 "방코드-10자리" 모양이에요.' : '6자리 방 코드를 입력해 주세요.');
+    if (isRejoin) {
+      setBusy(true);
+      try {
+        onRejoin(await api<Rejoined>('rejoin', { code }));
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
-    if (code.length !== 6) return setErr('6자리 방 코드를 입력해 주세요.');
     setBusy(true);
     try {
       onJoined(await api<Joined>('join', { code, nickname: profile.nick.trim(), mode: profile.ui }));
@@ -200,7 +238,7 @@ function CodeJoin({ initial, profile, onJoined, onClose }: { initial: string; pr
   };
   return (
     <Modal title={<><Icon name="key" size={18} /> 코드로 입장</>} onClose={onClose}>
-      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
+      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요. 다른 기기에서 하던 대결은 '이어하기 코드'(방코드-10자리)를 넣으면 이어서 할 수 있어요.</p>
       <form
         className="join"
         onSubmit={(e) => {
@@ -212,14 +250,14 @@ function CodeJoin({ initial, profile, onJoined, onClose }: { initial: string; pr
           className="code-input"
           autoFocus
           value={code}
-          maxLength={6}
-          placeholder="방 코드"
+          maxLength={17}
+          placeholder="방 코드 또는 이어하기 코드"
           inputMode="text"
           autoCapitalize="characters"
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-+/g, '-'))}
         />
-        <button className="btn primary" disabled={busy || !online || code.length !== 6}>
-          입장
+        <button className="btn primary" disabled={busy || !online || !valid}>
+          {isRejoin ? '이어하기' : '입장'}
         </button>
       </form>
       {err && <p className="error">{err}</p>}
@@ -274,7 +312,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
     <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
       <ol className="howto">
         <li>
-          <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, 가끔 <b>장중 속보</b>도 떠요.
+          <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 좋은 뉴스는 <b>아침 시가에 이미 많이 반영</b>돼서 시작부터 올라 있을 수 있어요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, <b>장중 속보</b>가 뜨면 그 순간 크게 움직여요 — 빨리 알아채는 사람이 유리!
         </li>
         <li>
           국내·미국 주식과 <b>ETF</b>까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요.
@@ -283,7 +321,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
           다 정했으면 <b>장 마감</b>. 모두 누르거나 <b>제한 시간</b>이 끝나면 하루가 흘러요.
         </li>
         <li>
-          <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요.
+          <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요. 무료 카드는 모두에게 똑같이 나눠 줘요. 한 사람에게 같은 날 방해가 몰리면 두 번째부터는 효과가 없어요.
         </li>
         <li>마지막 날 재산이 가장 많은 사람이 승리!</li>
       </ol>
@@ -469,7 +507,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         )}
       </div>
 
-      {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onClose={() => setModal(null)} />}
+      {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onRejoin={(r) => rejoined(r, onWaiting, onGame)} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'prefs' && (
@@ -630,7 +668,15 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           </form>
         </Modal>
       )}
-      {codeOpen && <CodeJoin initial="" profile={profile} onJoined={(r) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code)} onClose={() => setCodeOpen(false)} />}
+      {codeOpen && (
+        <CodeJoin
+          initial=""
+          profile={profile}
+          onJoined={(r) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code)}
+          onRejoin={(r) => rejoined(r, onWaiting)}
+          onClose={() => setCodeOpen(false)}
+        />
+      )}
     </div>
   );
 }

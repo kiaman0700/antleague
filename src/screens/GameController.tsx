@@ -17,6 +17,7 @@ import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
 import { ToastSpot } from '../components/ToastSpot';
+import { TradeJump } from '../components/TradeJump';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -32,6 +33,8 @@ import { ResultScreen } from './ResultScreen';
 interface Props {
   session: Session;
   onExit: () => void;
+  /** 한 판 더: 새 방 대기실로 */
+  onWaiting?: (roomId: string, playerId: string, nickname: string, code: string) => void;
 }
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
@@ -107,7 +110,7 @@ function useMobileTab(mobile: boolean, start: Tab = 'news') {
   return [tab, setTab] as const;
 }
 
-export function GameController({ session, onExit }: Props) {
+export function GameController({ session, onExit, onWaiting }: Props) {
   // 튜토리얼은 브라우저 엔진이지만 봇과 대결하는 화면으로 보여 줌
   const solo = session.mode === 'solo' && !session.tutorial;
   const me = session.playerId;
@@ -146,6 +149,7 @@ export function GameController({ session, onExit }: Props) {
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
   const [exitAsk, setExitAsk] = useState(false);
+  const [rejoinCode, setRejoinCode] = useState<string | null>(null);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
     const on = () => setOnline(true);
@@ -540,7 +544,23 @@ export function GameController({ session, onExit }: Props) {
           <p className="muted">결과 집계 중…</p>
         </div>
       );
-    return <ResultScreen session={session} market={market} final={view.final} onExit={onExit} />;
+    return (
+      <ResultScreen
+        session={session}
+        market={market}
+        final={view.final}
+        onExit={onExit}
+        nextCode={view.room.nextCode ?? null}
+        onRematch={
+          session.mode === 'multi' && onWaiting
+            ? async () => {
+                const r = await api<{ roomId: string; playerId: string; code: string }>('rematch', { roomId: session.roomId });
+                onWaiting(r.roomId, r.playerId, session.nickname, r.code);
+              }
+            : undefined
+        }
+      />
+    );
   }
 
   const m: Market = market;
@@ -712,6 +732,32 @@ export function GameController({ session, onExit }: Props) {
               <Icon name="door" size={16} /> 기권하고 나가기
               <small>지금 재산으로 순위에 남고, 남은 사람들은 더 이상 나를 기다리지 않아요. 다시 들어올 수 없어요</small>
             </button>
+            <div className="rejoin-box">
+              <b>
+                <Icon name="share" size={14} /> 다른 기기에서 이어하기
+              </b>
+              <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 한 번만 쓸 수 있어요.</small>
+              {rejoinCode ? (
+                <button
+                  className="code-big"
+                  onClick={() => navigator.clipboard?.writeText(rejoinCode).then(() => showToast('이어하기 코드를 복사했어요'), () => {})}
+                  title="눌러서 복사"
+                >
+                  {rejoinCode} <Icon name="copy" size={14} />
+                </button>
+              ) : (
+                <button
+                  className="btn sm ghost"
+                  onClick={() =>
+                    api<{ code: string }>('rejoinCode', { roomId: session.roomId })
+                      .then((r) => setRejoinCode(r.code))
+                      .catch((e) => showToast(e instanceof Error ? e.message : '코드를 만들지 못했어요', 'err'))
+                  }
+                >
+                  이어하기 코드 받기
+                </button>
+              )}
+            </div>
           </div>
         </Sheet>
       )}
@@ -1219,7 +1265,10 @@ export function GameController({ session, onExit }: Props) {
           ) : id === 'list' ? (
             <section className="pane p-list">{browser}</section>
           ) : id === 'detail' ? (
-            <section className="pane p-detail">{detail}</section>
+            <section className="pane p-detail">
+              {detail}
+              <TradeJump easy={easy} canSell={(portfolio.holdings[selected]?.qty ?? 0) > 0} price={`${num(quote(m, selected, displayDay, displayClosed).krw)}원`} />
+            </section>
           ) : id === 'news' ? (
             <section className="pane p-news">
               <div className="news-scroll">

@@ -35,6 +35,8 @@ export interface RoomRow {
   title?: string;
   max_players?: number;
   is_private?: boolean;
+  /** 한 판 더: 끝난 방에서 만든 새 방 코드 */
+  next_code?: string | null;
 }
 
 export const MAX_PLAYERS = 6;
@@ -101,7 +103,7 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
@@ -246,7 +248,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 2;
+export const CURRENT_RULES_VERSION = 3;
 
 export function marketFor(seed: number, days: number, version = 1): Market {
   const key = `${seed}:${days}:${version}`;
@@ -377,7 +379,7 @@ function sortedPlayers(d: GameData) {
 
 function itemsOf(d: GameData) {
   const day = Math.min(d.room.day, d.room.total_days - 1);
-  return deriveItems(d.room.seed, sortedPlayers(d).map((p) => p.id), d.items, day, d.room.total_days, d.players.length < 2);
+  return deriveItems(d.room.seed, sortedPlayers(d).map((p) => p.id), d.items, day, d.room.total_days, d.players.length < 2, d.room.version ?? 1);
 }
 
 function spendsOf(d: GameData, pid: string) {
@@ -397,7 +399,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
-    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private },
+    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null },
     serverNow: now,
     meId,
     players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
@@ -445,10 +447,15 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const nick = (id: string) => players.find((p) => p.id === id)?.nickname ?? '상대';
   items.effects.forEach((e, i) => {
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
-    const name = `${ITEM_MAP[e.kind].emoji} ${ITEM_MAP[e.kind].name}`;
+    const name = ITEM_MAP[e.kind].name;
     if (e.reflected) {
       if (e.by === meId) base.notices.push({ key, text: `반사 거울이 ${nick(e.from)}의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
       else if (e.from === meId) base.notices.push({ key, text: `${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${josa(name, '이', '가')} 나에게 돌아왔어요!`, kind: 'warn' });
+      return;
+    }
+    if (e.crowded) {
+      // 몰아치기로 무효가 된 공격: 쓴 사람에게만 다음 날 알림 (당한 사람에게는 아무 일도 없음)
+      if (e.from === meId && r.day > e.usedDay) base.notices.push({ key, text: `${nick(e.to)}님은 그날 이미 다른 사람의 방해를 받아서 내 ${josa(name, '은', '는')} 효과가 없었어요`, kind: 'warn' });
       return;
     }
     if (e.to === meId) {

@@ -1766,3 +1766,79 @@ button.tag:hover,
   border-color: rgba(240, 68, 82, 0.5);
   color: #ff9aa5;
 }
+
+/* ============ PC 작은 화면: 주문 칸 바로가기 바 ============ */
+.p-detail {
+  position: relative;
+}
+.trade-jump {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: -1px;
+  background: linear-gradient(to top, var(--surface) 70%, transparent);
+  border-top: 1px solid var(--line);
+}
+.trade-jump.show {
+  display: flex;
+}
+.trade-jump .tj-price {
+  flex: 1;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.trade-jump .btn {
+  min-width: 96px;
+}
+.trade-jump .btn.buy {
+  background: var(--up);
+  border-color: var(--up);
+  color: #fff;
+}
+.trade-jump .btn.sell {
+  background: var(--down);
+  border-color: var(--down);
+  color: #fff;
+}
+.trade-jump .btn:disabled {
+  opacity: 0.4;
+}
+.rejoin-box {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--line-2);
+}
+.rejoin-box b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.code-big {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+  font-family: ui-monospace, monospace;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--gold);
+  word-break: break-all;
+}
+.rematch-note {
+  margin: 0 0 6px;
+  color: var(--gold);
+  font-weight: 700;
+  text-align: center;
+}

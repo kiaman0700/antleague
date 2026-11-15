@@ -67,7 +67,14 @@ export default function App() {
         />
       );
     case 'game':
-      return <GameController key={`${route.session.mode}-${route.session.roomId}-${route.session.playerId}`} session={route.session} onExit={() => navigate({ kind: 'lobby' })} />;
+      return (
+        <GameController
+          key={`${route.session.mode}-${route.session.roomId}-${route.session.playerId}`}
+          session={route.session}
+          onExit={() => navigate({ kind: 'lobby' })}
+          onWaiting={(roomId, playerId, nickname, code) => navigate({ kind: 'waiting', roomId, playerId, nickname, code }, { replace: true })}
+        />
+      );
     default:
       // 튜토리얼: 봇과 함께 단계별 안내 (저장 안 함)
       if (route.kind === 'lobby' && route.page === 'tutorial')

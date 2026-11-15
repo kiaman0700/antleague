@@ -158,8 +158,15 @@ export function relatedForSector(id: string): string[] {
 export function generateMarket(seed: number, totalDays: number, version = 1): Market {
   const rng = mulberry32(seed);
   const v2 = version >= 2;
+  /**
+   * v3 (밸런스): 아침 갭 방향이 그날 결과를 알려주지 않게 시가·장중 잡음을 따로 뽑고,
+   * 뉴스는 대부분 시가에 반영(이미 알려진 정보), 장중 속보 종목은 속보 전엔 거의 안 움직임.
+   * v3 전용 난수(rng3)만 쓰므로 v1·v2 방의 가격은 그대로
+   */
+  const v3 = version >= 3;
   // v2 전용 난수 (장세 전환) — v1 난수 흐름은 건드리지 않음
   const rng2 = mulberry32((seed ^ 0x5f3759df) >>> 0);
+  const rng3 = mulberry32((seed ^ 0x2c1b3c6d) >>> 0);
   let regime = 0; // -1 하락장, 0 보합, 1 상승장
   let prevUsRet = 0;
   let prevKrRet = 0;
@@ -396,7 +403,11 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
     const nm = (expiry ? 1.9 : 1) * (v2 && prevKrRet < -0.02 ? 1.4 : 1);
     const krNoise = 0.0003 + nm * (0.0055 * global + 0.006 * gaussian(rng));
     const usNoise = 0.0004 + nm * (0.0065 * global + 0.005 * gaussian(rng));
-    const sectorRet: Record<string, { s: number; n: number }> = {};
+    // v3: 시가 쪽 잡음은 따로 (같은 잡음이 시가와 장중에 같이 들어가면 갭 방향 = 그날 방향이 됨)
+    const global3 = v3 ? gaussian(rng3) : 0;
+    const krNoise3 = v3 ? nm * (0.0055 * global3 + 0.006 * gaussian(rng3)) : 0;
+    const usNoise3 = v3 ? nm * (0.0065 * global3 + 0.005 * gaussian(rng3)) : 0;
+    const sectorRet: Record<string, { s: number; n: number; n3: number }> = {};
     for (const sec of STOCK_SECTORS) {
       const isUS = sec.region === 'US';
       const known =
@@ -406,7 +417,21 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
         (sec.oil * oilPct) / 100 +
         (sectorShock[sec.id] ?? 0);
       const noise = sec.beta * (isUS ? usNoise : krNoise) + sec.vol * gaussian(rng);
-      sectorRet[sec.id] = { s: known, n: noise };
+      sectorRet[sec.id] = { s: known, n: noise, n3: v3 ? sec.beta * (isUS ? usNoise3 : krNoise3) + sec.vol * gaussian(rng3) : 0 };
+    }
+
+    // v3: 장중 속보를 가격 만들기 전에 정함 → 그 종목은 속보 전(시가)엔 거의 반영 안 됨
+    const breaking = new Set<string>();
+    if (v3) {
+      const pool = news.filter((n) => n.day === day && n.kind === 'company' && n.symbol);
+      const count = (rng3() < 0.55 ? 1 : 0) + (rng3() < 0.2 ? 1 : 0);
+      for (let i = 0; i < count && pool.length; i++) {
+        const n = pool.splice(Math.floor(rng3() * pool.length), 1)[0];
+        n.at = Math.round(range(rng3, 0.2, 0.8) * 1000) / 1000;
+        n.label = '속보';
+        breaking.add(n.symbol!);
+        for (const l of Object.keys(COMPANY_LINKS[n.symbol!] ?? {})) breaking.add(l);
+      }
     }
 
     // ---- 4) 개별 종목 ----
@@ -423,9 +448,18 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
       const S = s.sectorBeta * sr.s + (stockShock[s.symbol] ?? 0);
       const N = s.sectorBeta * sr.n + s.drift + s.vol * gaussian(rng);
       // 뉴스는 아침 시가에 일부 반영(갭), 나머지는 장중에
-      const g = range(rng, 0.3, 0.7);
-      const rOpen = g * S + 0.3 * N;
-      const rDay = (1 - g) * S + 0.7 * N;
+      const g1 = range(rng, 0.3, 0.7);
+      let rOpen: number;
+      let rDay: number;
+      if (v3) {
+        const g = breaking.has(s.symbol) ? 0.05 : range(rng3, 0.8, 0.95);
+        const N3 = s.sectorBeta * sr.n3 + s.vol * gaussian(rng3);
+        rOpen = g * S + 0.45 * N3;
+        rDay = (1 - g) * S + 0.9 * N;
+      } else {
+        rOpen = g1 * S + 0.3 * N;
+        rDay = (1 - g1) * S + 0.7 * N;
+      }
       const vol = s.vol + SECTOR_MAP[s.sector].vol;
 
       if (s.currency === 'USD') {
@@ -503,7 +537,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1): Ma
   }
 
   for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
-  decorateNews(seed, totalDays, news, bars, indexBars);
+  decorateNews(seed, totalDays, news, bars, indexBars, v3);
   return { seed, totalDays, version, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
 }
 
@@ -614,10 +648,11 @@ export function stockName(sym: string) {
  * 가격을 만드는 난수와 다른 난수를 써서, 이 함수가 바뀌어도 같은 시드의 가격은 그대로다.
  * 여기서 더하는 기사는 가격에 영향을 주지 않는다.
  */
-function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: Record<string, Bar[]>, indexBars: Bar[]) {
+function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: Record<string, Bar[]>, indexBars: Bar[], v3 = false) {
   const rng = mulberry32((seed ^ 0x6e657773) >>> 0);
   for (const n of news) {
     if (n.rumor) continue;
+    if (v3 && n.at != null) continue; // 이미 정한 장중 속보
     if (n.kind === 'macro' && !n.headline.startsWith('[') && rng() < 0.35) n.label = '속보';
     else if (n.kind === 'company' && rng() < 0.25) n.label = '단독';
   }
@@ -701,8 +736,8 @@ function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: 
   news.push(...extra);
   news.sort((a, b) => a.day - b.day);
 
-  // 장중 속보: 하루 0~2개. 그날 기업 뉴스 중 일부가 아침이 아니라 장 중간(20~80%)에 뜬다
-  for (let day = 0; day < totalDays; day++) {
+  // 장중 속보: 하루 0~2개. 그날 기업 뉴스 중 일부가 아침이 아니라 장 중간(20~80%)에 뜬다 (v3 는 가격 만들 때 이미 정함)
+  for (let day = 0; day < totalDays && !v3; day++) {
     const pool = news.filter((n) => n.day === day && n.kind === 'company' && n.label !== '시황' && n.label !== '특징주');
     const count = (rng() < 0.55 ? 1 : 0) + (rng() < 0.2 ? 1 : 0);
     for (let i = 0; i < count && pool.length; i++) {

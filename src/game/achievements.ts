@@ -47,7 +47,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const { market: m } = inp;
   const last = m.totalDays - 1;
   const solo = inp.players.length < 2;
-  const items = deriveItems(inp.seed, inp.players.map((p) => p.id), inp.items, last, m.totalDays, solo);
+  const items = deriveItems(inp.seed, inp.players.map((p) => p.id), inp.items, last, m.totalDays, solo, m.version ?? 1);
   const hist = Object.fromEntries(inp.players.map((p) => [p.id, equityHistory(p.trades, p.spends, m)]));
   const finalEq = (id: string) => hist[id][hist[id].length - 1];
   const indexRet = m.index[last].close / KR_INDEX_BASE - 1;
@@ -77,7 +77,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
 
     const used = Object.values(items.players[p.id]?.used ?? {}).reduce((a, n) => a + (n ?? 0), 0);
     if (used >= 4) got.add('card_master');
-    if (items.effects.some((e) => e.to === p.id && e.blocked)) got.add('shield');
+    if (items.effects.some((e) => e.to === p.id && e.blocked && !e.crowded)) got.add('shield');
 
     if (p.trades.some((t) => t.side === 'buy' && t.price <= minPrice[t.symbol] * 1.03)) got.add('bottom');
 
