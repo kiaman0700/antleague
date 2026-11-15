@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AWAY_MS, buildView, graceDeadline, isActive, nextRoomState, validateLeave, type GameData } from './engine.js';
+import { AWAY_MS, buildView, graceDeadline, isActive, nextRoomState, validateCancelEnd, validateLeave, validateTrade, type GameData } from './engine.js';
 
 const now = 1_800_000_000_000;
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -32,13 +32,28 @@ describe('나감·자리 비움', () => {
     d.players[1].ended_day = 2;
     expect(graceDeadline(d, now)).toBe(now + 30_000);
   });
-  it('남은 사람이 모두 마감하면 바로 다음 날 (자리 비운 사람은 기다리지 않음)', () => {
+  it('자리 비운 사람은 바로 건너뛰지 않고, 접속한 사람이 다 마감하면 카운트다운', () => {
     const d = game(3);
     d.players[2].last_seen = iso(now - AWAY_MS - 5000);
     d.players[0].ended_day = 2;
-    expect(nextRoomState(d, now)).toBeNull();
     d.players[1].ended_day = 2;
-    expect(nextRoomState(d, now)?.day).toBe(3);
+    expect(nextRoomState(d, now)).toBeNull();
+    // 접속 중 2명 기준(1대1 규칙) → 90초 카운트다운
+    expect(graceDeadline(d, now)).toBe(now + 90_000);
+    expect(nextRoomState({ ...d, room: { ...d.room, deadline: now + 90_000 } }, now + 90_001)?.day).toBe(3);
+  });
+  it('기권한 사람은 마감 취소·거래로 되살아나지 못함', () => {
+    const d = game(2);
+    Object.assign(d.players[1], validateLeave(d, 'p1'));
+    expect(() => validateCancelEnd(d, 'p1', now)).toThrow(/기권/);
+    expect(() => validateTrade(d, 'p1', now, { symbol: 'CORE', side: 'buy', qty: 1 })).toThrow(/기권/);
+  });
+  it('시장 키에는 시드가 들어가지 않음 (서버 비밀 소금만)', () => {
+    const d = game(2);
+    const a = buildView(d, 'p0', now, undefined, 'salt-1').marketKey;
+    const b = buildView({ ...d, room: { ...d.room, seed: 8 } }, 'p0', now, undefined, 'salt-1').marketKey;
+    expect(a).toBe(b);
+    expect(buildView(d, 'p0', now, undefined, 'salt-2').marketKey).not.toBe(a);
   });
   it('1대1에서 상대가 나가면 혼자 마감해도 바로 넘어감', () => {
     const d = game(2);

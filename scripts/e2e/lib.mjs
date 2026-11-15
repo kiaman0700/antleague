@@ -53,7 +53,8 @@ async function session() {
     }
     if (!c.tokens.length) throw error;
   }
-  // 이번 실행에서 아직 안 쓴 계정을 차례로
+  // 이번 실행에서 아직 안 쓴 계정을 차례로 (다 썼으면 처음부터 다시 — 테스트마다 새 방을 쓰므로 괜찮음)
+  if (used.size >= c.tokens.length) used.clear();
   for (let k = 0; k < c.tokens.length; k++) {
     const i = (c.next + k) % c.tokens.length;
     if (used.has(i)) continue;

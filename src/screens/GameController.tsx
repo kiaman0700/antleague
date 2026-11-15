@@ -737,7 +737,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
               <b>
                 <Icon name="share" size={14} /> 다른 기기에서 이어하기
               </b>
-              <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 한 번만 쓸 수 있어요.</small>
+              <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 10분 안에 한 번만 쓸 수 있고, 다른 사람에게 보여 주면 자리를 뺏길 수 있어요.</small>
               {rejoinCode ? (
                 <button
                   className="code-big"
@@ -751,7 +751,11 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                   className="btn sm ghost"
                   onClick={() =>
                     api<{ code: string }>('rejoinCode', { roomId: session.roomId })
-                      .then((r) => setRejoinCode(r.code))
+                      .then((r) => {
+                        setRejoinCode(r.code);
+                        // 만료되면 화면에서도 지움
+                        window.setTimeout(() => setRejoinCode(null), 600_000);
+                      })
                       .catch((e) => showToast(e instanceof Error ? e.message : '코드를 만들지 못했어요', 'err'))
                   }
                 >

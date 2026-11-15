@@ -88,6 +88,10 @@ export function useLiveView(roomId: string | null): LiveView {
     keyRef.current = undefined;
     refresh();
     const poll = setInterval(refresh, 2500);
+    // 다른 앱·탭에 갔다 돌아오면 바로 새로 받기 (자리 비움 표시도 곧바로 풀림)
+    const onVisible = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onVisible);
     // 실시간 알림이 몰려도 한 번만 다시 받기 (0.3초 모아서)
     let t: number | undefined;
     const soon = () => {
@@ -105,6 +109,8 @@ export function useLiveView(roomId: string | null): LiveView {
     return () => {
       clearInterval(poll);
       window.clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onVisible);
       if (channel && supabase) supabase.removeChannel(channel);
     };
   }, [roomId, refresh]);

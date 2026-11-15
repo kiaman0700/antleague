@@ -395,7 +395,11 @@ export function portfolioOf(d: GameData, pid: string) {
   );
 }
 
-export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string): View {
+/**
+ * keySalt: 시장 키를 섞을 서버 비밀값(방마다). 시드처럼 화면이 알면 안 되는 값은 절대 키에 넣지 않음.
+ * 없으면(혼자 연습 — 어차피 브라우저에서 도는 게임) 방 ID 를 씀
+ */
+export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string): View {
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
@@ -513,7 +517,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   const releasedNow = open ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
-  const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${r.seed}|${meId}|${rumorCheck ? 1 : 0}|${fakes.length}|${blackout ? 1 : 0}`)}`;
+  const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
   if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n });
   if (open) {
@@ -540,6 +544,7 @@ function requirePlaying(d: GameData, meId: string, now: number) {
   if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('지금은 게임 중이 아니에요.', 409);
   const me = d.players.find((p) => p.id === meId);
   if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
+  if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
   if (me.ended_day >= r.day) throw new GameError('오늘은 이미 장 마감을 눌렀어요.', 409);
   if (r.deadline !== null && now >= r.deadline) throw new GameError('오늘 시간이 다 됐어요.', 409);
   return me;
@@ -623,6 +628,11 @@ export function isActive(p: PlayerRow, now: number): boolean {
 }
 const activePlayers = (d: GameData, now: number) => d.players.filter((p) => isActive(p, now));
 const endedCount = (d: GameData, now: number) => activePlayers(d, now).filter((p) => p.ended_day >= d.room.day).length;
+/** 나가지 않은 모든 사람이 오늘 마감했는지 (자리 비운 사람도 마감해야 '바로' 넘어감 — 잠깐 앱을 바꾼 사람을 건너뛰지 않게) */
+const allStayingEnded = (d: GameData) => {
+  const staying = d.players.filter((p) => !p.left_game);
+  return staying.length > 0 && staying.every((p) => p.ended_day >= d.room.day);
+};
 
 /** 게임 중 나가기 = 기권: 남은 날 모두 마감한 것으로 (기록과 순위에는 그대로 남음) */
 export function validateLeave(d: GameData, meId: string): { left_game: true; ended_day: number } {
@@ -637,10 +647,11 @@ export function validateLeave(d: GameData, meId: string): { left_game: true; end
 export function graceDeadline(d: GameData, now: number): number | null {
   const r = d.room;
   if (r.status !== 'playing') return null;
+  // 카운트다운 기준은 지금 접속 중인 사람으로 (자리 비운 사람 때문에 하루가 끝까지 늘어지지 않게)
   const active = activePlayers(d, now).length;
   const ended = endedCount(d, now);
   const rule = graceRule(active);
-  if (active === 0 || ended === active || ended < rule.need) return null;
+  if (active === 0 || allStayingEnded(d) || ended < rule.need) return null;
   const target = now + rule.seconds * 1000;
   return r.deadline === null || target < r.deadline ? target : null;
 }
@@ -663,6 +674,7 @@ export function validateCancelEnd(d: GameData, meId: string, now: number) {
   if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('지금은 게임 중이 아니에요.', 409);
   const me = d.players.find((p) => p.id === meId);
   if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
+  if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
   if (me.ended_day < r.day) throw new GameError('오늘은 아직 장 마감을 누르지 않았어요.', 409);
   if (r.deadline !== null && now >= r.deadline) throw new GameError('시간이 다 돼서 취소할 수 없어요.', 409);
   return { playerId: me.id, endedDay: r.day - 1 };
@@ -672,9 +684,8 @@ export function validateCancelEnd(d: GameData, meId: string, now: number) {
 export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | 'status' | 'deadline' | 'day_deadline'> | null {
   const r = d.room;
   if (r.status !== 'playing') return null;
-  // 참여 중인 사람(나감·자리 비움 제외)이 모두 마감하면 바로. 아무도 없으면 시간까지 기다림
-  const active = activePlayers(d, now);
-  const allEnded = active.length > 0 && active.every((p) => p.ended_day >= r.day);
+  // 나가지 않은 사람이 모두 마감하면 바로 (자리 비운 사람은 카운트다운으로만 기다림). 아무도 없으면 시간까지
+  const allEnded = allStayingEnded(d);
   const timeUp = r.deadline !== null && now >= r.deadline;
   if (!allEnded && !timeUp) return null;
   const day = r.day + 1;

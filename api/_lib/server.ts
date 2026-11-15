@@ -4,7 +4,7 @@
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
 /* ---------------- 비밀방 비밀번호: 소금 + scrypt 해시로만 저장 ---------------- */
 function hashPassword(pw: string) {
@@ -235,10 +235,16 @@ async function touchRoom(roomId: string) {
   if (res.error && !/rev/.test(res.error.message)) console.error('[api] touch', res.error.message);
 }
 
+/** 시장 키를 섞을 방별 비밀값 (서버 비밀 키로 만든 HMAC — 화면은 절대 알 수 없음) */
+function keySalt(roomId: string) {
+  return createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('market-key:' + roomId).digest('hex');
+}
+
 /** 접속 기록 (자리 비움 판단용). 20초에 한 번만 씀 */
 async function seen(d: GameData, playerId: string) {
   const me = d.players.find((p) => p.id === playerId);
-  if (!me || me.left_game || d.room.status !== 'playing') return;
+  // 대기실(방장이 살아 있는지 — 방 목록)과 게임 중(자리 비움) 모두 기록
+  if (!me || me.left_game || d.room.status === 'finished') return;
   const last = me.last_seen ? new Date(me.last_seen).getTime() : 0;
   if (Date.now() - last < 20_000) return;
   const now = new Date().toISOString();
@@ -370,7 +376,15 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         'rooms',
       ) as { id: string; title: string; is_private: boolean; max_players: number; total_days: number; turn_seconds: number; host_id: string; created_at: string }[];
       if (!rooms.length) return [];
-      const ps = must(await sb.from('players').select('id, room_id, nickname, user_id').in('room_id', rooms.map((r) => r.id)), 'room players') as { id: string; room_id: string; nickname: string; user_id: string }[];
+      let psRes = await sb.from('players').select('id, room_id, nickname, user_id, last_seen').in('room_id', rooms.map((r) => r.id));
+      if (psRes.error && /last_seen/.test(psRes.error.message)) psRes = (await sb.from('players').select('id, room_id, nickname, user_id').in('room_id', rooms.map((r) => r.id))) as typeof psRes;
+      const ps = must(psRes, 'room players') as { id: string; room_id: string; nickname: string; user_id: string; last_seen?: string | null }[];
+      // 방장이 창을 닫고 2분 넘게 응답이 없는 방은 목록에서 숨김 (들어가도 시작할 사람이 없음)
+      const hostAlive = (r: { id: string; host_id: string; created_at: string }) => {
+        const h = ps.find((p) => p.id === r.host_id);
+        const seenAt = h?.last_seen ? new Date(h.last_seen).getTime() : new Date(r.created_at).getTime();
+        return Date.now() - seenAt < 120_000;
+      };
       return rooms
         .map((r) => {
           const mine = ps.filter((p) => p.room_id === r.id);
@@ -384,9 +398,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
             totalDays: r.total_days,
             turnSeconds: r.turn_seconds,
             joined: mine.some((p) => p.user_id === uid),
+            alive: hostAlive(r),
           };
         })
-        .filter((r) => r.players > 0 && (r.players < r.maxPlayers || r.joined))
+        .filter((r) => r.players > 0 && (r.players < r.maxPlayers || r.joined) && (r.joined || r.alive))
+        .map(({ alive: _a, ...r }) => r)
         .slice(0, 30);
     }
 
@@ -442,7 +458,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
-      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined);
+      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId));
     }
 
     case 'ready':
@@ -478,7 +494,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
       if (room.status !== 'waiting') return { ok: true }; // 끝난 게임은 기록 보존
       if (room.host_id === playerId) {
-        // 방장이 나가면 먼저 들어온 다음 사람에게 방장을 넘김 (아무도 없으면 방 삭제)
+        // 방장이 나가면 먼저 들어온 다음 사람에게 방장을 넘김 (아무도 없으면 방 삭제) — DB 함수로 한 번에(010)
+        const rpc = await sb.rpc('host_leave', { p_room: roomId, p_host: playerId });
+        if (!rpc.error) return { ok: true };
+        if (!/host_leave/.test(rpc.error.message)) must(rpc, 'host leave');
         const others = must(await sb.from('players').select('id').eq('room_id', roomId).neq('id', playerId).order('created_at').limit(1), 'others') as { id: string }[];
         if (!others.length) {
           must(await sb.from('rooms').delete().eq('id', roomId), 'delete room');
@@ -503,10 +522,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (room.status === 'finished') throw new GameError('끝난 게임이에요.', 409);
       let secret = '';
       for (let i = 0; i < 10; i++) secret += CODE_CHARS[randomInt(CODE_CHARS.length)];
-      const res = await sb.from('players').update({ rejoin_hash: hashPassword(secret) }).eq('id', playerId);
+      // 10분 안에만 쓸 수 있게 만료 시각을 해시 앞에 붙여 저장 ("만료ms|소금:해시")
+      const res = await sb.from('players').update({ rejoin_hash: `${Date.now() + 600_000}|${hashPassword(secret)}` }).eq('id', playerId);
       if (res.error && /rejoin_hash/.test(res.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
       must(res, 'rejoin code');
-      return { code: `${room.code}-${secret}` };
+      return { code: `${room.code}-${secret}`, expiresIn: 600 };
     }
 
     case 'rejoin': {
@@ -522,12 +542,26 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         return new GameError('이어하기 코드가 맞지 않아요.', 403);
       };
       if (!room || room.status === 'finished') throw fail();
+      await roomPwGuard(room.id); // 방 기준 시도 제한 (계정을 새로 만들어도 유지)
       const ps = must(await sb.from('players').select('id, user_id, nickname, mode, rejoin_hash').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string; mode: string; rejoin_hash: string | null }[];
-      const hit = ps.find((p) => p.rejoin_hash && checkPassword(m[2], p.rejoin_hash));
-      if (!hit) throw fail();
+      const live = (h: string | null) => {
+        if (!h) return null;
+        const [exp, hash] = h.includes('|') ? h.split('|') : ['0', ''];
+        return Number(exp) > Date.now() ? hash : null;
+      };
+      const hit = ps.find((p) => {
+        const h = live(p.rejoin_hash);
+        return !!h && checkPassword(m[2], h);
+      });
+      if (!hit) {
+        await roomPwFail(room.id);
+        throw fail();
+      }
       const mine = ps.find((p) => p.user_id === uid);
       if (mine && mine.id !== hit.id) throw new GameError('이 기기는 이미 이 방에 다른 자리로 들어와 있어요.', 409);
-      must(await sb.from('players').update({ user_id: uid, rejoin_hash: null }).eq('id', hit.id).eq('rejoin_hash', hit.rejoin_hash!), 'rejoin');
+      const moved = must(await sb.from('players').update({ user_id: uid, rejoin_hash: null }).eq('id', hit.id).eq('rejoin_hash', hit.rejoin_hash!).select('id'), 'rejoin') as unknown[];
+      if (!moved.length) throw fail(); // 같은 코드로 동시에 두 번 — 한 번만 성공
+      await touchRoom(room.id);
       return { roomId: room.id, playerId: hit.id, code: room.code, status: room.status, nickname: hit.nickname, mode: hit.mode };
     }
 
@@ -544,6 +578,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!nr) throw new GameError('다시 하기 방이 사라졌어요.', 404);
         return addToRoom(nr, uid, me.nickname, me.mode);
       }
+      const since = new Date(Date.now() - 3600_000).toISOString();
+      const recent = must(await sb.from('players').select('id').eq('user_id', uid).gte('created_at', since), 'recent') as unknown[];
+      if (recent.length >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
       const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', roomId).maybeSingle(), 'pw') as { password_hash: string | null } | null;
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
@@ -578,6 +615,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const mine = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid), 'my rooms') as unknown as { id: string; left_game: boolean; rooms: { status: string } }[];
       if (mine.some((p) => p.rooms.status === 'waiting' || (p.rooms.status === 'playing' && !p.left_game)))
         throw new GameError('대기 중이거나 진행 중인 방이 있어요. 먼저 그 방에서 나간(기권한) 뒤에 지울 수 있어요.', 409);
+      // 끝난 게임의 순위표 닉네임은 '탈퇴한 플레이어'로 (다른 사람 기록의 숫자는 그대로)
+      const ids = mine.map((p) => p.id);
+      for (const id of ids) await sb.from('players').update({ nickname: `탈퇴${randomInt(100000)}`, rejoin_hash: null }).eq('id', id);
       const del = await sb.auth.admin.deleteUser(uid);
       if (del.error) throw new GameError('지우지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
       return { ok: true };
@@ -591,6 +631,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (room.status !== 'waiting') throw new GameError('게임이 시작된 뒤에는 내보낼 수 없어요.', 409);
       const target = typeof b.target === 'string' ? b.target : '';
       if (!/^[0-9a-f-]{36}$/i.test(target) || target === playerId) throw new GameError('내보낼 사람을 골라 주세요.');
+      // 시작과 동시에 눌러도 꼬이지 않게 DB 함수로(방 잠금 후 대기 중일 때만) — 010
+      const rpc = await sb.rpc('kick_player', { p_room: roomId, p_host: playerId, p_target: target });
+      if (!rpc.error) {
+        if (rpc.data !== true) throw new GameError('내보내지 못했어요. 이미 나갔거나 게임이 시작됐어요.', 409);
+        return { ok: true };
+      }
+      if (!/kick_player/.test(rpc.error.message)) must(rpc, 'kick');
       const del = must(await sb.from('players').delete().eq('id', target).eq('room_id', roomId).select('id'), 'kick') as unknown[];
       if (!del.length) throw new GameError('이미 나간 사람이에요.', 404);
       await touchRoom(roomId);

@@ -3,8 +3,10 @@ import { user, ok, done } from './lib.mjs';
 
 // 익명 계정은 IP 당 만들 수 있는 수가 제한돼 있어서 미리 몇 개만 만들어 돌려 씀
 const pool = [];
-for (let i = 0; i < 4; i++) pool.push(await user());
-const [X1, X2] = [await user(), await user()];
+for (let i = 0; i < 3; i++) pool.push(await user());
+// X1: 이어하기로 자리를 받을 '다른 기기' (그 방에 없는 C 를 씀), X2: 아무 방에도 없는 계정
+const X1 = pool[2];
+const X2 = await user();
 
 async function room(players, opts = {}) {
   const us = pool.slice(0, players);
