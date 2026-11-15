@@ -16,13 +16,13 @@ export function nextEvent(m: Market, day: number) {
   return m.events.find((e) => e.day >= day) ?? null;
 }
 
-export function Calendar({ market, day, onSelect, compact = false }: { market: Market; day: number; onSelect: (s: string) => void; compact?: boolean }) {
+export function Calendar({ market, day, onSelect, compact = false, hideTitle = false }: { market: Market; day: number; onSelect: (s: string) => void; compact?: boolean; hideTitle?: boolean }) {
   const upcoming = market.events.filter((e) => e.day >= day);
   const shown = compact ? upcoming.slice(0, 3) : upcoming;
   if (!shown.length) return null;
   return (
     <div className="calendar">
-      <h4 className="sec-head">📅 다가오는 일정</h4>
+      {!hideTitle && <h4 className="sec-head">📅 다가오는 일정</h4>}
       {shown.map((e, i) => {
         const payers = e.kind === 'dividend' ? market.dividends.filter((d) => d.day === e.day) : [];
         return (

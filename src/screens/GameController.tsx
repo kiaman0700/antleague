@@ -838,7 +838,7 @@ export function GameController({ session, onExit }: Props) {
         </BottomSheet>
 
         <BottomSheet open={schedSheet} onClose={() => setSchedSheet(false)} title="📅 다가오는 일정">
-          <Calendar market={m} day={day} onSelect={(sym) => (setSchedSheet(false), selectStock(sym))} />
+          <Calendar market={m} day={day} hideTitle onSelect={(sym) => (setSchedSheet(false), selectStock(sym))} />
         </BottomSheet>
 
         <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="🏆 실시간 순위">
