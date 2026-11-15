@@ -146,7 +146,8 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
   const sectorOrder = [...pins.filter((id) => STOCK_SECTORS.some((x) => x.id === id)), ...STOCK_SECTORS.map((x) => x.id).filter((id) => !pins.includes(id))];
   const subs = isSectorRow ? [...allSubs].sort((a, b) => sectorOrder.indexOf(a.id) - sectorOrder.indexOf(b.id)) : allSubs;
   const regionOrder = prefs.regionOrder ?? regions.map((r) => r.id);
-  const regionsSorted = [...regions].sort((a, b) => (regionOrder.indexOf(a.id) + 99) % 99 - (regionOrder.indexOf(b.id) + 99) % 99);
+  // '전체'는 늘 맨 앞에 고정 (순서 바꾸기 대상 아님), 나머지만 내가 정한 순서로
+  const regionsSorted = [regions[0], ...regions.slice(1).sort((a, b) => (regionOrder.indexOf(a.id) + 99) % 99 - (regionOrder.indexOf(b.id) + 99) % 99)];
 
   const grouped = region !== 'watch' && region !== 'held' && region !== 'news' && sort === 'default' && !q.trim() && !sub;
   const groupKey = (s: (typeof STOCKS)[number]) => (s.etf ? 'etf:' + s.etf.group : s.sector);
@@ -236,6 +237,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         onReorder={editing ? (ids) => setPrefs({ regionOrder: ids }) : undefined}
         items={regionsSorted.map((c) => ({
           id: c.id,
+          fixed: c.id === 'all',
           active: region === c.id,
           node: (
             <button role="tab" aria-selected={region === c.id} className={'chip' + (region === c.id ? ' on' : '')} onClick={() => onFilter({ region: c.id, sub: null })}>

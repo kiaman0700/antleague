@@ -4,6 +4,8 @@
  */
 import {
   Activity,
+  GripVertical,
+  Move,
   AlertTriangle,
   ArrowLeft,
   Banknote,
@@ -150,6 +152,8 @@ const ICONS = {
   cart: ShoppingCart,
   eye: Eye,
   eyeOff: EyeOff,
+  grip: GripVertical,
+  move: Move,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

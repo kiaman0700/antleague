@@ -134,6 +134,7 @@ export function Companies({ onBack }: { onBack: () => void }) {
         label="지역"
         items={(['all', '국내', '미국', 'ETF'] as Region[]).map((r) => ({
           id: r,
+          fixed: r === 'all',
           active: region === r,
           node: (
             <button className={'chip' + (region === r ? ' on' : '')} onClick={() => (setRegion(r), setSector(null))}>
@@ -146,7 +147,7 @@ export function Companies({ onBack }: { onBack: () => void }) {
         <SlideChips
           label="업종"
           items={[
-            { id: '__all', active: !sector, node: <button className={'chip sm' + (!sector ? ' on-soft' : '')} onClick={() => setSector(null)}>모두</button> },
+            { id: '__all', fixed: true, active: !sector, node: <button className={'chip sm' + (!sector ? ' on-soft' : '')} onClick={() => setSector(null)}>모두</button> },
             ...sectors.map((s) => ({
               id: s.id,
               active: sector === s.id,

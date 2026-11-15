@@ -1488,3 +1488,132 @@ button.tag:hover,
 .tut-wait.ok {
   color: var(--green);
 }
+
+/* 맨 앞 고정 칩('전체'·'모두'): 넘겨도 늘 그 자리 */
+.slide-chips.has-pin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.slide-chips.has-pin .sl-track {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sl-pin {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding-right: 6px;
+  border-right: 1px solid var(--line-2);
+}
+.slide-chips.has-pin .sl-arrow.l {
+  left: auto;
+}
+.sl-wrap {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.slide-chips.has-pin .sl-arrow.l {
+  left: -4px;
+}
+.slide-chips.has-pin.regions {
+  flex-wrap: nowrap;
+}
+
+/* ============ 배치 편집: 크기 조절 막대 · 고정 조각 ============ */
+.board.dock > .dock-zone {
+  position: relative;
+}
+.dock-panel.sized > .pane,
+.dock-panel.sized > .es-body,
+.dock-panel.sized > .es-body > .pane {
+  min-height: 0;
+  overflow: auto;
+}
+.dock-rs {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  z-index: 3;
+}
+.dock-rs i {
+  display: block;
+  border-radius: 3px;
+  background: rgba(247, 197, 72, 0.45);
+  transition: background 0.15s, transform 0.15s;
+}
+.dock-rs:hover i,
+.dock-rs:active i {
+  background: var(--gold);
+}
+.dock-rs.row {
+  height: 10px;
+  margin: -8px 0;
+  cursor: row-resize;
+}
+.dock-rs.row i {
+  width: 44px;
+  height: 4px;
+}
+.dock-rs.col {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -11px;
+  width: 12px;
+  cursor: col-resize;
+}
+.dock-rs.col i {
+  width: 4px;
+  height: 44px;
+}
+.es-bar.fixed {
+  cursor: default;
+}
+.board.dock.dragging .dock-panel {
+  transition: none;
+}
+.dock-panel.dragging {
+  opacity: 0.55;
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+.dock-ghost span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 속보 알림 자유 위치 */
+.toast.free {
+  animation: fadein 0.2s ease-out;
+}
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+}
+.toast.sample.movable {
+  pointer-events: auto;
+  cursor: grab;
+  opacity: 1;
+  touch-action: none;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 95;
+}
+.toast.sample.movable:active {
+  cursor: grabbing;
+}
+/* 가장자리에 둬도 글자가 세로로 쪼개지지 않게: 내용 너비 기준(최대 폭 제한) */
+.toast.free,
+.toast.sample.movable {
+  width: max-content;
+  max-width: min(440px, calc(100vw - 24px));
+}

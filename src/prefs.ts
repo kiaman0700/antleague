@@ -34,6 +34,14 @@ export interface Layout {
   pcZones: Record<PcZone, PcPanel[]>;
   /** PC: 숨긴 조각 */
   pcHidden: PcPanel[];
+  /** PC: 좁은 칸 너비(px). 없으면 기본 */
+  pcColW: Partial<Record<PcZone, number>>;
+  /** PC: 한 칸 안 조각들의 높이 비율(그때의 px). 없으면 기본 */
+  pcFlex: Partial<Record<PcPanel, number>>;
+  /** 속보 알림 자유 위치 (화면 비율 0~1, 왼쪽 위 기준) — 없으면 toastPos */
+  toastXY: { x: number; y: number } | null;
+  /** 모바일 속보 알림 자유 위치 */
+  mToastXY: { x: number; y: number } | null;
 }
 export const DEFAULT_LAYOUT: Layout = {
   mTabs: ['list', 'detail', 'news', 'assets', 'cards'],
@@ -52,6 +60,10 @@ export const DEFAULT_LAYOUT: Layout = {
   toastPos: 'top',
   pcZones: { top: ['timeline'], left: ['list'], center: ['detail'], right: ['news', 'cards'] },
   pcHidden: [],
+  pcColW: {},
+  pcFlex: {},
+  toastXY: null,
+  mToastXY: null,
 };
 
 export interface Prefs {

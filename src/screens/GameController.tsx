@@ -16,6 +16,7 @@ import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
+import { ToastSpot } from '../components/ToastSpot';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -672,8 +673,13 @@ export function GameController({ session, onExit }: Props) {
   };
   const overlays = (
     <>
-      {toast && <div className={'toast ' + toast.kind + (layout.toastPos === 'bottom' ? ' at-bottom' : '')}>{toast.text}</div>}
-      {editing && !toast && <div className={'toast warn sample' + (layout.toastPos === 'bottom' ? ' at-bottom' : '')}>속보·알림은 여기에 떠요</div>}
+      <ToastSpot
+        toast={toast}
+        editing={editing}
+        pos={layout.toastPos}
+        xy={mobile ? layout.mToastXY : layout.toastXY}
+        onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
+      />
       {closing !== null && (
         <DayCloseOverlay
           market={m}
@@ -782,7 +788,7 @@ export function GameController({ session, onExit }: Props) {
         <b>
           <Icon name="sliders" size={16} /> 화면 편집 중
         </b>
-        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기. 아래 탭도 바꿀 수 있어요' : '조각의 손잡이를 잡고 끌어서 원하는 칸에 놓으세요 · 눈 모양으로 보이기/숨기기'}</small>
+        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기 · 아래 탭 순서 · 견본 알림은 끌어서 놓기' : '손잡이를 잡고 끌면 바뀔 배치가 바로 보여요 · 노란 막대로 크기 조절 · 견본 알림도 끌어서 놓기'}</small>
       </div>
       <div className="eb-actions">
         {mobile && (
@@ -799,9 +805,18 @@ export function GameController({ session, onExit }: Props) {
         )}
         <label className="eb-start">
           속보 알림
-          <select value={layout.toastPos} onChange={(e) => setLayout({ toastPos: e.target.value as 'top' | 'bottom' })}>
-            <option value="top">위</option>
-            <option value="bottom">아래</option>
+          <select
+            value={(mobile ? layout.mToastXY : layout.toastXY) ? 'free' : layout.toastPos}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'free') setLayout(mobile ? { mToastXY: { x: 1, y: 0.15 } } : { toastXY: { x: 1, y: 0.15 } });
+              else setLayout({ toastPos: v as 'top' | 'bottom', ...(mobile ? { mToastXY: null } : { toastXY: null }) });
+            }}
+            title="견본 알림을 끌어서 어디든 놓을 수도 있어요"
+          >
+            <option value="top">위 가운데</option>
+            <option value="bottom">아래 가운데</option>
+            <option value="free">직접 놓기 (끌어서)</option>
           </select>
         </label>
         <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
@@ -1152,7 +1167,9 @@ export function GameController({ session, onExit }: Props) {
         zones={layout.pcZones}
         hidden={layout.pcHidden}
         editing={editing}
-        onChange={(pcZones) => setLayout({ pcZones })}
+        sizes={{ colW: layout.pcColW, flex: layout.pcFlex }}
+        onChange={(pcZones, sz) => setLayout({ pcZones, pcColW: sz.colW, pcFlex: sz.flex })}
+        onResize={(sz) => setLayout({ pcColW: sz.colW, pcFlex: sz.flex })}
         onToggle={(id) => setLayout({ pcHidden: layout.pcHidden.includes(id) ? layout.pcHidden.filter((x) => x !== id) : [...layout.pcHidden, id] })}
         render={(id) =>
           id === 'timeline' ? (
