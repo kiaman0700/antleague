@@ -415,7 +415,7 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
 
       <div className="order-kind" role="tablist">
         <button className={kind === 'now' ? 'on' : ''} onClick={() => switchKind('now')}>
-          {easy ? '지금 가격으로' : '시장가(시가)'}
+          {easy ? '지금 가격으로' : '시장가(현재가)'}
         </button>
         <button className={kind === 'limit' ? 'on' : ''} onClick={() => switchKind('limit')}>
           <Icon name="hourglass" size={14} /> {easy ? '예약 주문' : '지정가'}
