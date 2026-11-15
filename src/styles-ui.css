@@ -1842,3 +1842,40 @@ button.tag:hover,
   font-weight: 700;
   text-align: center;
 }
+
+/* ============ 개인정보 · 내 데이터 지우기 ============ */
+.home-foot {
+  text-align: center;
+  margin: 18px 0 4px;
+  font-size: 12px;
+}
+.privacy h4 {
+  margin: 14px 0 4px;
+  font-size: 14px;
+}
+.privacy ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.privacy p {
+  line-height: 1.6;
+}
+.panel.forget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.panel.forget > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.home-foot .linkish-soft {
+  padding: 8px 10px;
+}
+.privacy li {
+  font-weight: 400;
+}

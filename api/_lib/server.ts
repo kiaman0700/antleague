@@ -571,6 +571,18 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return { roomId: room.id, playerId: p.id, code: room.code };
     }
 
+    case 'forgetMe': {
+      // 내 데이터 모두 지우기: 익명 계정을 지우면 내 참가 기록·거래·카드가 함께 지워짐(cascade).
+      // 진행·대기 중인 방이 있으면 다른 사람 게임이 깨지므로 먼저 나가게 함
+      rateLimit(uid + ':forget', 3, 600_000);
+      const mine = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid), 'my rooms') as unknown as { id: string; left_game: boolean; rooms: { status: string } }[];
+      if (mine.some((p) => p.rooms.status === 'waiting' || (p.rooms.status === 'playing' && !p.left_game)))
+        throw new GameError('대기 중이거나 진행 중인 방이 있어요. 먼저 그 방에서 나간(기권한) 뒤에 지울 수 있어요.', 409);
+      const del = await sb.auth.admin.deleteUser(uid);
+      if (del.error) throw new GameError('지우지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+      return { ok: true };
+    }
+
     case 'kick': {
       // 대기실에서 방장이 다른 사람을 내보냄 (준비 안 하고 자리만 차지하는 경우)
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);

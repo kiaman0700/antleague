@@ -307,6 +307,34 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
   );
 }
 
+/** 개인정보 처리 안내 — 이 게임이 실제로 저장하는 것만 */
+function Privacy({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title={<><Icon name="lock" size={18} /> 개인정보 처리 안내</>} onClose={onClose}>
+      <div className="privacy">
+        <p>주식 대결은 회원가입 없이 익명으로 플레이해요. 이름·이메일·전화번호 같은 개인정보는 받지 않아요.</p>
+        <h4>저장하는 것</h4>
+        <ul>
+          <li>이 기기를 구분하는 익명 계정 번호 (로그인용)</li>
+          <li>직접 정한 닉네임, 참가한 방, 게임 안의 거래·카드 기록, 전적·업적</li>
+          <li>이 기기 안에만: 연습 게임 저장, 화면 설정, 관심 종목</li>
+        </ul>
+        <h4>쓰는 곳</h4>
+        <p>게임 진행과 결과·기록 보여 주기에만 써요. 광고나 다른 곳에 넘기지 않아요. 서버는 Supabase(데이터베이스)와 Vercel(웹 호스팅)을 써요.</p>
+        <h4>지우기</h4>
+        <p>
+          홈 → <b>기록·업적</b> → <b>내 데이터 지우기</b>에서 언제든 모두 지울 수 있어요. 끝난 게임의 순위표에는 닉네임과 수익률만 남아요.
+        </p>
+      </div>
+      <div className="modal-actions">
+        <button className="btn primary" onClick={onClose}>
+          확인
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function HowTo({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
@@ -338,7 +366,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
 
 function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
   const profile = useProfile();
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs' | 'privacy'>(null);
   const prefs = usePrefs();
   const [nickErr, setNickErr] = useState(false);
   const [resume, setResume] = useState<ResumeInfo | null>(null);
@@ -506,10 +534,16 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
           </button>
         )}
       </div>
+      <p className="home-foot">
+        <button className="linkish-soft" onClick={() => setModal('privacy')}>
+          개인정보 처리 안내
+        </button>
+      </p>
 
       {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onRejoin={(r) => rejoined(r, onWaiting, onGame)} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
+      {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
       {modal === 'prefs' && (
         <Sheet title={<><Icon name="sliders" size={18} /> 내 화면 설정</>} onClose={() => setModal(null)}>
           <PrefsPanel ui={profile.ui} />
@@ -810,6 +844,46 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
 /* ================= 기록·업적 ================= */
 
+/** 내 데이터 모두 지우기 (개인정보 파기) */
+function ForgetMe() {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const forget = async () => {
+    if (!window.confirm('이 기기의 계정과 게임 기록(전적·업적·연습 저장·화면 설정)을 모두 지울까요? 되돌릴 수 없어요.')) return;
+    setBusy(true);
+    setErr('');
+    try {
+      if (online) await api('forgetMe');
+      try {
+        await supabase?.auth.signOut();
+      } catch {
+        /* 이미 지워진 계정 */
+      }
+      try {
+        for (const k of Object.keys(localStorage)) if (k.startsWith('stockduel') || k.startsWith('sb-')) localStorage.removeItem(k);
+      } catch {
+        /* 저장소 접근 불가 */
+      }
+      location.assign('/');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel pad forget">
+      <div>
+        <b>내 데이터 지우기</b>
+        <small className="muted">이 기기의 익명 계정, 전적·업적, 연습 저장, 화면 설정을 모두 지워요.</small>
+      </div>
+      <button className="btn sm danger" onClick={forget} disabled={busy}>
+        {busy ? '지우는 중…' : '모두 지우기'}
+      </button>
+      {err && <p className="error">{err}</p>}
+    </section>
+  );
+}
+
 function Records({ go }: Pick<Props, 'go'>) {
   const [history, setHistory] = useState<MatchResult[] | null>(null);
   useEffect(() => {
@@ -878,6 +952,7 @@ function Records({ go }: Pick<Props, 'go'>) {
           </ul>
         </section>
       )}
+      <ForgetMe />
       {history !== null && (
         <section className="panel pad">
           <h3>

@@ -704,6 +704,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     serverDay: serverDay ?? 0,
     closing: closing !== null,
     viewDay: viewDay ?? 0,
+    botNotice: view?.notices.find((n) => n.text.includes('연습봇'))?.text ?? '',
   };
   const overlays = (
     <>

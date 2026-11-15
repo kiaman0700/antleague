@@ -17,6 +17,8 @@ export interface TutorialCtx {
   serverDay: number;
   closing: boolean;
   viewDay: number;
+  /** 연습봇 카드에 대한 실제 알림 문구 */
+  botNotice: string;
 }
 
 export interface TutorialStep {
@@ -115,7 +117,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '연습봇의 공격!',
-    text: () => '연습봇이 나에게 "수수료 폭탄"을 썼지만, 갖고 있던 방패가 자동으로 막았어요! 방해 카드는 상대를 골라 쓰고, 방패·반사 거울로 막을 수 있어요.',
+    text: (c) => `${c.botNotice ? `알림: "${c.botNotice}" — ` : ''}연습봇이 나에게 "수수료 폭탄"을 썼지만, 갖고 있던 방패가 자동으로 막았어요! 방해 카드는 상대를 골라 쓰고, 방패·반사 거울로 막을 수 있어요.`,
     target: '.p-cards, .m-page .cards',
     tab: 'cards',
   },

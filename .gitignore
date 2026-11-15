@@ -6,3 +6,4 @@ dist
 .claude/launch.json
 .mcp.json
 sim/.out/
+scripts/e2e/.accounts.json
