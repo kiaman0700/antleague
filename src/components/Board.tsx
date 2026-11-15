@@ -5,6 +5,7 @@ import { ITEM_MAP, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market } from '../game/market';
 import { START_CASH } from '../game/portfolio';
 import { pct, tone, wonShort } from '../lib/format';
+import { ScrollChips } from './StockBrowser';
 import { Term } from './Term';
 
 export const PLAYER_COLORS = ['var(--me)', 'var(--opp)', '#34d399', '#60a5fa', '#f472b6', '#fb923c'];
@@ -288,7 +289,8 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
     return true;
   });
   return (
-    <div className="sched" role="list" aria-label="다가오는 일정">
+    <div className="sched-wrap" role="list" aria-label="다가오는 일정">
+      <ScrollChips>
       {evs.length === 0 && <span className="sched-none">📅 남은 일정이 없어요</span>}
       {evs.map((e, i) => {
         const dd = e.day - day;
@@ -306,6 +308,7 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
           전체 ›
         </button>
       )}
+      </ScrollChips>
     </div>
   );
 }

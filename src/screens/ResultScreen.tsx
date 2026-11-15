@@ -3,7 +3,7 @@ import { LineChart } from '../components/Chart';
 import { BADGE_MAP, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
 import type { View } from '../engine/engine';
-import { deriveItems, ITEM_MAP, type ItemKind } from '../game/items';
+import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
 import { computePortfolio, equityHistory, START_CASH } from '../game/portfolio';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
@@ -30,7 +30,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
     const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2);
     return people.map((p) => {
       const trades = final.trades.filter((t) => t.player_id === p.id);
-      const spends = final.items.filter((r) => r.player_id === p.id && r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost }));
+      const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id));
       const pf = computePortfolio(trades, spends);
       const hist = equityHistory(trades, spends, market);
       const equity = hist[hist.length - 1];

@@ -177,7 +177,7 @@ export function CardTray({
                 {d.name}
                 {n > 1 && <em> ×{n}</em>}
               </span>
-              {k === 'shield' ? (
+              {ITEM_MAP[k].passive ? (
                 <span className="tc-auto">자동</span>
               ) : (
                 <button className="btn sm primary" disabled={!!why || busy} title={why ?? d.desc} onClick={() => onUse(k)}>

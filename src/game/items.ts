@@ -1,7 +1,7 @@
 import { mulberry32 } from '../lib/rng.js';
 
-export type ItemKind = 'paper' | 'detector' | 'spy' | 'analyst' | 'freeze' | 'fake' | 'fee' | 'shield';
-export type ItemType = 'info' | 'attack' | 'defense';
+export type ItemKind = 'paper' | 'detector' | 'spy' | 'analyst' | 'scout' | 'freeze' | 'fake' | 'fee' | 'blackout' | 'shield' | 'mirror' | 'bonus';
+export type ItemType = 'info' | 'attack' | 'defense' | 'bonus';
 
 export interface ItemDef {
   kind: ItemKind;
@@ -10,26 +10,45 @@ export interface ItemDef {
   type: ItemType;
   cost: number;
   desc: string;
+  /** 둘 이상일 때만 의미가 있는 카드 */
   multiOnly?: boolean;
+  /** 상점에서 팔지 않음 (무료 카드로만) */
+  shopless?: boolean;
+  /** 갖고 있으면 자동 발동 */
+  passive?: boolean;
 }
 
+/**
+ * 밸런스 기준 (시작 자금 1,000만원)
+ * - 정보 카드: 기대 이익보다 조금 싸게. 확실한 정보일수록 비싸게
+ * - 방해 카드: 상대가 잃는 기대 손해 ≈ 가격. 너무 싸면 서로 괴롭히기만 하는 게임이 됨
+ * - 방어 카드: 막는 공격 평균 가격보다 싸게, 반사는 공격 효과까지 주니 더 비싸게
+ */
 export const ITEMS: ItemDef[] = [
-  { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 900_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요.' },
-  { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 600_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
-  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 300_000, desc: '오늘 나온 [루머] 뉴스가 진짜인지 가짜인지 알려줘요.' },
-  { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 300_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
-  { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 1_000_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
+  { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 1_200_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보라 가장 비싸요)' },
+  { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 500_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
+  { kind: 'scout', name: '차트 분석', emoji: '📊', type: 'info', cost: 400_000, desc: '지금 보고 있는 종목이 오늘 오를지 내릴지 알려줘요. (정확도 약 70%)' },
+  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 150_000, desc: '오늘 나온 [루머] 뉴스가 진짜인지 가짜인지 알려줘요.' },
+  { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 200_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
+  { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 800_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
+  { kind: 'blackout', name: '정보 차단', emoji: '📵', type: 'attack', cost: 500_000, desc: '고른 상대는 내일 아침 뉴스를 볼 수 없어요.', multiOnly: true },
   { kind: 'fake', name: '가짜 뉴스', emoji: '📢', type: 'attack', cost: 400_000, desc: '내일 고른 상대 화면에만 내가 만든 가짜 속보가 떠요.', multiOnly: true },
-  { kind: 'fee', name: '수수료 폭탄', emoji: '💸', type: 'attack', cost: 500_000, desc: '고른 상대의 거래 수수료가 이틀간 10배(1%)가 돼요.', multiOnly: true },
-  { kind: 'shield', name: '방패', emoji: '🛡️', type: 'defense', cost: 500_000, desc: '갖고만 있으면 상대의 방해 아이템을 1번 자동으로 막아요.', multiOnly: true },
+  { kind: 'fee', name: '수수료 폭탄', emoji: '💸', type: 'attack', cost: 400_000, desc: '고른 상대의 거래 수수료가 사흘간 10배(1%)가 돼요.', multiOnly: true },
+  { kind: 'shield', name: '방패', emoji: '🛡️', type: 'defense', cost: 400_000, desc: '갖고만 있으면 나를 노린 방해 카드를 1번 자동으로 막아요.', multiOnly: true, passive: true },
+  { kind: 'mirror', name: '반사 거울', emoji: '🪞', type: 'defense', cost: 700_000, desc: '갖고만 있으면 나를 노린 방해 카드를 1번 쓴 사람에게 되돌려요.', multiOnly: true, passive: true },
+  { kind: 'bonus', name: '용돈 봉투', emoji: '🎁', type: 'bonus', cost: 0, desc: '쓰면 현금 50만원이 들어와요. 상점에서는 살 수 없고 무료 카드로만 나와요.', shopless: true },
 ];
 export const ITEM_MAP = Object.fromEntries(ITEMS.map((i) => [i.kind, i])) as Record<ItemKind, ItemDef>;
+export const ITEM_KINDS = ITEMS.map((i) => i.kind);
 
 export const START_CARDS = 2;
 export const GRANT_EVERY = 5;
 export const HOLD_LIMIT = 3;
 export const USE_LIMIT = 2;
 export const FEE_BOMB_RATE = 0.01;
+export const FEE_BOMB_DAYS = 3;
+export const BONUS_AMOUNT = 500_000;
+export const SCOUT_ACCURACY = 0.7;
 
 export interface ItemRow {
   id?: string;
@@ -38,7 +57,7 @@ export interface ItemRow {
   kind: ItemKind;
   action: 'buy' | 'use';
   cost: number;
-  /** target: 방해·염탐 카드의 대상 플레이어 (여럿이 할 때) */
+  /** target: 방해·염탐 카드의 대상 / symbol: 가짜 뉴스·차트 분석 종목 */
   payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string } | null;
   created_at?: string;
 }
@@ -50,6 +69,9 @@ export interface Effect {
   /** 효과가 적용되는 날 */
   days: number[];
   blocked: boolean;
+  /** 반사 거울에 튕겨서 쓴 사람이 맞음. by = 거울 주인 */
+  reflected?: boolean;
+  by?: string;
   usedDay: number;
   payload?: ItemRow['payload'];
 }
@@ -57,8 +79,8 @@ export interface Effect {
 export interface PlayerItems {
   inventory: Partial<Record<ItemKind, number>>;
   used: Partial<Record<ItemKind, number>>;
-  /** 내가 쓴 정보 아이템 (화면에 결과 표시) */
-  infoUses: { kind: ItemKind; day: number; target?: string }[];
+  /** 내가 쓴 정보 카드 (화면에 결과 표시) */
+  infoUses: { kind: ItemKind; day: number; target?: string; symbol?: string }[];
   grants: { day: number; kind: ItemKind; skipped: boolean }[];
   total: number;
 }
@@ -73,6 +95,7 @@ function hash(str: string) {
   for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
   return h >>> 0;
 }
+export { hash as hashString };
 
 export function grantDays(totalDays: number) {
   const out: number[] = [];
@@ -80,7 +103,14 @@ export function grantDays(totalDays: number) {
   return out;
 }
 
-/** 아이템 상태는 DB에 저장된 구매/사용 기록으로부터 두 기기가 똑같이 계산한다 */
+/** 카드 구매(지출)와 용돈 봉투(수입)를 돈 흐름으로 */
+export function spendsFromRows(rows: ItemRow[]): { day: number; cost: number }[] {
+  return rows
+    .filter((r) => r.action === 'buy' || (r.action === 'use' && r.kind === 'bonus'))
+    .map((r) => ({ day: r.day, cost: r.action === 'buy' ? r.cost : -BONUS_AMOUNT }));
+}
+
+/** 아이템 상태는 DB에 저장된 구매/사용 기록으로부터 모든 기기가 똑같이 계산한다 */
 export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], currentDay: number, totalDays: number, solo: boolean): ItemState {
   const pool = ITEMS.filter((i) => !solo || !i.multiOnly).map((i) => i.kind);
   const players: Record<string, PlayerItems> = {};
@@ -89,6 +119,10 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
   const add = (p: PlayerItems, k: ItemKind, n: number) => {
     p.inventory[k] = (p.inventory[k] ?? 0) + n;
     p.total += n;
+  };
+  const consume = (p: PlayerItems, k: ItemKind) => {
+    add(p, k, -1);
+    p.used[k] = (p.used[k] ?? 0) + 1;
   };
   const sorted = [...rows].sort((a, b) => a.day - b.day || (a.created_at ?? '').localeCompare(b.created_at ?? ''));
   const gdays = new Set(grantDays(totalDays));
@@ -108,30 +142,32 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
     for (const r of sorted) {
       if (r.day !== d) continue;
       const p = players[r.player_id];
-      if (!p) continue;
+      if (!p || !ITEM_MAP[r.kind]) continue;
       if (r.action === 'buy') {
         add(p, r.kind, 1);
         continue;
       }
       if ((p.inventory[r.kind] ?? 0) <= 0) continue;
-      add(p, r.kind, -1);
-      p.used[r.kind] = (p.used[r.kind] ?? 0) + 1;
+      consume(p, r.kind);
       const def = ITEM_MAP[r.kind];
-      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day, target: r.payload?.target });
+      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day, target: r.payload?.target, symbol: r.payload?.symbol });
       if (def.type === 'attack') {
         // 대상을 고르지 않았으면(2인) 다른 한 명
         const chosen = r.payload?.target;
         const target = chosen && chosen !== r.player_id && playerIds.includes(chosen) ? chosen : playerIds.find((x) => x !== r.player_id);
         if (!target) continue;
         const t = players[target];
-        let blocked = false;
+        const days = r.kind === 'fee' ? Array.from({ length: FEE_BOMB_DAYS }, (_, k) => r.day + 1 + k) : [r.day + 1];
         if ((t.inventory.shield ?? 0) > 0) {
-          add(t, 'shield', -1);
-          t.used.shield = (t.used.shield ?? 0) + 1;
-          blocked = true;
+          consume(t, 'shield');
+          effects.push({ from: r.player_id, to: target, kind: r.kind, days, blocked: true, usedDay: r.day, payload: r.payload });
+        } else if ((t.inventory.mirror ?? 0) > 0) {
+          consume(t, 'mirror');
+          // 쓴 사람에게 그대로 돌아감 (돌아온 공격은 다시 막거나 튕기지 않음)
+          effects.push({ from: r.player_id, to: r.player_id, kind: r.kind, days, blocked: false, reflected: true, by: target, usedDay: r.day, payload: r.payload });
+        } else {
+          effects.push({ from: r.player_id, to: target, kind: r.kind, days, blocked: false, usedDay: r.day, payload: r.payload });
         }
-        const days = r.kind === 'fee' ? [r.day + 1, r.day + 2] : [r.day + 1];
-        effects.push({ from: r.player_id, to: target, kind: r.kind, days, blocked, usedDay: r.day, payload: r.payload });
       }
     }
   }
@@ -144,18 +180,21 @@ export function activeEffects(state: ItemState, playerId: string, day: number) {
 
 /** 아이템을 살/쓸 수 있는지. 문제가 있으면 이유 문자열 */
 export function canBuy(p: PlayerItems, kind: ItemKind, cash: number): string | null {
+  const def = ITEM_MAP[kind];
+  if (!def || def.shopless) return '상점에서 살 수 없는 카드예요';
   if (p.total >= HOLD_LIMIT) return `카드는 최대 ${HOLD_LIMIT}장까지 가질 수 있어요`;
   if ((p.used[kind] ?? 0) + (p.inventory[kind] ?? 0) >= USE_LIMIT) return `이 카드는 한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
-  if (cash < ITEM_MAP[kind].cost) return '현금이 부족해요';
+  if (cash < def.cost) return '현금이 부족해요';
   return null;
 }
 
 export function canUse(p: PlayerItems, kind: ItemKind, day: number, totalDays: number, alreadyUsedToday: boolean): string | null {
-  if ((p.inventory[kind] ?? 0) <= 0) return '이 카드가 없어요';
-  if ((p.used[kind] ?? 0) >= USE_LIMIT) return `한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
-  if (kind === 'shield') return '방패는 갖고 있으면 자동으로 발동돼요';
-  if (alreadyUsedToday) return '같은 카드는 하루에 한 번만 쓸 수 있어요';
   const def = ITEM_MAP[kind];
+  if (!def) return '없는 카드예요';
+  if ((p.inventory[kind] ?? 0) <= 0) return '이 카드가 없어요';
+  if (def.passive) return '갖고 있으면 자동으로 발동돼요';
+  if (kind !== 'bonus' && (p.used[kind] ?? 0) >= USE_LIMIT) return `한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
+  if (alreadyUsedToday && kind !== 'bonus') return '같은 카드는 하루에 한 번만 쓸 수 있어요';
   if ((def.type === 'attack' || kind === 'paper') && day >= totalDays - 1) return '마지막 날에는 쓸 수 없어요';
   return null;
 }

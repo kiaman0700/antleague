@@ -9,7 +9,7 @@ import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
 import { loadSolo, soloAct, soloView, type SoloSave } from '../engine/local';
-import { FEE_BOMB_RATE, ITEM_MAP, type ItemKind, type ItemRow } from '../game/items';
+import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH } from '../game/portfolio';
 import { quote } from '../game/quote';
@@ -160,7 +160,7 @@ export function GameController({ session, onExit }: Props) {
 
   // ---------- 내 상태 ----------
   const myItemRows: ItemRow[] = view?.myItemRows ?? [];
-  const spends = useMemo(() => myItemRows.filter((r) => r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost })), [myItemRows]);
+  const spends = useMemo(() => spendsFromRows(myItemRows), [myItemRows]);
   const paidDivs = useMemo(() => (market?.dividends ?? []).filter((d) => d.perShare > 0), [market]);
   const portfolio = useMemo(() => computePortfolio(view?.myTrades ?? [], spends, Infinity, paidDivs), [view?.myTrades, spends, paidDivs]);
   const equity = market ? equityWith(portfolio, prices) : START_CASH;
@@ -273,6 +273,8 @@ export function GameController({ session, onExit }: Props) {
       if (others.length === 1) payload = { ...payload, target: others[0].id };
       else return setTargetPick(kind);
     }
+    // 차트 분석은 지금 보고 있는 종목
+    if (kind === 'scout' && !payload.symbol) payload = { ...payload, symbol: selected };
     if (kind === 'fake' && !payload.symbol) {
       setFakeTarget(payload.target ?? null);
       return setFakeModal(true);
@@ -280,7 +282,13 @@ export function GameController({ session, onExit }: Props) {
     run('useItem', { kind, payload }, () => {
       play('item');
       const d = ITEM_MAP[kind];
-      showToast(d.type === 'info' ? `${d.emoji} ${d.name} 결과가 뉴스에 나왔어요` : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`);
+      showToast(
+        kind === 'bonus'
+          ? `🎁 용돈 봉투! 현금 ${(BONUS_AMOUNT / 10000).toLocaleString()}만원이 들어왔어요`
+          : d.type === 'info'
+            ? `${d.emoji} ${d.name} 결과가 뉴스에 나왔어요`
+            : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`,
+      );
       if (d.type === 'info') {
         setTab('news');
         setDrawer(null);
@@ -432,7 +440,7 @@ export function GameController({ session, onExit }: Props) {
   const oppEnded = opponent ? opponent.endedDay >= day : false;
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
-  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '🧊 오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '💸 수수료 폭탄! 오늘은 수수료가 1%예요' : '')).filter(Boolean);
+  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '🧊 오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '💸 수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '📵 정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
   const ev = nextEvent(m, day);
   const timerText = remaining !== null && closing === null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
   const endLabel = endedToday ? '상대 기다리는 중…' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →';
@@ -516,6 +524,8 @@ export function GameController({ session, onExit }: Props) {
       rumorCheck={view.reveals.rumorCheck}
       bestSector={view.reveals.bestSector}
       spy={view.reveals.spy}
+      scout={view.reveals.scout}
+      blackout={view.reveals.blackout}
       prices={prices}
       change={change}
       onSelect={selectStock}
@@ -686,15 +696,23 @@ export function GameController({ session, onExit }: Props) {
               </small>
             </button>
           </div>
-          <div className="m-progress" aria-label={`${total}일 중 ${day + 1}일차`}>
-            <i style={{ width: `${((day + (displayClosed ? 1 : 0.5)) / total) * 100}%` }} />
+          <div className="m-progress-row" aria-label={`${total}일 중 ${day + 1}일차`}>
+            <span className="mp-now">
+              <b>{day + 1}일차</b>
+              <small> / {total}일</small>
+            </span>
+            <div className="m-progress">
+              <i style={{ width: `${((day + (displayClosed ? 1 : 0.5)) / total) * 100}%` }} />
+            </div>
+            <span className="mp-left">{total - day - 1 > 0 ? `${total - day - 1}일 남음` : '마지막 날'}</span>
           </div>
           <div className="m-top-more">
           {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
           <div className="m-row">
             <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
-            <button className="icon-btn m-menu" onClick={() => setMenu(true)} aria-label="메뉴">
-              ⋯
+            <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
+              <span>⚙️</span>
+              <small>설정</small>
             </button>
           </div>
           {/* ③ 일정 전용 영역 */}

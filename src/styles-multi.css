@@ -720,3 +720,63 @@
   background: linear-gradient(90deg, rgba(247, 197, 72, 0.5), var(--gold));
   transition: width 0.4s ease;
 }
+
+/* 진행 막대 + 라벨 */
+.m-progress-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.mp-now b {
+  color: var(--gold);
+  font-size: 13px;
+}
+.mp-now small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.m-progress-row .m-progress {
+  margin-top: 0;
+  height: 5px;
+}
+.mp-left {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* 일정 칩: 좌우 화살표로 넘김 */
+.sched-wrap .scroll-chips {
+  margin: 0;
+}
+.sched-wrap .sc-track {
+  gap: 6px;
+  padding: 1px 0;
+}
+
+/* 설정 버튼 */
+.m-top .m-menu {
+  flex-shrink: 0;
+  width: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  color: var(--text-2);
+}
+.m-menu span {
+  font-size: 16px;
+  line-height: 1;
+}
+.m-menu small {
+  font-size: 10px;
+  font-weight: 600;
+}

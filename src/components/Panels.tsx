@@ -17,6 +17,8 @@ interface NewsProps {
   rumorCheck: boolean;
   bestSector: string | null;
   spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
+  scout?: { symbol: string; up: boolean } | null;
+  blackout?: boolean;
   prices: Record<string, number>;
   change: (symbol: string) => number;
   onSelect: (symbol: string) => void;
@@ -50,7 +52,7 @@ function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change
   );
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, prices, change, onSelect, onSelectSector }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector }: NewsProps) {
   const [showOld, setShowOld] = useState(false);
   const today = news.filter((n) => n.day === day);
   const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
@@ -79,6 +81,18 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             입니다.
           </div>
           <RelatedChips symbols={COMPANIES.filter((c) => c.sector === bestSector).map((c) => c.symbol)} change={change} onSelect={onSelect} />
+        </div>
+      )}
+      {blackout && <div className="effect-banner">📵 정보 차단 카드를 맞아서 오늘 아침 뉴스가 보이지 않아요</div>}
+      {scout && (
+        <div className="reveal scout">
+          <div className="reveal-title">📊 차트 분석 (정확도 약 70%)</div>
+          <div className="reveal-line">
+            <button className="linkish" onClick={() => onSelect(scout.symbol)}>
+              {STOCK_MAP[scout.symbol].name}
+            </button>
+            은(는) 오늘 마감 때 <b className={scout.up ? 'up' : 'down'}>{scout.up ? '▲ 오를' : '▼ 내릴'}</b> 것 같아요.
+          </div>
         </div>
       )}
       {spy && (
@@ -268,7 +282,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                 </b>
                 <small>{d.desc}</small>
               </div>
-              {k !== 'shield' ? (
+              {!ITEM_MAP[k].passive ? (
                 <button className="btn sm primary" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
                   사용
                 </button>
@@ -281,14 +295,14 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
 
       {shop && (
         <div className="shop">
-          {ITEMS.filter((i) => !solo || !i.multiOnly).map((d) => {
+          {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
             const why = canAct ? canBuy(mine, d.kind, cash) : '지금은 살 수 없어요';
             return (
               <div key={d.kind} className={'card-item t-' + d.type}>
                 <div className="ci-emoji">{d.emoji}</div>
                 <div className="ci-body">
                   <b>
-                    {d.name} <span className={'type-tag ' + d.type}>{{ info: '정보', attack: '방해', defense: '방어' }[d.type]}</span>
+                    {d.name} <span className={'type-tag ' + d.type}>{{ info: '정보', attack: '방해', defense: '방어', bonus: '보너스' }[d.type]}</span>
                   </b>
                   <small>{d.desc}</small>
                 </div>

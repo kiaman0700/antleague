@@ -41,7 +41,7 @@ function chosung(s: string) {
 const ETF_GROUPS = ['지수', '레버리지·인버스', '테마', '원자재·환율'] as const;
 
 /** 가로로 넘치는 칩 줄: 좌우 화살표 + 가장자리 흐림 + 드래그/휠 스크롤 */
-function ScrollChips({ children }: { children: React.ReactNode }) {
+export function ScrollChips({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ l: false, r: false });
   const update = () => {

@@ -5,9 +5,10 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, canBuy, canUse, deriveItems, FEE_BOMB_RATE, ITEM_MAP, ITEMS, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, canBuy, canUse, deriveItems, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
+import { mulberry32 } from '../lib/rng.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
@@ -105,6 +106,8 @@ export interface View {
     bestSector: string | null;
     rumorCheck: boolean;
     spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
+    scout: { symbol: string; up: boolean } | null;
+    blackout: boolean;
   };
   /** 게임이 끝나면 모든 기록 공개 */
   final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string }[]; badges: Record<string, string[]> } | null;
@@ -201,7 +204,7 @@ function fakeNews(e: Effect, i: number): NewsEvent {
 }
 
 /** 오늘까지만 보이는 시장 — 오늘 종가·미래 가격·루머의 진실은 빠진다 */
-export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[] }): Market {
+export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean }): Market {
   const strip = (b: Bar): Bar => ({ open: b.open, close: b.close, high: b.high, low: b.low, path: [] });
   if (finished) {
     return {
@@ -221,6 +224,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
   };
   const news = m.news
     .filter((n) => n.day <= day)
+    .filter((n) => !(opts.blackout && n.day === day))
     .map((n) => (n.day === day && n.rumor && !opts.rumorCheck ? { ...n, realTone: n.tone } : n));
   return {
     seed: 0,
@@ -258,7 +262,7 @@ function itemsOf(d: GameData) {
 }
 
 function spendsOf(d: GameData, pid: string) {
-  return d.items.filter((r) => r.player_id === pid && r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost }));
+  return spendsFromRows(d.items.filter((r) => r.player_id === pid));
 }
 
 export function portfolioOf(d: GameData, pid: string) {
@@ -286,7 +290,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     myItems: { inventory: {}, used: {}, infoUses: [], grants: [], total: 0 },
     effectsToday: [],
     notices: [],
-    reveals: { tomorrow: null, bestSector: null, rumorCheck: false, spy: null },
+    reveals: { tomorrow: null, bestSector: null, rumorCheck: false, spy: null, scout: null, blackout: false },
     final: null,
   };
   if (r.status === 'waiting') return base;
@@ -313,6 +317,11 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   items.effects.forEach((e, i) => {
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
     const name = `${ITEM_MAP[e.kind].emoji} ${ITEM_MAP[e.kind].name}`;
+    if (e.reflected) {
+      if (e.by === meId) base.notices.push({ key, text: `🪞 반사 거울이 ${nick(e.from)}의 ${name}을(를) 되돌려 보냈어요!`, kind: 'ok' });
+      else if (e.from === meId) base.notices.push({ key, text: `🪞 ${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${name}이(가) 나에게 돌아왔어요!`, kind: 'warn' });
+      return;
+    }
     if (e.to === meId) {
       if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 ${nick(e.from)}의 ${name}을(를) 막았어요!`, kind: 'ok' });
       else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ ${nick(e.from)}이(가) 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
@@ -338,6 +347,17 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       }
       base.reveals.bestSector = best;
     }
+    if (todayInfo.includes('scout')) {
+      const use = [...mine.infoUses].reverse().find((u) => u.kind === 'scout' && u.day === r.day);
+      const sym = use?.symbol && m.bars[use.symbol] ? use.symbol : null;
+      if (sym) {
+        const b = m.bars[sym][r.day];
+        const truth = b.close >= b.open;
+        // 70% 확률로 맞음 — 같은 날 같은 종목이면 항상 같은 답
+        const rng = mulberry32((r.seed ^ hashString(sym)) + r.day * 131);
+        base.reveals.scout = { symbol: sym, up: rng() < SCOUT_ACCURACY ? truth : !truth };
+      }
+    }
     if (todayInfo.includes('spy')) {
       const spyUse = [...mine.infoUses].reverse().find((u) => u.kind === 'spy' && u.day === r.day);
       const opp = players.find((p) => p.id === spyUse?.target && p.id !== meId) ?? players.find((p) => p.id !== meId);
@@ -352,9 +372,11 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const fakes = finished
     ? []
     : items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews);
-  const marketKey = `${r.status}:${r.day}:${rumorCheck ? 1 : 0}:${fakes.length}`;
+  const blackout = !finished && base.effectsToday.includes('blackout');
+  base.reveals.blackout = blackout;
+  const marketKey = `${r.status}:${r.day}:${rumorCheck ? 1 : 0}:${fakes.length}:${blackout ? 1 : 0}`;
   base.marketKey = marketKey;
-  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes });
+  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout });
 
   if (finished) {
     base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname })), badges: finalResults(d).badges };
@@ -422,6 +444,10 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     const target = typeof t === 'string' ? others.find((p) => p.id === t) : others.length === 1 ? others[0] : undefined;
     if (!target) throw new GameError('카드를 쓸 상대를 골라 주세요.');
     payload = { target: target.id };
+  }
+  if (kind === 'scout') {
+    const p = (input.payload ?? {}) as { symbol?: unknown };
+    payload = { symbol: cleanSymbol(p.symbol) };
   }
   if (kind === 'fake') {
     const p = (input.payload ?? {}) as { symbol?: unknown; tone?: unknown };

@@ -76,7 +76,7 @@ create table public.items (
   room_id uuid not null references public.rooms(id) on delete cascade,
   player_id uuid not null references public.players(id) on delete cascade,
   day integer not null,
-  kind text not null check (kind in ('paper', 'detector', 'spy', 'analyst', 'freeze', 'fake', 'fee', 'shield')),
+  kind text not null check (kind in ('paper', 'detector', 'spy', 'analyst', 'scout', 'freeze', 'fake', 'fee', 'blackout', 'shield', 'mirror', 'bonus')),
   action text not null check (action in ('buy', 'use')),
   cost numeric not null default 0 check (cost >= 0),
   payload jsonb,
