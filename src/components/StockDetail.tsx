@@ -6,7 +6,7 @@ import { etfMembers, riskOf, RISK_LABEL, SECTOR_MAP, STOCK_MAP } from '../game/s
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { OrderRow } from '../engine/engine';
 import type { UiMode } from '../session';
-import { CandleChart, LineChart } from './Chart';
+import { ProChart } from './ProChart';
 import { Term } from './Term';
 
 interface Props {
@@ -34,6 +34,7 @@ interface Props {
 }
 
 export function StockDetail(props: Props) {
+  const [full, setFull] = useState(false);
   const { ui, market, symbol, day, closed, cash, holding, news, watched, onToggleWatch, onSelect, onSelectSector, trade, onTrade, orders, reservedCash, onOrder, onCancel, inlineTrade } = props;
   const s = STOCK_MAP[symbol];
   const sec = SECTOR_MAP[s.sector];
@@ -71,6 +72,7 @@ export function StockDetail(props: Props) {
   const lineValues = series.slice(0, day).map((b) => b.close);
   lineValues.push(nativeNow);
   const members = etf ? etfMembers(etf) : [];
+  const chartFmt = isUS ? (v: number) => '$' + v.toFixed(v < 100 ? 2 : 1) : (v: number) => Math.round(v).toLocaleString('ko-KR');
 
   return (
     <div className="detail">
@@ -129,16 +131,32 @@ export function StockDetail(props: Props) {
       </div>
 
       <div className="chart-wrap">
-        {ui === 'pro' ? (
-          <CandleChart bars={bars} totalDays={market.totalDays} liveOpenOnly={!closed} refLine={ref} markers={markers} fmt={isUS ? (v) => '$' + v.toFixed(v < 100 ? 1 : 0) : undefined} />
-        ) : (
-          <LineChart
-            series={[{ values: lineValues, color: diff >= 0 ? 'var(--up)' : 'var(--down)' }]}
-            totalDays={market.totalDays}
-            refLine={ref}
-            markers={markers}
-            fmt={isUS ? (v) => '$' + v.toFixed(v < 100 ? 1 : 0) : undefined}
-          />
+        <ProChart
+          key={symbol}
+          ui={ui}
+          symbol={symbol}
+          bars={bars}
+          totalDays={market.totalDays}
+          liveOpenOnly={!closed}
+          refLine={ref}
+          markers={markers}
+          fmt={chartFmt}
+          onExpand={() => setFull(true)}
+        />
+        {full && (
+          <div className="chart-full" role="dialog" aria-label="차트 크게 보기">
+            <div className="cf-head">
+              <div>
+                <b>{s.name}</b>
+                <span className={'cf-price ' + tone(diff)}>{isUS ? fmtUsd(nativeNow) : num(price) + '원'}</span>
+                <span className={tone(diff)}>{pct(q.ch)}</span>
+              </div>
+              <button className="icon-btn" onClick={() => setFull(false)} aria-label="닫기">
+                ✕
+              </button>
+            </div>
+            <ProChart ui={ui} symbol={symbol} bars={bars} totalDays={market.totalDays} liveOpenOnly={!closed} refLine={ref} markers={markers} fmt={chartFmt} tall />
+          </div>
         )}
         {ui === 'pro' && (
           <div className="ohlc">

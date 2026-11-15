@@ -1,0 +1,283 @@
+/* ============ 인터랙티브 차트 (토스 스타일: 깔끔하고 여백 있게) ============ */
+.pchart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pc-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pc-seg {
+  display: flex;
+  background: var(--bg-2);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.pc-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-height: 30px;
+}
+.pc-seg button.on {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.pc-tools {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.pc-ic {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.pc-ic.on {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+.pc-ic:disabled {
+  opacity: 0.35;
+}
+.pc-inds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg-2);
+  border-radius: 12px;
+}
+.pc-inds button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  border-radius: 99px;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.pc-inds button.on {
+  color: var(--text);
+  border-color: var(--text-2);
+  background: var(--surface);
+}
+.pc-inds i {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.pc-clear {
+  margin-left: auto;
+  color: var(--up) !important;
+  border-color: rgba(242, 73, 92, 0.35) !important;
+}
+.pc-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border-radius: 10px;
+  padding: 7px 10px;
+}
+.pc-hint button {
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: 12px;
+  text-decoration: underline;
+}
+.pc-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.pc-legend:empty {
+  display: none;
+}
+.pc-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pc-legend i {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.pc-legend b {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.pc-svg {
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pc-svg:active {
+  cursor: grabbing;
+}
+.pc-svg.drawing {
+  cursor: crosshair;
+  touch-action: none;
+}
+.chart .future {
+  fill: rgba(255, 255, 255, 0.015);
+}
+.chart .now-line {
+  stroke: var(--text-2);
+  stroke-dasharray: 2 4;
+  opacity: 0.45;
+}
+.chart .now-tag rect {
+  fill: var(--up);
+}
+.chart .now-tag.down rect {
+  fill: var(--down);
+}
+.chart .now-tag text,
+.chart .cross-tag text,
+.chart .drawn-tag text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.chart .cross line {
+  stroke: var(--text-2);
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.chart .cross-tag rect {
+  fill: #3b4357;
+}
+.chart .drawn line {
+  stroke: #f7c548;
+  stroke-width: 1.6;
+}
+.chart .drawn circle {
+  fill: #f7c548;
+}
+.chart .drawn-tag rect {
+  fill: rgba(247, 197, 72, 0.85);
+}
+.chart .drawn-tag text {
+  fill: #1a1300;
+}
+.chart .pending-pt {
+  fill: none;
+  stroke: #f7c548;
+  stroke-width: 2;
+}
+.pc-tip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg-2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.pc-tip b {
+  color: var(--text);
+}
+.pc-tip > b {
+  margin-right: 2px;
+}
+.pc-help {
+  font-size: 11px;
+  text-align: center;
+  padding: 2px 0;
+}
+
+/* 크게 보기 */
+.chart-full {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  animation: fade 0.18s ease-out;
+}
+.cf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cf-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cf-head b {
+  font-size: 18px;
+}
+.cf-price {
+  font-size: 22px;
+  font-weight: 800;
+}
+.chart-full .pchart.tall {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 960px) {
+  .pc-tools {
+    margin-left: 0;
+  }
+  .pc-bar {
+    gap: 6px;
+  }
+  .pc-seg button {
+    padding: 7px 10px;
+    min-height: 34px;
+  }
+  .pc-ic {
+    min-width: 38px;
+    height: 38px;
+  }
+  .m-page .pchart .chart .axis,
+  .chart-full .chart .axis {
+    font-size: 15px;
+  }
+  .chart .now-tag text,
+  .chart .cross-tag text,
+  .chart .drawn-tag text {
+    font-size: 13px;
+  }
+}
