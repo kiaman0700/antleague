@@ -96,7 +96,7 @@ describe('카드·턴 검증', () => {
     d.items.push({ player_id: 'a', day: 2, kind: 'fake', action: 'buy', cost: 1, created_at: '1' });
     expect(err(() => validateUseItem(d, 'a', now, { kind: 'fake', payload: { symbol: 'KIDX', tone: 'good' } }))).toBeTruthy();
     expect(err(() => validateUseItem(d, 'a', now, { kind: 'fake', payload: { symbol: 'NEOT', tone: '<script>' } }))).toBeTruthy();
-    expect(validateUseItem(d, 'a', now, { kind: 'fake', payload: { symbol: 'NEOT', tone: 'bad', extra: 'x' } }).payload).toEqual({ symbol: 'NEOT', tone: 'bad' });
+    expect(validateUseItem(d, 'a', now, { kind: 'fake', payload: { symbol: 'NEOT', tone: 'bad', extra: 'x' } }).payload).toEqual({ target: 'b', symbol: 'NEOT', tone: 'bad' });
   });
   it('카드 구매 비용은 서버가 정한다', () => {
     const d = game();

@@ -41,10 +41,11 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
 
   const room = view.room;
   const me = view.players.find((p) => p.id === playerId);
-  const other = view.players.find((p) => p.id !== playerId);
+  const others = view.players.filter((p) => p.id !== playerId);
   const isHost = room.hostId === playerId;
+  const notReady = others.filter((p) => !p.ready && p.id !== room.hostId);
   const link = `${location.origin}/room/${room.code}`;
-  const canStart = isHost && !!other && other.ready;
+  const canStart = isHost && view.players.length >= 2 && notReady.length === 0;
   const turnLabel = TURN_OPTIONS.find((t) => t.sec === room.turnSeconds)?.label ?? `${room.turnSeconds}초`;
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -79,29 +80,45 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   return (
     <div className="waiting">
       <div className="panel pad center">
-        <p className="muted">방 코드</p>
+        <h2 className="room-title">
+          {room.isPrivate && <span title="비밀방">🔒 </span>}
+          {room.title}
+        </h2>
+        <p className="muted">초대 코드</p>
         <div className="big-code">{room.code}</div>
         <button className="btn sm" onClick={copy}>
           {copied ? '복사됐어요!' : '🔗 초대 링크 보내기'}
         </button>
         <p className="muted small">
-          {room.totalDays}일 · 하루 고민 시간 {turnLabel}
+          최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 고민 시간 {turnLabel}
+          {room.isPrivate && <> · 방 목록에선 비밀번호 필요</>}
         </p>
       </div>
 
-      <div className="vs-row">
-        <div className="slot ready">
-          <div className="avatar">🙂</div>
-          <b>{nickname}</b>
-          <small>{isHost ? '방장' : me?.ready ? '준비 완료' : '대기 중'}</small>
-        </div>
-        <div className="vs">VS</div>
-        <div className={'slot' + (other ? (other.ready ? ' ready' : '') : ' empty')}>
-          <div className="avatar">{other ? '😎' : '⏳'}</div>
-          <b>{other?.nickname ?? '상대를 기다리는 중'}</b>
-          <small>{other ? (room.hostId === other.id ? '방장' : other.ready ? '준비 완료' : '대기 중') : '코드나 링크를 보내 주세요'}</small>
-          {other && <small className="muted">{other.mode === 'easy' ? '🌱 초보 모드' : '📊 일반 모드'}</small>}
-        </div>
+      <div className="slots">
+        {Array.from({ length: room.maxPlayers }, (_, i) => {
+          const p = view.players[i];
+          if (!p)
+            return (
+              <div key={i} className="slot empty">
+                <div className="avatar">⏳</div>
+                <b>빈 자리</b>
+                <small>초대를 기다리는 중</small>
+              </div>
+            );
+          const host = room.hostId === p.id;
+          return (
+            <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
+              <div className="avatar">{p.id === playerId ? '🙂' : ["😎","🤠","🦊","🐯","🐼","🐸"][i % 6]}</div>
+              <b>
+                {p.nickname}
+                {p.id === playerId && <em> (나)</em>}
+              </b>
+              <small>{host ? '👑 방장' : p.ready ? '준비 완료' : '대기 중'}</small>
+              <small className="muted">{p.mode === 'easy' ? '🌱 초보' : '📊 일반'}</small>
+            </div>
+          );
+        })}
       </div>
 
       <div className="panel pad">
@@ -114,7 +131,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
       <div className="stack">
         {isHost ? (
           <button className="btn primary xl" disabled={!canStart} onClick={() => run(() => api('start', { roomId }))}>
-            {canStart ? '게임 시작!' : other ? '상대가 준비하면 시작할 수 있어요' : '상대를 기다리는 중…'}
+            {canStart ? `게임 시작! (${view.players.length}명)` : view.players.length < 2 ? '한 명 이상 더 들어와야 해요' : `${notReady.map((p) => p.nickname).join(', ')} 님의 준비를 기다리는 중…`}
           </button>
         ) : (
           <button className={'btn xl ' + (me?.ready ? '' : 'primary')} onClick={() => run(() => api('ready', { roomId, ready: !me?.ready }))}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LineChart } from '../components/Chart';
 import { BADGE_MAP, titleOf } from '../game/achievements';
+import { PLAYER_COLORS } from '../components/Board';
 import type { View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
@@ -17,7 +18,8 @@ interface Props {
   onExit: () => void;
 }
 
-const COLORS = ['var(--me)', 'var(--opp)'];
+const COLORS = PLAYER_COLORS;
+const MEDAL = ['🥇', '🥈', '🥉'];
 
 export function ResultScreen({ session, market, final, onExit }: Props) {
   const solo = session.mode === 'solo';
@@ -47,7 +49,9 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
     });
   }, [final, session.playerId, market, last]);
 
-  const winner = results.length === 2 ? (results[0].equity === results[1].equity ? null : results[0].equity > results[1].equity ? results[0] : results[1]) : null;
+  const ranked = [...results].sort((a, b) => b.equity - a.equity);
+  const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0] : null;
+  const rankOf = (id: string) => ranked.findIndex((r) => r.id === id);
 
   const played = useRef(false);
   useEffect(() => {
@@ -67,30 +71,27 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
   const highlights = useMemo(() => {
     const out: { icon: string; title: string; text: string; day?: number }[] = [];
     const days = market.totalDays;
-    if (results.length === 2) {
-      const [a, b] = results;
-      const lead = (d: number) => a.hist[d + 1] - b.hist[d + 1];
-      let swing = 0;
-      let swingDay = 0;
+    if (results.length >= 2) {
+      // 날마다 1위가 누구였는지
+      const leaderOn = (d: number) => results.reduce((a, r) => (r.hist[d + 1] > a.hist[d + 1] ? r : a), results[0]);
+      const gapOn = (d: number) => {
+        const v = results.map((r) => r.hist[d + 1]).sort((x, y) => y - x);
+        return v[0] - v[1];
+      };
       let changes = 0;
-      for (let d = 0; d < days; d++) {
-        const l = lead(d);
-        const pl = d === 0 ? 0 : lead(d - 1);
-        if (Math.abs(l - pl) > swing) {
-          swing = Math.abs(l - pl);
-          swingDay = d;
-        }
-        if (d > 0 && pl !== 0 && l !== 0 && Math.sign(l) !== Math.sign(pl)) changes++;
+      for (let d = 1; d < days; d++) if (leaderOn(d).id !== leaderOn(d - 1).id) changes++;
+      const champ = leaderOn(days - 1);
+      let takeDay = -1;
+      for (let d = 1; d < days; d++) if (leaderOn(d).id === champ.id && leaderOn(d - 1).id !== champ.id) takeDay = d;
+      if (takeDay >= 0) {
+        out.push({ icon: '⚡', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${champ.nickname}이(가) 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
+      } else {
+        let best = 0;
+        let bd = 0;
+        for (let d = 1; d < days; d++) if (gapOn(d) - gapOn(d - 1) > best) [best, bd] = [gapOn(d) - gapOn(d - 1), d];
+        out.push({ icon: '⚡', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${champ.nickname}이(가) 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
-      const gainer = lead(swingDay) - (swingDay === 0 ? 0 : lead(swingDay - 1)) > 0 ? a : b;
-      const flipped = swingDay > 0 && Math.sign(lead(swingDay)) !== Math.sign(lead(swingDay - 1));
-      out.push({
-        icon: '⚡',
-        title: `${swingDay + 1}일차, 운명이 갈렸다`,
-        text: `${gainer.nickname}이(가) 하루 만에 ${wonShort(swing)} ${flipped ? '차이로 역전!' : '격차를 만들었어요'}`,
-        day: swingDay,
-      });
-      out.push({ icon: '🔄', title: '선두 다툼', text: changes ? `선두가 ${changes}번 바뀌었어요` : `${(lead(days - 1) >= 0 ? a : b).nickname}이(가) 끝까지 앞섰어요` });
+      out.push({ icon: '🔄', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${champ.nickname}이(가) 끝까지 1위였어요` });
     }
     for (const r of results) {
       let best = 0;
@@ -130,7 +131,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
             <div className="crown">👑</div>
             <h1>{winner.nickname} 승리!</h1>
             <p>
-              {wonShort(Math.abs(results[0].equity - results[1].equity))} 차이 · {iWon ? '오늘의 투자왕!' : '다음 판엔 꼭 이겨봐요'}
+              2위와 {wonShort(ranked[0].equity - ranked[1].equity)} 차이 · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
             </p>
           </>
         ) : (
@@ -139,9 +140,12 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       </div>
 
       <div className="score-cards">
-        {results.map((r, i) => (
+        {ranked.map((r) => {
+          const i = results.indexOf(r);
+          return (
           <div key={r.id} className={'panel score-card' + (winner?.id === r.id ? ' champ' : '')} style={{ borderTopColor: COLORS[i] }}>
             <small style={{ color: COLORS[i] }}>
+              {!solo && <span className="medal">{MEDAL[rankOf(r.id)] ?? `${rankOf(r.id) + 1}위`}</span>}
               {r.nickname}
               {titleOf(final.badges[r.id] ?? []) && <span className="title-tag">{titleOf(final.badges[r.id] ?? [])!.emoji} {titleOf(final.badges[r.id] ?? [])!.name}</span>}
             </small>
@@ -194,7 +198,8 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
               </dd>
             </dl>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="panel pad">
@@ -240,7 +245,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
         <div className="replay">
           {Array.from({ length: market.totalDays }, (_, d) => {
             const deltas = results.map((r) => r.hist[d + 1] - r.hist[d]);
-            const leader = results.length === 2 ? (results[0].hist[d + 1] >= results[1].hist[d + 1] ? 0 : 1) : 0;
+            const leader = results.reduce((a, r, i) => (r.hist[d + 1] > results[a].hist[d + 1] ? i : a), 0);
             return (
               <button key={d} className={'rp-day' + (replayDay === d ? ' on' : '')} onClick={() => setReplayDay(d)}>
                 <b>{d + 1}일</b>
@@ -250,7 +255,7 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
                     {wonShort(v)}
                   </span>
                 ))}
-                {results.length === 2 && <i className="rp-lead" style={{ background: COLORS[leader] }} />}
+                {results.length >= 2 && <i className="rp-lead" style={{ background: COLORS[leader] }} />}
               </button>
             );
           })}

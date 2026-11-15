@@ -17,10 +17,10 @@ export const ITEMS: ItemDef[] = [
   { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 900_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요.' },
   { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 600_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
   { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 300_000, desc: '오늘 나온 [루머] 뉴스가 진짜인지 가짜인지 알려줘요.' },
-  { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 300_000, desc: '상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
-  { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 1_000_000, desc: '상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
-  { kind: 'fake', name: '가짜 뉴스', emoji: '📢', type: 'attack', cost: 400_000, desc: '내일 상대 화면에만 내가 만든 가짜 속보가 떠요.', multiOnly: true },
-  { kind: 'fee', name: '수수료 폭탄', emoji: '💸', type: 'attack', cost: 500_000, desc: '상대의 거래 수수료가 이틀간 10배(1%)가 돼요.', multiOnly: true },
+  { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 300_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
+  { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 1_000_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
+  { kind: 'fake', name: '가짜 뉴스', emoji: '📢', type: 'attack', cost: 400_000, desc: '내일 고른 상대 화면에만 내가 만든 가짜 속보가 떠요.', multiOnly: true },
+  { kind: 'fee', name: '수수료 폭탄', emoji: '💸', type: 'attack', cost: 500_000, desc: '고른 상대의 거래 수수료가 이틀간 10배(1%)가 돼요.', multiOnly: true },
   { kind: 'shield', name: '방패', emoji: '🛡️', type: 'defense', cost: 500_000, desc: '갖고만 있으면 상대의 방해 아이템을 1번 자동으로 막아요.', multiOnly: true },
 ];
 export const ITEM_MAP = Object.fromEntries(ITEMS.map((i) => [i.kind, i])) as Record<ItemKind, ItemDef>;
@@ -38,7 +38,8 @@ export interface ItemRow {
   kind: ItemKind;
   action: 'buy' | 'use';
   cost: number;
-  payload?: { symbol?: string; tone?: 'good' | 'bad' } | null;
+  /** target: 방해·염탐 카드의 대상 플레이어 (여럿이 할 때) */
+  payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string } | null;
   created_at?: string;
 }
 
@@ -57,7 +58,7 @@ export interface PlayerItems {
   inventory: Partial<Record<ItemKind, number>>;
   used: Partial<Record<ItemKind, number>>;
   /** 내가 쓴 정보 아이템 (화면에 결과 표시) */
-  infoUses: { kind: ItemKind; day: number }[];
+  infoUses: { kind: ItemKind; day: number; target?: string }[];
   grants: { day: number; kind: ItemKind; skipped: boolean }[];
   total: number;
 }
@@ -116,9 +117,11 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
       add(p, r.kind, -1);
       p.used[r.kind] = (p.used[r.kind] ?? 0) + 1;
       const def = ITEM_MAP[r.kind];
-      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day });
+      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day, target: r.payload?.target });
       if (def.type === 'attack') {
-        const target = playerIds.find((x) => x !== r.player_id);
+        // 대상을 고르지 않았으면(2인) 다른 한 명
+        const chosen = r.payload?.target;
+        const target = chosen && chosen !== r.player_id && playerIds.includes(chosen) ? chosen : playerIds.find((x) => x !== r.player_id);
         if (!target) continue;
         const t = players[target];
         let blocked = false;

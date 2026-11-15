@@ -26,7 +26,12 @@ export interface RoomRow {
   /** ms epoch, null = 제한 없음 */
   deadline: number | null;
   host_id: string | null;
+  title?: string;
+  max_players?: number;
+  is_private?: boolean;
 }
+
+export const MAX_PLAYERS = 6;
 
 export interface PlayerRow {
   id: string;
@@ -82,7 +87,7 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; hostId: string | null };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
@@ -269,7 +274,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
-    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, hostId: r.host_id },
+    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private },
     serverNow: now,
     meId,
     players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0 })),
@@ -304,13 +309,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   base.effectsToday = finished ? [] : activeEffects(items, meId, r.day).map((e) => e.kind);
 
   // 알림: 나를 노린 방해(가짜 뉴스는 비밀), 방패로 막은 것, 내 공격이 막힌 것
+  const nick = (id: string) => players.find((p) => p.id === id)?.nickname ?? '상대';
   items.effects.forEach((e, i) => {
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
     const name = `${ITEM_MAP[e.kind].emoji} ${ITEM_MAP[e.kind].name}`;
     if (e.to === meId) {
-      if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 상대의 ${name}을(를) 막았어요!`, kind: 'ok' });
-      else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ 상대가 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
-    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `상대의 🛡️ 방패에 ${name}이(가) 막혔어요`, kind: 'warn' });
+      if (e.blocked) base.notices.push({ key, text: `🛡️ 방패가 ${nick(e.from)}의 ${name}을(를) 막았어요!`, kind: 'ok' });
+      else if (e.kind !== 'fake') base.notices.push({ key, text: `⚠️ ${nick(e.from)}이(가) 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
+    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 🛡️ 방패에 ${name}이(가) 막혔어요`, kind: 'warn' });
   });
 
   const todayInfo = finished ? [] : mine.infoUses.filter((u) => u.day === r.day).map((u) => u.kind);
@@ -333,7 +339,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       base.reveals.bestSector = best;
     }
     if (todayInfo.includes('spy')) {
-      const opp = players.find((p) => p.id !== meId);
+      const spyUse = [...mine.infoUses].reverse().find((u) => u.kind === 'spy' && u.day === r.day);
+      const opp = players.find((p) => p.id === spyUse?.target && p.id !== meId) ?? players.find((p) => p.id !== meId);
       if (opp) {
         const pf = portfolioOf(d, opp.id);
         base.reveals.spy = { nickname: opp.nickname, cash: pf.cash, holdings: pf.holdings };
@@ -409,12 +416,19 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
   const why = canUse(mine, kind, d.room.day, d.room.total_days, usedToday);
   if (why) throw new GameError(why);
   let payload: ItemRow['payload'] = null;
+  if (ITEM_MAP[kind].type === 'attack' || kind === 'spy') {
+    const others = d.players.filter((p) => p.id !== meId);
+    const t = (input.payload as { target?: unknown } | undefined)?.target;
+    const target = typeof t === 'string' ? others.find((p) => p.id === t) : others.length === 1 ? others[0] : undefined;
+    if (!target) throw new GameError('카드를 쓸 상대를 골라 주세요.');
+    payload = { target: target.id };
+  }
   if (kind === 'fake') {
     const p = (input.payload ?? {}) as { symbol?: unknown; tone?: unknown };
     const symbol = cleanSymbol(p.symbol);
     if (STOCK_MAP[symbol].etf) throw new GameError('가짜 뉴스는 회사에만 쓸 수 있어요.');
     if (p.tone !== 'good' && p.tone !== 'bad') throw new GameError('호재/악재를 골라 주세요.');
-    payload = { symbol, tone: p.tone };
+    payload = { ...payload, symbol, tone: p.tone };
   }
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
 }
@@ -455,8 +469,9 @@ export function finalResults(d: GameData) {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
     return { nickname: p.nickname, equity, ret: equity / START_CASH - 1, badges: badges[p.id] ?? [] };
   });
-  const winner = results.length === 2 && results[0].equity !== results[1].equity ? (results[0].equity > results[1].equity ? results[0] : results[1]).nickname : null;
-  return { results, winner, badges };
+  const ranked = [...results].sort((a, b) => b.equity - a.equity);
+  const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0].nickname : null;
+  return { results: ranked, winner, badges };
 }
 
 /* ---------------- 지정가(예약) 주문 ---------------- */

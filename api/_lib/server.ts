@@ -4,7 +4,62 @@
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+
+/* ---------------- 비밀방 비밀번호: 소금 + scrypt 해시로만 저장 ---------------- */
+function hashPassword(pw: string) {
+  const salt = randomBytes(16);
+  return salt.toString('hex') + ':' + scryptSync(pw, salt, 32).toString('hex');
+}
+function checkPassword(pw: string, stored: string | null) {
+  if (!stored) return false;
+  const [saltHex, hashHex] = stored.split(':');
+  if (!saltHex || !hashHex) return false;
+  const got = scryptSync(pw, Buffer.from(saltHex, 'hex'), 32);
+  const want = Buffer.from(hashHex, 'hex');
+  return got.length === want.length && timingSafeEqual(got, want);
+}
+function cleanPassword(v: unknown) {
+  if (typeof v !== 'string' || v.length < 4 || v.length > 20 || /[\u0000-\u001f]/.test(v)) throw new GameError('비밀번호는 4~20자로 정해 주세요.');
+  return v;
+}
+function cleanTitle(v: unknown, fallback: string) {
+  if (v === undefined || v === null || v === '') return fallback;
+  if (typeof v !== 'string') throw new GameError('방 제목을 확인해 주세요.');
+  const t = v.normalize('NFC').trim().replace(/\s+/g, ' ');
+  if (!/^[^\p{C}<>]{1,20}$/u.test(t)) throw new GameError('방 제목은 1~20자로, 특수 제어문자 없이 입력해 주세요.');
+  return t;
+}
+function cleanMax(v: unknown) {
+  if (typeof v === 'number' && Number.isInteger(v) && v >= 2 && v <= MAX_PLAYERS) return v;
+  throw new GameError(`인원은 2~${MAX_PLAYERS}명으로 골라 주세요.`);
+}
+/** 비밀번호 무차별 대입 방지: 사용자·방마다 10분에 5번 */
+const pwFails = new Map<string, { n: number; reset: number }>();
+function pwGuard(key: string) {
+  const now = Date.now();
+  const e = pwFails.get(key);
+  if (e && now < e.reset && e.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.', 429);
+}
+function pwFail(key: string) {
+  const now = Date.now();
+  const e = pwFails.get(key);
+  if (!e || now > e.reset) pwFails.set(key, { n: 1, reset: now + 600_000 });
+  else e.n++;
+}
+
+/** 방에 새 플레이어 추가 (인원·닉네임 검사) */
+async function addToRoom(room: { id: string; code: string; status: string; max_players: number }, uid: string, nickname: string, mode: string) {
+  const sb = db();
+  const players = must(await sb.from('players').select('id, user_id, nickname').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string }[];
+  const already = players.find((p) => p.user_id === uid);
+  if (already) return { roomId: room.id, playerId: already.id, code: room.code };
+  if (room.status !== 'waiting') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
+  if (players.length >= room.max_players) throw new GameError(`방이 가득 찼어요 (최대 ${room.max_players}명).`, 409);
+  if (players.some((p) => p.nickname === nickname)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
+  const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single(), 'join') as { id: string };
+  return { roomId: room.id, playerId: p.id, code: room.code };
+}
 import {
   buildView,
   cleanCode,
@@ -26,6 +81,7 @@ import {
   type OrderRow,
   type PlayerRow,
   type RoomRow,
+  MAX_PLAYERS,
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
 import type { Trade } from '../../src/game/portfolio.js';
@@ -98,6 +154,9 @@ async function loadGame(roomId: string): Promise<GameData> {
       day: r.day,
       deadline: r.turn_deadline ? new Date(r.turn_deadline).getTime() : null,
       host_id: r.host_id,
+      title: r.title,
+      max_players: r.max_players,
+      is_private: r.is_private,
     } as RoomRow,
     players: must(players, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
@@ -171,6 +230,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const mode = cleanMode(b.mode);
       const totalDays = cleanDays(b.totalDays);
       const turnSeconds = cleanTurn(b.turnSeconds);
+      const maxPlayers = cleanMax(b.maxPlayers ?? 2);
+      const title = cleanTitle(b.title, `${nickname}의 방`);
+      const isPrivate = b.isPrivate === true;
+      const passwordHash = isPrivate ? hashPassword(cleanPassword(b.password)) : null;
       // 방 만들기 남용 방지: 1시간에 10개까지
       const since = new Date(Date.now() - 3600_000).toISOString();
       const recent = must(await sb.from('players').select('id', { count: 'exact', head: false }).eq('user_id', uid).gte('created_at', since), 'recent') as unknown[];
@@ -178,12 +241,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
-        const res = await sb.from('rooms').insert({ code: newCode(), total_days: totalDays, turn_seconds: turnSeconds }).select('id, code').single();
+        const res = await sb.from('rooms').insert({ code: newCode(), total_days: totalDays, turn_seconds: turnSeconds, title, max_players: maxPlayers, is_private: isPrivate }).select('id, code').single();
         if (!res.error) room = res.data;
         else if (!/duplicate/i.test(res.error.message)) must(res, 'create room');
       }
       if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
-      must(await sb.from('room_secrets').insert({ room_id: room.id, seed: randomInt(2_000_000_000) }), 'secret');
+      must(await sb.from('room_secrets').insert({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash }), 'secret');
       const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'host') as { id: string };
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
       return { roomId: room.id, playerId: p.id, code: room.code };
@@ -193,16 +256,60 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const code = cleanCode(b.code);
       const nickname = cleanNickname(b.nickname);
       const mode = cleanMode(b.mode);
-      const room = must(await sb.from('rooms').select('id, code, status').eq('code', code).maybeSingle(), 'find room') as { id: string; code: string; status: string } | null;
+      const room = must(await sb.from('rooms').select('id, code, status, max_players').eq('code', code).maybeSingle(), 'find room') as { id: string; code: string; status: string; max_players: number } | null;
       if (!room) throw new GameError('그런 방 코드가 없어요.', 404);
-      const players = must(await sb.from('players').select('id, user_id, nickname').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string }[];
-      const already = players.find((p) => p.user_id === uid);
-      if (already) return { roomId: room.id, playerId: already.id, code: room.code };
-      if (room.status !== 'waiting') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
-      if (players.length >= 2) throw new GameError('방이 가득 찼어요 (최대 2명).', 409);
-      if (players.some((p) => p.nickname === nickname)) throw new GameError('상대와 다른 닉네임을 써 주세요.');
-      const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single(), 'join') as { id: string };
-      return { roomId: room.id, playerId: p.id, code: room.code };
+      return addToRoom(room, uid, nickname, mode);
+    }
+
+    case 'rooms': {
+      // 대기 중인 방 목록 (최근 3시간). 코드·비밀번호는 절대 보내지 않음
+      const since = new Date(Date.now() - 3 * 3600_000).toISOString();
+      const rooms = must(
+        await sb.from('rooms').select('id, title, is_private, max_players, total_days, turn_seconds, host_id, created_at').eq('status', 'waiting').gte('created_at', since).order('created_at', { ascending: false }).limit(40),
+        'rooms',
+      ) as { id: string; title: string; is_private: boolean; max_players: number; total_days: number; turn_seconds: number; host_id: string; created_at: string }[];
+      if (!rooms.length) return [];
+      const ps = must(await sb.from('players').select('id, room_id, nickname, user_id').in('room_id', rooms.map((r) => r.id)), 'room players') as { id: string; room_id: string; nickname: string; user_id: string }[];
+      return rooms
+        .map((r) => {
+          const mine = ps.filter((p) => p.room_id === r.id);
+          return {
+            id: r.id,
+            title: r.title,
+            isPrivate: r.is_private,
+            maxPlayers: r.max_players,
+            players: mine.length,
+            host: mine.find((p) => p.id === r.host_id)?.nickname ?? '?',
+            totalDays: r.total_days,
+            turnSeconds: r.turn_seconds,
+            joined: mine.some((p) => p.user_id === uid),
+          };
+        })
+        .filter((r) => r.players > 0 && (r.players < r.maxPlayers || r.joined))
+        .slice(0, 30);
+    }
+
+    case 'joinRoom': {
+      // 방 목록에서 입장 — 비밀방은 비밀번호 확인
+      if (typeof b.roomId !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.roomId)) throw new GameError('잘못된 방이에요.');
+      const nickname = cleanNickname(b.nickname);
+      const mode = cleanMode(b.mode);
+      const room = must(await sb.from('rooms').select('id, code, status, max_players, is_private').eq('id', b.roomId).maybeSingle(), 'find room') as
+        | { id: string; code: string; status: string; max_players: number; is_private: boolean }
+        | null;
+      if (!room) throw new GameError('방을 찾을 수 없어요.', 404);
+      const mine = must(await sb.from('players').select('id').eq('room_id', room.id).eq('user_id', uid).maybeSingle(), 'member');
+      if (room.is_private && !mine) {
+        const key = uid + ':' + room.id;
+        pwGuard(key);
+        const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', room.id).maybeSingle(), 'pw') as { password_hash: string | null } | null;
+        const pw = typeof b.password === 'string' ? b.password.slice(0, 40) : '';
+        if (!checkPassword(pw, secret?.password_hash ?? null)) {
+          pwFail(key);
+          throw new GameError('비밀번호가 맞지 않아요.', 403);
+        }
+      }
+      return addToRoom(room, uid, nickname, mode);
     }
 
     case 'resume': {
@@ -258,7 +365,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const d = await loadGame(roomId);
       if (d.room.host_id !== playerId) throw new GameError('방장만 시작할 수 있어요.', 403);
       if (d.room.status !== 'waiting') throw new GameError('이미 시작했어요.', 409);
-      if (d.players.length !== 2 || !d.players.every((p) => p.ready || p.id === playerId)) throw new GameError('상대가 준비해야 시작할 수 있어요.', 409);
+      if (d.players.length < 2) throw new GameError('2명 이상 모여야 시작할 수 있어요.', 409);
+      if (!d.players.every((p) => p.ready || p.id === playerId)) throw new GameError('모두 준비해야 시작할 수 있어요.', 409);
       const deadline = d.room.turn_seconds > 0 ? new Date(Date.now() + (d.room.turn_seconds + 3) * 1000).toISOString() : null;
       must(await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline }).eq('id', roomId).eq('status', 'waiting'), 'start');
       return { ok: true };

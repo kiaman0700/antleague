@@ -28,12 +28,17 @@ create table public.rooms (
   day integer not null default 0 check (day >= 0 and day <= 30),
   turn_deadline timestamptz,
   host_id uuid,
+  title text not null default '주식 대결' check (char_length(title) between 1 and 20),
+  max_players integer not null default 2 check (max_players between 2 and 6),
+  is_private boolean not null default false,
   created_at timestamptz not null default now()
 );
+create index rooms_waiting_idx on public.rooms(status, created_at desc);
 
 create table public.room_secrets (
   room_id uuid primary key references public.rooms(id) on delete cascade,
-  seed integer not null
+  seed integer not null,
+  password_hash text
 );
 
 create table public.players (
@@ -126,7 +131,7 @@ revoke all on function public.is_member(uuid) from public, anon;
 grant execute on function public.is_member(uuid) to authenticated;
 
 -- 읽기만, 내 방만 (실시간 알림을 받기 위한 최소 권한)
-grant select (id, code, status, total_days, turn_seconds, day, turn_deadline, host_id, created_at) on public.rooms to authenticated;
+grant select (id, code, status, total_days, turn_seconds, day, turn_deadline, host_id, title, max_players, is_private, created_at) on public.rooms to authenticated;
 grant select (id, room_id, nickname, mode, ready, ended_day, version, created_at, updated_at) on public.players to authenticated;
 create policy "members read room" on public.rooms for select to authenticated using (public.is_member(id));
 create policy "members read players" on public.players for select to authenticated using (public.is_member(room_id));

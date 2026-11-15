@@ -13,7 +13,7 @@ export interface Badge {
 }
 
 export const BADGES: Badge[] = [
-  { id: 'comeback', emoji: '🔥', name: '대역전극', desc: '중반까지 뒤지다가 역전승', rarity: 3 },
+  { id: 'comeback', emoji: '🔥', name: '대역전극', desc: '중반까지 1등이 아니다가 역전 우승', rarity: 3 },
   { id: 'limit_up', emoji: '🚀', name: '상한가 사냥꾼', desc: '가진 종목이 하루에 +29% 넘게(상한가) 오름', rarity: 3 },
   { id: 'zen', emoji: '🐢', name: '존버의 미학', desc: '거래 5회 이하로 승리 (연습: 플러스 수익)', rarity: 3 },
   { id: 'crash_winner', emoji: '🐻', name: '폭락장의 승자', desc: '지수가 3% 넘게 빠진 날 인버스 ETF를 들고 있었음', rarity: 2 },
@@ -21,7 +21,7 @@ export const BADGES: Badge[] = [
   { id: 'bottom', emoji: '🎯', name: '저점 매수의 신', desc: '그 종목의 게임 중 최저가 3% 안에서 매수', rarity: 2 },
   { id: 'big_win', emoji: '🎰', name: '한 방', desc: '한 종목으로 100만원 넘게 수익', rarity: 2 },
   { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2 },
-  { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 승리', rarity: 1 },
+  { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 1등', rarity: 1 },
   { id: 'beat_market', emoji: '📈', name: '시장을 이긴 자', desc: '종합지수보다 높은 수익률', rarity: 1 },
   { id: 'dividend', emoji: '💰', name: '배당 부자', desc: '배당금을 10만원 넘게 받음', rarity: 1 },
   { id: 'global', emoji: '🌎', name: '글로벌 투자자', desc: '국내·미국 주식을 동시에 보유', rarity: 1 },
@@ -52,7 +52,8 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const finalEq = (id: string) => hist[id][hist[id].length - 1];
   const indexRet = m.index[last].close / KR_INDEX_BASE - 1;
   const ids = inp.players.map((p) => p.id);
-  const winner = !solo && finalEq(ids[0]) !== finalEq(ids[1]) ? (finalEq(ids[0]) > finalEq(ids[1]) ? ids[0] : ids[1]) : null;
+  const byFinal = [...ids].sort((x, y) => finalEq(y) - finalEq(x));
+  const winner = !solo && finalEq(byFinal[0]) !== finalEq(byFinal[1]) ? byFinal[0] : null;
 
   // 각 종목의 게임 중 최저가
   const minPrice: Record<string, number> = {};
@@ -69,9 +70,9 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if ((solo && ret > 0 && p.trades.length <= 5 && p.trades.length > 0) || (winner === p.id && p.trades.length <= 5)) got.add('zen');
 
     if (!solo && winner === p.id) {
-      const other = ids.find((x) => x !== p.id)!;
       const mid = Math.floor(m.totalDays / 2);
-      if (hist[p.id][mid] < hist[other][mid]) got.add('comeback');
+      // 중반에 1등이 아니었는데 우승
+      if (ids.some((x) => x !== p.id && hist[x][mid] > hist[p.id][mid])) got.add('comeback');
     }
 
     const used = Object.values(items.players[p.id]?.used ?? {}).reduce((a, n) => a + (n ?? 0), 0);

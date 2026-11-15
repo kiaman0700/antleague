@@ -14,6 +14,17 @@ export interface ResumeInfo {
   nickname: string;
   mode: string;
 }
+export interface RoomInfo {
+  id: string;
+  title: string;
+  isPrivate: boolean;
+  maxPlayers: number;
+  players: number;
+  host: string;
+  totalDays: number;
+  turnSeconds: number;
+  joined: boolean;
+}
 interface MatchResult {
   id: string;
   winner_nickname: string | null;
@@ -49,6 +60,15 @@ export function Lobby({ onWaiting, onGame }: Props) {
   const [ui, setUi] = useState<UiMode>(loadUi);
   const [days, setDays] = useState(20);
   const [turnSec, setTurnSec] = useState(90);
+  const [title, setTitle] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(2);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [password, setPassword] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [rooms, setRooms] = useState<RoomInfo[] | null>(null);
+  const [pwRoom, setPwRoom] = useState<RoomInfo | null>(null);
+  const [pwInput, setPwInput] = useState('');
+  const [pwErr, setPwErr] = useState('');
   const [code, setCode] = useState(() => new URLSearchParams(location.search).get('room')?.toUpperCase().slice(0, 6) ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -64,6 +84,19 @@ export function Lobby({ onWaiting, onGame }: Props) {
     if (!online) return;
     api<MatchResult[]>('history').then(setHistory).catch(() => {});
     api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
+  }, [online]);
+
+  const loadRooms = () => {
+    if (!online) return;
+    api<RoomInfo[]>('rooms')
+      .then(setRooms)
+      .catch(() => setRooms([]));
+  };
+  useEffect(() => {
+    loadRooms();
+    const id = setInterval(loadRooms, 6000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
 
   const record = useMemo(() => {
@@ -100,18 +133,60 @@ export function Lobby({ onWaiting, onGame }: Props) {
     }
   }
 
-  const create = () =>
-    run(async () => {
-      const r = await api<{ roomId: string; playerId: string; code: string }>('create', { nickname: nick.trim(), mode: ui, totalDays: days, turnSeconds: turnSec });
+  const create = () => {
+    setCreating(true);
+    return run(async () => {
+      if (isPrivate && (password.length < 4 || password.length > 20)) throw new Error('비밀번호는 4~20자로 정해 주세요.');
+      const r = await api<{ roomId: string; playerId: string; code: string }>('create', {
+        nickname: nick.trim(),
+        mode: ui,
+        totalDays: days,
+        turnSeconds: turnSec,
+        maxPlayers,
+        title: title.trim(),
+        isPrivate,
+        password: isPrivate ? password : undefined,
+      });
       onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
     });
+  };
 
-  const join = () =>
-    run(async () => {
+  const joinListed = async (room: RoomInfo, pw?: string) => {
+    setErr('');
+    setPwErr('');
+    if (!nickOk) return setErr('닉네임을 먼저 1~10자로 입력해 주세요.');
+    saveNick(nick.trim());
+    saveUi(ui);
+    setBusy(true);
+    try {
+      const r = await api<{ roomId: string; playerId: string; code: string }>('joinRoom', { roomId: room.id, nickname: nick.trim(), mode: ui, password: pw });
+      setPwRoom(null);
+      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (pw !== undefined) setPwErr(msg);
+      else setErr(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const enterRoom = (room: RoomInfo) => {
+    setCreating(false);
+    if (room.isPrivate && !room.joined) {
+      setPwInput('');
+      setPwErr('');
+      setPwRoom(room);
+    } else joinListed(room);
+  };
+
+  const join = () => {
+    setCreating(false);
+    return run(async () => {
       if (code.trim().length !== 6) throw new Error('6자리 방 코드를 입력해 주세요.');
       const r = await api<{ roomId: string; playerId: string; code: string }>('join', { code, nickname: nick.trim(), mode: ui });
       onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
     });
+  };
 
   const solo = () =>
     run(async () => {
@@ -197,7 +272,76 @@ export function Lobby({ onWaiting, onGame }: Props) {
       </div>
 
       <div className="panel pad">
-        <h3>방 만들기</h3>
+        <div className="panel-head">
+          <h3>🔎 방 목록</h3>
+          <button className="btn sm ghost" onClick={loadRooms} disabled={!online}>
+            ↻ 새로고침
+          </button>
+        </div>
+        {!online && <p className="muted small">온라인 설정이 없어서 방 목록을 볼 수 없어요.</p>}
+        {online && rooms === null && <p className="muted small">불러오는 중…</p>}
+        {online && rooms?.length === 0 && <p className="empty small">지금 열린 방이 없어요. 아래에서 방을 만들어 보세요!</p>}
+        <div className="room-list">
+          {rooms?.map((r) => (
+            <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => enterRoom(r)}>
+              <span className="rr-main">
+                <b>
+                  {r.isPrivate && <span className="lock" title="비밀방">🔒</span>}
+                  {r.title}
+                </b>
+                <small>
+                  방장 {r.host} · {r.totalDays}일 · {TURN_OPTIONS.find((t) => t.sec === r.turnSeconds)?.label ?? r.turnSeconds + '초'}
+                </small>
+              </span>
+              <span className="rr-side">
+                <span className="rr-count">
+                  {Array.from({ length: r.maxPlayers }, (_, i) => (
+                    <i key={i} className={i < r.players ? 'on' : ''} />
+                  ))}
+                </span>
+                <small>
+                  {r.players}/{r.maxPlayers}명
+                </small>
+                <em>{r.joined ? '돌아가기' : '입장'}</em>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="divider">
+          <span>초대 코드가 있다면</span>
+        </div>
+        <div className="join">
+          <input
+            className="code-input"
+            value={code}
+            maxLength={6}
+            placeholder="방 코드 6자리"
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            onKeyDown={(e) => e.key === 'Enter' && join()}
+          />
+          <button className="btn" disabled={busy || !online} onClick={join}>
+            입장
+          </button>
+        </div>
+        {err && !creating && <p className="error">{err}</p>}
+      </div>
+
+      <div className="panel pad">
+        <h3>➕ 방 만들기</h3>
+        <label className="field">
+          <span>방 제목</span>
+          <input value={title} maxLength={20} placeholder={`${nick.trim() || '나'}의 방`} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <div className="field">
+          <span>인원 (방장 포함)</span>
+          <div className="seg five">
+            {[2, 3, 4, 5, 6].map((n) => (
+              <button key={n} className={maxPlayers === n ? 'on' : ''} onClick={() => setMaxPlayers(n)}>
+                <b>{n}명</b>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="field">
           <span>게임 길이</span>
           <div className="seg">
@@ -219,31 +363,55 @@ export function Lobby({ onWaiting, onGame }: Props) {
             ))}
           </div>
         </div>
+        <div className="field">
+          <label className="switch-row">
+            <span>
+              <b>🔒 비밀방</b>
+              <small>방 목록에서 들어오려면 비밀번호가 필요해요. 초대 코드로는 바로 들어올 수 있어요.</small>
+            </span>
+            <input type="checkbox" className="switch" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+          </label>
+          {isPrivate && (
+            <input type="password" value={password} maxLength={20} placeholder="비밀번호 4~20자" autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
+          )}
+        </div>
         <button className="btn primary xl" disabled={busy || !online} onClick={create}>
-          방 만들고 초대하기
+          방 만들기
         </button>
-        <div className="divider">
-          <span>또는 초대받았다면</span>
-        </div>
-        <div className="join">
-          <input
-            className="code-input"
-            value={code}
-            maxLength={6}
-            placeholder="방 코드 6자리"
-            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-            onKeyDown={(e) => e.key === 'Enter' && join()}
-          />
-          <button className="btn" disabled={busy || !online} onClick={join}>
-            입장
-          </button>
-        </div>
-        <button className="btn ghost full" disabled={busy} onClick={solo}>
+        {err && creating && <p className="error">{err}</p>}
+        <button className="btn ghost full" disabled={busy} onClick={solo} style={{ marginTop: 10 }}>
           혼자 연습하기
         </button>
-        {!online && <p className="warn">온라인 설정이 없어서 지금은 혼자 연습만 할 수 있어요.</p>}
-        {err && <p className="error">{err}</p>}
       </div>
+
+      {pwRoom && (
+        <div className="modal-bg" onClick={() => setPwRoom(null)}>
+          <form
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              joinListed(pwRoom, pwInput);
+            }}
+          >
+            <h3>🔒 {pwRoom.title}</h3>
+            <p className="muted small">비밀방이에요. 방장에게 받은 비밀번호를 입력해 주세요.</p>
+            <label className="field">
+              <span>비밀번호</span>
+              <input type="password" autoFocus value={pwInput} maxLength={20} autoComplete="off" onChange={(e) => setPwInput(e.target.value)} />
+            </label>
+            {pwErr && <p className="error">{pwErr}</p>}
+            <div className="modal-actions">
+              <button type="button" className="btn ghost" onClick={() => setPwRoom(null)}>
+                취소
+              </button>
+              <button type="submit" className="btn primary" disabled={busy || pwInput.length < 4}>
+                입장
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="panel pad rules">
         <h3>이렇게 놀아요</h3>

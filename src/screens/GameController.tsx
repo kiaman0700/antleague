@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MarketGrid, marketTiles, RankList, rankRows, RankStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
@@ -99,6 +100,10 @@ export function GameController({ session, onExit }: Props) {
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
+  const [rankSheet, setRankSheet] = useState(false);
+  const [marketSheet, setMarketSheet] = useState(false);
+  const [targetPick, setTargetPick] = useState<ItemKind | null>(null);
+  const [fakeTarget, setFakeTarget] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<null | 'assets' | 'cards'>(null);
   const [bubbles, setBubbles] = useState<(Reaction & { mine?: boolean })[]>([]);
   const [muted, setMutedState] = useState(isMuted());
@@ -251,8 +256,18 @@ export function GameController({ session, onExit }: Props) {
       play('item');
       showToast(`${ITEM_MAP[kind].emoji} ${ITEM_MAP[kind].name} 카드를 샀어요`);
     });
-  const useCard = (kind: ItemKind, payload?: ItemRow['payload']) => {
-    if (kind === 'fake' && !payload) return setFakeModal(true);
+  const useCard = (kind: ItemKind, given?: ItemRow['payload']) => {
+    let payload: NonNullable<ItemRow['payload']> = { ...(given ?? {}) };
+    const needsTarget = !solo && (ITEM_MAP[kind].type === 'attack' || kind === 'spy');
+    if (needsTarget && !payload.target) {
+      const others = players.filter((p) => p.id !== me);
+      if (others.length === 1) payload = { ...payload, target: others[0].id };
+      else return setTargetPick(kind);
+    }
+    if (kind === 'fake' && !payload.symbol) {
+      setFakeTarget(payload.target ?? null);
+      return setFakeModal(true);
+    }
     run('useItem', { kind, payload }, () => {
       play('item');
       const d = ITEM_MAP[kind];
@@ -506,12 +521,24 @@ export function GameController({ session, onExit }: Props) {
           onNext={nextDay}
         />
       )}
+      {targetPick && (
+        <TargetPicker
+          kind={targetPick}
+          rows={rankRows(players, me, equity, day)}
+          onCancel={() => setTargetPick(null)}
+          onPick={(id) => {
+            const k = targetPick;
+            setTargetPick(null);
+            useCard(k, { target: id });
+          }}
+        />
+      )}
       {fakeModal && (
         <FakeNewsModal
           onCancel={() => setFakeModal(false)}
           onSubmit={(symbol, t) => {
             setFakeModal(false);
-            useCard('fake', { symbol, tone: t });
+            useCard('fake', { symbol, tone: t, target: fakeTarget ?? undefined });
           }}
         />
       )}
@@ -569,6 +596,8 @@ export function GameController({ session, onExit }: Props) {
   const prevCloseEquity =
     displayDay === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, displayDay - 1, paidDivs), pricesAt(m, displayDay - 1, true));
   const todayPnl = equity - prevCloseEquity;
+  const rows = rankRows(players, me, equity, day);
+  const myRank = rows.findIndex((r) => r.me) + 1;
   const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
 
   /* ================= 모바일 ================= */
@@ -584,6 +613,9 @@ export function GameController({ session, onExit }: Props) {
               <span>/ {total}</span>
             </div>
             {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
+            <button className={'mkt-chip ' + tone(marketTiles(m, displayDay, displayClosed)[0].ch ?? 0)} onClick={() => setMarketSheet(true)} aria-label="시장 지표 보기">
+              📊 국내 {pct(marketTiles(m, displayDay, displayClosed)[0].ch ?? 0)}
+            </button>
             {ev && (
               <button className="ev-chip" onClick={() => setTab('news')}>
                 {dDay(ev.day, day)} {ev.title.replace(/ \(\d\/3\)/, '')}
@@ -599,7 +631,17 @@ export function GameController({ session, onExit }: Props) {
               <b>{wonShort(equity)}</b>
               <span className={tone(myRet)}>{pct(myRet, 1)}</span>
             </div>
-            {!solo ? (
+            {!solo && players.length > 2 ? (
+              <button className="ms-opp ms-rank" onClick={() => setRankSheet(true)}>
+                <small>
+                  순위 · 마감 {rows.filter((r) => r.ended).length}/{rows.length}
+                </small>
+                <b>
+                  {myRank}위 <span className="muted">/ {rows.length}명</span>
+                </b>
+                <span className="muted">{myRank === 1 ? `2위와 ${wonShort(rows[0].equity - (rows[1]?.equity ?? rows[0].equity))}` : `1위 ${rows[0].nickname}`} ›</span>
+              </button>
+            ) : !solo ? (
               <div className="ms-opp">
                 <small>
                   {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓' : '…'}</em>}
@@ -614,7 +656,7 @@ export function GameController({ session, onExit }: Props) {
               {endedToday ? '대기 중' : day + 1 >= total ? '마감 🏁' : '장 마감'}
             </button>
           </div>
-          {!solo && (
+          {!solo && players.length <= 2 && (
             <div className="tug thin" aria-hidden>
               <div className="tug-me" style={{ width: `${share * 100}%` }} />
               <div className="tug-mid" />
@@ -658,7 +700,7 @@ export function GameController({ session, onExit }: Props) {
           {tab === 'news' && (
             <>
               <Timeline market={m} day={day} onSelect={selectStock} />
-              <div className="m-macro">{macroChips}</div>
+              <MarketGrid market={m} day={displayDay} closed={displayClosed} compact />
               {effectsOnMe.map((t, i) => (
                 <div key={i} className="effect-banner">
                   {t}
@@ -735,9 +777,17 @@ export function GameController({ session, onExit }: Props) {
           )}
         </BottomSheet>
 
+        <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="📊 오늘의 시장">
+          <MarketGrid market={m} day={displayDay} closed={displayClosed} />
+          <p className="muted small sheet-note">화살표는 어제와 비교한 변화예요. 아래 줄은 보통 어떤 업종에 영향을 주는지예요.</p>
+        </BottomSheet>
+
+        <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="🏆 실시간 순위">
+          <RankList rows={rows} />
+        </BottomSheet>
+
         <BottomSheet open={menu} onClose={() => setMenu(false)} title="설정">
           <div className="m-settings">
-            <div className="m-macro wrap">{macroChips}</div>
             <div className="row">{settings}</div>
           </div>
         </BottomSheet>
@@ -764,6 +814,9 @@ export function GameController({ session, onExit }: Props) {
       </header>
 
       <section className="score desk-score">
+        {!solo && players.length > 2 ? (
+          <RankStrip rows={rows} />
+        ) : (
         <div className="vs-box">
           <div className="score-me">
             <small>{session.nickname} (나)</small>
@@ -788,6 +841,7 @@ export function GameController({ session, onExit }: Props) {
             <div className="score-solo muted">연습 모드</div>
           )}
         </div>
+        )}
         <AssetSummary
           ui={ui}
           cash={portfolio.cash}

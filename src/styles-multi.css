@@ -1,0 +1,358 @@
+/* ============ 여러 명 · 방 목록 · 비밀방 · 순위 · 시장 지표 ============ */
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.panel-head h3 {
+  margin: 0;
+}
+
+/* 방 목록 */
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.room-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: 60px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.room-row:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: var(--surface-2);
+}
+.room-row.joined {
+  border-color: rgba(47, 191, 113, 0.5);
+}
+.rr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.rr-main b {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rr-main small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.lock {
+  margin-right: 4px;
+}
+.rr-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.rr-side small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.rr-side em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.rr-count {
+  display: flex;
+  gap: 3px;
+}
+.rr-count i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-3);
+}
+.rr-count i.on {
+  background: var(--green);
+}
+.seg.five {
+  grid-template-columns: repeat(5, 1fr);
+}
+.switch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.switch-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.switch-row b {
+  color: var(--text);
+  font-size: 14px;
+}
+.switch-row small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.switch {
+  appearance: none;
+  flex-shrink: 0;
+  width: 46px;
+  height: 28px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.switch:checked {
+  background: var(--gold);
+}
+.switch:checked::after {
+  transform: translateX(18px);
+}
+.field input[type='password'] {
+  margin-top: 8px;
+}
+
+/* 대기실: 여러 자리 */
+.room-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.slot.me {
+  box-shadow: 0 0 0 1px var(--gold) inset;
+}
+.slot em {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* PC 순위 띠 */
+.rank-strip {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rank-strip::-webkit-scrollbar {
+  display: none;
+}
+.rank-chip {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+.rank-chip.me {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.rank-chip .rk {
+  font-size: 15px;
+  font-weight: 800;
+}
+.rank-chip .rn {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+.rank-chip .rn b {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.rank-chip .rn small {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rank-chip .rs {
+  font-size: 12px;
+  color: var(--muted);
+}
+.rank-chip .rs.ok {
+  color: var(--green);
+}
+.desk-score:has(.rank-strip) {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.4fr) auto;
+}
+
+/* 세로 순위표 (모바일 시트 등) */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.rank-row.me {
+  border-color: var(--gold);
+}
+.rank-row .rk {
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+}
+.rank-row .rn,
+.rank-row .rv {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.rank-row .rv {
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+.rank-row small {
+  font-size: 12px;
+}
+.rank-row .rn small {
+  color: var(--muted);
+}
+.rank-row em {
+  font-style: normal;
+  color: var(--muted);
+}
+.ms-rank {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 0;
+}
+.medal {
+  margin-right: 4px;
+}
+
+/* 카드 대상 고르기 */
+.target-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.target-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 14px;
+  min-height: 52px;
+}
+.target-row:hover {
+  border-color: var(--up);
+}
+
+/* 시장 지표: 모바일 헤더 칩 + 2×3 그리드 */
+.mkt-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 99px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mgrid.compact {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.mtile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.mgrid.compact .mtile {
+  padding: 8px 9px;
+}
+.mtile small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.mtile b {
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mgrid.compact .mtile b {
+  font-size: 14px;
+}
+.mtile > span {
+  font-size: 12px;
+  font-weight: 700;
+}
+.mtile em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.sheet-note {
+  margin: 4px 2px 0;
+}
