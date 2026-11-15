@@ -1,5 +1,5 @@
 /** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
 import { STOCK_MAP } from '../game/stocks';
@@ -71,19 +71,26 @@ export function AssetSummary({
 
 /* ---------------- 일정 타임라인 (가로 띠) ---------------- */
 
-const EV_ICON: Record<EventKind, string> = { fomc: '🇺🇸', bok: '🇰🇷', earnings: '📊', expiry: '⚠️', dividend: '💰' };
+const EV_ICON: Record<EventKind, string> = { fomc: '💵', bok: '🏛️', earnings: '📊', expiry: '⚠️', dividend: '💰' };
 
 export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
   const next = market.events.find((e) => e.day >= day) ?? null;
   const [pick, setPick] = useState<number | null>(null);
   useEffect(() => setPick(null), [day]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  // 오늘 칸이 가운데 오도록 (페이지는 안 움직이고 띠만 스크롤)
+  useEffect(() => {
+    const t = trackRef.current;
+    const cell = t?.querySelector<HTMLElement>('.tl-cell.today');
+    if (t && cell) t.scrollLeft = cell.offsetLeft - t.clientWidth / 2 + cell.clientWidth / 2;
+  }, [day]);
   const focusDay = pick ?? next?.day ?? null;
   const focus = focusDay === null ? [] : market.events.filter((e) => e.day === focusDay);
   const payers = focusDay === null ? [] : market.dividends.filter((d) => d.day === focusDay);
 
   return (
     <div className="tl">
-      <div className="tl-track" role="list" aria-label="게임 일정">
+      <div className="tl-track" role="list" aria-label="게임 일정" ref={trackRef}>
         {Array.from({ length: market.totalDays }, (_, d) => {
           const evs = market.events.filter((e) => e.day === d);
           const icons = [...new Set(evs.map((e) => EV_ICON[e.kind]))];

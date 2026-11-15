@@ -566,6 +566,11 @@ export function GameController({ session, onExit }: Props) {
     </>
   );
 
+  const prevCloseEquity =
+    displayDay === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, displayDay - 1, paidDivs), pricesAt(m, displayDay - 1, true));
+  const todayPnl = equity - prevCloseEquity;
+  const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
+
   /* ================= 모바일 ================= */
   if (mobile) {
     const q = quote(m, selected, displayDay, displayClosed);
@@ -615,6 +620,36 @@ export function GameController({ session, onExit }: Props) {
               <div className="tug-mid" />
             </div>
           )}
+          <button className="m-asum" onClick={() => setTab('assets')} aria-label="내 재산 보기">
+            <span>
+              <small>현금</small>
+              <b>{wonShort(portfolio.cash)}</b>
+            </span>
+            <span>
+              <small>주식</small>
+              <b>{wonShort(equity - portfolio.cash)}</b>
+            </span>
+            <span>
+              <small>오늘</small>
+              <b className={tone(todayPnl)}>
+                {todayPnl >= 0 ? '+' : ''}
+                {wonShort(todayPnl)}
+              </b>
+            </span>
+            {portfolio.dividendIncome > 0 && (
+              <span>
+                <small>배당</small>
+                <b className="up">+{wonShort(portfolio.dividendIncome)}</b>
+              </span>
+            )}
+            {openOrderCount > 0 && (
+              <span>
+                <small>예약</small>
+                <b>{openOrderCount}건</b>
+              </span>
+            )}
+            <i>›</i>
+          </button>
         </header>
 
         <main className={'m-page p-' + tab}>
@@ -622,12 +657,23 @@ export function GameController({ session, onExit }: Props) {
           {tab === 'detail' && detail}
           {tab === 'news' && (
             <>
+              <Timeline market={m} day={day} onSelect={selectStock} />
               <div className="m-macro">{macroChips}</div>
-              <Calendar market={m} day={day} onSelect={selectStock} compact />
+              {effectsOnMe.map((t, i) => (
+                <div key={i} className="effect-banner">
+                  {t}
+                </div>
+              ))}
               {newsPanel}
+              <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setTab('cards')} />
             </>
           )}
-          {tab === 'assets' && assets}
+          {tab === 'assets' && (
+            <>
+              {assets}
+              <Calendar market={m} day={day} onSelect={selectStock} compact />
+            </>
+          )}
           {tab === 'cards' && cards}
         </main>
 
@@ -702,10 +748,6 @@ export function GameController({ session, onExit }: Props) {
   }
 
   /* ================= PC ================= */
-  const prevCloseEquity =
-    displayDay === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, displayDay - 1, paidDivs), pricesAt(m, displayDay - 1, true));
-  const todayPnl = equity - prevCloseEquity;
-  const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
   return (
     <div className={'game desk ui-' + ui}>
       <header className="hud">

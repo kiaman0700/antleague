@@ -308,7 +308,7 @@
   .asum-more {
     display: none;
   }
-  .tl-track {
+  .desk .tl-track {
     max-width: 55vw;
   }
 }
@@ -316,7 +316,125 @@
   .asum-item:nth-child(n + 4) {
     display: none;
   }
-  .tl-desc {
+  .desk .tl-desc {
     display: none;
   }
+}
+
+/* ============ 모바일: PC 구성을 터치에 맞게 ============ */
+
+/* 헤더 재산 요약 띠 */
+.m-asum {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  border-radius: 12px;
+  padding: 6px 4px;
+  text-align: left;
+  overflow: hidden;
+}
+.m-asum span {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 8px;
+  border-right: 1px solid var(--line);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.m-asum span:last-of-type {
+  border-right: 0;
+}
+.m-asum small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.m-asum b {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-asum i {
+  font-style: normal;
+  color: var(--muted);
+  padding: 0 6px 0 2px;
+  font-size: 16px;
+}
+.m-asum:active {
+  background: var(--surface-2);
+}
+
+/* 타임라인: 위 띠(가로 스와이프) + 아래 설명 */
+.m-page .tl {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+.m-page .tl-track {
+  max-width: none;
+  scroll-snap-type: x proximity;
+  padding-bottom: 2px;
+}
+.m-page .tl-cell {
+  width: 42px;
+  padding: 6px 0;
+  scroll-snap-align: center;
+}
+.m-page .tl-cell small {
+  font-size: 11px;
+}
+.m-page .tl-cell span {
+  font-size: 14px;
+}
+.m-page .tl-info {
+  font-size: 13px;
+}
+.m-page .tl-desc {
+  white-space: normal;
+  flex-basis: 100%;
+}
+
+/* 카드 트레이: 뉴스 아래 가로 스크롤 */
+.m-page .tray {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+}
+.m-page .tray-cards {
+  flex-direction: row;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 8px;
+}
+.m-page .tray-cards::-webkit-scrollbar {
+  display: none;
+}
+.m-page .tcard {
+  flex: 0 0 auto;
+  grid-template-columns: 26px auto;
+  grid-template-rows: auto auto;
+  min-width: 150px;
+  padding: 8px 10px;
+}
+.m-page .tcard .tc-emoji {
+  grid-row: span 2;
+}
+.m-page .tcard .btn,
+.m-page .tcard .tc-auto {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 4px;
+  min-height: 34px;
+}
+
+/* 재산 페이지 아래 일정 */
+.m-page.p-assets .calendar {
+  margin-top: 20px;
 }
