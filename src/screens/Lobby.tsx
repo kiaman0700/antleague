@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { loadSolo, newSolo, saveSolo } from '../engine/local';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
-import { DAY_OPTIONS, loadNick, loadUi, saveNick, saveUi, TURN_OPTIONS, type Session, type UiMode } from '../session';
+import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
 
 export interface ResumeInfo {
   roomId: string;
@@ -33,10 +33,17 @@ interface MatchResult {
   me?: string | null;
 }
 
+/** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records';
+
 interface Props {
+  page: LobbyPage;
+  go: (page: LobbyPage) => void;
   onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void;
   onGame: (session: Session) => void;
 }
+
+type Joined = { roomId: string; playerId: string; code: string };
 
 export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: UiMode) => void }) {
   return (
@@ -55,145 +62,222 @@ export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: U
   );
 }
 
-export function Lobby({ onWaiting, onGame }: Props) {
-  const [nick, setNick] = useState(loadNick);
-  const [ui, setUi] = useState<UiMode>(loadUi);
-  const [days, setDays] = useState(20);
-  const [turnSec, setTurnSec] = useState(90);
-  const [title, setTitle] = useState('');
-  const [maxPlayers, setMaxPlayers] = useState(2);
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [password, setPassword] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [rooms, setRooms] = useState<RoomInfo[] | null>(null);
-  const [pwRoom, setPwRoom] = useState<RoomInfo | null>(null);
-  const [pwInput, setPwInput] = useState('');
-  const [pwErr, setPwErr] = useState('');
-  const [code, setCode] = useState(() => new URLSearchParams(location.search).get('room')?.toUpperCase().slice(0, 6) ?? '');
+const online = !!supabase;
+const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10;
+
+/** 닉네임·화면 모드 — 모든 로비 페이지가 같은 값을 씀(저장소에 보관) */
+function useProfile() {
+  const [nick, setNickState] = useState(loadNick);
+  const [ui, setUiState] = useState<UiMode>(loadUi);
+  return {
+    nick,
+    ui,
+    ok: nickValid(nick),
+    setNick: (n: string) => {
+      setNickState(n);
+      if (nickValid(n)) saveNick(n.trim());
+    },
+    setUi: (m: UiMode) => {
+      setUiState(m);
+      saveUi(m);
+    },
+  };
+}
+
+function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+        <h3>{title}</h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** 하위 페이지 머리: ← 뒤로 · 제목 · 오른쪽 버튼 */
+function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: ReactNode }) {
+  return (
+    <header className="page-head">
+      <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
+        ←
+      </button>
+      <h2>{title}</h2>
+      <div className="ph-right">{right}</div>
+    </header>
+  );
+}
+
+/** 닉네임이 없을 때만 보이는 입력 칸 (주소로 바로 들어온 경우) */
+function NickGate({ profile }: { profile: ReturnType<typeof useProfile> }) {
+  const [shown] = useState(() => !profile.ok);
+  if (!shown) return null;
+  return (
+    <div className="panel pad nick-gate">
+      <label className="field">
+        <span>먼저 닉네임을 정해 주세요</span>
+        <input value={profile.nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => profile.setNick(e.target.value)} />
+      </label>
+    </div>
+  );
+}
+
+function CodeJoin({ initial, profile, onJoined, onClose }: { initial: string; profile: ReturnType<typeof useProfile>; onJoined: (r: Joined) => void; onClose: () => void }) {
+  const [code, setCode] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [history, setHistory] = useState<MatchResult[]>([]);
-  const [resume, setResume] = useState<ResumeInfo | null>(null);
-  const [soloSave, setSoloSave] = useState(() => {
-    const s = loadSolo();
-    return s && s.data.room.status !== 'finished' ? s : null;
-  });
-  const online = !!supabase;
-
-  useEffect(() => {
-    if (!online) return;
-    api<MatchResult[]>('history').then(setHistory).catch(() => {});
-    api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
-  }, [online]);
-
-  const loadRooms = () => {
-    if (!online) return;
-    api<RoomInfo[]>('rooms')
-      .then(setRooms)
-      .catch(() => setRooms([]));
-  };
-  useEffect(() => {
-    loadRooms();
-    const id = setInterval(loadRooms, 6000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [online]);
-
-  const record = useMemo(() => {
-    const wins: Record<string, number> = {};
-    let draws = 0;
-    for (const h of history) {
-      if (h.winner_nickname) wins[h.winner_nickname] = (wins[h.winner_nickname] ?? 0) + 1;
-      else draws++;
-    }
-    return { wins: Object.entries(wins).sort((a, b) => b[1] - a[1]), draws };
-  }, [history]);
-
-  const myBadges = useMemo(() => {
-    const count: Record<string, number> = {};
-    for (const h of history) for (const r of h.results) if (r.nickname === h.me) for (const b of r.badges ?? []) count[b] = (count[b] ?? 0) + 1;
-    return count;
-  }, [history]);
-  const myTitle = titleOf(Object.keys(myBadges));
-
-  const nickOk = nick.trim().length >= 1 && nick.trim().length <= 10;
-
-  async function run(fn: () => Promise<void>) {
+  const submit = async () => {
     setErr('');
-    if (!nickOk) return setErr('닉네임을 1~10자로 입력해 주세요.');
-    saveNick(nick.trim());
-    saveUi(ui);
+    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
+    if (code.length !== 6) return setErr('6자리 방 코드를 입력해 주세요.');
     setBusy(true);
     try {
-      await fn();
+      onJoined(await api<Joined>('join', { code, nickname: profile.nick.trim(), mode: profile.ui }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
-  }
+  };
+  return (
+    <Modal title="🔑 코드로 입장" onClose={onClose}>
+      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
+      <form
+        className="join"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <input
+          className="code-input"
+          autoFocus
+          value={code}
+          maxLength={6}
+          placeholder="방 코드"
+          inputMode="text"
+          autoCapitalize="characters"
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+        />
+        <button className="btn primary" disabled={busy || !online || code.length !== 6}>
+          입장
+        </button>
+      </form>
+      {err && <p className="error">{err}</p>}
+    </Modal>
+  );
+}
 
-  const create = () => {
-    setCreating(true);
-    return run(async () => {
-      if (isPrivate && (password.length < 4 || password.length > 20)) throw new Error('비밀번호는 4~20자로 정해 주세요.');
-      const r = await api<{ roomId: string; playerId: string; code: string }>('create', {
-        nickname: nick.trim(),
-        mode: ui,
-        totalDays: days,
-        turnSeconds: turnSec,
-        maxPlayers,
-        title: title.trim(),
-        isPrivate,
-        password: isPrivate ? password : undefined,
-      });
-      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
-    });
+function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<typeof useProfile>; onStart: (days: number, daySec: number) => void; onClose: () => void }) {
+  const [days, setDays] = useState(20);
+  const [daySec, setDaySec] = useState<number>(DEFAULT_SOLO_DAY);
+  const [err, setErr] = useState('');
+  return (
+    <Modal title="🎯 혼자 연습하기" onClose={onClose}>
+      <p className="muted small">혼자서 같은 규칙으로 연습해요. 장중에 가격이 실시간으로 움직이고, 다 정했으면 "장 마감"으로 남은 시간을 건너뛸 수 있어요. 이 기기에 저장돼요.</p>
+      <div className="field">
+        <span>게임 길이</span>
+        <div className="seg">
+          {DAY_OPTIONS.map((o) => (
+            <button key={o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+              <b>{o.label}</b>
+              <small>최대 {Math.round((o.days * (daySec + 8)) / 60)}분</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <span>하루(장) 길이</span>
+        <div className="seg">
+          {SOLO_DAY_OPTIONS.map((sec) => (
+            <button key={sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
+              <b>{sec / 60}분</b>
+              <small>{sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      {err && <p className="error">{err}</p>}
+      <div className="modal-actions">
+        <button className="btn ghost" onClick={onClose}>
+          취소
+        </button>
+        <button className="btn primary" onClick={() => (profile.ok ? onStart(days, daySec) : setErr('닉네임을 먼저 1~10자로 정해 주세요.'))}>
+          시작하기
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function HowTo({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="📖 이렇게 놀아요" onClose={onClose}>
+      <ol className="howto">
+        <li>
+          <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, 가끔 <b>장중 속보</b>도 떠요.
+        </li>
+        <li>
+          국내·미국 주식과 <b>ETF</b>까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요.
+        </li>
+        <li>
+          다 정했으면 <b>장 마감</b>. 모두 누르거나 <b>제한 시간</b>이 끝나면 하루가 흘러요.
+        </li>
+        <li>
+          <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요.
+        </li>
+        <li>마지막 날 재산이 가장 많은 사람이 승리!</li>
+      </ol>
+      <div className="modal-actions">
+        <button className="btn primary" onClick={onClose}>
+          알겠어요
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ================= 홈 ================= */
+
+function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
+  const profile = useProfile();
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto'>(null);
+  const [nickErr, setNickErr] = useState(false);
+  const [resume, setResume] = useState<ResumeInfo | null>(null);
+  const [openRooms, setOpenRooms] = useState<number | null>(null);
+  const [soloSave, setSoloSave] = useState(() => {
+    const s = loadSolo();
+    return s && s.data.room.status !== 'finished' ? s : null;
+  });
+  const nickRef = useRef<HTMLInputElement>(null);
+  const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
+
+  useEffect(() => {
+    if (invite.length === 6) setModal('code');
+    if (!online) return;
+    api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
+    api<RoomInfo[]>('rooms')
+      .then((r) => setOpenRooms(r.filter((x) => !x.joined).length))
+      .catch(() => {});
+  }, [invite]);
+
+  /** 닉네임이 있어야 하는 행동 */
+  const need = (fn: () => void) => () => {
+    if (profile.ok) return fn();
+    setNickErr(true);
+    nickRef.current?.focus();
   };
 
-  const joinListed = async (room: RoomInfo, pw?: string) => {
-    setErr('');
-    setPwErr('');
-    if (!nickOk) return setErr('닉네임을 먼저 1~10자로 입력해 주세요.');
-    saveNick(nick.trim());
-    saveUi(ui);
-    setBusy(true);
-    try {
-      const r = await api<{ roomId: string; playerId: string; code: string }>('joinRoom', { roomId: room.id, nickname: nick.trim(), mode: ui, password: pw });
-      setPwRoom(null);
-      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (pw !== undefined) setPwErr(msg);
-      else setErr(msg);
-    } finally {
-      setBusy(false);
-    }
+  const joined = (r: Joined) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+  const startPractice = (days: number, daySec: number) => {
+    const s = newSolo(profile.nick.trim(), days, daySec);
+    onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
-  const enterRoom = (room: RoomInfo) => {
-    setCreating(false);
-    if (room.isPrivate && !room.joined) {
-      setPwInput('');
-      setPwErr('');
-      setPwRoom(room);
-    } else joinListed(room);
-  };
-
-  const join = () => {
-    setCreating(false);
-    return run(async () => {
-      if (code.trim().length !== 6) throw new Error('6자리 방 코드를 입력해 주세요.');
-      const r = await api<{ roomId: string; playerId: string; code: string }>('join', { code, nickname: nick.trim(), mode: ui });
-      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
-    });
-  };
-
-  const solo = () =>
-    run(async () => {
-      const s = newSolo(nick.trim(), days);
-      onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui });
-    });
-
   const doResume = () => {
     if (!resume) return;
     if (resume.status === 'waiting') return onWaiting(resume.roomId, resume.playerId, resume.nickname, resume.code);
@@ -201,10 +285,10 @@ export function Lobby({ onWaiting, onGame }: Props) {
   };
 
   return (
-    <div className="lobby">
-      <header className="hero">
+    <div className="lobby home">
+      <header className="hero compact">
         <div className="hero-mark">
-          <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden>
+          <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden>
             <rect width="64" height="64" rx="18" fill="url(#hg)" />
             <path d="M14 42 L26 30 L34 36 L50 20" stroke="#0b0d12" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="50" cy="20" r="4" fill="#0b0d12" />
@@ -216,185 +300,253 @@ export function Lobby({ onWaiting, onGame }: Props) {
             </defs>
           </svg>
         </div>
-        <h1>
-          주식 <em>대결</em>
-        </h1>
-        <p className="sub">같은 시장, 같은 뉴스. 둘 중 누가 더 벌까?</p>
+        <div>
+          <h1>
+            주식 <em>대결</em>
+          </h1>
+          <p className="sub">같은 시장, 같은 뉴스. 누가 더 벌까?</p>
+        </div>
       </header>
 
-      {soloSave && (
-        <div className="panel pad resume">
-          <div>
-            하던 연습 게임이 있어요 · <b>{soloSave.data.room.day + 1}일차</b> / {soloSave.data.room.total_days}일
-          </div>
-          <div className="row">
-            <button className="btn primary" onClick={() => onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: soloSave.nickname, ui })}>
-              연습 이어하기
-            </button>
-            <button
-              className="btn ghost"
-              onClick={() => {
-                saveSolo(null);
-                setSoloSave(null);
-              }}
-            >
-              버리기
-            </button>
-          </div>
-        </div>
-      )}
-
-      {resume && (
-        <div className="panel pad resume">
-          <div>
-            <b>{resume.nickname}</b>님, {resume.status === 'waiting' ? '대기 중인' : '진행 중인'} 방 <code>{resume.code}</code>이 있어요.
-          </div>
-          <div className="row">
-            <button className="btn primary" onClick={doResume}>
-              {resume.status === 'waiting' ? '대기실로' : '이어하기'}
-            </button>
-            <button className="btn ghost" onClick={() => setResume(null)}>
-              닫기
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="panel pad">
-        <label className="field">
-          <span>닉네임</span>
-          <input value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} />
-        </label>
-        <div className="field">
-          <span>화면 모드 (게임 중에도 바꿀 수 있어요)</span>
-          <ModePicker value={ui} onChange={setUi} />
-        </div>
-      </div>
-
-      <div className="panel pad">
-        <div className="panel-head">
-          <h3>🔎 방 목록</h3>
-          <button className="btn sm ghost" onClick={loadRooms} disabled={!online}>
-            ↻ 새로고침
-          </button>
-        </div>
-        {!online && <p className="muted small">온라인 설정이 없어서 방 목록을 볼 수 없어요.</p>}
-        {online && rooms === null && <p className="muted small">불러오는 중…</p>}
-        {online && rooms?.length === 0 && <p className="empty small">지금 열린 방이 없어요. 아래에서 방을 만들어 보세요!</p>}
-        <div className="room-list">
-          {rooms?.map((r) => (
-            <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => enterRoom(r)}>
-              <span className="rr-main">
-                <b>
-                  {r.isPrivate && <span className="lock" title="비밀방">🔒</span>}
-                  {r.title}
-                </b>
+      {(resume || soloSave) && (
+        <div className="resume-list">
+          {resume && (
+            <div className="resume-card">
+              <span className="rc-text">
+                <b>{resume.status === 'waiting' ? '대기 중인 방' : '진행 중인 게임'}</b>
                 <small>
-                  방장 {r.host} · {r.totalDays}일 · {TURN_OPTIONS.find((t) => t.sec === r.turnSeconds)?.label ?? r.turnSeconds + '초'}
+                  {resume.nickname} · 코드 <code>{resume.code}</code>
                 </small>
               </span>
-              <span className="rr-side">
-                <span className="rr-count">
-                  {Array.from({ length: r.maxPlayers }, (_, i) => (
-                    <i key={i} className={i < r.players ? 'on' : ''} />
-                  ))}
-                </span>
+              <button className="btn sm primary" onClick={doResume}>
+                {resume.status === 'waiting' ? '대기실로' : '이어하기'}
+              </button>
+              <button className="icon-btn sm" aria-label="닫기" onClick={() => setResume(null)}>
+                ✕
+              </button>
+            </div>
+          )}
+          {soloSave && (
+            <div className="resume-card">
+              <span className="rc-text">
+                <b>하던 연습 게임</b>
                 <small>
-                  {r.players}/{r.maxPlayers}명
+                  {soloSave.data.room.day + 1}일차 / {soloSave.data.room.total_days}일
                 </small>
-                <em>{r.joined ? '돌아가기' : '입장'}</em>
               </span>
-            </button>
-          ))}
-        </div>
-        <div className="divider">
-          <span>초대 코드가 있다면</span>
-        </div>
-        <div className="join">
-          <input
-            className="code-input"
-            value={code}
-            maxLength={6}
-            placeholder="방 코드 6자리"
-            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-            onKeyDown={(e) => e.key === 'Enter' && join()}
-          />
-          <button className="btn" disabled={busy || !online} onClick={join}>
-            입장
-          </button>
-        </div>
-        {err && !creating && <p className="error">{err}</p>}
-      </div>
-
-      <div className="panel pad">
-        <h3>➕ 방 만들기</h3>
-        <label className="field">
-          <span>방 제목</span>
-          <input value={title} maxLength={20} placeholder={`${nick.trim() || '나'}의 방`} onChange={(e) => setTitle(e.target.value)} />
-        </label>
-        <div className="field">
-          <span>인원 (방장 포함)</span>
-          <div className="seg five">
-            {[2, 3, 4, 5, 6].map((n) => (
-              <button key={n} className={maxPlayers === n ? 'on' : ''} onClick={() => setMaxPlayers(n)}>
-                <b>{n}명</b>
+              <button className="btn sm primary" onClick={() => onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: soloSave.nickname, ui: profile.ui })}>
+                이어하기
               </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <span>게임 길이</span>
-          <div className="seg">
-            {DAY_OPTIONS.map((o) => (
-              <button key={o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
-                <b>{o.label}</b>
-                <small>{o.desc}</small>
+              <button
+                className="icon-btn sm"
+                aria-label="연습 기록 버리기"
+                title="버리기"
+                onClick={() => {
+                  saveSolo(null);
+                  setSoloSave(null);
+                }}
+              >
+                🗑
               </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <span>하루 고민 시간 (시간이 다 되면 자동으로 장 마감)</span>
-          <div className="seg four">
-            {TURN_OPTIONS.map((o) => (
-              <button key={o.sec} className={turnSec === o.sec ? 'on' : ''} onClick={() => setTurnSec(o.sec)}>
-                <b>{o.label}</b>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <label className="switch-row">
-            <span>
-              <b>🔒 비밀방</b>
-              <small>방 목록에서 들어오려면 비밀번호가 필요해요. 초대 코드로는 바로 들어올 수 있어요.</small>
-            </span>
-            <input type="checkbox" className="switch" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
-          </label>
-          {isPrivate && (
-            <input type="password" value={password} maxLength={20} placeholder="비밀번호 4~20자" autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
+            </div>
           )}
         </div>
-        <button className="btn primary xl" disabled={busy || !online} onClick={create}>
-          방 만들기
+      )}
+
+      <section className="panel pad profile">
+        <label className={'field' + (nickErr && !profile.ok ? ' invalid' : '')}>
+          <span>닉네임</span>
+          <input
+            ref={nickRef}
+            value={profile.nick}
+            maxLength={10}
+            placeholder="예: 개미왕"
+            onChange={(e) => {
+              profile.setNick(e.target.value);
+              setNickErr(false);
+            }}
+          />
+          {nickErr && !profile.ok && <small className="error">닉네임을 1~10자로 입력해 주세요.</small>}
+        </label>
+        <div className="field">
+          <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
+          <ModePicker value={profile.ui} onChange={profile.setUi} />
+        </div>
+      </section>
+
+      <nav className="home-actions">
+        <button className="tile primary" disabled={!online} onClick={need(() => go('rooms'))}>
+          <i>🔎</i>
+          <b>방 찾기</b>
+          <small>{!online ? '온라인 설정 필요' : openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
         </button>
-        {err && creating && <p className="error">{err}</p>}
-        <button className="btn ghost full" disabled={busy} onClick={solo} style={{ marginTop: 10 }}>
-          혼자 연습하기
+        <button className="tile" disabled={!online} onClick={need(() => go('create'))}>
+          <i>➕</i>
+          <b>방 만들기</b>
+          <small>인원·길이·제한 시간 설정</small>
         </button>
+        <button className="tile" disabled={!online} onClick={need(() => setModal('code'))}>
+          <i>🔑</i>
+          <b>코드로 입장</b>
+          <small>초대 코드 6자리</small>
+        </button>
+        <button className="tile" onClick={need(() => setModal('practice'))}>
+          <i>🎯</i>
+          <b>혼자 연습</b>
+          <small>실시간 장 · 마감은 내 마음대로</small>
+        </button>
+      </nav>
+
+      <div className="home-links">
+        <button className="btn ghost sm" onClick={() => setModal('howto')}>
+          📖 게임 방법
+        </button>
+        {online && (
+          <button className="btn ghost sm" onClick={() => go('records')}>
+            🏅 기록·업적
+          </button>
+        )}
+      </div>
+
+      {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onClose={() => setModal(null)} />}
+      {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
+      {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+/* ================= 방 찾기 ================= */
+
+function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
+  const profile = useProfile();
+  const [rooms, setRooms] = useState<RoomInfo[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [pwRoom, setPwRoom] = useState<RoomInfo | null>(null);
+  const [pwInput, setPwInput] = useState('');
+  const [pwErr, setPwErr] = useState('');
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'open' | 'private'>('all');
+
+  const load = () => {
+    if (!online) return;
+    api<RoomInfo[]>('rooms')
+      .then(setRooms)
+      .catch(() => setRooms([]));
+  };
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 6000);
+    return () => clearInterval(id);
+  }, []);
+
+  const shown = (rooms ?? []).filter((r) => filter === 'all' || (filter === 'private' ? r.isPrivate : !r.isPrivate));
+
+  const enter = async (room: RoomInfo, pw?: string) => {
+    setErr('');
+    setPwErr('');
+    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
+    if (room.isPrivate && !room.joined && pw === undefined) {
+      setPwInput('');
+      return setPwRoom(room);
+    }
+    setBusy(true);
+    try {
+      const r = await api<Joined>('joinRoom', { roomId: room.id, nickname: profile.nick.trim(), mode: profile.ui, password: pw });
+      setPwRoom(null);
+      onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (pw !== undefined) setPwErr(msg);
+      else setErr(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="lobby page">
+      <PageHead
+        title="방 찾기"
+        onBack={() => go('home')}
+        right={
+          <button className="icon-btn" aria-label="새로고침" title="새로고침" onClick={load}>
+            ↻
+          </button>
+        }
+      />
+      <NickGate profile={profile} />
+
+      <div className="chip-row">
+        {(
+          [
+            ['all', '전체'],
+            ['open', '공개방'],
+            ['private', '🔒 비밀방'],
+          ] as const
+        ).map(([k, label]) => (
+          <button key={k} className={'chip' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>
+            {label}
+          </button>
+        ))}
+        <span className="grow" />
+        <button className="chip" onClick={() => setCodeOpen(true)}>
+          🔑 코드로 입장
+        </button>
+      </div>
+
+      {err && <p className="error">{err}</p>}
+
+      <div className="room-list">
+        {rooms === null && <p className="muted small center">불러오는 중…</p>}
+        {rooms !== null && shown.length === 0 && (
+          <div className="empty-state">
+            <i>🪹</i>
+            <b>{rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
+            <small>직접 방을 만들고 친구를 불러 보세요.</small>
+            <button className="btn primary" onClick={() => go('create')}>
+              ➕ 방 만들기
+            </button>
+          </div>
+        )}
+        {shown.map((r) => (
+          <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => enter(r)}>
+            <span className="rr-main">
+              <b>
+                {r.isPrivate && (
+                  <span className="lock" title="비밀방">
+                    🔒
+                  </span>
+                )}
+                {r.title}
+              </b>
+              <small>
+                방장 {r.host} · {r.totalDays}일 · 하루 {turnLabel(r.turnSeconds)}
+              </small>
+            </span>
+            <span className="rr-side">
+              <span className="rr-count">
+                {Array.from({ length: r.maxPlayers }, (_, i) => (
+                  <i key={i} className={i < r.players ? 'on' : ''} />
+                ))}
+              </span>
+              <small>
+                {r.players}/{r.maxPlayers}명
+              </small>
+              <em>{r.joined ? '돌아가기' : '입장'}</em>
+            </span>
+          </button>
+        ))}
       </div>
 
       {pwRoom && (
-        <div className="modal-bg" onClick={() => setPwRoom(null)}>
+        <Modal title={`🔒 ${pwRoom.title}`} onClose={() => setPwRoom(null)}>
           <form
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault();
-              joinListed(pwRoom, pwInput);
+              enter(pwRoom, pwInput);
             }}
           >
-            <h3>🔒 {pwRoom.title}</h3>
             <p className="muted small">비밀방이에요. 방장에게 받은 비밀번호를 입력해 주세요.</p>
             <label className="field">
               <span>비밀번호</span>
@@ -410,48 +562,182 @@ export function Lobby({ onWaiting, onGame }: Props) {
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
+      {codeOpen && <CodeJoin initial="" profile={profile} onJoined={(r) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code)} onClose={() => setCodeOpen(false)} />}
+    </div>
+  );
+}
 
-      <div className="panel pad rules">
-        <h3>이렇게 놀아요</h3>
-        <ol>
-          <li>
-            <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 뉴스 아래 <b>관련 종목</b>을 누르면 바로 이동해요.
-          </li>
-          <li>
-            국내·미국 주식과 <b>ETF</b>(지수·레버리지·인버스·원유·달러)까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요.
-          </li>
-          <li>
-            다 정했으면 <b>장 마감</b>. 둘 다 누르면 하루가 흘러요.
-          </li>
-          <li>
-            <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요.
-          </li>
-          <li>마지막 날 재산이 더 많은 사람이 승리!</li>
-        </ol>
-      </div>
+/* ================= 방 만들기 ================= */
 
-      {history.length > 0 && (
-        <div className="panel pad">
-          <h3>
-            🏅 내 업적 {myTitle && <span className="title-tag">{myTitle.emoji} {myTitle.name}</span>}
-          </h3>
-          <div className="badge-grid">
-            {BADGES.map((b) => (
-              <div key={b.id} className={'bg-cell r' + b.rarity + (myBadges[b.id] ? ' got' : '')} title={b.desc}>
-                <i>{myBadges[b.id] ? b.emoji : '🔒'}</i>
-                <b>{b.name}</b>
-                <small>{myBadges[b.id] ? '×' + myBadges[b.id] : b.desc}</small>
-              </div>
+function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
+  const profile = useProfile();
+  const [title, setTitle] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState(2);
+  const [days, setDays] = useState(20);
+  const [turnSec, setTurnSec] = useState(180);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const pwOk = !isPrivate || (password.length >= 4 && password.length <= 20);
+  const est = estimateMinutes(days, turnSec);
+  const create = async () => {
+    setErr('');
+    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
+    if (!pwOk) return setErr('비밀번호는 4~20자로 정해 주세요.');
+    setBusy(true);
+    try {
+      const r = await api<Joined>('create', {
+        nickname: profile.nick.trim(),
+        mode: profile.ui,
+        totalDays: days,
+        turnSeconds: turnSec,
+        maxPlayers,
+        title: title.trim(),
+        isPrivate,
+        password: isPrivate ? password : undefined,
+      });
+      onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="lobby page create">
+      <PageHead title="방 만들기" onBack={() => go('home')} />
+      <NickGate profile={profile} />
+
+      <section className="panel pad">
+        <h3 className="sec-h">기본</h3>
+        <label className="field">
+          <span>방 제목</span>
+          <input value={title} maxLength={20} placeholder={`${profile.nick.trim() || '나'}의 방`} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <div className="field">
+          <span>인원 (방장 포함)</span>
+          <div className="seg five">
+            {[2, 3, 4, 5, 6].map((n) => (
+              <button key={n} className={maxPlayers === n ? 'on' : ''} onClick={() => setMaxPlayers(n)}>
+                <b>{n}명</b>
+              </button>
             ))}
           </div>
         </div>
-      )}
+      </section>
 
-      {history.length > 0 && (
-        <div className="panel pad">
-          <h3>우리의 전적</h3>
+      <section className="panel pad">
+        <h3 className="sec-h">게임 규칙</h3>
+        <div className="field">
+          <span>게임 길이</span>
+          <div className="seg">
+            {DAY_OPTIONS.map((o) => (
+              <button key={o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+                <b>{o.label}</b>
+                <small>약 {estimateMinutes(o.days, turnSec).typical}분</small>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <span>하루 제한 시간</span>
+          <div className="seg four">
+            {TURN_OPTIONS.map((o) => (
+              <button key={o.sec} className={turnSec === o.sec ? 'on' : ''} onClick={() => setTurnSec(o.sec)}>
+                <b>{o.label}</b>
+                <small>{o.desc}</small>
+              </button>
+            ))}
+          </div>
+          <small className="hint">⏱ 모두 마감하면 바로 다음 날로 가요. {graceText(maxPlayers)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요. 마감은 넘어가기 전까지 취소할 수 있어요.</small>
+        </div>
+        <div className="estimate">
+          <span>⌛ 예상 게임 시간</span>
+          <b>보통 약 {est.typical}분</b>
+          <small>매일 시간을 끝까지 쓰면 최대 {est.max}분</small>
+        </div>
+      </section>
+
+      <section className="panel pad">
+        <h3 className="sec-h">공개 설정</h3>
+        <div className="seg two">
+          <button className={!isPrivate ? 'on' : ''} onClick={() => setIsPrivate(false)}>
+            <b>🌐 공개방</b>
+            <small>누구나 목록에서 입장</small>
+          </button>
+          <button className={isPrivate ? 'on' : ''} onClick={() => setIsPrivate(true)}>
+            <b>🔒 비밀방</b>
+            <small>비밀번호 또는 초대 코드</small>
+          </button>
+        </div>
+        {isPrivate && (
+          <label className="field pw-field">
+            <span>비밀번호 (4~20자)</span>
+            <input type="password" value={password} maxLength={20} placeholder="비밀번호" autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
+          </label>
+        )}
+      </section>
+
+      <div className="create-bar">
+        <p className="create-sum">
+          {maxPlayers}명 · {days}일 · 하루 {turnLabel(turnSec)} · 약 {est.typical}분 · {isPrivate ? '비밀방' : '공개방'}
+        </p>
+        {err && <p className="error">{err}</p>}
+        <button className="btn primary xl" disabled={busy || !online || !pwOk} onClick={create}>
+          {busy ? '만드는 중…' : '방 만들기'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================= 기록·업적 ================= */
+
+function Records({ go }: Pick<Props, 'go'>) {
+  const [history, setHistory] = useState<MatchResult[] | null>(null);
+  useEffect(() => {
+    if (!online) return setHistory([]);
+    api<MatchResult[]>('history')
+      .then(setHistory)
+      .catch(() => setHistory([]));
+  }, []);
+
+  const list = history ?? [];
+  const record = useMemo(() => {
+    const wins: Record<string, number> = {};
+    let draws = 0;
+    for (const h of list) {
+      if (h.winner_nickname) wins[h.winner_nickname] = (wins[h.winner_nickname] ?? 0) + 1;
+      else draws++;
+    }
+    return { wins: Object.entries(wins).sort((a, b) => b[1] - a[1]), draws };
+  }, [list]);
+  const myBadges = useMemo(() => {
+    const count: Record<string, number> = {};
+    for (const h of list) for (const r of h.results) if (r.nickname === h.me) for (const b of r.badges ?? []) count[b] = (count[b] ?? 0) + 1;
+    return count;
+  }, [list]);
+  const myTitle = titleOf(Object.keys(myBadges));
+
+  return (
+    <div className="lobby page">
+      <PageHead title="기록·업적" onBack={() => go('home')} />
+      {history === null && <p className="muted small center">불러오는 중…</p>}
+      {history !== null && list.length === 0 && (
+        <div className="empty-state">
+          <i>🏁</i>
+          <b>아직 끝낸 게임이 없어요</b>
+          <small>친구와 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
+        </div>
+      )}
+      {list.length > 0 && (
+        <section className="panel pad">
+          <h3>최근 전적</h3>
           <div className="record">
             {record.wins.map(([n, w]) => (
               <div key={n} className="record-item">
@@ -467,7 +753,7 @@ export function Lobby({ onWaiting, onGame }: Props) {
             )}
           </div>
           <ul className="recent">
-            {history.slice(0, 5).map((h) => (
+            {list.slice(0, 10).map((h) => (
               <li key={h.id}>
                 <span className="date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
                 {h.results.map((r, i) => (
@@ -478,8 +764,31 @@ export function Lobby({ onWaiting, onGame }: Props) {
               </li>
             ))}
           </ul>
-        </div>
+        </section>
+      )}
+      {history !== null && (
+        <section className="panel pad">
+          <h3>
+            🏅 업적 {myTitle && <span className="title-tag">{myTitle.emoji} {myTitle.name}</span>}
+          </h3>
+          <div className="badge-grid">
+            {BADGES.map((b) => (
+              <div key={b.id} className={'bg-cell r' + b.rarity + (myBadges[b.id] ? ' got' : '')} title={b.desc}>
+                <i>{myBadges[b.id] ? b.emoji : '🔒'}</i>
+                <b>{b.name}</b>
+                <small>{myBadges[b.id] ? '×' + myBadges[b.id] : b.desc}</small>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
+}
+
+export function Lobby({ page, go, onWaiting, onGame }: Props) {
+  if (page === 'rooms') return <Rooms go={go} onWaiting={onWaiting} />;
+  if (page === 'create') return <Create go={go} onWaiting={onWaiting} />;
+  if (page === 'records') return <Records go={go} />;
+  return <Home go={go} onWaiting={onWaiting} onGame={onGame} />;
 }

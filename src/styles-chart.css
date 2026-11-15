@@ -281,3 +281,118 @@
     font-size: 13px;
   }
 }
+
+/* ============ 오늘 장중 차트 ============ */
+.chart-view {
+  display: inline-flex;
+  margin-bottom: 6px;
+}
+.chart.intraday {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart.intraday .line {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart.intraday.up .line {
+  stroke: var(--up);
+}
+.chart.intraday.down .line {
+  stroke: var(--down);
+}
+.chart.intraday.flat .line {
+  stroke: var(--text-2);
+}
+.chart.intraday .area {
+  opacity: 0.12;
+}
+.chart.intraday.up .area {
+  fill: var(--up);
+}
+.chart.intraday.down .area {
+  fill: var(--down);
+}
+.chart.intraday.flat .area {
+  fill: var(--text-2);
+}
+.chart.intraday .future {
+  fill: rgba(255, 255, 255, 0.025);
+}
+.chart.intraday .ref {
+  stroke: var(--muted);
+  stroke-dasharray: 4 5;
+  stroke-width: 1;
+}
+.chart.intraday .axis {
+  fill: var(--muted);
+  font-size: 12px;
+}
+.chart.intraday .now-dot {
+  fill: var(--text);
+}
+.chart.intraday .now-pulse {
+  fill: var(--text);
+  opacity: 0.25;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: live-pulse 1.6s ease-out infinite;
+}
+@keyframes live-pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.chart.intraday .now-tag rect {
+  fill: var(--surface-3);
+}
+.chart.intraday.up .now-tag rect {
+  fill: var(--up);
+}
+.chart.intraday.down .now-tag rect {
+  fill: var(--down);
+}
+.chart.intraday .now-tag text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart.intraday .news-mark line {
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.chart.intraday .news-mark.good line {
+  stroke: var(--up);
+}
+.chart.intraday .news-mark.bad line {
+  stroke: var(--down);
+}
+.chart.intraday .news-mark text {
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart.intraday .now-pulse {
+    animation: none;
+  }
+}
+.live-badge {
+  color: var(--up);
+  font-weight: 700;
+}
+/* 가로로 눕힌 휴대폰: 장중 차트가 한 화면에 들어오게 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chart.intraday {
+    max-height: 58vh;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+}

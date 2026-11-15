@@ -2,9 +2,10 @@ import { useEffect as useEffectT, useState as useStateT } from 'react';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
 import type { PublicPlayer } from '../engine/engine';
 import { ITEM_MAP, type ItemKind } from '../game/items';
-import { KR_INDEX_BASE, US_INDEX_BASE, type Market } from '../game/market';
+import { barNow, KR_INDEX_BASE, US_INDEX_BASE, type Market } from '../game/market';
 import { START_CASH } from '../game/portfolio';
 import { pct, tone, wonShort } from '../lib/format';
+import { graceText } from '../session';
 import { ScrollChips } from './StockBrowser';
 import { Term } from './Term';
 
@@ -44,6 +45,29 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
+export function EndStatus({ rows, countdown, compact }: { rows: RankRow[]; countdown: boolean; compact?: boolean }) {
+  const done = rows.filter((r) => r.ended).length;
+  const hint = !countdown && done < rows.length ? `${graceText(rows.length)} 카운트다운` : null;
+  return (
+    <div className={'end-status' + (compact ? ' compact' : '')} aria-label={`장 마감 ${done}/${rows.length}명`}>
+      <span className="es-title">
+        장 마감 <b>{done}</b>/{rows.length}
+      </span>
+      <span className="es-list">
+        {rows.map((r) => (
+          <span key={r.id} className={'es-p' + (r.ended ? ' ok' : '') + (r.me ? ' me' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
+            <i>{r.ended ? '✓' : '…'}</i>
+            {r.nickname}
+          </span>
+        ))}
+      </span>
+      {hint && <small className="es-hint">{hint}</small>}
+      {countdown && <small className="es-hint hurry">⏱ 카운트다운 중!</small>}
     </div>
   );
 }
@@ -122,10 +146,10 @@ export function marketTiles(m: Market, day: number, closed: boolean): Tile[] {
   const mac = m.macro[day] ?? m.macro0;
   const prev = day > 0 ? m.macro[day - 1] : m.macro0;
   const idx = m.index[day];
-  const idxNow = closed ? idx.close : idx.open;
+  const idxNow = barNow(m, idx, day, closed);
   const idxPrev = day === 0 ? KR_INDEX_BASE : m.index[day - 1].close;
   const us = m.usIndex[day];
-  const usNow = closed ? us.close : us.open;
+  const usNow = barNow(m, us, day, closed);
   const usPrev = day === 0 ? US_INDEX_BASE : m.usIndex[day - 1].close;
   const dir = (d: number, up: string, down: string) => (Math.abs(d) < 1e-9 ? '어제와 같아요' : d > 0 ? up : down);
   const pctTxt = (d: number) => (Math.abs(d) < 1e-9 ? '변동 없음' : pct(d));

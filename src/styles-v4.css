@@ -748,3 +748,45 @@ kbd {
 .sheet-body .seg2 button {
   min-height: 44px;
 }
+
+/* 기사 머리말 · 감별 결과 */
+.nlabel {
+  font-weight: 800;
+  margin-right: 4px;
+  color: var(--text-2);
+}
+.nlabel.l-속보 {
+  color: var(--up);
+}
+.nlabel.l-단독 {
+  color: var(--gold);
+}
+.nlabel.l-시황,
+.nlabel.l-특징주 {
+  color: #60a5fa;
+}
+.detector-sum {
+  margin: -4px 0 10px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  background: var(--gold-soft);
+  border: 1px solid rgba(247, 197, 72, 0.4);
+  font-size: 13px;
+}
+.old-verdict {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.old-verdict.false {
+  color: var(--up);
+  background: var(--up-soft);
+}
+.old-verdict.true {
+  color: var(--green);
+  background: rgba(47, 191, 113, 0.14);
+}

@@ -26,7 +26,16 @@ export interface NewsEvent {
   realTone: 'good' | 'bad';
   /** 이 뉴스와 관련된 종목 (뉴스 아래 바로가기) */
   related: string[];
+  /** 기사 머리말 */
+  label?: NewsLabel;
+  /** 표시 없이 섞여 나오는 가짜 기사 (가격 영향 없음). 서버에만 있고 화면 데이터로는 나가지 않음 */
+  fake?: boolean;
+  /** 사실 여부 — 루머 감별기를 쓴 오늘 뉴스, 또는 이미 지나간 날의 뉴스에만 서버가 붙여 줌 */
+  verdict?: 'true' | 'false';
+  /** 장중 속보면 하루 중 공개 위치(0~1). 없으면 아침 뉴스. 공개 전에는 화면 데이터에 없음 */
+  at?: number;
 }
+export type NewsLabel = '속보' | '단독' | '시황' | '특징주';
 
 export interface Bar {
   open: number;
@@ -68,6 +77,8 @@ export interface Market {
   events: MarketEvent[];
   /** 배당: 기준일 종가 기준으로 보유 수량 × perShare 지급. perShare 는 기준일이 지나야 공개 */
   dividends: Dividend[];
+  /** 화면 전용: 오늘 장중 가격이 합쳐져 있으면 그 날·칸 (오늘 막대의 close = 지금 가격) */
+  live?: { day: number; tick: number; n: number; startAt: number; endAt: number };
 }
 
 export type EventKind = 'fomc' | 'bok' | 'earnings' | 'expiry' | 'dividend';
@@ -88,11 +99,11 @@ export interface Dividend {
 
 export const DIVIDEND_PAYERS = ['KBNK', 'MLKY', 'RAMN', 'OILK', 'HOME', 'CARE', 'MART', 'FIZZ', 'MEGA', 'DIVK', 'SECU'];
 
-function roundPrice(p: number): number {
+export function roundPrice(p: number): number {
   const unit = p >= 50000 ? 100 : p >= 10000 ? 50 : p >= 5000 ? 10 : 5;
   return Math.max(unit, Math.round(p / unit) * unit);
 }
-const roundUsd = (p: number) => Math.max(0.01, Math.round(p * 100) / 100);
+export const roundUsd = (p: number) => Math.max(0.01, Math.round(p * 100) / 100);
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 function fill(tpl: string, vars: Record<string, string>) {
@@ -447,6 +458,7 @@ export function generateMarket(seed: number, totalDays: number): Market {
   }
 
   for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
+  decorateNews(seed, totalDays, news, bars, indexBars);
   return { seed, totalDays, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
 }
 
@@ -511,17 +523,22 @@ function intradayPath(rng: Rng, open: number, close: number, vol: number, round 
   return out;
 }
 
-/** 해당 날짜의 '현재가'(원): 장중(턴 진행 중)엔 시가, 마감 후엔 종가 */
+/** 막대의 '지금 값': 마감 후엔 종가, 장중이면 지금 칸 가격(장중 데이터가 합쳐진 경우), 아니면 시가 */
+export function barNow(m: Market, b: Bar, day: number, closed: boolean): number {
+  return closed || m.live?.day === day ? b.close : b.open;
+}
+
+/** 해당 날짜의 '현재가'(원): 장중엔 지금 칸 가격(없으면 시가), 마감 후엔 종가 */
 export function priceAt(m: Market, symbol: string, day: number, closed: boolean): number {
-  const b = m.bars[symbol][Math.min(day, m.totalDays - 1)];
-  return closed ? b.close : b.open;
+  const d = Math.min(day, m.totalDays - 1);
+  return barNow(m, m.bars[symbol][d], d, closed);
 }
 
 export function usdAt(m: Market, symbol: string, day: number, closed: boolean): number | null {
   const u = m.usd[symbol];
   if (!u) return null;
-  const b = u[Math.min(day, m.totalDays - 1)];
-  return closed ? b.close : b.open;
+  const d = Math.min(day, m.totalDays - 1);
+  return barNow(m, u[d], d, closed);
 }
 
 /** 전일 종가 (첫날은 기준가) */
@@ -545,4 +562,108 @@ export function newsFor(m: Market, day: number) {
 
 export function stockName(sym: string) {
   return STOCK_MAP[sym]?.name ?? sym;
+}
+
+/**
+ * 기사 꾸미기 — 머리말, 어제 장 정리(시황·특징주), 표시 없는 가짜 기사.
+ * 가격을 만드는 난수와 다른 난수를 써서, 이 함수가 바뀌어도 같은 시드의 가격은 그대로다.
+ * 여기서 더하는 기사는 가격에 영향을 주지 않는다.
+ */
+function decorateNews(seed: number, totalDays: number, news: NewsEvent[], bars: Record<string, Bar[]>, indexBars: Bar[]) {
+  const rng = mulberry32((seed ^ 0x6e657773) >>> 0);
+  for (const n of news) {
+    if (n.rumor) continue;
+    if (n.kind === 'macro' && !n.headline.startsWith('[') && rng() < 0.35) n.label = '속보';
+    else if (n.kind === 'company' && rng() < 0.25) n.label = '단독';
+  }
+  const extra: NewsEvent[] = [];
+  const dayRet = (b: Bar[], day: number, base: number) => b[day].close / (day > 0 ? b[day - 1].close : base) - 1;
+  const p1 = (x: number) => (Math.abs(x) * 100).toFixed(1);
+  for (let day = 1; day < totalDays; day++) {
+    const y = day - 1;
+    // 어제 가장 크게 움직인 업종
+    let bestSec: { id: string; r: number } | null = null;
+    for (const sec of STOCK_SECTORS) {
+      const ss = COMPANIES.filter((c) => c.sector === sec.id);
+      if (!ss.length) continue;
+      const r = ss.reduce((a, c) => a + dayRet(bars[c.symbol], y, bars[c.symbol][0].open), 0) / ss.length;
+      if (!bestSec || Math.abs(r) > Math.abs(bestSec.r)) bestSec = { id: sec.id, r };
+    }
+    if (bestSec && Math.abs(bestSec.r) >= 0.02 && rng() < 0.7) {
+      const up = bestSec.r > 0;
+      extra.push({
+        day,
+        kind: 'sector',
+        symbol: null,
+        sector: bestSec.id,
+        headline: fill(pick(rng, up ? T.RECAP_SECTOR_UP : T.RECAP_SECTOR_DOWN), { sector: SECTOR_MAP[bestSec.id].name, p: p1(bestSec.r) }),
+        rumor: false,
+        tone: up ? 'good' : 'bad',
+        realTone: up ? 'good' : 'bad',
+        related: relatedForSector(bestSec.id),
+        label: '시황',
+      });
+    }
+    // 어제의 특징주
+    let mover: { s: StockDef; r: number } | null = null;
+    for (const c of COMPANIES) {
+      const r = dayRet(bars[c.symbol], y, bars[c.symbol][0].open);
+      if (!mover || Math.abs(r) > Math.abs(mover.r)) mover = { s: c, r };
+    }
+    if (mover && Math.abs(mover.r) >= 0.07) {
+      const up = mover.r > 0;
+      const limit = Math.abs(mover.r) >= LIMIT_UP - 1 - 0.005;
+      const pool = limit ? (up ? T.RECAP_LIMIT_UP : T.RECAP_LIMIT_DOWN) : up ? T.RECAP_STOCK_UP : T.RECAP_STOCK_DOWN;
+      extra.push({
+        day,
+        kind: 'company',
+        symbol: mover.s.symbol,
+        sector: mover.s.sector,
+        headline: fill(pick(rng, pool), { name: mover.s.name, p: p1(mover.r) }),
+        rumor: false,
+        tone: up ? 'good' : 'bad',
+        realTone: up ? 'good' : 'bad',
+        related: relatedForCompany(mover.s),
+        label: '특징주',
+      });
+    }
+    // 지수 시황 (가끔)
+    const ir = indexBars[y].close / (y > 0 ? indexBars[y - 1].close : KR_INDEX_BASE) - 1;
+    if (Math.abs(ir) >= 0.01 && rng() < 0.5) {
+      const up = ir > 0;
+      extra.push({ day, kind: 'macro', symbol: null, sector: null, macro: 'kr', headline: fill(pick(rng, up ? T.RECAP_KR_UP : T.RECAP_KR_DOWN), { p: p1(ir) }), rumor: false, tone: up ? 'good' : 'bad', realTone: up ? 'good' : 'bad', related: MACRO_RELATED.kr, label: '시황' });
+    }
+    // 표시 없는 가짜 기사 — 진짜 기사와 똑같이 생김. 루머 감별기로만 가려낼 수 있음
+    if (rng() < 0.35) {
+      const s = pick(rng, COMPANIES);
+      const good = rng() < 0.5;
+      const pool = [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
+      extra.push({
+        day,
+        kind: 'company',
+        symbol: s.symbol,
+        sector: s.sector,
+        headline: fill(pick(rng, pool), { name: s.name }),
+        rumor: false,
+        tone: good ? 'good' : 'bad',
+        realTone: good ? 'good' : 'bad',
+        related: relatedForCompany(s),
+        label: rng() < 0.25 ? '단독' : undefined,
+        fake: true,
+      });
+    }
+  }
+  news.push(...extra);
+  news.sort((a, b) => a.day - b.day);
+
+  // 장중 속보: 하루 0~2개. 그날 기업 뉴스 중 일부가 아침이 아니라 장 중간(20~80%)에 뜬다
+  for (let day = 0; day < totalDays; day++) {
+    const pool = news.filter((n) => n.day === day && n.kind === 'company' && n.label !== '시황' && n.label !== '특징주');
+    const count = (rng() < 0.55 ? 1 : 0) + (rng() < 0.2 ? 1 : 0);
+    for (let i = 0; i < count && pool.length; i++) {
+      const n = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+      n.at = Math.round(range(rng, 0.2, 0.8) * 1000) / 1000;
+      n.label = '속보';
+    }
+  }
 }

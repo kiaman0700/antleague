@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, useLiveView } from '../net/api';
-import { loadUi, saveUi, TURN_OPTIONS, type Session, type UiMode } from '../session';
+import { loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
 import { ModePicker } from './Lobby';
 
 interface Props {
@@ -46,7 +46,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   const notReady = others.filter((p) => !p.ready && p.id !== room.hostId);
   const link = `${location.origin}/room/${room.code}`;
   const canStart = isHost && view.players.length >= 2 && notReady.length === 0;
-  const turnLabel = TURN_OPTIONS.find((t) => t.sec === room.turnSeconds)?.label ?? `${room.turnSeconds}초`;
+  const turnLabel = labelOfTurn(room.turnSeconds);
 
   const run = async (fn: () => Promise<unknown>) => {
     setErr('');

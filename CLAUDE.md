@@ -16,8 +16,19 @@ npm test         # 단위 테스트 (엔진·보안 규칙)
 npm run build    # 타입체크 + 빌드
 npm run e2e      # 실제 서버를 익명 계정 여러 개로 테스트 (dev 서버 켜져 있어야 함)
 BASE=https://game-taupe-three-58.vercel.app npm run e2e   # 배포본 테스트
+npm run db -- check                         # Supabase 연결·마이그레이션 상태 (읽기만)
+npm run db -- apply supabase/00X_이름.sql     # SQL 적용 (한 트랜잭션). 적용 전 사용자에게 내용 보여주고 확인받기
+npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드 로그·환경변수 이름·서버 오류
 ```
-`.env.local` 이 필요 (git 에 안 올라감): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`(publishable, 공개돼도 됨), `SUPABASE_SECRET_KEY`(서버 전용, 절대 VITE_ 접두사 금지·공유 금지).
+- DB 는 `.env.local` 의 `SUPABASE_DB_URL`(Session pooler 주소 — 직접 주소는 IPv6 라 이 네트워크에서 안 됨)
+- Vercel 은 `.env.local` 의 `VERCEL_TOKEN`(팀 토큰) + `.vercel/project.json`. Vercel CLI 는 한글 컴퓨터 이름·팀 토큰 때문에 안 돼서 API 를 직접 씀. 배포는 main 푸시로 자동
+`.env.local` 이 필요 (git 에 안 올라감): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`(publishable, 공개돼도 됨), `SUPABASE_SECRET_KEY`(서버 전용, 절대 VITE_ 접두사 금지·공유 금지), `SUPABASE_DB_URL`·`VERCEL_TOKEN`(도구용, 절대 출력·공유 금지).
+
+## 스킬 (`.claude/skills/`)
+- 새 기능·규칙·화면 구조 변경 → 먼저 `game-feature-spec` (설계서 → 사용자 승인 → 코드)
+- 구현은 `test-driven-development` (엔진 규칙부터 테스트), 버그는 `systematic-debugging` (원인 먼저)
+- "됐다"고 말하기 전·커밋 전 → `game-self-check` (테스트·빌드·e2e·브라우저 3가지 크기), 원칙은 `verification-before-completion`
+- 라이브러리 사용법이 불확실하면 `library-docs` (Context7)
 
 ## 구조
 ```
@@ -43,8 +54,9 @@ BASE=https://game-taupe-three-58.vercel.app npm run e2e   # 배포본 테스트
 
 ## DB (Supabase)
 `supabase/schema.sql` = 전체 스키마(초기화용, 데이터 삭제됨). 추가 변경은 번호 붙인 파일로:
-`002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — **모두 적용 완료**.
-SQL 실행은 사용자가 Supabase 대시보드 SQL Editor 에서 직접 함 → 새 마이그레이션이 필요하면 파일을 만들고 실행을 부탁할 것.
+`002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — 적용 완료.
+`005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) — 적용 완료.
+새 마이그레이션은 파일을 만들고 사용자에게 내용을 보여 준 뒤, 확인받으면 `npm run db -- apply` 로 적용 (또는 사용자가 SQL Editor 에서 직접).
 서버는 마이그레이션 전에도 죽지 않게(없는 테이블이면 빈 목록 등) 방어적으로 작성.
 
 ## 배포
@@ -52,9 +64,12 @@ Vercel (사용자가 GitHub 저장소를 연결해 배포). 환경변수 3개는
 main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인 필요.
 
 ## 지금 게임에 있는 것
-턴제(전원 장 마감 or 제한시간) · 국내 29 + 미국 8 + ETF 10 종목 · 금리/미금리/환율/유가 · 뉴스 연쇄(연관 업종·종목 칩) · 상·하한가 · 지정가 주문 · 배당 · 이벤트 데이(연준·금통위·실적·옵션만기·배당) · 찬스 카드 12종(정보·방해·방어·보너스, 대상 선택) · 최대 6인 · 방 목록·비밀방 · 순위표 · 하이라이트 리플레이 · 업적/칭호 · 초보/일반 모드 · 인터랙티브 차트(라인/캔들/바, 확대·이동, 이평·볼린저, 선 긋기) · 이모지 반응 · 효과음 · 화면별 URL(뒤로가기)
+턴제(전원 장 마감 or 제한시간 1·3·5·10분, 1대1은 한 명 마감 시 90초 / 3인 이상은 ⅔ 마감 시 30초 카운트다운, 넘어가기 전까지 마감 취소 가능, 마감 현황 표시) · 국내 29 + 미국 8 + ETF 10 종목 · 금리/미금리/환율/유가 · 뉴스 연쇄(연관 업종·종목 칩) · 기사 머리말([속보]·[단독]·[시황]·[특징주]) · 표시 없는 가짜 기사(가격 영향 없음, `decorateNews` 는 가격과 다른 난수 사용) · 루머 감별기는 오늘 뉴스 전부 판정 · 상·하한가 · 지정가 주문 · 배당 · 이벤트 데이(연준·금통위·실적·옵션만기·배당) · 찬스 카드 12종(정보·방해·방어·보너스, 대상 선택) · 최대 6인 · 방 목록·비밀방 · 순위표 · 하이라이트 리플레이 · 업적/칭호 · 초보/일반 모드 · 인터랙티브 차트(라인/캔들/바, 확대·이동, 이평·볼린저, 선 긋기) · 이모지 반응 · 효과음 · 화면별 URL(뒤로가기)
 
 ## 알아둘 것
+- 실시간 장: `src/game/intraday.ts` (5초 칸, 일별 가격과 다른 난수) · 엔진 `dayClock`(장 시작 = day_deadline − 제한 시간) · 화면 데이터 `View.live` 는 지금 칸까지만 · 화면은 `src/game/live.ts` 의 `withLive` 로 오늘 막대에 합침 · 장중 속보 `NewsEvent.at` 는 공개 칸 전엔 화면 데이터에 없음 · 예약 주문은 상태 요청 때마다 지금 칸까지 체결(`resolveOrders(d, day, 칸, final)`)
+- 로비 주소: `/`(홈) · `/rooms`(방 찾기) · `/create`(방 만들기) · `/records`(기록·업적)
+- 뉴스의 `fake`/진실은 서버에만. 화면 데이터는 `publicNews` 를 거쳐 오늘 뉴스는 감별기 쓴 사람에게만 `verdict`, 지난 뉴스는 가짜·루머에 `verdict`
 - 반응(이모지) broadcast 채널은 방 ID 를 알면 들어올 수 있음 → 받는 쪽에서 정해진 목록만 표시
 - 요청 제한은 서버 인스턴스 메모리 기준(완벽한 전역 제한은 아님)
 - Windows 는 국기 이모지를 글자(KR/US)로 표시함 → 화면엔 💵·🏛️ 같은 일반 아이콘 선호

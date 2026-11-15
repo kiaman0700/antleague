@@ -1,7 +1,7 @@
 import { user, ok, done } from './lib.mjs';
 
 const [A, B, C] = await Promise.all([user(), user(), user()]);
-const made = await A({ action: 'create', nickname: 'A', mode: 'pro', totalDays: 10, turnSeconds: 0, maxPlayers: 3, title: '카드 테스트' });
+const made = await A({ action: 'create', nickname: 'A', mode: 'pro', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '카드 테스트' });
 const { roomId, code } = made.b;
 await B({ action: 'join', code, nickname: 'B', mode: 'pro' });
 await C({ action: 'join', code, nickname: 'C', mode: 'pro' });

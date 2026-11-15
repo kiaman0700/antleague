@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "node scripts/e2e/three-players.mjs && node scripts/e2e/cards.mjs"
+    "e2e": "node scripts/e2e/three-players.mjs && node scripts/e2e/cards.mjs && node scripts/e2e/turn-rules.mjs && node scripts/e2e/realtime.mjs",
+    "db": "node scripts/db.mjs",
+    "vercel": "node scripts/vercel.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
@@ -20,6 +22,7 @@
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
+    "pg": "^8.13.1",
     "typescript": "5.6",
     "vite": "^6.4.6",
     "vitest": "^5.1.0"

@@ -16,12 +16,31 @@ export const DAY_OPTIONS = [
   { days: 30, label: '30일', desc: '약 30~45분' },
 ] as const;
 
+/** 하루 제한 시간 (최대 10분). 시간이 다 되면 마감 안 누른 사람도 자동으로 장 마감 */
 export const TURN_OPTIONS = [
-  { sec: 60, label: '60초' },
-  { sec: 90, label: '90초' },
-  { sec: 180, label: '3분' },
-  { sec: 0, label: '무제한' },
+  { sec: 60, label: '1분', desc: '빠르게' },
+  { sec: 180, label: '3분', desc: '추천' },
+  { sec: 300, label: '5분', desc: '여유' },
+  { sec: 600, label: '10분', desc: '느긋하게' },
 ] as const;
+export const turnLabel = (sec: number) => TURN_OPTIONS.find((t) => t.sec === sec)?.label ?? (sec === 90 ? '1분 30초' : sec > 0 ? `${Math.round(sec / 60)}분` : '10분');
+
+/** 카운트다운 규칙 안내 문구 (서버 graceRule 과 같은 규칙) */
+export function graceText(players: number) {
+  return players <= 2 ? '한 명이 마감하면 1분 30초' : `${Math.ceil((players * 2) / 3)}명 이상 마감하면 30초`;
+}
+
+/** 마감 후 결과 보여주는 시간 등 하루마다 드는 시간(초) */
+const DAY_OVERHEAD = 8;
+/**
+ * 예상 게임 시간(분). 보통 = 다들 제한 시간의 절반쯤(최대 2분) 쓰고 마감 + 카운트다운,
+ * 길게 = 매일 시간을 끝까지 씀
+ */
+export function estimateMinutes(days: number, turnSec: number) {
+  const typical = Math.min(Math.min(turnSec * 0.5, 120) + 15, turnSec);
+  const toMin = (perDay: number) => Math.max(1, Math.round((days * (perDay + DAY_OVERHEAD)) / 60));
+  return { typical: toMin(typical), max: toMin(turnSec) };
+}
 
 const SAVED = 'stockduel.saved';
 const NICK = 'stockduel.nick';

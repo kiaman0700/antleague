@@ -112,3 +112,13 @@ export const MACRO = {
 
 export const EARNINGS_GOOD = ['{name}, 분기 실적 어닝 서프라이즈', '{name}, 사상 최대 분기 영업이익', '{name}, 실적 가이던스 상향'];
 export const EARNINGS_BAD = ['{name}, 실적 쇼크… 시장 예상 크게 하회', '{name}, 분기 영업적자 전환', '{name}, 연간 실적 전망 하향'];
+
+/* ---------- 어제 장 정리(시황·특징주) — 이미 지나간 사실만 다룸 ---------- */
+export const RECAP_SECTOR_UP = ['{sector}주 일제히 강세… 평균 {p}% 상승 마감', '{sector} 업종 하루 새 {p}% 껑충', '외국인 {sector}주 쓸어 담아… 업종 {p}%↑'];
+export const RECAP_SECTOR_DOWN = ['{sector}주 동반 약세… 평균 {p}% 하락 마감', '{sector} 업종 {p}% 급락, 투자심리 위축', '{sector}주 차익 매물 쏟아져… 업종 {p}%↓'];
+export const RECAP_STOCK_UP = ['{name} {p}% 급등 마감… 거래량 폭발', '{name}, 하루 만에 {p}% 뛰어', '개미들 몰린 {name}, {p}% 상승'];
+export const RECAP_STOCK_DOWN = ['{name} {p}% 급락 마감', '{name}, 하루 새 {p}% 빠져… 저가 매수 vs 손절', '{name} {p}% 하락, 52주 신저가 근접'];
+export const RECAP_LIMIT_UP = ['{name}, 상한가 직행', '{name} 상한가… 매수 잔량 수백만 주'];
+export const RECAP_LIMIT_DOWN = ['{name}, 하한가 추락', '{name} 하한가… 팔려는 사람만 줄 서'];
+export const RECAP_KR_UP = ['코스피 {p}% 상승 마감… 외국인·기관 쌍끌이', '코스피, {p}% 올라 투자심리 회복'];
+export const RECAP_KR_DOWN = ['코스피 {p}% 하락 마감… 개인만 순매수', '코스피, {p}% 밀려 투자심리 위축'];

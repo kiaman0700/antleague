@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { computeAchievements } from '../game/achievements.js';
 import { generateMarket } from '../game/market.js';
 import { computePortfolio } from '../game/portfolio.js';
+import { dayTicks } from '../game/intraday.js';
 import { buildView, GameError, resolveOrders, validatePlaceOrder, type GameData } from './engine.js';
 
 const SEED = 777;
@@ -64,11 +65,11 @@ describe('지정가 주문', () => {
   });
   it('장중 가격이 닿으면 예약 가격에 체결, 아니면 만료', () => {
     const d = game();
-    const bar = m.bars.NEOT[3];
-    const low = Math.min(...bar.path.slice(1));
+    // 장중 5초 칸 기준 (시계가 없는 방은 3분 = 36칸으로 계산)
+    const low = Math.min(...dayTicks(m, 'NEOT', 3, 36).slice(1));
     d.orders.push({ id: 'o1', player_id: 'a', day: 3, symbol: 'NEOT', side: 'buy', qty: 1, limit_price: low, fee: 0.001, status: 'open' });
     d.orders.push({ id: 'o2', player_id: 'a', day: 3, symbol: 'NEOT', side: 'buy', qty: 1, limit_price: Math.round(low * 0.9), fee: 0.001, status: 'open' });
-    const r = resolveOrders(d, 3);
+    const r = resolveOrders(d, 3, 36, true);
     expect(r.find((x) => x.id === 'o1')!.status).toBe('filled');
     expect(r.find((x) => x.id === 'o1')!.trade!.price).toBe(low);
     expect(r.find((x) => x.id === 'o2')!.status).toBe('expired');

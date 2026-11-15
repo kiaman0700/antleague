@@ -71,6 +71,8 @@ export default function App() {
     default:
       return (
         <Lobby
+          page={route.page ?? 'home'}
+          go={(page) => navigate({ kind: 'lobby', page })}
           onWaiting={(roomId, playerId, nickname, code) => navigate({ kind: 'waiting', roomId, playerId, nickname, code })}
           onGame={(session) => navigate({ kind: 'game', session })}
         />

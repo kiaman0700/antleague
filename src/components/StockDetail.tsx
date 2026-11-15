@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import type { Market, NewsEvent } from '../game/market';
+import { releaseTick } from '../game/intraday';
 import { buyCost, maxBuyQty, sellProceeds, type Holding } from '../game/portfolio';
 import { fmtUsd, quote } from '../game/quote';
 import { etfMembers, riskOf, RISK_LABEL, SECTOR_MAP, STOCK_MAP } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { OrderRow } from '../engine/engine';
 import type { UiMode } from '../session';
+import { useIsMobile } from './Extras';
+import { IntradayChart } from './IntradayChart';
 import { ProChart } from './ProChart';
 import { Term } from './Term';
 
@@ -35,6 +38,9 @@ interface Props {
 
 export function StockDetail(props: Props) {
   const [full, setFull] = useState(false);
+  const [view, setView] = useState<'live' | 'daily'>('live');
+  // 세로 휴대폰은 화면이 길쭉하니 차트를 더 높게
+  const tallChart = useIsMobile('(max-width: 600px) and (orientation: portrait)');
   const { ui, market, symbol, day, closed, cash, holding, news, watched, onToggleWatch, onSelect, onSelectSector, trade, onTrade, orders, reservedCash, onOrder, onCancel, inlineTrade } = props;
   const s = STOCK_MAP[symbol];
   const sec = SECTOR_MAP[s.sector];
@@ -56,6 +62,10 @@ export function StockDetail(props: Props) {
 
   const relevant = news.filter((n) => n.day <= day && (n.related.includes(symbol) || n.symbol === symbol || n.sector === s.sector));
   const markers = relevant.map((n) => ({ day: n.day, tone: n.tone }));
+  // 오늘 장이 열려 있으면 장중 차트 (5초 칸)
+  const live = !closed && market.live?.day === day ? market.live : null;
+  const liveDaily = !closed && !live;
+  const newsTicks = live ? relevant.filter((n) => n.day === day && n.at != null).map((n) => ({ tick: releaseTick(n.at!, live.n), tone: n.tone })) : [];
   const linked = Object.entries(sec.links).filter(([, w]) => w > 0).map(([id]) => SECTOR_MAP[id]);
   const inverse = Object.entries(sec.links).filter(([, w]) => w < 0).map(([id]) => SECTOR_MAP[id]);
   const sens = etf
@@ -110,7 +120,7 @@ export function StockDetail(props: Props) {
               ≈ {num(price)}원 · <Term k="환율" /> {num(fx)}원 ·{' '}
             </>
           )}
-          <Term k={closed ? '종가' : '시가'}>{closed ? '오늘 종가' : '오늘 시가'}</Term> · <Term k="전일대비" />
+          {closed ? <Term k="종가">오늘 종가</Term> : live ? <span className="live-badge">● 지금 가격</span> : <Term k="시가">오늘 시가</Term>} · <Term k="전일대비" />
         </div>
         {(() => {
           const dv = market.dividends.filter((x) => x.symbol === symbol);
@@ -131,18 +141,33 @@ export function StockDetail(props: Props) {
       </div>
 
       <div className="chart-wrap">
+        {live && (
+          <div className="pc-seg chart-view" role="tablist" aria-label="차트 보기">
+            <button role="tab" aria-selected={view === 'live'} className={view === 'live' ? 'on' : ''} onClick={() => setView('live')}>
+              오늘 장중
+            </button>
+            <button role="tab" aria-selected={view === 'daily'} className={view === 'daily' ? 'on' : ''} onClick={() => setView('daily')}>
+              일별
+            </button>
+          </div>
+        )}
+        {live && view === 'live' ? (
+          <IntradayChart ticks={series[day].path} n={live.n} prevClose={prevNative} fmt={chartFmt} newsTicks={newsTicks} tall={tallChart} />
+        ) : (
         <ProChart
           key={symbol}
           ui={ui}
           symbol={symbol}
           bars={bars}
           totalDays={market.totalDays}
-          liveOpenOnly={!closed}
+          liveOpenOnly={liveDaily}
           refLine={ref}
           markers={markers}
           fmt={chartFmt}
+          tall={tallChart}
           onExpand={() => setFull(true)}
         />
+        )}
         {full && (
           <div className="chart-full" role="dialog" aria-label="차트 크게 보기">
             <div className="cf-head">
@@ -155,7 +180,7 @@ export function StockDetail(props: Props) {
                 ✕
               </button>
             </div>
-            <ProChart ui={ui} symbol={symbol} bars={bars} totalDays={market.totalDays} liveOpenOnly={!closed} refLine={ref} markers={markers} fmt={chartFmt} tall />
+            <ProChart ui={ui} symbol={symbol} bars={bars} totalDays={market.totalDays} liveOpenOnly={liveDaily} refLine={ref} markers={markers} fmt={chartFmt} tall />
           </div>
         )}
         {ui === 'pro' && (
@@ -166,7 +191,7 @@ export function StockDetail(props: Props) {
             <span>
               시가 <b>{fmtN(bars[day].open)}</b>
             </span>
-            {closed && (
+            {(closed || live) && (
               <>
                 <span>
                   고가 <b className="up">{fmtN(bars[day].high)}</b>

@@ -173,7 +173,7 @@ function RefLine({ f, value, label }: { f: Frame; value: number; label: string }
 }
 
 export function Sparkline({ values, up, width = 56, height = 20 }: { values: number[]; up: boolean; width?: number; height?: number }) {
-  if (values.length < 2) return <svg width={width} height={height} />;
+  if (values.length < 2) return <svg width={width} height={height} className="spark" aria-hidden />;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const d = values

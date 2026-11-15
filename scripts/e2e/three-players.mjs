@@ -2,7 +2,7 @@ import { user, ok, done } from './lib.mjs';
 
 const [A, B, C, D] = await Promise.all([user(), user(), user(), user()]);
 
-const made = await A({ action: 'create', nickname: '철수', mode: 'pro', totalDays: 10, turnSeconds: 0, maxPlayers: 3, title: '비밀 3인방', isPrivate: true, password: 'tiger1234' });
+const made = await A({ action: 'create', nickname: '철수', mode: 'pro', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '비밀 3인방', isPrivate: true, password: 'tiger1234' });
 ok('A 비밀방(3인) 생성', made.s === 200, JSON.stringify(made.b));
 const { roomId, code } = made.b;
 

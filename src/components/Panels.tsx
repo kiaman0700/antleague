@@ -115,6 +115,11 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       <h4 className="sec-title">
         {day + 1}일차 아침 뉴스 <span className="count-badge">{today.length}</span>
       </h4>
+      {rumorCheck && !blackout && today.length > 0 && (
+        <div className="detector-sum">
+          🔍 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
+        </div>
+      )}
       {today.map((n, i) => (
         <div key={i} className={'news-card ' + n.tone}>
           <div className="news-meta">
@@ -129,10 +134,11 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                 <Term k="루머" />
               </span>
             )}
-            {n.rumor && rumorCheck && <span className={'verdict ' + (n.tone === n.realTone ? 'true' : 'false')}>🔍 {n.tone === n.realTone ? '진짜' : '가짜'}</span>}
+            {n.verdict && <span className={'verdict ' + n.verdict}>🔍 {n.verdict === 'true' ? '✅ 사실' : '❌ 가짜'}</span>}
           </div>
           <div className="news-headline">
             <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
+            {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
             {n.headline.replace('[루머] ', '')}
           </div>
           <RelatedChips symbols={n.related} change={change} onSelect={onSelect} />
@@ -151,7 +157,10 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                 <li key={i} className={n.tone}>
                   <span className="d">{n.day + 1}일</span>
                   <span className="old-body">
+                    {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
                     {n.headline}
+                    {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
+                    {n.verdict === 'true' && n.rumor && <em className="old-verdict true">사실로 확인</em>}
                     <RelatedChips symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
                   </span>
                 </li>

@@ -780,3 +780,62 @@
   font-size: 10px;
   font-weight: 600;
 }
+
+/* 장 마감 현황 */
+.end-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  font-size: 13px;
+}
+.end-status.compact {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: var(--r-sm);
+}
+.es-title {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.es-title b {
+  color: var(--text);
+}
+.es-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.es-p {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--bg-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.es-p i {
+  font-style: normal;
+}
+.es-p.ok {
+  background: rgba(47, 191, 113, 0.14);
+  color: var(--green);
+}
+.es-p.me {
+  outline: 1px solid var(--line-2);
+}
+.es-hint {
+  color: var(--muted);
+  margin-left: auto;
+}
+.es-hint.hurry {
+  color: var(--up);
+  font-weight: 700;
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { loadPins, MarketGrid, MarketGridPinnable, MarketTicker, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
+import { loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
@@ -8,9 +8,10 @@ import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
-import { loadSolo, soloAct, soloView, type SoloSave } from '../engine/local';
+import { loadSolo, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
-import { KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
+import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH } from '../game/portfolio';
 import { quote } from '../game/quote';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
@@ -33,7 +34,17 @@ function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
   const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : loadSolo()));
-  const soloV = useMemo(() => (solo ? soloView(solo) : null), [solo]);
+  const [soloNow, setSoloNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (multi) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setSoloNow(t);
+      setSolo((s) => (s ? soloSync(s, t) : s));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [multi]);
+  const soloV = useMemo(() => (solo ? soloView(solo, soloNow) : null), [solo, soloNow]);
   const [busy, setBusy] = useState(false);
 
   const act = useCallback(
@@ -85,7 +96,9 @@ export function GameController({ session, onExit }: Props) {
   const solo = session.mode === 'solo';
   const me = session.playerId;
   const mobile = useIsMobile();
-  const { view, market, offset, error, act, busy } = useGameSource(session);
+  const { view, market: rawMarket, offset, error, act, busy } = useGameSource(session);
+  // 서버가 보낸 '지금 칸까지의 장중 가격'을 오늘 막대에 합침 → 현재가·차트가 5초마다 움직임
+  const market = useMemo(() => (rawMarket ? withLive(rawMarket, view?.live) : null), [rawMarket, view?.live]);
 
   const [viewDay, setViewDay] = useState<number | null>(null);
   const [closing, setClosing] = useState<number | null>(null);
@@ -180,7 +193,7 @@ export function GameController({ session, onExit }: Props) {
   const feeRate = effects.includes('fee') ? FEE_BOMB_RATE : FEE_RATE;
   const canAct = !!view && room?.status === 'playing' && closing === null && viewDay === serverDay && !endedToday && !showResult;
   const deadline = room?.deadline ?? null;
-  const remaining = deadline !== null && !solo ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
+  const remaining = deadline !== null ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
 
   const tradeState = {
     allowed: canAct && !frozen && remaining !== 0,
@@ -189,7 +202,7 @@ export function GameController({ session, onExit }: Props) {
       : closing !== null
         ? '장이 마감됐어요'
         : endedToday
-          ? '오늘은 장 마감을 눌렀어요. 상대를 기다리는 중…'
+          ? '장 마감을 눌렀어요. 더 거래하려면 마감을 취소하세요'
           : remaining === 0
             ? '시간이 다 됐어요. 곧 장이 마감돼요'
             : null,
@@ -221,7 +234,25 @@ export function GameController({ session, onExit }: Props) {
     }
   }, [view, showToast]);
 
-  // 예약 주문 체결 알림 (마감 후)
+  // 장중 속보 알림 — 처음 화면을 열 때 이미 떠 있던 건 알리지 않음
+  const seenBreaking = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!market) return;
+    const breaking = market.news.filter((n) => n.at != null);
+    const key = (n: { day: number; headline: string }) => n.day + ':' + n.headline;
+    if (seenBreaking.current === null) {
+      seenBreaking.current = new Set(breaking.map(key));
+      return;
+    }
+    for (const n of breaking) {
+      if (seenBreaking.current.has(key(n))) continue;
+      seenBreaking.current.add(key(n));
+      showToast(`📰 속보 · ${n.headline.replace('[루머] ', '')}`, 'warn');
+      play('news');
+    }
+  }, [market, showToast]);
+
+  // 예약 주문 체결 알림
   const seenOrders = useRef<Map<string, string> | null>(null);
   useEffect(() => {
     if (!view) return;
@@ -300,6 +331,13 @@ export function GameController({ session, onExit }: Props) {
     play('tap');
     run('endTurn', {}, () => {});
   };
+  // 장 마감 취소: 다음 날로 넘어가기 전(시간이 남아 있을 때)이면 언제든
+  const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
+  const cancelEnd = () => {
+    if (!canCancelEnd) return;
+    play('tap');
+    run('cancelEnd', {}, () => showToast('장 마감을 취소했어요. 다시 거래할 수 있어요'));
+  };
   const nextDay = () => {
     if (serverDay === null) return;
     setClosing(null);
@@ -309,6 +347,8 @@ export function GameController({ session, onExit }: Props) {
     }
     setViewDay(serverDay);
     play('news');
+    // 혼자 연습: 다음 날 장은 이 버튼을 눌러야 열림 (결산 보는 동안 시간이 흐르지 않게)
+    if (solo) act('startDay', {}).catch(() => {});
   };
 
   const pushBubble = (r: Reaction & { mine?: boolean }) => {
@@ -430,10 +470,10 @@ export function GameController({ session, onExit }: Props) {
   const macro = m.macro[displayDay] ?? m.macro0;
   const prevMacro = displayDay > 0 ? m.macro[displayDay - 1] : m.macro0;
   const idx = m.index[displayDay];
-  const idxNow = displayClosed ? idx.close : idx.open;
+  const idxNow = barNow(m, idx, displayDay, displayClosed);
   const idxPrev = displayDay === 0 ? KR_INDEX_BASE : m.index[displayDay - 1].close;
   const us = m.usIndex[displayDay];
-  const usNow = displayClosed ? us.close : us.open;
+  const usNow = barNow(m, us, displayDay, displayClosed);
   const usPrev = displayDay === 0 ? US_INDEX_BASE : m.usIndex[displayDay - 1].close;
   const oppRet = opponent ? opponent.equity / START_CASH - 1 : 0;
   const share = opponent ? equity / (equity + opponent.equity) : 0.5;
@@ -443,7 +483,7 @@ export function GameController({ session, onExit }: Props) {
   const effectsOnMe = effects.map((k) => (k === 'freeze' ? '🧊 오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '💸 수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '📵 정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
   const ev = nextEvent(m, day);
   const timerText = remaining !== null && closing === null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
-  const endLabel = endedToday ? '상대 기다리는 중…' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →';
+  const endLabel = endedToday ? '↩ 마감 취소' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →';
 
   const macroChip = (label: string, k: 'rate' | 'usRate' | 'fx' | 'oil', fmt: (v: number) => string, term = label) => {
     const d = macro[k] - prevMacro[k];
@@ -653,7 +693,8 @@ export function GameController({ session, onExit }: Props) {
     const held = portfolio.holdings[selected]?.qty ?? 0;
     return (
       <div className={'m-game ui-' + ui}>
-        <header className={'m-top' + (headerCollapsed ? ' collapsed' : '')}>
+        {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 */}
+        <header className={'m-top' + (headerCollapsed || tab === 'detail' ? ' collapsed' : '')}>
           {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
           <div className="m-hero">
             <div className="mh-left">
@@ -687,15 +728,20 @@ export function GameController({ session, onExit }: Props) {
                 <span className="mh-cmp muted">상대를 기다리는 중</span>
               )}
             </div>
-            <button className={'m-end2' + (endedToday ? ' waiting' : '') + (remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')} disabled={!canAct || busy} onClick={endTurn}>
-              <b>{endedToday ? '대기 중' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
+            <button
+              className={'m-end2' + (endedToday ? ' waiting' : '') + (remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')}
+              disabled={endedToday ? !canCancelEnd || busy : !canAct || busy}
+              onClick={endedToday ? cancelEnd : endTurn}
+            >
+              <b>{endedToday ? '마감 취소' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
               <small>
                 {endedToday
-                  ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}`
+                  ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ⏱' + timerText : ''}`
                   : `${day + 1}일차${timerText ? ' · ⏱' + timerText : ''}`}
               </small>
             </button>
           </div>
+          {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} compact />}
           <div className="m-progress-row" aria-label={`${total}일 중 ${day + 1}일차`}>
             <span className="mp-now">
               <b>{day + 1}일차</b>
@@ -756,7 +802,6 @@ export function GameController({ session, onExit }: Props) {
           {tab === 'detail' && detail}
           {tab === 'news' && (
             <>
-              <MarketGrid market={m} day={displayDay} closed={displayClosed} compact />
               {effectsOnMe.map((t, i) => (
                 <div key={i} className="effect-banner">
                   {t}
@@ -901,6 +946,7 @@ export function GameController({ session, onExit }: Props) {
           )}
         </div>
         )}
+        {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} />}
         <AssetSummary
           ui={ui}
           cash={portfolio.cash}
@@ -911,9 +957,10 @@ export function GameController({ session, onExit }: Props) {
           openOrders={openOrderCount}
           onOpen={() => setDrawer('assets')}
         />
-        <button className={'btn end-turn' + (endedToday ? ' waiting' : '')} disabled={!canAct || busy} onClick={endTurn}>
+        <button className={'btn end-turn' + (endedToday ? ' waiting' : '')} disabled={endedToday ? !canCancelEnd || busy : !canAct || busy} onClick={endedToday ? cancelEnd : endTurn}>
           {endLabel}
           {easy && !endedToday && <small>다 정했으면 눌러요</small>}
+          {endedToday && <small>다른 사람 기다리는 중 · 넘어가기 전까지 취소 가능</small>}
         </button>
       </section>
 

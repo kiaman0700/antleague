@@ -155,11 +155,10 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
           <span>
             💼 내 보유 <b>{holdings.length}</b>
           </span>
-          <span className="muted">{holdOpen ? '접기 ▴' : '펼치기 ▾'}</span>
+          <span className="muted">{holdings.length === 0 ? '아직 가진 종목이 없어요' : holdOpen ? '접기 ▴' : '펼치기 ▾'}</span>
         </button>
-        {holdOpen && (
+        {holdOpen && holdings.length > 0 && (
           <div className="pinned-list">
-            {holdings.length === 0 && <p className="pinned-empty">아직 가진 종목이 없어요</p>}
             {holdings.map(([sym, h]) => {
               const qd = quote(market, sym, day, closed);
               const r = qd.krw / h.avgCost - 1;

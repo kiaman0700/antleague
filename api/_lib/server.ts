@@ -69,6 +69,11 @@ import {
   cleanTurn,
   finalResults,
   GameError,
+  dayClock,
+  graceDeadline,
+  LEGACY_TURN_SECONDS,
+  restoreDeadline,
+  validateCancelEnd,
   nextRoomState,
   resolveOrders,
   validateBuyItem,
@@ -150,9 +155,12 @@ async function loadGame(roomId: string): Promise<GameData> {
       seed: s.seed,
       status: r.status,
       total_days: r.total_days,
-      turn_seconds: r.turn_seconds,
+      // 예전 '무제한'(0) 방은 최대 시간으로 진행
+      turn_seconds: r.turn_seconds > 0 ? r.turn_seconds : LEGACY_TURN_SECONDS,
       day: r.day,
       deadline: r.turn_deadline ? new Date(r.turn_deadline).getTime() : null,
+      // 005 마이그레이션 전에는 컬럼이 없음 → null
+      day_deadline: r.day_deadline ? new Date(r.day_deadline).getTime() : null,
       host_id: r.host_id,
       title: r.title,
       max_players: r.max_players,
@@ -187,29 +195,56 @@ async function bumpPlayer(d: GameData, playerId: string, patch: Record<string, u
   if (!must(res, 'bump').length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 시도해 주세요.', 409);
 }
 
-async function maybeAdvance(d: GameData): Promise<boolean> {
-  const next = nextRoomState(d, Date.now());
-  if (!next) return false;
-  const res = await db()
-    .from('rooms')
-    .update({ day: next.day, status: next.status, turn_deadline: next.deadline ? new Date(next.deadline).toISOString() : null })
-    .eq('id', d.room.id)
-    .eq('day', d.room.day)
-    .eq('status', 'playing')
-    .select('id');
-  const advanced = must(res, 'advance').length > 0;
-  if (!advanced) return false;
-  // 오늘 예약 주문 처리 — 주문마다 '아직 open 인 것만' 바꿔서 두 번 체결되지 않게
-  for (const r of resolveOrders(d, d.room.day)) {
+const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() : null);
+
+/**
+ * 오늘(day)·진행 중인 방만 갱신. day_deadline 컬럼이 아직 없으면(005 마이그레이션 전) 그 값만 빼고 다시 시도.
+ * 바뀐 행 수를 돌려줌
+ */
+async function updatePlayingRoom(roomId: string, day: number, patch: Record<string, unknown>, label: string): Promise<number> {
+  const run = (p: Record<string, unknown>) => db().from('rooms').update(p).eq('id', roomId).eq('day', day).eq('status', 'playing').select('id');
+  let res = await run(patch);
+  if (res.error && /day_deadline/.test(res.error.message) && 'day_deadline' in patch) {
+    const { day_deadline: _d, ...rest } = patch;
+    res = await run(rest);
+  }
+  return must(res, label).length;
+}
+
+/** 진행 중인데 마감 시각이 없는 예전 '무제한' 방에 마감 시각을 붙인다 */
+async function ensureDeadline(d: GameData): Promise<boolean> {
+  if (d.room.status !== 'playing' || d.room.deadline !== null) return false;
+  const deadline = Date.now() + d.room.turn_seconds * 1000;
+  return (await updatePlayingRoom(d.room.id, d.room.day, { turn_deadline: iso(deadline), day_deadline: iso(deadline) }, 'deadline')) > 0;
+}
+
+/** 예약 주문 결과 저장 — 주문마다 '아직 open 인 것만' 바꿔서 두 번 체결되지 않게. 체결 시각은 가격이 닿은 칸의 시각 */
+async function applyOrders(d: GameData, results: ReturnType<typeof resolveOrders>): Promise<number> {
+  let changed = 0;
+  for (const r of results) {
     const upd = must(
       await db().from('orders').update({ status: r.status, fill_price: r.trade?.price ?? null }).eq('id', r.id).eq('status', 'open').select('id'),
       'order status',
     );
-    if (upd.length && r.trade) {
-      const { created_at: _c, ...t } = r.trade;
-      must(await db().from('trades').insert({ room_id: d.room.id, ...t }), 'order fill');
-    }
+    if (upd.length) changed++;
+    if (upd.length && r.trade) must(await db().from('trades').insert({ room_id: d.room.id, ...r.trade }), 'order fill');
   }
+  return changed;
+}
+
+/** 장중: 지금 칸까지 가격이 닿은 예약 주문을 바로 체결 */
+async function fillOrdersNow(d: GameData): Promise<boolean> {
+  if (d.room.status !== 'playing' || !d.orders.some((o) => o.day === d.room.day && o.status === 'open')) return false;
+  return (await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, Date.now()).tick, false))) > 0;
+}
+
+async function maybeAdvance(d: GameData): Promise<boolean> {
+  const next = nextRoomState(d, Date.now());
+  if (!next) return false;
+  const advanced = (await updatePlayingRoom(d.room.id, d.room.day, { day: next.day, status: next.status, turn_deadline: iso(next.deadline), day_deadline: iso(next.day_deadline) }, 'advance')) > 0;
+  if (!advanced) return false;
+  // 오늘 남은 예약 주문 처리: 끝까지 안 닿은 건 만료
+  await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, 0).n, true));
   if (next.status === 'finished') {
     const fresh = await loadGame(d.room.id);
     const fin = finalResults(fresh);
@@ -335,6 +370,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'state': {
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
       let d = await loadGame(roomId);
+      if (await ensureDeadline(d)) d = await loadGame(roomId);
+      if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
       return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined);
     }
@@ -367,8 +404,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (d.room.status !== 'waiting') throw new GameError('이미 시작했어요.', 409);
       if (d.players.length < 2) throw new GameError('2명 이상 모여야 시작할 수 있어요.', 409);
       if (!d.players.every((p) => p.ready || p.id === playerId)) throw new GameError('모두 준비해야 시작할 수 있어요.', 409);
-      const deadline = d.room.turn_seconds > 0 ? new Date(Date.now() + (d.room.turn_seconds + 3) * 1000).toISOString() : null;
-      must(await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline }).eq('id', roomId).eq('status', 'waiting'), 'start');
+      const deadline = iso(Date.now() + (d.room.turn_seconds + 3) * 1000);
+      let st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
+      if (st.error && /day_deadline/.test(st.error.message)) st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
+      must(st, 'start');
       return { ok: true };
     }
 
@@ -415,7 +454,23 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const { day } = validateEndTurn(d, playerId, Date.now());
       await bumpPlayer(d, playerId, { ended_day: day });
       const fresh = await loadGame(roomId);
-      await maybeAdvance(fresh);
+      if (!(await maybeAdvance(fresh))) {
+        // 마감 인원이 기준에 닿으면 카운트다운(1대1 90초, 3인 이상 ⅔ 마감 시 30초) — 더 이를 때만 당김
+        const grace = graceDeadline(fresh, Date.now());
+        if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
+      }
+      return { ok: true };
+    }
+
+    case 'cancelEnd': {
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const d = await loadGame(roomId);
+      const { endedDay } = validateCancelEnd(d, playerId, Date.now());
+      await bumpPlayer(d, playerId, { ended_day: endedDay });
+      // 마감 인원이 기준 아래로 내려가면 카운트다운을 멈추고 원래 마감 시각으로
+      const fresh = await loadGame(roomId);
+      const back = restoreDeadline(fresh);
+      if (back !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(back) }, 'restore');
       return { ok: true };
     }
 
