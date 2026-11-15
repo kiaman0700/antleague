@@ -599,3 +599,124 @@
 .pin-btn:disabled {
   opacity: 0.15;
 }
+
+/* ============ 모바일 최상단: 내 재산 + 비교 + 장 마감 ============ */
+.m-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mh-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mh-eq {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--me);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.mh-eq em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+.mh-cmp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mh-cmp.btnlike {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 99px;
+  padding: 4px 10px;
+  color: var(--text-2);
+}
+.mh-cmp strong {
+  color: var(--text);
+  font-weight: 800;
+}
+.mh-cmp i {
+  font-style: normal;
+  color: var(--muted);
+}
+.mh-st {
+  font-size: 11px;
+  color: var(--muted);
+  padding-left: 6px;
+  border-left: 1px solid var(--line-2);
+}
+.mh-st.ok {
+  color: var(--green);
+}
+.m-end2 {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 96px;
+  min-height: 50px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffd36a, #f5b83d);
+  color: #1a1300;
+  box-shadow: 0 6px 18px rgba(247, 197, 72, 0.22);
+  transition: transform 0.08s;
+}
+.m-end2:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.m-end2 b {
+  font-size: 15px;
+}
+.m-end2 small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.m-end2.hurry {
+  background: linear-gradient(180deg, #ff7a88, #f2495c);
+  color: #fff;
+  animation: pulse 1s ease-in-out infinite;
+}
+.m-end2.waiting,
+.m-end2:disabled {
+  background: var(--surface-2);
+  color: var(--text-2);
+  box-shadow: none;
+}
+.m-progress {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-top: -2px;
+}
+.m-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(247, 197, 72, 0.5), var(--gold));
+  transition: width 0.4s ease;
+}

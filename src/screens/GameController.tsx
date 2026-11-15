@@ -644,51 +644,51 @@ export function GameController({ session, onExit }: Props) {
     return (
       <div className={'m-game ui-' + ui}>
         <header className={'m-top' + (headerCollapsed ? ' collapsed' : '')}>
-          {/* ② 날짜 · 점수 · 장 마감 */}
-          <div className="m-score with-day">
-            <div className="ms-day">
-              <b>
-                {day + 1}
-                <span>/{total}일</span>
+          {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
+          <div className="m-hero">
+            <div className="mh-left">
+              <b className="mh-eq">
+                {wonShort(equity)} <em className={tone(myRet)}>{pct(myRet, 1)}</em>
               </b>
-              {timerText ? <em className={remaining! <= 10 ? 'hurry' : ''}>⏱ {timerText}</em> : <em className="muted">{solo ? '연습' : '시간 제한 없음'}</em>}
+              {solo ? (
+                <span className={'mh-cmp ' + tone(myRet - (idxNow / KR_INDEX_BASE - 1))}>
+                  시장보다 {pct(myRet - (idxNow / KR_INDEX_BASE - 1), 1)}
+                </span>
+              ) : players.length > 2 ? (
+                <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
+                  <strong>
+                    {myRank}위
+                  </strong>
+                  <span className="muted">/ {rows.length}명</span>
+                  <span className={myRank === 1 ? 'up' : 'down'}>
+                    · {myRank === 1 ? `2위와 +${wonShort(rows[0].equity - (rows[1]?.equity ?? rows[0].equity))}` : `1위와 −${wonShort(rows[0].equity - equity)}`}
+                  </span>
+                  <i>›</i>
+                </button>
+              ) : opponent ? (
+                <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
+                  <span className={tone(equity - opponent.equity)}>
+                    {opponent.nickname}보다 {equity >= opponent.equity ? '+' : '−'}
+                    {wonShort(Math.abs(equity - opponent.equity))}
+                  </span>
+                  <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? '✓ 마감' : '고민 중'}</span>
+                </button>
+              ) : (
+                <span className="mh-cmp muted">상대를 기다리는 중</span>
+              )}
             </div>
-            <div className="ms-me">
-              <small>나</small>
-              <b>{wonShort(equity)}</b>
-              <span className={tone(myRet)}>{pct(myRet, 1)}</span>
-            </div>
-            {!solo && players.length > 2 ? (
-              <button className="ms-opp ms-rank" onClick={() => setRankSheet(true)}>
-                <small>
-                  순위 · 마감 {rows.filter((r) => r.ended).length}/{rows.length}
-                </small>
-                <b>
-                  {myRank}위 <span className="muted">/ {rows.length}명</span>
-                </b>
-                <span className="muted">{myRank === 1 ? `2위와 ${wonShort(rows[0].equity - (rows[1]?.equity ?? rows[0].equity))}` : `1위 ${rows[0].nickname}`} ›</span>
-              </button>
-            ) : !solo ? (
-              <div className="ms-opp">
-                <small>
-                  {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓' : '…'}</em>}
-                </small>
-                <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
-                <span className={tone(oppRet)}>{opponent ? pct(oppRet, 1) : ''}</span>
-              </div>
-            ) : (
-              <div className="ms-opp muted small">연습 모드</div>
-            )}
-            <button className={'btn m-end' + (endedToday ? ' waiting' : '')} disabled={!canAct || busy} onClick={endTurn}>
-              {endedToday ? '대기 중' : day + 1 >= total ? '마감 🏁' : '장 마감'}
+            <button className={'m-end2' + (endedToday ? ' waiting' : '') + (remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')} disabled={!canAct || busy} onClick={endTurn}>
+              <b>{endedToday ? '대기 중' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
+              <small>
+                {endedToday
+                  ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}`
+                  : `${day + 1}일차${timerText ? ' · ⏱' + timerText : ''}`}
+              </small>
             </button>
           </div>
-          {!solo && players.length <= 2 && (
-            <div className="tug thin" aria-hidden>
-              <div className="tug-me" style={{ width: `${share * 100}%` }} />
-              <div className="tug-mid" />
-            </div>
-          )}
+          <div className="m-progress" aria-label={`${total}일 중 ${day + 1}일차`}>
+            <i style={{ width: `${((day + (displayClosed ? 1 : 0.5)) / total) * 100}%` }} />
+          </div>
           <div className="m-top-more">
           {/* ① 오늘 시장: 그룹별로 돌아가며, 고정한 건 그대로 */}
           <div className="m-row">
