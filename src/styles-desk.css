@@ -1,0 +1,322 @@
+/* ============ PC 전용: 상단 재산 요약 · 일정 타임라인 · 뉴스 + 카드 트레이 · 서랍 ============ */
+
+.game.desk {
+  gap: 8px;
+}
+
+/* 점수줄: [나 vs 상대] [재산 요약] [장 마감] */
+.desk-score {
+  grid-template-columns: minmax(320px, 1.1fr) minmax(0, 1.6fr) auto;
+  gap: 14px;
+  padding: 10px 10px 10px 18px;
+}
+.vs-box {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.vs-box .score-solo {
+  grid-column: span 2;
+  text-align: left;
+}
+
+/* 재산 요약 */
+.asum {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  border-radius: 14px;
+  padding: 6px;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.asum:hover {
+  border-color: var(--line-2);
+  background: var(--surface-2);
+}
+.asum-item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 10px;
+  border-right: 1px solid var(--line);
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.asum-item small {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.asum-item b {
+  font-size: 15px;
+  white-space: nowrap;
+}
+.asum-item em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+}
+.asum-bar {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.asum-bar i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+.asum-more {
+  align-self: center;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* 일정 타임라인 */
+.tl {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 8px 12px;
+}
+.tl-track {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 62vw;
+}
+.tl-track::-webkit-scrollbar {
+  display: none;
+}
+.tl-cell {
+  flex: 0 0 auto;
+  width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid transparent;
+  background: var(--bg-2);
+  border-radius: 8px;
+  padding: 3px 0 4px;
+  line-height: 1.1;
+}
+.tl-cell small {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tl-cell span {
+  font-size: 12px;
+  min-height: 15px;
+  color: var(--surface-3);
+}
+.tl-cell.has span {
+  color: inherit;
+}
+.tl-cell.past {
+  opacity: 0.38;
+}
+.tl-cell.today {
+  background: var(--gold-soft);
+  border-color: rgba(247, 197, 72, 0.7);
+}
+.tl-cell.today small {
+  color: var(--gold);
+  font-weight: 800;
+}
+.tl-cell.focus:not(.today) {
+  border-color: var(--line-2);
+  background: var(--surface-2);
+}
+.tl-cell:hover {
+  border-color: var(--line-2);
+}
+.tl-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  font-size: 13px;
+}
+.tl-dday {
+  background: rgba(167, 139, 250, 0.16);
+  color: #d6c9ff;
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-size: 12px;
+}
+.tl-ev {
+  font-weight: 700;
+}
+.tl-desc {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+/* 오른쪽: 뉴스 전용 + 아래 카드 트레이 */
+.desk .board {
+  grid-template-columns: 330px minmax(0, 1fr) 360px;
+}
+.p-news {
+  display: flex;
+  flex-direction: column;
+}
+.news-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 14px 10px;
+}
+.tray {
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  padding: 10px 12px 12px;
+}
+.tray-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.tray-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tcard {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+.tcard.t-info {
+  border-left-color: var(--gold);
+}
+.tcard.t-attack {
+  border-left-color: var(--up);
+}
+.tcard.t-defense {
+  border-left-color: var(--green);
+}
+.tc-emoji {
+  font-size: 20px;
+  text-align: center;
+}
+.tc-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tc-name em {
+  font-style: normal;
+  color: var(--muted);
+}
+.tc-auto {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 6px;
+}
+
+/* 서랍 */
+.drawer-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(5, 6, 10, 0);
+  pointer-events: none;
+  transition: background 0.2s;
+}
+.drawer-bg.open {
+  background: rgba(5, 6, 10, 0.5);
+  pointer-events: auto;
+}
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 92vw);
+  background: var(--surface);
+  border-left: 1px solid var(--line-2);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.drawer-bg.open .drawer {
+  transform: none;
+}
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+}
+
+/* 중간 폭 PC (961~1280px) */
+@media (max-width: 1280px) {
+  .desk .board {
+    grid-template-columns: 290px minmax(0, 1fr) 320px;
+  }
+  .desk-score {
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 1.4fr) auto;
+  }
+  .asum-item {
+    padding: 4px 7px;
+  }
+  .asum-more {
+    display: none;
+  }
+  .tl-track {
+    max-width: 55vw;
+  }
+}
+@media (max-width: 1100px) {
+  .asum-item:nth-child(n + 4) {
+    display: none;
+  }
+  .tl-desc {
+    display: none;
+  }
+}

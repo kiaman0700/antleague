@@ -1,0 +1,212 @@
+/** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
+import { useEffect, useState, type ReactNode } from 'react';
+import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
+import type { EventKind, Market } from '../game/market';
+import { STOCK_MAP } from '../game/stocks';
+import { pct, tone, wonShort } from '../lib/format';
+import type { UiMode } from '../session';
+import { Term } from './Term';
+
+/* ---------------- 재산 요약 (상단 고정) ---------------- */
+
+export function AssetSummary({
+  ui,
+  cash,
+  stock,
+  todayPnl,
+  todayBase,
+  dividends,
+  openOrders,
+  onOpen,
+}: {
+  ui: UiMode;
+  cash: number;
+  stock: number;
+  todayPnl: number;
+  todayBase: number;
+  dividends: number;
+  openOrders: number;
+  onOpen: () => void;
+}) {
+  const easy = ui === 'easy';
+  const total = cash + stock;
+  const stockShare = total > 0 ? stock / total : 0;
+  return (
+    <button className="asum" onClick={onOpen} title="내 재산 자세히 보기">
+      <div className="asum-item">
+        <small>현금</small>
+        <b>{wonShort(cash)}</b>
+      </div>
+      <div className="asum-item">
+        <small>{easy ? '주식' : '평가금액'}</small>
+        <b>{wonShort(stock)}</b>
+        <div className="asum-bar">
+          <i style={{ width: `${stockShare * 100}%` }} />
+        </div>
+      </div>
+      <div className="asum-item">
+        <small>오늘 손익</small>
+        <b className={tone(todayPnl)}>
+          {todayPnl >= 0 ? '+' : ''}
+          {wonShort(todayPnl)}
+        </b>
+        <em className={tone(todayPnl)}>{pct(todayBase ? todayPnl / todayBase : 0)}</em>
+      </div>
+      {dividends > 0 && (
+        <div className="asum-item">
+          <small>💰 배당</small>
+          <b className="up">+{wonShort(dividends)}</b>
+        </div>
+      )}
+      {openOrders > 0 && (
+        <div className="asum-item">
+          <small>⏳ 예약</small>
+          <b>{openOrders}건</b>
+        </div>
+      )}
+      <span className="asum-more">자세히 ›</span>
+    </button>
+  );
+}
+
+/* ---------------- 일정 타임라인 (가로 띠) ---------------- */
+
+const EV_ICON: Record<EventKind, string> = { fomc: '🇺🇸', bok: '🇰🇷', earnings: '📊', expiry: '⚠️', dividend: '💰' };
+
+export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
+  const next = market.events.find((e) => e.day >= day) ?? null;
+  const [pick, setPick] = useState<number | null>(null);
+  useEffect(() => setPick(null), [day]);
+  const focusDay = pick ?? next?.day ?? null;
+  const focus = focusDay === null ? [] : market.events.filter((e) => e.day === focusDay);
+  const payers = focusDay === null ? [] : market.dividends.filter((d) => d.day === focusDay);
+
+  return (
+    <div className="tl">
+      <div className="tl-track" role="list" aria-label="게임 일정">
+        {Array.from({ length: market.totalDays }, (_, d) => {
+          const evs = market.events.filter((e) => e.day === d);
+          const icons = [...new Set(evs.map((e) => EV_ICON[e.kind]))];
+          return (
+            <button
+              key={d}
+              role="listitem"
+              className={'tl-cell' + (d < day ? ' past' : '') + (d === day ? ' today' : '') + (d === focusDay ? ' focus' : '') + (evs.length ? ' has' : '')}
+              onClick={() => setPick(d)}
+              title={evs.map((e) => e.title).join(', ') || `${d + 1}일차`}
+            >
+              <small>{d + 1}</small>
+              <span>{icons.join('') || '·'}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="tl-info">
+        {focus.length === 0 ? (
+          <span className="muted">{focusDay === null ? '남은 일정이 없어요' : `${focusDay + 1}일차: 특별한 일정 없음`}</span>
+        ) : (
+          <>
+            <b className="tl-dday">{focusDay === day ? '오늘' : focusDay! > day ? `D-${focusDay! - day}` : '지난 일정'}</b>
+            {focus.map((e, i) => (
+              <span key={i} className="tl-ev" title={e.desc}>
+                {e.title}
+              </span>
+            ))}
+            <span className="tl-desc muted">{focus[0].desc}</span>
+            {payers.map((p) => (
+              <button key={p.symbol} className="rel-chip" onClick={() => onSelect(p.symbol)}>
+                {STOCK_MAP[p.symbol].name}
+                <i className="up">{p.yieldPct}%</i>
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 카드 트레이 (뉴스 아래 고정) ---------------- */
+
+export function CardTray({
+  mine,
+  day,
+  totalDays,
+  usedToday,
+  canAct,
+  busy,
+  onUse,
+  onOpen,
+}: {
+  mine: PlayerItems;
+  day: number;
+  totalDays: number;
+  usedToday: Set<ItemKind>;
+  canAct: boolean;
+  busy: boolean;
+  onUse: (k: ItemKind) => void;
+  onOpen: () => void;
+}) {
+  const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
+  return (
+    <div className="tray">
+      <div className="tray-head">
+        <b>
+          🃏 찬스 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
+        </b>
+        <button className="btn sm" onClick={onOpen}>
+          🛒 상점 · 전체
+        </button>
+      </div>
+      <div className="tray-cards">
+        {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
+        {owned.map(([k, n]) => {
+          const d = ITEM_MAP[k];
+          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
+          return (
+            <div key={k} className={'tcard t-' + d.type} title={d.desc}>
+              <span className="tc-emoji">{d.emoji}</span>
+              <span className="tc-name">
+                {d.name}
+                {n > 1 && <em> ×{n}</em>}
+              </span>
+              {k === 'shield' ? (
+                <span className="tc-auto">자동</span>
+              ) : (
+                <button className="btn sm primary" disabled={!!why || busy} title={why ?? d.desc} onClick={() => onUse(k)}>
+                  사용
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 오른쪽 서랍 ---------------- */
+
+export function Drawer({ open, title, onClose, children }: { open: boolean; title: ReactNode; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [open, onClose]);
+  return (
+    <div className={'drawer-bg' + (open ? ' open' : '')} onClick={onClose} aria-hidden={!open}>
+      <aside className="drawer" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={typeof title === 'string' ? title : undefined}>
+        <div className="drawer-head">
+          <b>{title}</b>
+          <button className="icon-btn" onClick={onClose} aria-label="닫기">
+            ✕
+          </button>
+        </div>
+        <div className="drawer-body">{open && children}</div>
+      </aside>
+    </div>
+  );
+}
+
+export { Term };

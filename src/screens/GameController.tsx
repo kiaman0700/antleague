@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
@@ -98,6 +99,7 @@ export function GameController({ session, onExit }: Props) {
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
+  const [drawer, setDrawer] = useState<null | 'assets' | 'cards'>(null);
   const [bubbles, setBubbles] = useState<(Reaction & { mine?: boolean })[]>([]);
   const [muted, setMutedState] = useState(isMuted());
   const [now, setNow] = useState(Date.now());
@@ -255,7 +257,10 @@ export function GameController({ session, onExit }: Props) {
       play('item');
       const d = ITEM_MAP[kind];
       showToast(d.type === 'info' ? `${d.emoji} ${d.name} 결과가 뉴스에 나왔어요` : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`);
-      if (d.type === 'info') setTab('news');
+      if (d.type === 'info') {
+        setTab('news');
+        setDrawer(null);
+      }
     });
   };
   const endTurn = () => {
@@ -697,8 +702,12 @@ export function GameController({ session, onExit }: Props) {
   }
 
   /* ================= PC ================= */
+  const prevCloseEquity =
+    displayDay === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, displayDay - 1, paidDivs), pricesAt(m, displayDay - 1, true));
+  const todayPnl = equity - prevCloseEquity;
+  const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
   return (
-    <div className={'game ui-' + ui}>
+    <div className={'game desk ui-' + ui}>
       <header className="hud">
         <div className="hud-left">
           <div className="brand-sm">주식 대결</div>
@@ -707,69 +716,80 @@ export function GameController({ session, onExit }: Props) {
             <span>/ {total}</span>
           </div>
           {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
-          {ev && (
-            <span className="ev-chip" title={ev.desc}>
-              {dDay(ev.day, day)} {ev.title.replace(/ \(\d\/3\)/, '')}
-            </span>
-          )}
         </div>
         <div className="hud-macro">{macroChips}</div>
         <div className="hud-right">{settings}</div>
       </header>
 
-      <section className="score">
-        <div className="score-me">
-          <small>{session.nickname} (나)</small>
-          <b>{wonShort(equity)}</b>
-          <span className={tone(myRet)}>{pct(myRet)}</span>
+      <section className="score desk-score">
+        <div className="vs-box">
+          <div className="score-me">
+            <small>{session.nickname} (나)</small>
+            <b>{wonShort(equity)}</b>
+            <span className={tone(myRet)}>{pct(myRet)}</span>
+          </div>
+          {!solo ? (
+            <>
+              <div className="tug" aria-hidden>
+                <div className="tug-me" style={{ width: `${share * 100}%` }} />
+                <div className="tug-mid" />
+              </div>
+              <div className="score-opp">
+                <small>
+                  {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓ 마감' : '고민 중…'}</em>}
+                </small>
+                <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
+                <span className={tone(oppRet)}>{opponent ? pct(oppRet) : ''}</span>
+              </div>
+            </>
+          ) : (
+            <div className="score-solo muted">연습 모드</div>
+          )}
         </div>
-        {!solo ? (
-          <>
-            <div className="tug" aria-hidden>
-              <div className="tug-me" style={{ width: `${share * 100}%` }} />
-              <div className="tug-mid" />
-            </div>
-            <div className="score-opp">
-              <small>
-                {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓ 마감' : '고민 중…'}</em>}
-              </small>
-              <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
-              <span className={tone(oppRet)}>{opponent ? pct(oppRet) : ''}</span>
-            </div>
-          </>
-        ) : (
-          <div className="score-solo muted">연습 모드 · 목표: 시장보다 많이 벌기</div>
-        )}
+        <AssetSummary
+          ui={ui}
+          cash={portfolio.cash}
+          stock={equity - portfolio.cash}
+          todayPnl={todayPnl}
+          todayBase={prevCloseEquity}
+          dividends={portfolio.dividendIncome}
+          openOrders={openOrderCount}
+          onOpen={() => setDrawer('assets')}
+        />
         <button className={'btn end-turn' + (endedToday ? ' waiting' : '')} disabled={!canAct || busy} onClick={endTurn}>
           {endLabel}
           {easy && !endedToday && <small>다 정했으면 눌러요</small>}
         </button>
       </section>
 
+      <Timeline market={m} day={day} onSelect={selectStock} />
+
       <main className="board">
         <section className="pane p-list">{browser}</section>
         <section className="pane p-detail">{detail}</section>
-        <section className="pane p-side">
-          <div className="side-body">
-            <section className="side-sec">
-              <Calendar market={m} day={day} onSelect={selectStock} compact />
-            </section>
-            <section className="side-sec">{newsPanel}</section>
-            <section className="side-sec">
-              <h4 className="sec-head">💰 {easy ? '내 재산' : '자산'}</h4>
-              {assets}
-            </section>
-            <section className="side-sec">
-              <h4 className="sec-head">🃏 찬스 카드</h4>
-              {cards}
-            </section>
+        <section className="pane p-news">
+          <div className="news-scroll">
+            {effectsOnMe.map((t, i) => (
+              <div key={i} className="effect-banner">
+                {t}
+              </div>
+            ))}
+            {newsPanel}
           </div>
+          <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
         </section>
       </main>
       <div className="kbd-hint muted">
         <kbd>/</kbd> 검색 · <kbd>↑</kbd>
-        <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문
+        <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문 · <kbd>Esc</kbd> 닫기
       </div>
+
+      <Drawer open={drawer === 'assets'} title={`💰 ${easy ? '내 재산' : '자산'}`} onClose={() => setDrawer(null)}>
+        {assets}
+      </Drawer>
+      <Drawer open={drawer === 'cards'} title="🃏 찬스 카드 · 상점" onClose={() => setDrawer(null)}>
+        {cards}
+      </Drawer>
       {overlays}
     </div>
   );
