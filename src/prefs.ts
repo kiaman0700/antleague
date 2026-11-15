@@ -46,8 +46,10 @@ export interface Prefs {
   enabled: boolean;
   /** 금액 단위: auto = 모드 기본(초보 만원, 일반 원) */
   money: MoneyUnit | 'auto';
-  /** 업종 칩: 자주 쓰는 업종을 내가 정한 순서로 (null = 기본 순서) */
+  /** 업종 칩 순서 (앞에 둔 업종부터, null = 기본 순서) */
   sectorPins: string[] | null;
+  /** 카테고리(전체·국내·미국·ETF·관심·보유·오늘 뉴스) 순서 (null = 기본) */
+  regionOrder: string[] | null;
   /** 차트 기본 보기 */
   chart: 'live' | 'daily';
   /** 일별 차트 모양: auto = 모드 기본(초보 라인, 일반 캔들) */
@@ -58,7 +60,7 @@ export interface Prefs {
 
 const KEY = 'stockduel.prefs';
 /** 커스텀을 끈 상태에서 쓰는 값 = 모드 기본 */
-const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, chart: 'live', chartType: 'auto', layout: DEFAULT_LAYOUT };
+const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, regionOrder: null, chart: 'live', chartType: 'auto', layout: DEFAULT_LAYOUT };
 const DEFAULT: Prefs = { enabled: false, ...BASE };
 
 function read(): Prefs {

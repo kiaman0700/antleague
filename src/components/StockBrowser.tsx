@@ -6,7 +6,7 @@ import { fmtUsd, quote } from '../game/quote';
 import { regionOf, riskOf, SECTOR_MAP, STOCK_SECTORS, STOCKS, type Region } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { Sparkline } from './Chart';
-import { Sheet } from './PrefsPanel';
+import { reorderSubset, SlideChips } from './SlideChips';
 import { effective, setPrefs, usePrefs } from '../prefs';
 
 export interface BrowserFilter {
@@ -27,6 +27,8 @@ interface Props {
   newsSymbols: Set<string>;
   filter: BrowserFilter;
   onFilter: (f: BrowserFilter) => void;
+  /** 커스텀 화면 편집 중: 칩을 끌어서 순서 바꾸기 */
+  editing?: boolean;
 }
 
 type Sort = 'default' | 'up' | 'down' | 'price';
@@ -87,9 +89,8 @@ export function ScrollChips({ children, rows = 1, onMore, moreLabel }: { childre
   );
 }
 
-export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWatch, selected, onSelect, newsSymbols, filter, onFilter }: Props) {
+export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWatch, selected, onSelect, newsSymbols, filter, onFilter, editing = false }: Props) {
   const prefs = effective(usePrefs());
-  const [sectorSheet, setSectorSheet] = useState(false);
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('default');
   const [holdOpen, setHoldOpen] = useState(true);
@@ -124,8 +125,8 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
 
   const regions: { id: RegionTab; label: string }[] = [
     { id: 'all', label: '전체' },
-    { id: 'KR', label: '🇰🇷 국내' },
-    { id: 'US', label: '🇺🇸 미국' },
+    { id: 'KR', label: '국내' },
+    { id: 'US', label: '미국' },
     { id: 'ETF', label: 'ETF' },
     { id: 'watch', label: `관심${watch.length ? ' ' + watch.length : ''}` },
     { id: 'held', label: `보유${Object.keys(portfolio.holdings).length ? ' ' + Object.keys(portfolio.holdings).length : ''}` },
@@ -138,10 +139,12 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
       : isSectorRow
         ? STOCK_SECTORS.filter((s) => region === 'all' || s.region === region).map((s) => ({ id: s.id, label: s.name }))
         : [];
-  // 순서: 지금 고른 것 → 내가 고정한 업종(내 순서) → 나머지
+  // 순서: 내가 정한 순서(커스텀) → 나머지는 기본 순서. 고른 칩은 줄이 저절로 넘겨서 보여 줌
   const pins = isSectorRow ? (prefs.sectorPins ?? []) : [];
-  const rank = (id: string) => (id === sub ? -1 : pins.includes(id) ? pins.indexOf(id) : 1000);
-  const subs = [...allSubs].sort((a, b) => rank(a.id) - rank(b.id));
+  const sectorOrder = [...pins.filter((id) => STOCK_SECTORS.some((x) => x.id === id)), ...STOCK_SECTORS.map((x) => x.id).filter((id) => !pins.includes(id))];
+  const subs = isSectorRow ? [...allSubs].sort((a, b) => sectorOrder.indexOf(a.id) - sectorOrder.indexOf(b.id)) : allSubs;
+  const regionOrder = prefs.regionOrder ?? regions.map((r) => r.id);
+  const regionsSorted = [...regions].sort((a, b) => (regionOrder.indexOf(a.id) + 99) % 99 - (regionOrder.indexOf(b.id) + 99) % 99);
 
   const grouped = region !== 'watch' && region !== 'held' && region !== 'news' && sort === 'default' && !q.trim() && !sub;
   const groupKey = (s: (typeof STOCKS)[number]) => (s.etf ? 'etf:' + s.etf.group : s.sector);
@@ -223,61 +226,51 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         )}
       </div>
 
-      <div className="regions" role="tablist">
-        <ScrollChips rows={1} moreLabel="더보기">
-          {regions.map((c) => (
-            <button key={c.id} role="tab" aria-selected={region === c.id} className={'chip' + (region === c.id ? ' on' : '')} onClick={() => onFilter({ region: c.id, sub: null })}>
+      <SlideChips
+        className="regions"
+        label="카테고리"
+        onReorder={editing ? (ids) => setPrefs({ regionOrder: ids }) : undefined}
+        items={regionsSorted.map((c) => ({
+          id: c.id,
+          active: region === c.id,
+          node: (
+            <button role="tab" aria-selected={region === c.id} className={'chip' + (region === c.id ? ' on' : '')} onClick={() => onFilter({ region: c.id, sub: null })}>
               {c.id === 'ETF' && <Icon name="cards" size={13} />}
               {c.id === 'watch' && <Icon name="star" size={13} />}
               {c.id === 'held' && <Icon name="briefcase" size={13} />}
               {c.id === 'news' && <Icon name="news" size={13} />} {c.label}
             </button>
-          ))}
-        </ScrollChips>
-      </div>
+          ),
+        }))}
+      />
       {subs.length > 0 && (
-        // 한 줄만: 고른 것 → 자주 보는 업종 → 나머지 중 들어가는 만큼, 나머지는 '전체' 시트에서
-        <ScrollChips rows={1} onMore={() => setSectorSheet(true)} moreLabel={isSectorRow ? '전체 업종' : '더보기'}>
-          <button className={'chip sm' + (!sub ? ' on-soft' : '')} onClick={() => onFilter({ region, sub: null })}>
-            모두
-          </button>
-          {subs.map((c) => (
-            <button key={c.id} className={'chip sm' + (sub === c.id ? ' on-soft' : '') + (pins.includes(c.id) ? ' pinned-chip' : '')} onClick={() => onFilter({ region, sub: c.id })}>
-              {isSectorRow && <SectorIcon id={c.id} />} {c.label}
-            </button>
-          ))}
-        </ScrollChips>
-      )}
-      {sectorSheet && (
-        <Sheet title={isSectorRow ? '업종 고르기' : '분류 고르기'} onClose={() => setSectorSheet(false)}>
-          {isSectorRow && <p className="muted small">별을 누르면 '자주 보는 업종'으로 목록 맨 앞에 고정돼요. 순서는 내 화면 설정에서 바꿀 수 있어요.</p>}
-          <div className="sector-grid">
-            {allSubs.map((c) => (
-              <div key={c.id} className={'sg-item' + (sub === c.id ? ' on' : '')}>
-                <button
-                  className="sg-pick"
-                  onClick={() => {
-                    onFilter({ region, sub: c.id });
-                    setSectorSheet(false);
-                  }}
-                >
-                  {isSectorRow && <SectorIcon id={c.id} size={18} />}
-                  <span>{c.label}</span>
+        <SlideChips
+          label={isSectorRow ? '업종' : '분류'}
+          onReorder={editing && isSectorRow ? (ids) => setPrefs({ sectorPins: reorderSubset(sectorOrder, ids) }) : undefined}
+          items={[
+            {
+              id: '__all',
+              fixed: true,
+              active: !sub,
+              node: (
+                <button className={'chip sm' + (!sub ? ' on-soft' : '')} onClick={() => onFilter({ region, sub: null })}>
+                  모두
                 </button>
-                {isSectorRow && (
-                  <button
-                    className={'sg-pin' + (pins.includes(c.id) ? ' on' : '')}
-                    aria-label={pins.includes(c.id) ? `${c.label} 고정 해제` : `${c.label} 자주 보는 업종으로 고정`}
-                    onClick={() => setPrefs({ sectorPins: pins.includes(c.id) ? pins.filter((x) => x !== c.id) : [...pins, c.id] })}
-                  >
-                    <Icon name="star" size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Sheet>
+              ),
+            },
+            ...subs.map((c) => ({
+              id: c.id,
+              active: sub === c.id,
+              node: (
+                <button className={'chip sm' + (sub === c.id ? ' on-soft' : '')} onClick={() => onFilter({ region, sub: c.id })}>
+                  {isSectorRow && <SectorIcon id={c.id} />} {c.label}
+                </button>
+              ),
+            })),
+          ]}
+        />
       )}
+      {editing && <p className="slide-hint">칩을 끌어서 순서를 바꿀 수 있어요</p>}
 
       <div className="sortbar">
         <span className="muted">{rows.length}개</span>
@@ -321,8 +314,9 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                 </button>
                 <div className="sname">
                   <b>
-                    {s.name}
-                    {newsSymbols.has(s.symbol) && <i className="dot-news" title="오늘 뉴스" />}
+                    {/* 이름만 줄임표로 줄이고, 뉴스 점은 항상 온전히 보이게 */}
+                    <span className="nm">{s.name}</span>
+                    {newsSymbols.has(s.symbol) && <i className="dot-news" title="오늘 이 종목 관련 뉴스가 있어요" aria-label="오늘 뉴스 있음" />}
                   </b>
                   <small>
                     {usd !== null && <span className="flag">US · </span>}

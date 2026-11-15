@@ -538,6 +538,7 @@ export function GameController({ session, onExit }: Props) {
   const browser = (
     <div ref={searchRef} className="browser-wrap">
       <StockBrowser
+        editing={editing}
         market={m}
         day={displayDay}
         closed={displayClosed}

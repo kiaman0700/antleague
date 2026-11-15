@@ -663,3 +663,136 @@ button.tag:hover,
   color: inherit;
   opacity: 1;
 }
+
+/* ============ 좌우 슬라이드 칩 줄 ============ */
+.slide-chips {
+  position: relative;
+  display: block;
+  margin: 0 12px 6px;
+  min-width: 0;
+}
+.slide-chips.regions {
+  padding: 2px 0 2px;
+  margin-bottom: 6px;
+}
+.sl-track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: 2px 0;
+  cursor: grab;
+}
+.sl-track:active {
+  cursor: grabbing;
+}
+.sl-track::-webkit-scrollbar {
+  display: none;
+}
+.sl-item {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: inline-flex;
+}
+.sl-item .chip {
+  white-space: nowrap;
+}
+/* 넘치는 쪽 흐림: 옆에 더 있다는 표시 */
+.slide-chips.fade-r .sl-track {
+  mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+}
+.slide-chips.fade-l .sl-track {
+  mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent);
+}
+.slide-chips.fade-l.fade-r .sl-track {
+  mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+}
+.sl-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.sl-arrow:hover {
+  border-color: rgba(247, 197, 72, 0.6);
+  color: var(--gold);
+}
+.sl-arrow.l {
+  left: -4px;
+}
+.sl-arrow.r {
+  right: -4px;
+}
+/* 화면 편집 중: 칩을 끌어서 순서 바꾸기 */
+.slide-chips.editing .sl-track {
+  cursor: default;
+}
+.sl-item.movable {
+  touch-action: none;
+  cursor: grab;
+}
+.sl-item.movable .chip {
+  border-style: dashed;
+  border-color: rgba(247, 197, 72, 0.6);
+}
+.sl-item.dragging {
+  opacity: 0.55;
+  transform: scale(1.05);
+}
+.slide-hint {
+  margin: -2px 12px 6px;
+  font-size: 11px;
+  color: var(--gold);
+}
+@media (max-width: 960px) {
+  .slide-chips {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .slide-hint {
+    margin-left: 0;
+  }
+  .sl-track {
+    cursor: auto;
+  }
+}
+
+/* 종목 이름: 이름만 … 으로 줄이고 뉴스 점(오늘 뉴스 있음)은 잘리지 않게 */
+.sname b {
+  overflow: visible;
+  min-width: 0;
+}
+.sname b .nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sname b .dot-news {
+  flex-shrink: 0;
+}
+/* 내 보유 제목: 좁아도 글자가 세로로 쪼개지지 않게 (손익 배지가 대신 줄어듦) */
+.pinned-head > span:first-child {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pinned-head .ph-right {
+  min-width: 0;
+}
+.pinned-head .ph-right .pl-pill {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
