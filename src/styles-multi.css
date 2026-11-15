@@ -373,13 +373,18 @@
   text-align: left;
 }
 .tk {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: block;
   min-width: 0;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 5px 8px;
+  border-radius: 12px;
+  padding: 6px 9px 6px;
+  overflow: hidden;
+}
+.tk-body {
+  display: flex;
+  flex-direction: column;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   animation: tk-in 0.35s ease-out;
@@ -387,11 +392,38 @@
 @keyframes tk-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(5px);
   }
 }
 .tk.pinned {
-  border-color: rgba(247, 197, 72, 0.45);
+  background: linear-gradient(160deg, rgba(247, 197, 72, 0.1), var(--surface) 70%);
+  border-color: rgba(247, 197, 72, 0.28);
+}
+.tk-pin {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font-style: normal;
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.tk-dots {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: flex;
+  gap: 3px;
+}
+.tk-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  transition: background 0.3s;
+}
+.tk-dots i.on {
+  background: var(--text-2);
 }
 .tk small {
   font-size: 10px;
@@ -399,9 +431,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 14px;
 }
 .tk b {
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -410,6 +443,15 @@
   font-style: normal;
   font-size: 10px;
   font-weight: 700;
+  white-space: nowrap;
+}
+.m-top .m-row {
+  align-items: stretch;
+}
+.m-top .m-menu {
+  height: auto;
+  width: 34px;
+  border-radius: 12px;
 }
 .m-score.with-day {
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;

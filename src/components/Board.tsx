@@ -192,28 +192,44 @@ export function MarketTicker({ market, day, closed, pins, onOpen }: { market: Ma
     return () => clearInterval(id);
   }, []);
 
-  // 고정한 것 먼저, 남는 칸은 그룹별로 돌아가며
-  const slots: { keys: string[]; pinned: boolean }[] = pins.filter((k) => byKey[k]).map((k) => ({ keys: [k], pinned: true }));
+  // 자리는 그룹 순서(지수·금리·환율/유가)로 고정. 고정한 지표는 자기 그룹 자리에 그대로 들어감
+  let slots: { keys: string[]; pinned: boolean }[] = [];
   for (const g of GROUPS) {
-    if (slots.length >= 3) break;
-    const rest = g.filter((k) => !pins.includes(k));
-    if (rest.length) slots.push({ keys: rest, pinned: false });
+    const pinnedHere = g.filter((k) => pins.includes(k) && byKey[k]);
+    if (pinnedHere.length) pinnedHere.forEach((k) => slots.push({ keys: [k], pinned: true }));
+    else slots.push({ keys: g, pinned: false });
   }
+  // 3칸이 넘으면 돌아가는 칸부터 뺌
+  while (slots.length > 3) {
+    const idx = slots.map((s) => s.pinned).lastIndexOf(false);
+    if (idx < 0) break;
+    slots.splice(idx, 1);
+  }
+  slots = slots.slice(0, 3);
 
   return (
     <button className="ticker" onClick={onOpen} aria-label="오늘의 시장 자세히 보기">
       {slots.map((sl, i) => {
-        const k = sl.keys[tick % sl.keys.length];
+        const at = tick % sl.keys.length;
+        const k = sl.keys[at];
         const t = byKey[k];
         const flat = t.ch === null || Math.abs(t.ch) < 1e-9;
         return (
-          <span key={i + k} className={'tk' + (sl.pinned ? ' pinned' : '')}>
-            <small>
-              {sl.pinned && '📌'}
-              {t.label}
-            </small>
-            <b>{t.value}</b>
-            <em className={flat ? 'flat' : tone(t.ch!)}>{flat ? '–' : t.chText}</em>
+          <span key={i} className={'tk' + (sl.pinned ? ' pinned' : '')}>
+            {sl.pinned ? (
+              <i className="tk-pin" aria-label="고정됨">📌</i>
+            ) : (
+              <i className="tk-dots" aria-hidden>
+                {sl.keys.map((_, j) => (
+                  <i key={j} className={j === at ? 'on' : ''} />
+                ))}
+              </i>
+            )}
+            <span className="tk-body" key={k}>
+              <small>{t.label}</small>
+              <b>{t.value}</b>
+              <em className={flat ? 'flat' : tone(t.ch!)}>{flat ? '변동 없음' : t.chText}</em>
+            </span>
           </span>
         );
       })}
