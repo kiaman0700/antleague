@@ -11,6 +11,10 @@ export type MTab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
 export type MHeaderRow = 'ticker' | 'schedule' | 'assets';
 export type PcCol = 'list' | 'detail' | 'side';
 export type PcSide = 'news' | 'cards';
+/** PC 화면 조각: 끌어서 자리(영역)에 놓음 */
+export type PcPanel = 'timeline' | 'list' | 'detail' | 'news' | 'cards';
+/** PC 자리: 위 줄 + 세 칸 */
+export type PcZone = 'top' | 'left' | 'center' | 'right';
 export interface Layout {
   /** 모바일 아래 탭 순서 */
   mTabs: MTab[];
@@ -26,6 +30,10 @@ export interface Layout {
   pcTimeline: boolean;
   /** 속보·알림이 뜨는 위치 */
   toastPos: 'top' | 'bottom';
+  /** PC: 각 자리에 놓인 조각 (위에서 아래 순서) */
+  pcZones: Record<PcZone, PcPanel[]>;
+  /** PC: 숨긴 조각 */
+  pcHidden: PcPanel[];
 }
 export const DEFAULT_LAYOUT: Layout = {
   mTabs: ['list', 'detail', 'news', 'assets', 'cards'],
@@ -42,6 +50,8 @@ export const DEFAULT_LAYOUT: Layout = {
   ],
   pcTimeline: true,
   toastPos: 'top',
+  pcZones: { top: ['timeline'], left: ['list'], center: ['detail'], right: ['news', 'cards'] },
+  pcHidden: [],
 };
 
 export interface Prefs {

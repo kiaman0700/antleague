@@ -13,6 +13,7 @@ import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
 import { loadSolo, makeDemo, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
 import { EditSlot } from '../components/EditSlot';
+import { DockBoard } from '../components/Dock';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -747,7 +748,7 @@ export function GameController({ session, onExit }: Props) {
         <b>
           <Icon name="sliders" size={16} /> 화면 편집 중
         </b>
-        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기. 아래 탭도 바꿀 수 있어요' : '화살표로 칸 순서, 눈 모양으로 보이기/숨기기'}</small>
+        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기. 아래 탭도 바꿀 수 있어요' : '조각의 손잡이를 잡고 끌어서 원하는 칸에 놓으세요 · 눈 모양으로 보이기/숨기기'}</small>
       </div>
       <div className="eb-actions">
         {mobile && (
@@ -1112,55 +1113,38 @@ export function GameController({ session, onExit }: Props) {
         </button>
       </section>
 
-      <EditSlot editing={editing} label="날짜 줄" hidden={!layout.pcTimeline} onToggle={() => setLayout({ pcTimeline: !layout.pcTimeline })}>
-        <Timeline market={m} day={day} onSelect={selectStock} />
-      </EditSlot>
-
-      <main className="board" style={{ gridTemplateColumns: layout.pcCols.map((c) => COL_WIDTH[c]).join(' ') }}>
-        {layout.pcCols.map((c, i) => (
-          <EditSlot
-            key={c}
-            editing={editing}
-            label={COL_LABEL[c]}
-            dir="h"
-            className="es-col"
-            onPrev={i > 0 ? () => setLayout({ pcCols: moved(layout.pcCols, i, -1) }) : undefined}
-            onNext={i < layout.pcCols.length - 1 ? () => setLayout({ pcCols: moved(layout.pcCols, i, 1) }) : undefined}
-          >
-            {c === 'list' && <section className="pane p-list">{browser}</section>}
-            {c === 'detail' && <section className="pane p-detail">{detail}</section>}
-            {c === 'side' && (
-              <section className="pane p-news">
-                {layout.pcSide.map((sd, j) => (
-                  <EditSlot
-                    key={sd.id}
-                    editing={editing}
-                    label={sd.id === 'news' ? '뉴스' : '찬스 카드'}
-                    hidden={!sd.on}
-                    className={sd.id === 'news' ? 'es-grow' : undefined}
-                    onPrev={j > 0 ? () => setLayout({ pcSide: moved(layout.pcSide, j, -1) }) : undefined}
-                    onNext={j < layout.pcSide.length - 1 ? () => setLayout({ pcSide: moved(layout.pcSide, j, 1) }) : undefined}
-                    onToggle={() => setLayout({ pcSide: layout.pcSide.map((x) => (x.id === sd.id ? { ...x, on: !x.on } : x)) })}
-                  >
-                    {sd.id === 'news' ? (
-                      <div className="news-scroll">
-                        {effectsOnMe.map((t, k) => (
-                          <div key={k} className="effect-banner">
-                            {t}
-                          </div>
-                        ))}
-                        {newsPanel}
-                      </div>
-                    ) : (
-                      <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
-                    )}
-                  </EditSlot>
+      {/* 큰 틀(위 줄 + 세 칸)은 고정, 조각은 편집 중에 끌어서 원하는 자리에 */}
+      <DockBoard
+        zones={layout.pcZones}
+        hidden={layout.pcHidden}
+        editing={editing}
+        onChange={(pcZones) => setLayout({ pcZones })}
+        onToggle={(id) => setLayout({ pcHidden: layout.pcHidden.includes(id) ? layout.pcHidden.filter((x) => x !== id) : [...layout.pcHidden, id] })}
+        render={(id) =>
+          id === 'timeline' ? (
+            <Timeline market={m} day={day} onSelect={selectStock} />
+          ) : id === 'list' ? (
+            <section className="pane p-list">{browser}</section>
+          ) : id === 'detail' ? (
+            <section className="pane p-detail">{detail}</section>
+          ) : id === 'news' ? (
+            <section className="pane p-news">
+              <div className="news-scroll">
+                {effectsOnMe.map((t, k) => (
+                  <div key={k} className="effect-banner">
+                    {t}
+                  </div>
                 ))}
-              </section>
-            )}
-          </EditSlot>
-        ))}
-      </main>
+                {newsPanel}
+              </div>
+            </section>
+          ) : (
+            <section className="pane p-cards">
+              <CardTray mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
+            </section>
+          )
+        }
+      />
       <div className="kbd-hint muted">
         <kbd>/</kbd> 검색 · <kbd>↑</kbd>
         <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문 · <kbd>Esc</kbd> 닫기

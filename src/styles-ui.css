@@ -1217,3 +1217,125 @@ button.tag:hover,
     margin-bottom: 8px;
   }
 }
+
+/* ============ PC 배치: 자리(영역)와 조각 ============ */
+.board.dock > .dock-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+}
+.dock-zone.z-top {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  min-width: 0;
+}
+.dock-zone.z-top > .dock-panel {
+  flex: 1;
+  min-width: 0;
+}
+.dock-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-panel.compact {
+  flex: 0 0 auto;
+}
+.dock-panel > .pane,
+.dock-panel > .es-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-panel > .es-body > .pane {
+  flex: 1;
+  min-height: 0;
+}
+.dock-panel.compact > .pane,
+.dock-panel.compact > .es-body {
+  flex: 0 0 auto;
+}
+.pane.p-cards {
+  overflow: hidden;
+}
+/* 편집 중 */
+.dock-zone.editing {
+  outline: 2px dashed rgba(255, 255, 255, 0.12);
+  outline-offset: 3px;
+  border-radius: 14px;
+  min-height: 60px;
+}
+.dock-zone.can-drop {
+  outline-color: rgba(247, 197, 72, 0.45);
+}
+.dock-zone.over {
+  outline-color: var(--gold);
+  background: rgba(247, 197, 72, 0.05);
+}
+.dock-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.dock-panel.editing {
+  outline: 2px dashed rgba(247, 197, 72, 0.55);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+.dock-panel.off > .es-body {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.dock-panel.dragging {
+  opacity: 0.35;
+}
+.dock-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.dock-handle:active {
+  cursor: grabbing;
+}
+.drop-line {
+  flex: 0 0 4px;
+  border-radius: 4px;
+  background: var(--gold);
+  box-shadow: 0 0 10px rgba(247, 197, 72, 0.6);
+}
+.drop-line.v {
+  flex: 0 0 4px;
+  align-self: stretch;
+}
+.dock-ghost {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--gold);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 13px;
+}
+.dock-ghost small {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 11px;
+}
