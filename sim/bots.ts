@@ -282,7 +282,17 @@ export const gapBot = (minGap = 0.015, picks = 3): Bot => ({
 export const ARCHETYPES: Record<string, () => Bot> = {
   cash: cashBot,
   hold: () => holdBot('KIDX', 'hold'),
-  lev: () => holdBot('KLEV', 'lev'),
+  // v4: 레버리지는 총재산의 절반까지 → 최대로 담고 나머지는 지수
+  lev: () => ({
+    name: 'lev',
+    act: (c) => {
+      useBonus(c);
+      if (c.tick === 0 && c.cash() > 200_000) {
+        c.buyCash('KLEV', c.cash() * 0.29);
+        c.buyCash('KIDX', c.cash());
+      }
+    },
+  }),
   random: randomBot,
   gap: () => gapBot(),
   news: () => newsBot({ name: 'news', news: { verdict: false, skipRecap: false, rumorW: 1 } }),

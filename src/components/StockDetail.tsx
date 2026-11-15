@@ -1,3 +1,4 @@
+import { LEVERAGE_CAP } from '../engine/engine';
 import { useState } from 'react';
 import { getEffective } from '../prefs';
 import { Icon, SectorIcon } from './Icon';
@@ -28,7 +29,7 @@ interface Props {
   onToggleWatch: () => void;
   onSelect: (symbol: string) => void;
   onSelectSector: (sectorId: string) => void;
-  trade: { allowed: boolean; reason: string | null; fee: number; busy: boolean };
+  trade: { allowed: boolean; reason: string | null; fee: number; busy: boolean; capFor?: (symbol: string) => number | null };
   onTrade: (symbol: string, side: 'buy' | 'sell', qty: number) => void;
   orders: OrderRow[];
   reservedCash: number;
@@ -367,7 +368,9 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
   const unitKrw = kind === 'limit' && limitKrw > 0 ? limitKrw : price;
   const reservedSell = orders.filter((o) => o.side === 'sell' && o.status === 'open').reduce((a, o) => a + o.qty, 0);
   const availCash = kind === 'limit' ? cash - reservedCash : cash;
-  const maxQty = side === 'buy' ? maxBuyQty(Math.max(0, availCash), unitKrw, fee) : Math.max(0, held - (kind === 'limit' ? reservedSell : 0));
+  // 레버리지·인버스 ETF 는 총재산의 절반까지만 (서버 규칙과 같게 미리 보여 줌)
+  const cap = side === 'buy' ? (trade.capFor?.(symbol) ?? null) : null;
+  const maxQty = side === 'buy' ? Math.min(maxBuyQty(Math.max(0, availCash), unitKrw, fee), cap ?? Infinity) : Math.max(0, held - (kind === 'limit' ? reservedSell : 0));
   const qty = Math.min(Math.floor(Number(qtyText) || 0), 1_000_000);
   const amount = side === 'buy' ? buyCost(qty, unitKrw, fee) : sellProceeds(qty, unitKrw, fee);
   const limitOk = kind === 'now' || (side === 'buy' ? limitNative > 0 && limitNative < native && limitNative >= native * 0.7 : limitNative > native && limitNative <= native * 1.3);
@@ -423,6 +426,7 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
       </div>
 
       {!trade.allowed && trade.reason && <div className="trade-block">{trade.reason}</div>}
+      {cap !== null && trade.allowed && <div className="trade-note">레버리지·인버스 ETF는 합쳐서 총재산의 {Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요 (지금 최대 {num(cap)}주)</div>}
 
       {kind === 'limit' && (
         <div className="limit-box">

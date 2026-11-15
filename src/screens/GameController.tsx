@@ -10,7 +10,7 @@ import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
-import type { View } from '../engine/engine';
+import { isLeveraged, LEVERAGE_CAP, type View } from '../engine/engine';
 import { loadSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
 import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
@@ -249,6 +249,14 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const remaining = deadline !== null ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
 
   const tradeState = {
+    // v4: 레버리지·인버스 ETF 비중 제한 — 서버 규칙(leveragedCap)과 같은 계산을 화면에서 미리
+    capFor: (sym: string) => {
+      if ((room?.rulesVersion ?? 1) < 4 || !isLeveraged(sym)) return null;
+      const priceOf = (s: string) => quote(m, s, displayDay, displayClosed).krw;
+      let held = 0;
+      for (const [s, h] of Object.entries(portfolio.holdings)) if (isLeveraged(s)) held += h.qty * priceOf(s);
+      return Math.max(0, Math.floor((LEVERAGE_CAP * equity - held) / (priceOf(sym) * 1.0015)));
+    },
     allowed: canAct && !frozen && remaining !== 0,
     reason: frozen
       ? '상대의 거래 정지 카드! 오늘은 사고팔 수 없어요'

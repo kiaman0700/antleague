@@ -105,7 +105,7 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
@@ -406,7 +406,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
-    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null },
+    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1 },
     serverNow: now,
     meId,
     players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
@@ -571,7 +571,30 @@ export function validateTrade(d: GameData, meId: string, now: number, input: { s
   const pf = portfolioOf(d, meId);
   if (side === 'buy' && buyCost(qty, price, fee) > pf.cash) throw new GameError('현금이 부족해요.');
   if (side === 'sell' && (pf.holdings[symbol]?.qty ?? 0) < qty) throw new GameError('가진 수량이 부족해요.');
+  if (side === 'buy') {
+    const cap = leveragedCap(d, m, pf, symbol, price, now);
+    if (cap !== null && qty > cap) throw new GameError(`레버리지·인버스 ETF는 합쳐서 총재산의 ${Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요` + (cap > 0 ? ` (지금 최대 ${cap}주)` : ''));
+  }
   return { player_id: meId, day: d.room.day, symbol, side, qty, price, fee };
+}
+
+/** 레버리지·인버스 ETF (하루 수익률의 2배·반대로) */
+export const isLeveraged = (symbol: string) => {
+  const e = STOCK_MAP[symbol]?.etf;
+  return !!e && e.lev !== 1;
+};
+/** v4 규칙: 레버리지·인버스 ETF 는 합쳐서 총재산의 이만큼까지만 (몰빵 한 방으로 다인전을 이기는 걸 막음 — 실제로도 별도 제한이 있음) */
+export const LEVERAGE_CAP = 0.3;
+
+/** 이 레버리지 ETF 를 지금 더 살 수 있는 최대 수량 (제한 없는 종목·예전 방이면 null) */
+export function leveragedCap(d: GameData, m: Market, pf: ReturnType<typeof portfolioOf>, symbol: string, price: number, now: number): number | null {
+  if ((d.room.version ?? 1) < 4 || !isLeveraged(symbol)) return null;
+  const prices = livePriceMap(d, m, now);
+  const equity = equityWith(pf, prices);
+  let held = 0;
+  for (const [sym, h] of Object.entries(pf.holdings)) if (isLeveraged(sym)) held += h.qty * (prices[sym] ?? 0);
+  const room = LEVERAGE_CAP * equity - held;
+  return Math.max(0, Math.floor(room / (price * (1 + FEE_RATE))));
 }
 
 export function validateBuyItem(d: GameData, meId: string, now: number, input: { kind?: unknown }): ItemRow {

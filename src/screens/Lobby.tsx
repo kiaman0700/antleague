@@ -375,6 +375,9 @@ function Feedback({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** 운영자·개인정보 보호 책임자 (Vercel 환경변수 VITE_OPERATOR_CONTACT, 예: "홍길동 · contact@example.com") */
+const OPERATOR = ((import.meta.env.VITE_OPERATOR_CONTACT as string | undefined) ?? '').trim().slice(0, 120);
+
 /** 개인정보 처리 안내 — 이 게임이 실제로 저장하는 것만 */
 function Privacy({ onClose }: { onClose: () => void }) {
   return (
@@ -397,6 +400,12 @@ function Privacy({ onClose }: { onClose: () => void }) {
         <p>
           궁금한 점, 버그, 개인정보 관련 요청은 홈 아래 <b>의견 보내기</b>로 남겨 주세요. 보낸 내용은 운영자만 볼 수 있어요.
         </p>
+        {OPERATOR && (
+          <>
+            <h4>개인정보 보호 책임자</h4>
+            <p>{OPERATOR}</p>
+          </>
+        )}
       </div>
       <div className="modal-actions">
         <button className="btn primary" onClick={onClose}>
@@ -415,7 +424,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
           <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 좋은 뉴스는 <b>아침 시가에 이미 많이 반영</b>돼서 시작부터 올라 있을 수 있어요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, <b>장중 속보</b>가 뜨면 그 순간 크게 움직여요 — 빨리 알아채는 사람이 유리!
         </li>
         <li>
-          국내·미국 주식과 <b>ETF</b>까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요.
+          국내·미국 주식과 <b>ETF</b>까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요. 레버리지·인버스 ETF는 위험해서 <b>총재산의 30%까지만</b> 살 수 있어요.
         </li>
         <li>
           다 정했으면 <b>장 마감</b>. 모두 누르거나 <b>제한 시간</b>이 끝나면 하루가 흘러요.
