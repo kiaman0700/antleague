@@ -8,6 +8,7 @@
 --  3) 시장 시드는 room_secrets 에만 있고 어떤 클라이언트 역할에도 권한이 없음 → 미래 가격 계산 불가.
 
 drop table if exists public.match_history cascade;
+drop table if exists public.orders cascade;
 drop table if exists public.items cascade;
 drop table if exists public.trades cascade;
 drop table if exists public.players cascade;
@@ -77,6 +78,26 @@ create table public.items (
   created_at timestamptz not null default now()
 );
 create index items_room_idx on public.items(room_id);
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  player_id uuid not null references public.players(id) on delete cascade,
+  day integer not null,
+  symbol text not null check (char_length(symbol) <= 8),
+  side text not null check (side in ('buy', 'sell')),
+  qty integer not null check (qty between 1 and 1000000),
+  limit_price numeric not null check (limit_price > 0),
+  fee numeric not null check (fee in (0.001, 0.01)),
+  status text not null default 'open' check (status in ('open', 'filled', 'cancelled', 'expired')),
+  fill_price numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists orders_room_idx on public.orders(room_id);
+
+-- 클라이언트는 접근 불가 (서버 함수만)
+revoke all on public.orders from anon, authenticated;
+alter table public.orders enable row level security;
 
 create table public.match_history (
   id uuid primary key default gen_random_uuid(),

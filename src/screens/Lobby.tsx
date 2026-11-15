@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadSolo, newSolo, saveSolo } from '../engine/local';
+import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
@@ -16,8 +17,9 @@ export interface ResumeInfo {
 interface MatchResult {
   id: string;
   winner_nickname: string | null;
-  results: { nickname: string; equity: number; ret: number }[];
+  results: { nickname: string; equity: number; ret: number; badges?: string[] }[];
   created_at: string;
+  me?: string | null;
 }
 
 interface Props {
@@ -73,6 +75,13 @@ export function Lobby({ onWaiting, onGame }: Props) {
     }
     return { wins: Object.entries(wins).sort((a, b) => b[1] - a[1]), draws };
   }, [history]);
+
+  const myBadges = useMemo(() => {
+    const count: Record<string, number> = {};
+    for (const h of history) for (const r of h.results) if (r.nickname === h.me) for (const b of r.badges ?? []) count[b] = (count[b] ?? 0) + 1;
+    return count;
+  }, [history]);
+  const myTitle = titleOf(Object.keys(myBadges));
 
   const nickOk = nick.trim().length >= 1 && nick.trim().length <= 10;
 
@@ -254,6 +263,23 @@ export function Lobby({ onWaiting, onGame }: Props) {
           <li>마지막 날 재산이 더 많은 사람이 승리!</li>
         </ol>
       </div>
+
+      {history.length > 0 && (
+        <div className="panel pad">
+          <h3>
+            🏅 내 업적 {myTitle && <span className="title-tag">{myTitle.emoji} {myTitle.name}</span>}
+          </h3>
+          <div className="badge-grid">
+            {BADGES.map((b) => (
+              <div key={b.id} className={'bg-cell r' + b.rarity + (myBadges[b.id] ? ' got' : '')} title={b.desc}>
+                <i>{myBadges[b.id] ? b.emoji : '🔒'}</i>
+                <b>{b.name}</b>
+                <small>{myBadges[b.id] ? '×' + myBadges[b.id] : b.desc}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {history.length > 0 && (
         <div className="panel pad">

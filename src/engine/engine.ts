@@ -7,6 +7,7 @@
  */
 import { activeEffects, canBuy, canUse, deriveItems, FEE_BOMB_RATE, ITEM_MAP, ITEMS, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
+import { computeAchievements } from '../game/achievements.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
@@ -38,12 +39,31 @@ export interface PlayerRow {
   version: number;
 }
 
+/** 지정가(예약) 주문 — 그날 장중 가격이 닿으면 지정한 가격에 체결, 못 닿으면 장 마감 때 만료 */
+export interface OrderRow {
+  id?: string;
+  player_id: string;
+  day: number;
+  symbol: string;
+  side: 'buy' | 'sell';
+  qty: number;
+  /** 미국 주식은 달러, 나머지는 원 */
+  limit_price: number;
+  fee: number;
+  status: 'open' | 'filled' | 'cancelled' | 'expired';
+  fill_price?: number | null;
+  created_at?: string;
+}
+
 export interface GameData {
   room: RoomRow;
   players: PlayerRow[];
   trades: Trade[];
   items: ItemRow[];
+  orders: OrderRow[];
 }
+
+export const MAX_OPEN_ORDERS = 5;
 
 export interface PublicPlayer {
   id: string;
@@ -70,6 +90,7 @@ export interface View {
   market: Market | null;
   marketKey: string;
   myTrades: Trade[];
+  myOrders: OrderRow[];
   myItemRows: ItemRow[];
   myItems: PlayerItems;
   effectsToday: ItemKind[];
@@ -81,7 +102,7 @@ export interface View {
     spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
   };
   /** 게임이 끝나면 모든 기록 공개 */
-  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string }[] } | null;
+  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string }[]; badges: Record<string, string[]> } | null;
 }
 
 export class GameError extends Error {
@@ -187,6 +208,8 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
       seed: 0,
     };
   }
+  // 배당금은 기준일 종가로 정해지므로, 기준일이 끝나기 전에는 숨김 (배당률·날짜는 공개)
+  const dividends = m.dividends.map((d) => (d.day < day ? d : { ...d, perShare: 0 }));
   const cut = (arr: Bar[]): Bar[] => {
     const o = arr[day].open;
     return [...arr.slice(0, day).map(strip), { open: o, close: o, high: o, low: o, path: [] }];
@@ -206,7 +229,16 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
     macro: m.macro.slice(0, day + 1),
     macro0: m.macro0,
     news: [...news, ...opts.fakes],
+    events: m.events,
+    dividends,
   };
+}
+
+/** 지급이 끝난 배당만 (게임 종료 시 전부) */
+function paidDividends(d: GameData) {
+  const m = marketFor(d.room.seed, d.room.total_days);
+  const finished = d.room.status === 'finished' || d.room.day >= d.room.total_days;
+  return finished ? m.dividends : m.dividends.filter((x) => x.day < d.room.day);
 }
 
 /* ---------------- 상태 계산 ---------------- */
@@ -228,6 +260,8 @@ export function portfolioOf(d: GameData, pid: string) {
   return computePortfolio(
     d.trades.filter((t) => t.player_id === pid),
     spendsOf(d, pid),
+    Infinity,
+    paidDividends(d),
   );
 }
 
@@ -242,6 +276,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     market: null,
     marketKey: 'waiting',
     myTrades: [],
+    myOrders: [],
     myItemRows: [],
     myItems: { inventory: {}, used: {}, infoUses: [], grants: [], total: 0 },
     effectsToday: [],
@@ -263,6 +298,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     return { ...base.players.find((x) => x.id === p.id)!, equity: Math.round(equityWith(pf, prices)), tradeCount: d.trades.filter((t) => t.player_id === p.id).length };
   });
   base.myTrades = d.trades.filter((t) => t.player_id === meId);
+  base.myOrders = d.orders.filter((o) => o.player_id === meId);
   base.myItemRows = d.items.filter((r) => r.player_id === meId);
   base.myItems = mine;
   base.effectsToday = finished ? [] : activeEffects(items, meId, r.day).map((e) => e.kind);
@@ -314,7 +350,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes });
 
   if (finished) {
-    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname })) };
+    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname })), badges: finalResults(d).badges };
   }
   return base;
 }
@@ -403,10 +439,104 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
 export function finalResults(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days);
   const prices = priceMap(m, d.room.total_days - 1, true);
-  const results = sortedPlayers(d).map((p) => {
+  const players = sortedPlayers(d);
+  const badges = computeAchievements({
+    market: m,
+    seed: d.room.seed,
+    items: d.items,
+    players: players.map((p) => ({
+      id: p.id,
+      trades: d.trades.filter((t) => t.player_id === p.id),
+      spends: spendsOf(d, p.id),
+      filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
+    })),
+  });
+  const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
-    return { nickname: p.nickname, equity, ret: equity / START_CASH - 1 };
+    return { nickname: p.nickname, equity, ret: equity / START_CASH - 1, badges: badges[p.id] ?? [] };
   });
   const winner = results.length === 2 && results[0].equity !== results[1].equity ? (results[0].equity > results[1].equity ? results[0] : results[1]).nickname : null;
-  return { results, winner };
+  return { results, winner, badges };
+}
+
+/* ---------------- 지정가(예약) 주문 ---------------- */
+
+function nativeOpen(m: Market, symbol: string, day: number) {
+  return (m.usd[symbol] ?? m.bars[symbol])[day].open;
+}
+
+export function validatePlaceOrder(d: GameData, meId: string, now: number, input: { symbol?: unknown; side?: unknown; qty?: unknown; limit?: unknown }): OrderRow {
+  requirePlaying(d, meId, now);
+  const symbol = cleanSymbol(input.symbol);
+  const side = input.side === 'buy' || input.side === 'sell' ? input.side : null;
+  if (!side) throw new GameError('사기/팔기를 골라 주세요.');
+  const qty = input.qty;
+  if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) throw new GameError('수량을 확인해 주세요.');
+  const limit = input.limit;
+  if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) throw new GameError('예약 가격을 확인해 주세요.');
+
+  const items = itemsOf(d);
+  const fx = activeEffects(items, meId, d.room.day);
+  if (fx.some((e) => e.kind === 'freeze')) throw new GameError('🧊 거래 정지 카드 때문에 오늘은 주문할 수 없어요.', 409);
+  const fee = fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE;
+
+  const m = marketFor(d.room.seed, d.room.total_days);
+  const open = nativeOpen(m, symbol, d.room.day);
+  const isUS = STOCK_MAP[symbol].currency === 'USD';
+  const lim = isUS ? Math.round(limit * 100) / 100 : Math.round(limit);
+  if (side === 'buy' && !(lim < open && lim >= open * 0.7)) throw new GameError('예약 사기 가격은 지금 가격보다 낮고, 30% 이내여야 해요.');
+  if (side === 'sell' && !(lim > open && lim <= open * 1.3)) throw new GameError('예약 팔기 가격은 지금 가격보다 높고, 30% 이내여야 해요.');
+
+  const mine = d.orders.filter((o) => o.player_id === meId && o.day === d.room.day && o.status === 'open');
+  if (mine.length >= MAX_OPEN_ORDERS) throw new GameError(`예약 주문은 하루 ${MAX_OPEN_ORDERS}개까지예요.`);
+  const pf = portfolioOf(d, meId);
+  const fxRate = m.macro[d.room.day].fx;
+  const krw = (o: { limit_price: number; symbol: string }) => (STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fxRate) : o.limit_price);
+  if (side === 'buy') {
+    const reserved = mine.filter((o) => o.side === 'buy').reduce((a, o) => a + buyCost(o.qty, krw(o), o.fee), 0);
+    if (reserved + buyCost(qty, krw({ limit_price: lim, symbol }), fee) > pf.cash) throw new GameError('예약해 둔 주문까지 합치면 현금이 부족해요.');
+  } else {
+    const reserved = mine.filter((o) => o.side === 'sell' && o.symbol === symbol).reduce((a, o) => a + o.qty, 0);
+    if (reserved + qty > (pf.holdings[symbol]?.qty ?? 0)) throw new GameError('예약해 둔 주문까지 합치면 가진 수량이 부족해요.');
+  }
+  return { player_id: meId, day: d.room.day, symbol, side, qty, limit_price: lim, fee, status: 'open' };
+}
+
+export function validateCancelOrder(d: GameData, meId: string, now: number, input: { orderId?: unknown }): string {
+  requirePlaying(d, meId, now);
+  const o = d.orders.find((x) => x.id === input.orderId);
+  if (!o || o.player_id !== meId) throw new GameError('주문을 찾을 수 없어요.', 404);
+  if (o.status !== 'open' || o.day !== d.room.day) throw new GameError('이미 처리된 주문이에요.', 409);
+  return o.id!;
+}
+
+/**
+ * 장 마감 때 예약 주문 처리: 오늘 장중 가격 흐름이 예약 가격에 닿으면 그 가격에 체결.
+ * 체결 순간 돈/수량이 모자라면 취소, 못 닿으면 만료.
+ */
+export function resolveOrders(d: GameData, day: number): { id: string; status: OrderRow['status']; trade?: Trade }[] {
+  const m = marketFor(d.room.seed, d.room.total_days);
+  const fx = m.macro[day].fx;
+  const open = d.orders.filter((o) => o.day === day && o.status === 'open').sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
+  const out: { id: string; status: OrderRow['status']; trade?: Trade }[] = [];
+  const extra: Trade[] = [];
+  for (const o of open) {
+    const path = (m.usd[o.symbol] ?? m.bars[o.symbol])[day].path.slice(1);
+    const hit = o.side === 'buy' ? path.some((p) => p <= o.limit_price) : path.some((p) => p >= o.limit_price);
+    if (!hit) {
+      out.push({ id: o.id!, status: 'expired' });
+      continue;
+    }
+    const price = STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fx) : o.limit_price;
+    const pf = computePortfolio([...d.trades.filter((t) => t.player_id === o.player_id), ...extra.filter((t) => t.player_id === o.player_id)], spendsOf(d, o.player_id), Infinity, paidDividends(d));
+    const ok = o.side === 'buy' ? buyCost(o.qty, price, o.fee) <= pf.cash : (pf.holdings[o.symbol]?.qty ?? 0) >= o.qty;
+    if (!ok) {
+      out.push({ id: o.id!, status: 'cancelled' });
+      continue;
+    }
+    const trade: Trade = { player_id: o.player_id, day, symbol: o.symbol, side: o.side, qty: o.qty, price, fee: o.fee, created_at: new Date(Date.UTC(2100, 0, 1, 0, 0, extra.length)).toISOString() };
+    extra.push(trade);
+    out.push({ id: o.id!, status: 'filled', trade });
+  }
+  return out;
 }

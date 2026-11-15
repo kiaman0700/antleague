@@ -64,7 +64,29 @@ export interface Market {
   macro: Macro[];
   macro0: Macro;
   news: NewsEvent[];
+  /** 미리 공지되는 일정 (방향은 알려주지 않음) */
+  events: MarketEvent[];
+  /** 배당: 기준일 종가 기준으로 보유 수량 × perShare 지급. perShare 는 기준일이 지나야 공개 */
+  dividends: Dividend[];
 }
+
+export type EventKind = 'fomc' | 'bok' | 'earnings' | 'expiry' | 'dividend';
+export interface MarketEvent {
+  day: number;
+  kind: EventKind;
+  title: string;
+  desc: string;
+}
+export interface Dividend {
+  day: number;
+  symbol: string;
+  /** 배당률 (기준일 종가 대비) */
+  yieldPct: number;
+  /** 1주당 배당금(원). 기준일 마감 전에는 0 */
+  perShare: number;
+}
+
+export const DIVIDEND_PAYERS = ['KBNK', 'MLKY', 'RAMN', 'OILK', 'HOME', 'CARE', 'MART', 'FIZZ', 'MEGA', 'DIVK', 'SECU'];
 
 function roundPrice(p: number): number {
   const unit = p >= 50000 ? 100 : p >= 10000 ? 50 : p >= 5000 ? 10 : 5;
@@ -150,7 +172,14 @@ export function generateMarket(seed: number, totalDays: number): Market {
   let krLevel = KR_INDEX_BASE;
   let usLevel = US_INDEX_BASE;
 
+  const { events, dividends } = planCalendar(seed, totalDays);
+  const isEvent = (day: number, kind: EventKind) => events.some((e) => e.day === day && e.kind === kind);
+
   for (let day = 0; day < totalDays; day++) {
+    const fomc = isEvent(day, 'fomc');
+    const bok = isEvent(day, 'bok');
+    const earnings = isEvent(day, 'earnings');
+    const expiry = isEvent(day, 'expiry');
     // ---- 1) 오늘의 뉴스 ----
     let dRate = 0;
     let dUsRate = 0;
@@ -231,18 +260,31 @@ export function generateMarket(seed: number, totalDays: number): Market {
           related: relatedForSector(sec.id),
         });
       } else {
+        companyNews(1);
+      }
+    }
+    // 실적 발표 주간: 실적 뉴스가 더 많고 더 크게
+    if (earnings) {
+      companyNews(1.35, true);
+      companyNews(1.35, true);
+    }
+
+    function companyNews(boost: number, earningsOnly = false) {
+      {
         const s = pick(rng, COMPANIES);
         const sec = SECTOR_MAP[s.sector];
         const good = rng() < 0.5;
-        const rumor = rng() < 0.25;
+        const rumor = !earningsOnly && rng() < 0.25;
         const realGood = rumor ? (rng() < 0.6 ? good : !good) : good;
-        let mag = range(rng, 0.05, 0.14) * Math.sqrt(s.vol / 0.018) * (rumor ? 0.75 : 1) * (realGood ? 1 : -1);
+        let mag = boost * range(rng, 0.05, 0.14) * Math.sqrt(s.vol / 0.018) * (rumor ? 0.75 : 1) * (realGood ? 1 : -1);
         // 이미 소문이 퍼져 '재료 소멸' — 좋은 뉴스에도 떨어지는 경우
         if (!rumor && rng() < 0.12) mag = -mag * 0.3;
         addStock(s.symbol, mag);
         for (const p of COMPANIES) if (p.sector === s.sector && p.symbol !== s.symbol) addStock(p.symbol, mag * 0.25);
         for (const [link, w] of Object.entries(sec.links)) addSec(link, mag * w * 0.3);
-        const pool = [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
+        const pool = earningsOnly
+          ? (good ? T.EARNINGS_GOOD : T.EARNINGS_BAD)
+          : [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
         news.push({
           day,
           kind: 'company',
@@ -254,6 +296,34 @@ export function generateMarket(seed: number, totalDays: number): Market {
           realTone: realGood ? 'good' : 'bad',
           related: relatedForCompany(s),
         });
+      }
+    }
+
+    // 금리 결정일: 반드시 결정 뉴스 (동결 포함), 변동 폭도 더 큼
+    if (fomc) {
+      const t = rng();
+      if (t < 0.3) {
+        usSent += (rng() < 0.5 ? 1 : -1) * range(rng, 0.004, 0.012);
+        pushMacro('fed', pick(rng, T.MACRO.fedHold), 'good');
+      } else {
+        const cut = macro.usRate > 1.0 && (macro.usRate >= 5.5 || t < 0.65);
+        const d = rng() < 0.6 ? 0.25 : 0.5;
+        dUsRate += cut ? -d : d;
+        usSent += (cut ? 1 : -1) * range(rng, 0.008, 0.02);
+        fxPct += cut ? -range(rng, 0.8, 1.8) : range(rng, 0.8, 1.8);
+        pushMacro('fed', fill(pick(rng, cut ? T.MACRO.fedCut : T.MACRO.fedHike), { d: d.toFixed(2) }), cut ? 'good' : 'bad');
+      }
+    }
+    if (bok) {
+      const t = rng();
+      if (t < 0.3) pushMacro('rate', pick(rng, T.MACRO.rateHold), 'good');
+      else {
+        const cut = macro.rate > 1.0 && (macro.rate >= 5 || t < 0.65);
+        const d = rng() < 0.6 ? 0.25 : 0.5;
+        dRate += cut ? -d : d;
+        krSent += (cut ? 1 : -1) * range(rng, 0.006, 0.015);
+        fxPct += cut ? 0.6 : -0.6;
+        pushMacro('rate', fill(pick(rng, cut ? T.MACRO.rateCut : T.MACRO.rateHike), { d: d.toFixed(2) }), cut ? 'good' : 'bad');
       }
     }
 
@@ -271,8 +341,9 @@ export function generateMarket(seed: number, totalDays: number): Market {
 
     // ---- 3) 업종 흐름 ----
     const global = gaussian(rng);
-    const krNoise = 0.0003 + 0.0055 * global + 0.006 * gaussian(rng);
-    const usNoise = 0.0004 + 0.0065 * global + 0.005 * gaussian(rng);
+    const nm = expiry ? 1.9 : 1;
+    const krNoise = 0.0003 + nm * (0.0055 * global + 0.006 * gaussian(rng));
+    const usNoise = 0.0004 + nm * (0.0065 * global + 0.005 * gaussian(rng));
     const sectorRet: Record<string, { s: number; n: number }> = {};
     for (const sec of STOCK_SECTORS) {
       const isUS = sec.region === 'US';
@@ -375,7 +446,52 @@ export function generateMarket(seed: number, totalDays: number): Market {
     }
   }
 
-  return { seed, totalDays, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news };
+  for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
+  return { seed, totalDays, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
+}
+
+/** 미리 공지되는 일정: 연준·금통위·실적 시즌·옵션 만기·배당 기준일 */
+export function planCalendar(seed: number, totalDays: number): { events: MarketEvent[]; dividends: Dividend[] } {
+  const r = mulberry32((seed ^ 0x5bd1e995) >>> 0);
+  const events: MarketEvent[] = [];
+  const dividends: Dividend[] = [];
+  const taken = new Set<number>();
+  const free = (lo: number, hi: number) => {
+    for (let k = 0; k < 40; k++) {
+      const d = lo + Math.floor(r() * (hi - lo + 1));
+      if (d >= 0 && d < totalDays && !taken.has(d)) {
+        taken.add(d);
+        return d;
+      }
+    }
+    return -1;
+  };
+  const add = (day: number, kind: EventKind, title: string, desc: string) => day >= 0 && events.push({ day, kind, title, desc });
+  const last = totalDays - 2;
+
+  add(free(2, last), 'fomc', '🇺🇸 미 연준 금리 결정', '미국 금리가 바뀔 수 있는 날. 미국 주식과 환율이 크게 움직여요.');
+  add(free(2, last), 'bok', '🇰🇷 한국은행 금통위', '한국 기준금리 결정일. 은행·건설·성장주가 크게 반응해요.');
+  const windows = totalDays >= 20 ? 2 : 1;
+  for (let w = 0; w < windows; w++) {
+    const start = free(1 + Math.floor((w * totalDays) / windows), Math.min(last - 2, Math.floor(((w + 1) * totalDays) / windows) - 3));
+    if (start < 0) continue;
+    for (let k = 0; k < 3; k++) {
+      taken.add(start + k);
+      add(start + k, 'earnings', `📊 실적 발표 주간 (${k + 1}/3)`, '기업 실적 뉴스가 쏟아지고 주가 변동이 커져요.');
+    }
+  }
+  if (totalDays >= 20) add(free(5, last), 'expiry', '⚠️ 옵션 만기일', '평소보다 주가가 크게 출렁이는 날이에요.');
+
+  const divDays = totalDays >= 20 ? 2 : 1;
+  for (let k = 0; k < divDays; k++) {
+    const day = free(3 + Math.floor((k * totalDays) / divDays), Math.min(last, Math.floor(((k + 1) * totalDays) / divDays)));
+    if (day < 0) continue;
+    const payers = [...DIVIDEND_PAYERS].sort(() => r() - 0.5).slice(0, 4 + Math.floor(r() * 3));
+    for (const symbol of payers) dividends.push({ day, symbol, yieldPct: Math.round((1.5 + r() * 2.5) * 10) / 10, perShare: 0 });
+    add(day, 'dividend', '💰 배당 기준일', '이날 장 마감 때 가지고 있으면 배당금을 받아요.');
+  }
+  events.sort((a, b) => a.day - b.day);
+  return { events, dividends };
 }
 
 /** open에서 close로 가는 브라운 브리지 형태의 장중 흐름 */

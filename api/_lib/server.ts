@@ -15,11 +15,15 @@ import {
   finalResults,
   GameError,
   nextRoomState,
+  resolveOrders,
   validateBuyItem,
+  validateCancelOrder,
   validateEndTurn,
+  validatePlaceOrder,
   validateTrade,
   validateUseItem,
   type GameData,
+  type OrderRow,
   type PlayerRow,
   type RoomRow,
 } from '../../src/engine/engine.js';
@@ -72,12 +76,13 @@ function newCode() {
 
 async function loadGame(roomId: string): Promise<GameData> {
   const sb = db();
-  const [room, secret, players, trades, items] = await Promise.all([
+  const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('seed').eq('room_id', roomId).maybeSingle(),
     sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
+    sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
   ]);
   const r = must(room, 'room');
   const s = must(secret, 'secret');
@@ -97,6 +102,8 @@ async function loadGame(roomId: string): Promise<GameData> {
     players: must(players, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
     items: (must(items, 'items') as ItemRow[]).map((i) => ({ ...i, cost: Number(i.cost) })),
+    // orders 테이블이 아직 없으면(마이그레이션 전) 빈 목록으로
+    orders: ((orders.error && /orders/.test(orders.error.message) ? [] : must(orders, 'orders')) as OrderRow[]).map((o) => ({ ...o, limit_price: Number(o.limit_price), fee: Number(o.fee), fill_price: o.fill_price == null ? null : Number(o.fill_price) })),
   };
 }
 
@@ -132,11 +139,24 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     .eq('status', 'playing')
     .select('id');
   const advanced = must(res, 'advance').length > 0;
-  if (advanced && next.status === 'finished') {
-    const fin = finalResults({ ...d, room: { ...d.room, ...next } });
+  if (!advanced) return false;
+  // 오늘 예약 주문 처리 — 주문마다 '아직 open 인 것만' 바꿔서 두 번 체결되지 않게
+  for (const r of resolveOrders(d, d.room.day)) {
+    const upd = must(
+      await db().from('orders').update({ status: r.status, fill_price: r.trade?.price ?? null }).eq('id', r.id).eq('status', 'open').select('id'),
+      'order status',
+    );
+    if (upd.length && r.trade) {
+      const { created_at: _c, ...t } = r.trade;
+      must(await db().from('trades').insert({ room_id: d.room.id, ...t }), 'order fill');
+    }
+  }
+  if (next.status === 'finished') {
+    const fresh = await loadGame(d.room.id);
+    const fin = finalResults(fresh);
     await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
   }
-  return advanced;
+  return true;
 }
 
 /* ---------------- 액션 ---------------- */
@@ -195,12 +215,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     }
 
     case 'history': {
-      const mine = must(await sb.from('players').select('room_id').eq('user_id', uid).limit(200), 'my rooms') as { room_id: string }[];
+      const mine = must(await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(200), 'my rooms') as { room_id: string; nickname: string }[];
       if (!mine.length) return [];
-      return must(
-        await sb.from('match_history').select('id, winner_nickname, results, created_at').in('room_id', mine.map((m) => m.room_id)).order('created_at', { ascending: false }).limit(30),
+      const nickOf = new Map(mine.map((m) => [m.room_id, m.nickname]));
+      const rows = must(
+        await sb.from('match_history').select('id, room_id, winner_nickname, results, created_at').in('room_id', mine.map((m) => m.room_id)).order('created_at', { ascending: false }).limit(30),
         'history',
-      );
+      ) as { room_id: string }[];
+      return rows.map(({ room_id, ...r }) => ({ ...r, me: nickOf.get(room_id) ?? null }));
     }
 
     case 'state': {
@@ -258,6 +280,24 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const row = action === 'buyItem' ? validateBuyItem(d, playerId, Date.now(), b) : validateUseItem(d, playerId, Date.now(), b);
       await bumpPlayer(d, playerId);
       must(await sb.from('items').insert({ room_id: roomId, ...row }), 'item');
+      return { ok: true };
+    }
+
+    case 'placeOrder': {
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const d = await loadGame(roomId);
+      const o = validatePlaceOrder(d, playerId, Date.now(), b);
+      await bumpPlayer(d, playerId);
+      must(await sb.from('orders').insert({ room_id: roomId, ...o }), 'order');
+      return { ok: true };
+    }
+
+    case 'cancelOrder': {
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const d = await loadGame(roomId);
+      const id = validateCancelOrder(d, playerId, Date.now(), b);
+      await bumpPlayer(d, playerId);
+      must(await sb.from('orders').update({ status: 'cancelled' }).eq('id', id).eq('status', 'open'), 'cancel');
       return { ok: true };
     }
 

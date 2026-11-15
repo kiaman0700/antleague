@@ -36,6 +36,9 @@ export interface PortfolioState {
   holdings: Record<string, Holding>;
   closed: ClosedTrade[];
   itemSpend: number;
+  /** 받은 배당 */
+  dividendIncome: number;
+  dividendLog: { day: number; symbol: string; qty: number; amount: number }[];
 }
 
 export function buyCost(qty: number, price: number, fee = FEE_RATE) {
@@ -55,20 +58,48 @@ export interface Spend {
   cost: number;
 }
 
-/** 거래 내역 + 아이템 구매 → 포트폴리오. upToDay 를 주면 그 날까지만 반영 */
-export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay = Infinity): PortfolioState {
+/** 확정된 배당 (perShare > 0 인 것만 지급) */
+export interface PaidDividend {
+  day: number;
+  symbol: string;
+  perShare: number;
+}
+
+/**
+ * 거래 + 카드 구매 + 배당 → 포트폴리오.
+ * upToDay 를 주면 그 날(마감 포함)까지만 반영. 배당은 기준일 마감 때 보유 수량만큼 지급.
+ */
+export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay = Infinity, dividends: PaidDividend[] = []): PortfolioState {
   let cash = START_CASH;
   const holdings: Record<string, Holding> = {};
   const closed: ClosedTrade[] = [];
   let itemSpend = 0;
+  let dividendIncome = 0;
+  const dividendLog: PortfolioState['dividendLog'] = [];
   for (const s of spends) {
     if (s.day > upToDay) continue;
     cash -= s.cost;
     itemSpend += s.cost;
   }
   const sorted = [...trades].sort((a, b) => a.day - b.day || (a.created_at ?? '').localeCompare(b.created_at ?? ''));
+  const divs = dividends.filter((d) => d.perShare > 0 && d.day <= upToDay).sort((a, b) => a.day - b.day);
+  let di = 0;
+  const payUntil = (day: number) => {
+    // day 이전(포함) 기준일 배당을 지급
+    while (di < divs.length && divs[di].day <= day) {
+      const d = divs[di++];
+      const qty = holdings[d.symbol]?.qty ?? 0;
+      if (qty > 0) {
+        const amount = qty * d.perShare;
+        cash += amount;
+        dividendIncome += amount;
+        dividendLog.push({ day: d.day, symbol: d.symbol, qty, amount });
+      }
+    }
+  };
   for (const t of sorted) {
     if (t.day > upToDay) break;
+    payUntil(t.day - 1);
     const h = holdings[t.symbol] ?? { qty: 0, avgCost: 0 };
     if (t.side === 'buy') {
       const cost = buyCost(t.qty, t.price, t.fee);
@@ -87,8 +118,9 @@ export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay 
     }
     holdings[t.symbol] = h;
   }
+  payUntil(Number.isFinite(upToDay) ? upToDay : Number.MAX_SAFE_INTEGER);
   for (const k of Object.keys(holdings)) if (holdings[k].qty === 0) delete holdings[k];
-  return { cash, holdings, closed, itemSpend };
+  return { cash, holdings, closed, itemSpend, dividendIncome, dividendLog };
 }
 
 export function equityWith(p: PortfolioState, prices: Record<string, number>): number {
@@ -103,7 +135,7 @@ export function equityHistory(trades: Trade[], spends: Spend[], m: Market, upToD
   for (let d = 0; d <= upToDay; d++) {
     const closes: Record<string, number> = {};
     for (const s of STOCKS) closes[s.symbol] = m.bars[s.symbol][d].close;
-    out.push(equityWith(computePortfolio(trades, spends, d), closes));
+    out.push(equityWith(computePortfolio(trades, spends, d, m.dividends), closes));
   }
   return out;
 }

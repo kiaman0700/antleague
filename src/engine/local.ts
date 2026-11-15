@@ -1,5 +1,5 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
-import { buildView, nextRoomState, validateBuyItem, validateEndTurn, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
+import { buildView, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
 
 const KEY = 'stockduel.solo2';
 
@@ -11,7 +11,9 @@ export interface SoloSave {
 export function loadSolo(): SoloSave | null {
   try {
     const s = localStorage.getItem(KEY);
-    return s ? (JSON.parse(s) as SoloSave) : null;
+    const v = s ? (JSON.parse(s) as SoloSave) : null;
+    if (v && !v.data.orders) v.data.orders = [];
+    return v;
   } catch {
     return null;
   }
@@ -34,6 +36,7 @@ export function newSolo(nickname: string, totalDays: number): SoloSave {
       players: [{ id: 'me', room_id: 'solo', nickname, mode: 'easy', ready: true, ended_day: -1, created_at: new Date().toISOString(), version: 0 }],
       trades: [],
       items: [],
+      orders: [],
     },
   };
   saveSolo(s);
@@ -60,11 +63,25 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'useItem':
       d.items.push({ ...validateUseItem(d, 'me', now, payload), id: uid(), created_at });
       break;
+    case 'placeOrder':
+      d.orders.push({ ...validatePlaceOrder(d, 'me', now, payload), id: uid(), created_at });
+      break;
+    case 'cancelOrder': {
+      const id = validateCancelOrder(d, 'me', now, payload);
+      d.orders = d.orders.map((o) => (o.id === id ? { ...o, status: 'cancelled' } : o));
+      break;
+    }
     case 'endTurn': {
       const { day } = validateEndTurn(d, 'me', now);
       d.players[0].ended_day = day;
       const next = nextRoomState(d, now);
-      if (next) d.room = { ...d.room, ...next };
+      if (next) {
+        for (const r of resolveOrders(d, d.room.day)) {
+          d.orders = d.orders.map((o) => (o.id === r.id ? { ...o, status: r.status, fill_price: r.trade?.price ?? null } : o));
+          if (r.trade) d.trades.push({ ...r.trade, id: uid(), created_at: new Date().toISOString() });
+        }
+        d.room = { ...d.room, ...next };
+      }
       break;
     }
     default:

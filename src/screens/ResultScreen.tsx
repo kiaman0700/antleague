@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LineChart } from '../components/Chart';
+import { BADGE_MAP, titleOf } from '../game/achievements';
 import type { View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
@@ -61,6 +62,52 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
     [market, last],
   );
 
+  const [replayDay, setReplayDay] = useState<number | null>(null);
+  const headline = (d: number) => market.news.find((n) => n.day === d && n.kind === 'macro')?.headline ?? market.news.find((n) => n.day === d)?.headline ?? '';
+  const highlights = useMemo(() => {
+    const out: { icon: string; title: string; text: string; day?: number }[] = [];
+    const days = market.totalDays;
+    if (results.length === 2) {
+      const [a, b] = results;
+      const lead = (d: number) => a.hist[d + 1] - b.hist[d + 1];
+      let swing = 0;
+      let swingDay = 0;
+      let changes = 0;
+      for (let d = 0; d < days; d++) {
+        const l = lead(d);
+        const pl = d === 0 ? 0 : lead(d - 1);
+        if (Math.abs(l - pl) > swing) {
+          swing = Math.abs(l - pl);
+          swingDay = d;
+        }
+        if (d > 0 && pl !== 0 && l !== 0 && Math.sign(l) !== Math.sign(pl)) changes++;
+      }
+      const gainer = lead(swingDay) - (swingDay === 0 ? 0 : lead(swingDay - 1)) > 0 ? a : b;
+      const flipped = swingDay > 0 && Math.sign(lead(swingDay)) !== Math.sign(lead(swingDay - 1));
+      out.push({
+        icon: '⚡',
+        title: `${swingDay + 1}일차, 운명이 갈렸다`,
+        text: `${gainer.nickname}이(가) 하루 만에 ${wonShort(swing)} ${flipped ? '차이로 역전!' : '격차를 만들었어요'}`,
+        day: swingDay,
+      });
+      out.push({ icon: '🔄', title: '선두 다툼', text: changes ? `선두가 ${changes}번 바뀌었어요` : `${(lead(days - 1) >= 0 ? a : b).nickname}이(가) 끝까지 앞섰어요` });
+    }
+    for (const r of results) {
+      let best = 0;
+      let bd = 0;
+      let worst = 0;
+      let wd = 0;
+      for (let d = 0; d < days; d++) {
+        const dv = r.hist[d + 1] - r.hist[d];
+        if (dv > best) [best, bd] = [dv, d];
+        if (dv < worst) [worst, wd] = [dv, d];
+      }
+      if (best > 0) out.push({ icon: '🌟', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd });
+      if (worst < 0) out.push({ icon: '💥', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd });
+    }
+    return out;
+  }, [results, market]);
+
   const me = results.find((r) => r.id === session.playerId)!;
   const iWon = winner?.id === session.playerId;
 
@@ -94,7 +141,10 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
       <div className="score-cards">
         {results.map((r, i) => (
           <div key={r.id} className={'panel score-card' + (winner?.id === r.id ? ' champ' : '')} style={{ borderTopColor: COLORS[i] }}>
-            <small style={{ color: COLORS[i] }}>{r.nickname}</small>
+            <small style={{ color: COLORS[i] }}>
+              {r.nickname}
+              {titleOf(final.badges[r.id] ?? []) && <span className="title-tag">{titleOf(final.badges[r.id] ?? [])!.emoji} {titleOf(final.badges[r.id] ?? [])!.name}</span>}
+            </small>
             <b className="big-num">{won(r.equity)}</b>
             <span className={tone(r.ret)}>{pct(r.ret)}</span>
             <dl>
@@ -145,6 +195,87 @@ export function ResultScreen({ session, market, final, onExit }: Props) {
             </dl>
           </div>
         ))}
+      </div>
+
+      <div className="panel pad">
+        <h3>🏅 이번 판 업적</h3>
+        <div className="badge-cols">
+          {results.map((r, i) => (
+            <div key={r.id}>
+              <small style={{ color: COLORS[i] }}>{r.nickname}</small>
+              <div className="badges">
+                {(final.badges[r.id] ?? []).length === 0 && <span className="muted small">이번엔 없어요</span>}
+                {(final.badges[r.id] ?? []).map((id) => {
+                  const b = BADGE_MAP[id];
+                  return (
+                    <span key={id} className={'badge r' + b.rarity} title={b.desc}>
+                      <i>{b.emoji}</i>
+                      <b>{b.name}</b>
+                      <small>{b.desc}</small>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel pad">
+        <h3>✨ 하이라이트</h3>
+        <div className="hl-grid">
+          {highlights.map((h, i) => (
+            <button key={i} className="hl-card" onClick={() => h.day !== undefined && setReplayDay(h.day)}>
+              <span className="hl-icon">{h.icon}</span>
+              <b>{h.title}</b>
+              <span>{h.text}</span>
+              {h.day !== undefined && <small className="muted">📰 {headline(h.day)}</small>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel pad">
+        <h3>🎬 하루별 리플레이</h3>
+        <div className="replay">
+          {Array.from({ length: market.totalDays }, (_, d) => {
+            const deltas = results.map((r) => r.hist[d + 1] - r.hist[d]);
+            const leader = results.length === 2 ? (results[0].hist[d + 1] >= results[1].hist[d + 1] ? 0 : 1) : 0;
+            return (
+              <button key={d} className={'rp-day' + (replayDay === d ? ' on' : '')} onClick={() => setReplayDay(d)}>
+                <b>{d + 1}일</b>
+                {deltas.map((v, i) => (
+                  <span key={i} className={tone(v)} style={{ borderColor: COLORS[i] }}>
+                    {v >= 0 ? '+' : ''}
+                    {wonShort(v)}
+                  </span>
+                ))}
+                {results.length === 2 && <i className="rp-lead" style={{ background: COLORS[leader] }} />}
+              </button>
+            );
+          })}
+        </div>
+        {replayDay !== null && (
+          <div className="rp-detail">
+            <b>{replayDay + 1}일차</b>
+            <ul>
+              {market.news
+                .filter((n) => n.day === replayDay)
+                .map((n, i) => (
+                  <li key={i} className={n.tone}>
+                    {n.headline}
+                  </li>
+                ))}
+            </ul>
+            <div className="rp-eq">
+              {results.map((r, i) => (
+                <span key={r.id}>
+                  <i style={{ background: COLORS[i] }} /> {r.nickname} {wonShort(r.hist[replayDay + 1])}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel pad">

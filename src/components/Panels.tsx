@@ -353,11 +353,13 @@ interface DayCloseProps {
   day: number;
   myDelta: number;
   myEquity: number;
+  dividendToday?: number;
+  filledToday?: number;
   last: boolean;
   onNext: () => void;
 }
 
-export function DayCloseOverlay({ market, day, myDelta, myEquity, last, onNext }: DayCloseProps) {
+export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext }: DayCloseProps) {
   const movers = STOCKS.map((s) => {
     const prev = day === 0 ? market.base[s.symbol] : market.bars[s.symbol][day - 1].close;
     return { s, r: market.bars[s.symbol][day].close / prev - 1 };
@@ -377,6 +379,12 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, last, onNext }
           {wonShort(myDelta)}
         </div>
         <div className="muted">오늘 내 손익 · 총자산 {wonShort(myEquity)}</div>
+        {(dividendToday > 0 || filledToday > 0) && (
+          <div className="close-extra">
+            {dividendToday > 0 && <span>💰 배당 +{wonShort(dividendToday)}</span>}
+            {filledToday > 0 && <span>⏳ 예약 주문 {filledToday}건 체결</span>}
+          </div>
+        )}
         <div className="close-index">
           <Term k="지수">국내 종합</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span> · 미국500 <b>{us.close.toFixed(2)}</b>{' '}
           <span className={tone(ur)}>{pct(ur)}</span>

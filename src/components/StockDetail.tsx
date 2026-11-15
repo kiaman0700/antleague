@@ -4,6 +4,7 @@ import { buyCost, maxBuyQty, sellProceeds, type Holding } from '../game/portfoli
 import { fmtUsd, quote } from '../game/quote';
 import { etfMembers, riskOf, RISK_LABEL, SECTOR_MAP, STOCK_MAP } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
+import type { OrderRow } from '../engine/engine';
 import type { UiMode } from '../session';
 import { CandleChart, LineChart } from './Chart';
 import { Term } from './Term';
@@ -24,9 +25,16 @@ interface Props {
   onSelectSector: (sectorId: string) => void;
   trade: { allowed: boolean; reason: string | null; fee: number; busy: boolean };
   onTrade: (symbol: string, side: 'buy' | 'sell', qty: number) => void;
+  orders: OrderRow[];
+  reservedCash: number;
+  onOrder: (symbol: string, side: 'buy' | 'sell', qty: number, limit: number) => void;
+  onCancel: (orderId: string) => void;
+  /** 모바일은 주문창을 아래 시트로 따로 띄움 */
+  inlineTrade: boolean;
 }
 
-export function StockDetail({ ui, market, symbol, day, closed, cash, holding, news, watched, onToggleWatch, onSelect, onSelectSector, trade, onTrade }: Props) {
+export function StockDetail(props: Props) {
+  const { ui, market, symbol, day, closed, cash, holding, news, watched, onToggleWatch, onSelect, onSelectSector, trade, onTrade, orders, reservedCash, onOrder, onCancel, inlineTrade } = props;
   const s = STOCK_MAP[symbol];
   const sec = SECTOR_MAP[s.sector];
   const isUS = s.currency === 'USD';
@@ -102,6 +110,20 @@ export function StockDetail({ ui, market, symbol, day, closed, cash, holding, ne
           )}
           <Term k={closed ? '종가' : '시가'}>{closed ? '오늘 종가' : '오늘 시가'}</Term> · <Term k="전일대비" />
         </div>
+        {(() => {
+          const dv = market.dividends.filter((x) => x.symbol === symbol);
+          const next = dv.find((x) => x.day >= day);
+          const paid = dv.filter((x) => x.day < day && x.perShare > 0);
+          if (!next && !paid.length) return null;
+          return (
+            <div className="div-info">
+              💰 {next ? <>배당 기준일 <b>{next.day + 1}일차</b> · 배당률 약 <b>{next.yieldPct}%</b>{next.day === day ? ' (오늘 마감 때까지 들고 있으면 받아요)' : ''}</> : null}
+              {paid.map((x) => (
+                <span key={x.day}> · {x.day + 1}일차 1주당 {num(x.perShare)}원 지급됨</span>
+              ))}
+            </div>
+          );
+        })()}
         {!isUS && q.ch >= 0.295 && <span className="limit up">상한가</span>}
         {!isUS && q.ch <= -0.295 && <span className="limit down">하한가</span>}
       </div>
@@ -173,18 +195,25 @@ export function StockDetail({ ui, market, symbol, day, closed, cash, holding, ne
         </div>
       )}
 
-      <TradePanel
-        key={symbol + day + (closed ? 'c' : '')}
-        ui={ui}
-        symbol={symbol}
-        price={price}
-        usd={q.usd}
-        cash={cash}
-        held={holding?.qty ?? 0}
-        avgCost={holding?.avgCost ?? 0}
-        trade={trade}
-        onTrade={onTrade}
-      />
+      {inlineTrade && (
+        <TradePanel
+          key={symbol + day + (closed ? 'c' : '')}
+          ui={ui}
+          symbol={symbol}
+          price={price}
+          usd={q.usd}
+          fx={fx}
+          cash={cash}
+          held={holding?.qty ?? 0}
+          avgCost={holding?.avgCost ?? 0}
+          trade={trade}
+          onTrade={onTrade}
+          orders={orders.filter((o) => o.symbol === symbol && o.day === day)}
+          reservedCash={reservedCash}
+          onOrder={onOrder}
+          onCancel={onCancel}
+        />
+      )}
 
       <div className="company">
         <h4>{etf ? '어떤 ETF인가요?' : '어떤 회사인가요?'}</h4>
@@ -260,52 +289,126 @@ export function StockDetail({ ui, market, symbol, day, closed, cash, holding, ne
   );
 }
 
-interface TradeProps {
+export interface TradeProps {
   ui: UiMode;
   symbol: string;
   price: number;
   usd: number | null;
+  fx: number;
   cash: number;
   held: number;
   avgCost: number;
   trade: Props['trade'];
   onTrade: (symbol: string, side: 'buy' | 'sell', qty: number) => void;
+  orders: OrderRow[];
+  reservedCash: number;
+  onOrder: (symbol: string, side: 'buy' | 'sell', qty: number, limit: number) => void;
+  onCancel: (orderId: string) => void;
+  initialSide?: 'buy' | 'sell';
 }
 
-function TradePanel({ ui, symbol, price, usd, cash, held, avgCost, trade, onTrade }: TradeProps) {
+export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, trade, onTrade, orders, reservedCash, onOrder, onCancel, initialSide = 'buy' }: TradeProps) {
   const easy = ui === 'easy';
-  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const isUS = usd !== null;
+  const native = usd ?? price;
+  const [side, setSide] = useState<'buy' | 'sell'>(initialSide);
+  const [kind, setKind] = useState<'now' | 'limit'>('now');
   const [qtyText, setQtyText] = useState('');
+  const [limitText, setLimitText] = useState('');
   const fee = trade.fee;
-  const maxQty = side === 'buy' ? maxBuyQty(cash, price, fee) : held;
-  const qty = Math.min(Math.floor(Number(qtyText) || 0), 1_000_000);
-  const amount = side === 'buy' ? buyCost(qty, price, fee) : sellProceeds(qty, price, fee);
-  const valid = trade.allowed && !trade.busy && qty > 0 && qty <= maxQty;
 
-  const addMoney = (w: number) => setQtyText(String(Math.min(maxQty, Math.floor((qty * price + w) / price))));
+  const limitNative = Number(limitText) || 0;
+  const limitKrw = isUS ? Math.round(limitNative * fx) : Math.round(limitNative);
+  const unitKrw = kind === 'limit' && limitKrw > 0 ? limitKrw : price;
+  const reservedSell = orders.filter((o) => o.side === 'sell' && o.status === 'open').reduce((a, o) => a + o.qty, 0);
+  const availCash = kind === 'limit' ? cash - reservedCash : cash;
+  const maxQty = side === 'buy' ? maxBuyQty(Math.max(0, availCash), unitKrw, fee) : Math.max(0, held - (kind === 'limit' ? reservedSell : 0));
+  const qty = Math.min(Math.floor(Number(qtyText) || 0), 1_000_000);
+  const amount = side === 'buy' ? buyCost(qty, unitKrw, fee) : sellProceeds(qty, unitKrw, fee);
+  const limitOk = kind === 'now' || (side === 'buy' ? limitNative > 0 && limitNative < native && limitNative >= native * 0.7 : limitNative > native && limitNative <= native * 1.3);
+  const valid = trade.allowed && !trade.busy && qty > 0 && qty <= maxQty && limitOk;
+
+  const fmtN = (v: number) => (isUS ? fmtUsd(v) : num(v) + '원');
+  const setLimitPct = (p: number) => {
+    const v = native * (1 + p);
+    setLimitText(isUS ? v.toFixed(2) : String(Math.round(v / (v >= 10000 ? 50 : 5)) * (v >= 10000 ? 50 : 5)));
+  };
+  const switchKind = (k: 'now' | 'limit') => {
+    setKind(k);
+    setQtyText('');
+    if (k === 'limit' && !limitText) setLimitPct(side === 'buy' ? -0.03 : 0.03);
+  };
+  const switchSide = (sd: 'buy' | 'sell') => {
+    setSide(sd);
+    setQtyText('');
+    if (kind === 'limit') setLimitPct(sd === 'buy' ? -0.03 : 0.03);
+  };
+  const addMoney = (w: number) => setQtyText(String(Math.min(maxQty, Math.floor((qty * unitKrw + w) / unitKrw))));
   const setFrac = (f: number) => setQtyText(String(Math.max(0, Math.floor(maxQty * f))));
   const submit = () => {
     if (!valid) return;
-    onTrade(symbol, side, qty);
+    if (kind === 'now') onTrade(symbol, side, qty);
+    else onOrder(symbol, side, qty, isUS ? Math.round(limitNative * 100) / 100 : Math.round(limitNative));
     setQtyText('');
   };
 
   const buyLabel = easy ? '사기' : '매수';
   const sellLabel = easy ? '팔기' : '매도';
+  const openOrders = orders.filter((o) => o.status === 'open');
 
   return (
     <div className={'trade ' + side}>
       <div className="seg2">
-        <button className={side === 'buy' ? 'on buy' : ''} onClick={() => (setSide('buy'), setQtyText(''))}>
+        <button className={side === 'buy' ? 'on buy' : ''} onClick={() => switchSide('buy')}>
           {buyLabel}
         </button>
-        <button className={side === 'sell' ? 'on sell' : ''} onClick={() => (setSide('sell'), setQtyText(''))} disabled={held === 0}>
+        <button className={side === 'sell' ? 'on sell' : ''} onClick={() => switchSide('sell')} disabled={held === 0}>
           {sellLabel}
           {held > 0 && <small> {num(held)}주</small>}
         </button>
       </div>
 
+      <div className="order-kind" role="tablist">
+        <button className={kind === 'now' ? 'on' : ''} onClick={() => switchKind('now')}>
+          {easy ? '지금 가격으로' : '시장가(시가)'}
+        </button>
+        <button className={kind === 'limit' ? 'on' : ''} onClick={() => switchKind('limit')}>
+          {easy ? '⏳ 예약 주문' : '⏳ 지정가'}
+        </button>
+      </div>
+
       {!trade.allowed && trade.reason && <div className="trade-block">{trade.reason}</div>}
+
+      {kind === 'limit' && (
+        <div className="limit-box">
+          <p className="limit-help">
+            {side === 'buy'
+              ? '오늘 장중에 가격이 여기까지 내려오면 이 가격에 자동으로 사요.'
+              : '오늘 장중에 가격이 여기까지 오르면 이 가격에 자동으로 팔아요.'}{' '}
+            안 닿으면 장 마감 때 취소돼요.
+          </p>
+          <div className="qty-box">
+            {isUS && <span>$</span>}
+            <input
+              inputMode="decimal"
+              value={limitText}
+              onChange={(e) => setLimitText(e.target.value.replace(/[^0-9.]/g, '').slice(0, 10))}
+              disabled={!trade.allowed}
+              aria-label="예약 가격"
+            />
+            {!isUS && <span>원</span>}
+          </div>
+          <div className="quick">
+            {(side === 'buy' ? [-0.01, -0.03, -0.05, -0.1] : [0.01, 0.03, 0.05, 0.1]).map((p) => (
+              <button key={p} onClick={() => setLimitPct(p)} disabled={!trade.allowed}>
+                {p > 0 ? '+' : ''}
+                {Math.round(p * 100)}%
+              </button>
+            ))}
+          </div>
+          {!limitOk && limitText && <small className="error-inline">{side === 'buy' ? '지금 가격보다 낮게, 30% 이내로' : '지금 가격보다 높게, 30% 이내로'}</small>}
+        </div>
+      )}
 
       <div className="qty-row">
         <div className="qty-box">
@@ -322,8 +425,7 @@ function TradePanel({ ui, symbol, price, usd, cash, held, avgCost, trade, onTrad
         </div>
         <div className="qty-meta">
           <small className="muted">
-            최대 {num(maxQty)}주 · 1주 {usd !== null ? `${fmtUsd(usd)} ≈ ` : ''}
-            {num(price)}원
+            최대 {num(maxQty)}주 · 1주 {kind === 'limit' && limitNative > 0 ? fmtN(limitNative) : isUS ? `${fmtUsd(native)} ≈ ${num(price)}원` : `${num(price)}원`}
           </small>
           <div className="steppers">
             <button onClick={() => setQtyText(String(Math.max(0, qty - 1)))} disabled={!trade.allowed} aria-label="1주 빼기">
@@ -378,15 +480,39 @@ function TradePanel({ ui, symbol, price, usd, cash, held, avgCost, trade, onTrad
         )}
         {side === 'buy' && (
           <div>
-            <span className="muted">{easy ? '남는 현금' : '주문 후 현금'}</span>
-            <b>{won(cash - (qty > 0 ? amount : 0))}</b>
+            <span className="muted">{kind === 'limit' ? '예약 후 쓸 수 있는 현금' : easy ? '남는 현금' : '주문 후 현금'}</span>
+            <b>{won(availCash - (qty > 0 ? amount : 0))}</b>
           </div>
         )}
       </div>
 
       <button className={'btn xl ' + side} disabled={!valid} onClick={submit}>
-        {trade.busy ? '처리 중…' : qty > 0 ? `${num(qty)}주 ${side === 'buy' ? buyLabel : sellLabel}` : side === 'buy' ? buyLabel : sellLabel}
+        {trade.busy
+          ? '처리 중…'
+          : kind === 'limit'
+            ? `${qty > 0 ? num(qty) + '주 ' : ''}예약 ${side === 'buy' ? buyLabel : sellLabel}`
+            : qty > 0
+              ? `${num(qty)}주 ${side === 'buy' ? buyLabel : sellLabel}`
+              : side === 'buy'
+                ? buyLabel
+                : sellLabel}
       </button>
+
+      {openOrders.length > 0 && (
+        <div className="open-orders">
+          <small className="muted">예약 중인 주문</small>
+          {openOrders.map((o) => (
+            <div key={o.id} className={'oo-row ' + o.side}>
+              <span>
+                {o.side === 'buy' ? buyLabel : sellLabel} {num(o.qty)}주 @ {isUS ? fmtUsd(o.limit_price) : num(o.limit_price) + '원'}
+              </span>
+              <button className="btn sm ghost" disabled={!trade.allowed || trade.busy} onClick={() => onCancel(o.id!)}>
+                취소
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

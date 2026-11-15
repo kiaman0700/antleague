@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
-import { StockDetail } from '../components/StockDetail';
+import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
 import { loadSolo, soloAct, soloView, type SoloSave } from '../engine/local';
 import { FEE_BOMB_RATE, ITEM_MAP, type ItemKind, type ItemRow } from '../game/items';
 import { KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
-import { computePortfolio, equityWith, FEE_RATE, START_CASH } from '../game/portfolio';
+import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH } from '../game/portfolio';
 import { quote } from '../game/quote';
-import { SECTOR_MAP, STOCKS } from '../game/stocks';
-import { pct, tone, wonShort } from '../lib/format';
+import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
+import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
 import { api, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
@@ -22,7 +23,8 @@ interface Props {
   onExit: () => void;
 }
 
-type Tab = 'list' | 'detail' | 'info';
+type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
+const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
 
 /** 둘이서: 서버(/api/game) · 혼자: 브라우저 안의 같은 엔진 */
 function useGameSource(session: Session) {
@@ -53,28 +55,54 @@ function useGameSource(session: Session) {
   return { view: soloV, market: soloV?.market ?? null, offset: 0, error: solo ? null : '연습 게임을 찾을 수 없어요.', act, busy };
 }
 
+/** 모바일: 탭 = 페이지. 주소(#news 등)와 연결해서 뒤로 가기로 이전 탭으로 */
+function useMobileTab(mobile: boolean) {
+  const fromHash = (): Tab => {
+    const h = location.hash.slice(1) as Tab;
+    return TABS.includes(h) ? h : 'news';
+  };
+  const [tab, setTabState] = useState<Tab>(fromHash);
+  useEffect(() => {
+    const on = () => setTabState(fromHash());
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
+  }, []);
+  const setTab = useCallback(
+    (t: Tab) => {
+      setTabState(t);
+      if (!mobile) return;
+      if (location.hash.slice(1) !== t) history.pushState(history.state, '', `${location.pathname}${location.search}#${t}`);
+      window.scrollTo(0, 0);
+    },
+    [mobile],
+  );
+  return [tab, setTab] as const;
+}
+
 export function GameController({ session, onExit }: Props) {
   const solo = session.mode === 'solo';
   const me = session.playerId;
+  const mobile = useIsMobile();
   const { view, market, offset, error, act, busy } = useGameSource(session);
 
   const [viewDay, setViewDay] = useState<number | null>(null);
   const [closing, setClosing] = useState<number | null>(null);
-  const [closeMarket, setCloseMarket] = useState<Market | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [ui, setUiState] = useState<UiMode>(session.ui);
   const [selected, setSelected] = useState(STOCKS[0].symbol);
-  const [tab, setTab] = useState<Tab>('info');
+  const [tab, setTab] = useMobileTab(mobile);
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
   const [tutorial, setTutorial] = useState(() => session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
+  const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
+  const [menu, setMenu] = useState(false);
   const [bubbles, setBubbles] = useState<(Reaction & { mine?: boolean })[]>([]);
   const [muted, setMutedState] = useState(isMuted());
   const [now, setNow] = useState(Date.now());
   const toastTimer = useRef<number>();
-  const sideRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const showToast = useCallback((text: string, kind: 'ok' | 'err' | 'warn' = 'ok') => {
     setToast({ text, kind });
@@ -93,7 +121,6 @@ export function GameController({ session, onExit }: Props) {
   const finished = room?.status === 'finished';
 
   // ---------- 날짜 진행 / 하루 결산 ----------
-  const prevMarket = useRef<Market | null>(null);
   useEffect(() => {
     if (serverDay === null || !market) return;
     if (viewDay === null) {
@@ -101,36 +128,36 @@ export function GameController({ session, onExit }: Props) {
         setViewDay(total - 1);
         setShowResult(true);
       } else setViewDay(serverDay);
-      prevMarket.current = market;
       return;
     }
     if (closing === null && !showResult && serverDay > viewDay) {
-      // 새 시장 데이터에는 어제 종가가 들어 있음
-      setCloseMarket(market);
       setClosing(viewDay);
+      setSheet(null);
       play('close');
     }
-    prevMarket.current = market;
   }, [serverDay, viewDay, closing, showResult, market, finished, total]);
 
   const day = viewDay ?? 0;
   const displayDay = closing ?? day;
   const displayClosed = closing !== null;
-  // 결산 중에는 결산용 시장, 아니면 화면 날짜와 맞는 시장
-  const mkt = (closing !== null ? closeMarket : market) ?? market;
-
-  const prices = useMemo(() => (mkt ? pricesAt(mkt, displayDay, displayClosed) : {}), [mkt, displayDay, displayClosed]);
+  const prices = useMemo(() => (market ? pricesAt(market, displayDay, displayClosed) : {}), [market, displayDay, displayClosed]);
 
   // ---------- 내 상태 ----------
   const myItemRows: ItemRow[] = view?.myItemRows ?? [];
   const spends = useMemo(() => myItemRows.filter((r) => r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost })), [myItemRows]);
-  const portfolio = useMemo(() => computePortfolio(view?.myTrades ?? [], spends), [view?.myTrades, spends]);
-  const equity = mkt ? equityWith(portfolio, prices) : START_CASH;
+  const paidDivs = useMemo(() => (market?.dividends ?? []).filter((d) => d.perShare > 0), [market]);
+  const portfolio = useMemo(() => computePortfolio(view?.myTrades ?? [], spends, Infinity, paidDivs), [view?.myTrades, spends, paidDivs]);
+  const equity = market ? equityWith(portfolio, prices) : START_CASH;
   const myRet = equity / START_CASH - 1;
+  const myOrders = view?.myOrders ?? [];
+  const fxNow = market ? (market.macro[displayDay] ?? market.macro0).fx : 1;
+  const reservedCash = myOrders
+    .filter((o) => o.status === 'open' && o.day === day && o.side === 'buy')
+    .reduce((a, o) => a + buyCost(o.qty, STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fxNow) : o.limit_price, o.fee), 0);
 
   const players = view?.players ?? [];
-  const meRow = players.find((p) => p.id === me);
   const opponent = players.find((p) => p.id !== me) ?? null;
+  const meRow = players.find((p) => p.id === me);
   const endedToday = !solo && (meRow?.endedDay ?? -1) >= day;
   const effects = view?.effectsToday ?? [];
   const frozen = effects.includes('freeze');
@@ -154,16 +181,15 @@ export function GameController({ session, onExit }: Props) {
     busy,
   };
 
-  const news = mkt?.news ?? [];
+  const news = market?.news ?? [];
   const newsSymbols = useMemo(() => {
     const set = new Set<string>();
     for (const n of news.filter((x) => x.day === day)) n.related.forEach((s) => set.add(s));
     return set;
   }, [news, day]);
+  const change = useCallback((sym: string) => (market ? quote(market, sym, displayDay, displayClosed).ch : 0), [market, displayDay, displayClosed]);
 
-  const change = useCallback((sym: string) => (mkt ? quote(mkt, sym, displayDay, displayClosed).ch : 0), [mkt, displayDay, displayClosed]);
-
-  // ---------- 알림 (상대의 방해 등) ----------
+  // ---------- 알림 ----------
   const seen = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!view) return;
@@ -177,6 +203,20 @@ export function GameController({ session, onExit }: Props) {
       showToast(n.text, n.kind === 'ok' ? 'ok' : 'warn');
       play(n.text.includes('방패') ? 'blocked' : 'attack');
     }
+  }, [view, showToast]);
+
+  // 예약 주문 체결 알림 (마감 후)
+  const seenOrders = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    if (!view) return;
+    const cur = new Map(view.myOrders.map((o) => [o.id!, o.status]));
+    if (seenOrders.current) {
+      for (const o of view.myOrders) {
+        const before = seenOrders.current.get(o.id!);
+        if (before === 'open' && o.status === 'filled') showToast(`⏳ 예약 체결! ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
+      }
+    }
+    seenOrders.current = cur;
   }, [view, showToast]);
 
   // ---------- 행동 ----------
@@ -193,39 +233,39 @@ export function GameController({ session, onExit }: Props) {
   const trade = (symbol: string, side: 'buy' | 'sell', qty: number) =>
     run('trade', { symbol, side, qty }, () => {
       play(side);
-      const name = STOCKS.find((s) => s.symbol === symbol)!.name;
-      showToast(`${name} ${qty.toLocaleString()}주 ${ui === 'easy' ? (side === 'buy' ? '샀어요' : '팔았어요') : side === 'buy' ? '매수 체결' : '매도 체결'}`);
+      setSheet(null);
+      showToast(`${STOCK_MAP[symbol].name} ${qty.toLocaleString()}주 ${ui === 'easy' ? (side === 'buy' ? '샀어요' : '팔았어요') : side === 'buy' ? '매수 체결' : '매도 체결'}`);
     });
+  const placeOrder = (symbol: string, side: 'buy' | 'sell', qty: number, limit: number) =>
+    run('placeOrder', { symbol, side, qty, limit }, () => {
+      play('tap');
+      setSheet(null);
+      showToast(`⏳ 예약 완료 · 장중에 가격이 닿으면 체결돼요`);
+    });
+  const cancelOrder = (orderId: string) => run('cancelOrder', { orderId }, () => showToast('예약 주문을 취소했어요'));
 
   const buyItem = (kind: ItemKind) =>
     run('buyItem', { kind }, () => {
       play('item');
       showToast(`${ITEM_MAP[kind].emoji} ${ITEM_MAP[kind].name} 카드를 샀어요`);
     });
-
   const useCard = (kind: ItemKind, payload?: ItemRow['payload']) => {
     if (kind === 'fake' && !payload) return setFakeModal(true);
     run('useItem', { kind, payload }, () => {
       play('item');
       const d = ITEM_MAP[kind];
-      showToast(d.type === 'info' ? `${d.emoji} ${d.name} 결과가 뉴스 위에 나왔어요` : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`);
-      if (d.type === 'info') {
-        setTab('info');
-        sideRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      showToast(d.type === 'info' ? `${d.emoji} ${d.name} 결과가 뉴스에 나왔어요` : `${d.emoji} ${d.name} 발동! 내일 상대에게 적용돼요`);
+      if (d.type === 'info') setTab('news');
     });
   };
-
   const endTurn = () => {
     if (!canAct) return;
     play('tap');
     run('endTurn', {}, () => {});
   };
-
   const nextDay = () => {
     if (serverDay === null) return;
     setClosing(null);
-    setCloseMarket(null);
     if (finished || serverDay >= total) {
       setShowResult(true);
       return;
@@ -251,20 +291,44 @@ export function GameController({ session, onExit }: Props) {
     });
   const selectStock = (sym: string) => {
     setSelected(sym);
-    setTab('detail');
-    document.querySelector('.p-detail')?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (mobile) setTab('detail');
+    else document.querySelector('.p-detail')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const selectSector = (sec: string) => {
     const region = SECTOR_MAP[sec]?.region ?? 'all';
     setFilter({ region: region === 'ETF' ? 'ETF' : region, sub: sec });
-    setTab('list');
+    if (mobile) setTab('list');
   };
   const setUi = (m: UiMode) => {
     setUiState(m);
     saveUi(m);
     if (!solo) api('mode', { roomId: session.roomId, mode: m }).catch(() => {});
   };
-  const jump = (id: string) => sideRef.current?.querySelector('#' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // ---------- PC 단축키 ----------
+  useEffect(() => {
+    if (mobile) return;
+    const onKey = (e: KeyboardEvent) => {
+      const typing = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'SELECT';
+      if (e.key === '/' && !typing) {
+        e.preventDefault();
+        searchRef.current?.querySelector('input')?.focus();
+      }
+      if (typing) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const rows = [...document.querySelectorAll<HTMLElement>('.stock-list .srow')];
+        const i = rows.findIndex((r) => r.classList.contains('sel'));
+        const next = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))];
+        if (next) {
+          e.preventDefault();
+          next.click();
+          next.scrollIntoView({ block: 'nearest' });
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobile]);
 
   // ---------- 화면 ----------
   if (!view || !market || viewDay === null) {
@@ -287,11 +351,17 @@ export function GameController({ session, onExit }: Props) {
     );
   }
   if (showResult) {
-    if (!view.final) return <div className="center-msg"><div className="spinner" /><p className="muted">결과 집계 중…</p></div>;
+    if (!view.final)
+      return (
+        <div className="center-msg">
+          <div className="spinner" />
+          <p className="muted">결과 집계 중…</p>
+        </div>
+      );
     return <ResultScreen session={session} market={market} final={view.final} onExit={onExit} />;
   }
 
-  const m = mkt!;
+  const m: Market = market;
   const macro = m.macro[displayDay] ?? m.macro0;
   const prevMacro = displayDay > 0 ? m.macro[displayDay - 1] : m.macro0;
   const idx = m.index[displayDay];
@@ -306,18 +376,327 @@ export function GameController({ session, onExit }: Props) {
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
   const effectsOnMe = effects.map((k) => (k === 'freeze' ? '🧊 오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '💸 수수료 폭탄! 오늘은 수수료가 1%예요' : '')).filter(Boolean);
+  const ev = nextEvent(m, day);
+  const timerText = remaining !== null && closing === null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
+  const endLabel = endedToday ? '상대 기다리는 중…' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →';
 
   const macroChip = (label: string, k: 'rate' | 'usRate' | 'fx' | 'oil', fmt: (v: number) => string, term = label) => {
     const d = macro[k] - prevMacro[k];
     return (
-      <span className="mchip">
+      <span className="mchip" key={k}>
         <Term k={term}>{label}</Term>
         <b>{fmt(macro[k])}</b>
         {Math.abs(d) > 1e-9 && <i className={tone(d)}>{d > 0 ? '▲' : '▼'}</i>}
       </span>
     );
   };
+  const macroChips = (
+    <>
+      <span className="mchip idx">
+        <Term k="지수">국내</Term>
+        <b>{idxNow.toFixed(2)}</b>
+        <i className={tone(idxNow / idxPrev - 1)}>{pct(idxNow / idxPrev - 1)}</i>
+      </span>
+      <span className="mchip idx">
+        미국500
+        <b>{usNow.toFixed(2)}</b>
+        <i className={tone(usNow / usPrev - 1)}>{pct(usNow / usPrev - 1)}</i>
+      </span>
+      {macroChip('금리', 'rate', (v) => v.toFixed(2) + '%')}
+      {macroChip('미 금리', 'usRate', (v) => v.toFixed(2) + '%', '금리')}
+      {macroChip('환율', 'fx', (v) => v.toLocaleString() + '원')}
+      {macroChip('유가', 'oil', (v) => '$' + v.toFixed(1))}
+    </>
+  );
 
+  // 공통 조각
+  const browser = (
+    <div ref={searchRef} className="browser-wrap">
+      <StockBrowser
+        market={m}
+        day={displayDay}
+        closed={displayClosed}
+        portfolio={portfolio}
+        watch={watch}
+        onToggleWatch={toggleWatch}
+        selected={selected}
+        onSelect={selectStock}
+        newsSymbols={newsSymbols}
+        filter={filter}
+        onFilter={setFilter}
+      />
+    </div>
+  );
+  const detail = (
+    <StockDetail
+      ui={ui}
+      market={m}
+      symbol={selected}
+      day={displayDay}
+      closed={displayClosed}
+      cash={portfolio.cash}
+      holding={portfolio.holdings[selected]}
+      news={news}
+      watched={watch.includes(selected)}
+      onToggleWatch={() => toggleWatch(selected)}
+      onSelect={selectStock}
+      onSelectSector={selectSector}
+      trade={tradeState}
+      onTrade={trade}
+      orders={myOrders}
+      reservedCash={reservedCash}
+      onOrder={placeOrder}
+      onCancel={cancelOrder}
+      inlineTrade={!mobile}
+    />
+  );
+  const newsPanel = (
+    <NewsPanel
+      ui={ui}
+      day={day}
+      news={news}
+      tomorrow={view.reveals.tomorrow}
+      rumorCheck={view.reveals.rumorCheck}
+      bestSector={view.reveals.bestSector}
+      spy={view.reveals.spy}
+      prices={prices}
+      change={change}
+      onSelect={selectStock}
+      onSelectSector={selectSector}
+    />
+  );
+  const assets = (
+    <>
+      <AssetsPanel ui={ui} portfolio={portfolio} prices={prices} equity={equity} onSelect={selectStock} />
+      <OrdersAndDividends orders={myOrders} day={day} portfolio={portfolio} canAct={canAct} onCancel={cancelOrder} onSelect={selectStock} />
+    </>
+  );
+  const cards = (
+    <CardsPanel
+      solo={solo}
+      day={day}
+      totalDays={total}
+      mine={view.myItems}
+      cash={portfolio.cash}
+      usedToday={usedToday}
+      canAct={canAct}
+      onBuy={buyItem}
+      onUse={(k) => useCard(k)}
+      effectsOnMe={effectsOnMe}
+      busy={busy}
+    />
+  );
+  const overlays = (
+    <>
+      {toast && <div className={'toast ' + toast.kind}>{toast.text}</div>}
+      {closing !== null && (
+        <DayCloseOverlay
+          market={m}
+          day={closing}
+          myEquity={equity}
+          myDelta={equity - (closing === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, closing - 1, paidDivs), pricesAt(m, closing - 1, true)))}
+          dividendToday={portfolio.dividendLog.filter((d) => d.day === closing).reduce((a, d) => a + d.amount, 0)}
+          filledToday={myOrders.filter((o) => o.day === closing && o.status === 'filled').length}
+          last={closing + 1 >= total}
+          onNext={nextDay}
+        />
+      )}
+      {fakeModal && (
+        <FakeNewsModal
+          onCancel={() => setFakeModal(false)}
+          onSubmit={(symbol, t) => {
+            setFakeModal(false);
+            useCard('fake', { symbol, tone: t });
+          }}
+        />
+      )}
+      {tutorial && (
+        <Tutorial
+          onDone={() => {
+            markTutorialSeen();
+            setTutorial(false);
+          }}
+        />
+      )}
+      {!solo && (
+        <>
+          <ReactionButton
+            onSend={(r) => {
+              sendReaction(r);
+              pushBubble({ ...r, id: Date.now(), from: me, mine: true });
+            }}
+          />
+          <ReactionBubbles items={bubbles.map((b) => ({ ...b, nickname: players.find((p) => p.id === b.from)?.nickname ?? '' }))} />
+        </>
+      )}
+    </>
+  );
+  const settings = (
+    <>
+      <div className="mode-toggle" role="group" aria-label="화면 모드">
+        <button className={easy ? 'on' : ''} onClick={() => setUi('easy')}>
+          초보
+        </button>
+        <button className={!easy ? 'on' : ''} onClick={() => setUi('pro')}>
+          일반
+        </button>
+      </div>
+      <button className="icon-btn" onClick={() => setTutorial(true)} aria-label="도움말" title="도움말">
+        ?
+      </button>
+      <button
+        className="icon-btn"
+        onClick={() => {
+          setMuted(!muted);
+          setMutedState(!muted);
+        }}
+        aria-label="소리"
+        title="소리"
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
+      <button className="icon-btn" onClick={onExit} aria-label="로비로" title="로비로">
+        ⎋
+      </button>
+    </>
+  );
+
+  /* ================= 모바일 ================= */
+  if (mobile) {
+    const q = quote(m, selected, displayDay, displayClosed);
+    const held = portfolio.holdings[selected]?.qty ?? 0;
+    return (
+      <div className={'m-game ui-' + ui}>
+        <header className="m-top">
+          <div className="m-row">
+            <div className="daypill">
+              <b>{day + 1}일차</b>
+              <span>/ {total}</span>
+            </div>
+            {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
+            {ev && (
+              <button className="ev-chip" onClick={() => setTab('news')}>
+                {dDay(ev.day, day)} {ev.title.replace(/ \(\d\/3\)/, '')}
+              </button>
+            )}
+            <button className="icon-btn m-menu" onClick={() => setMenu(true)} aria-label="메뉴">
+              ⋯
+            </button>
+          </div>
+          <div className="m-score">
+            <div className="ms-me">
+              <small>나</small>
+              <b>{wonShort(equity)}</b>
+              <span className={tone(myRet)}>{pct(myRet, 1)}</span>
+            </div>
+            {!solo ? (
+              <div className="ms-opp">
+                <small>
+                  {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? '✓' : '…'}</em>}
+                </small>
+                <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
+                <span className={tone(oppRet)}>{opponent ? pct(oppRet, 1) : ''}</span>
+              </div>
+            ) : (
+              <div className="ms-opp muted small">연습 모드</div>
+            )}
+            <button className={'btn m-end' + (endedToday ? ' waiting' : '')} disabled={!canAct || busy} onClick={endTurn}>
+              {endedToday ? '대기 중' : day + 1 >= total ? '마감 🏁' : '장 마감'}
+            </button>
+          </div>
+          {!solo && (
+            <div className="tug thin" aria-hidden>
+              <div className="tug-me" style={{ width: `${share * 100}%` }} />
+              <div className="tug-mid" />
+            </div>
+          )}
+        </header>
+
+        <main className={'m-page p-' + tab}>
+          {tab === 'list' && browser}
+          {tab === 'detail' && detail}
+          {tab === 'news' && (
+            <>
+              <div className="m-macro">{macroChips}</div>
+              <Calendar market={m} day={day} onSelect={selectStock} compact />
+              {newsPanel}
+            </>
+          )}
+          {tab === 'assets' && assets}
+          {tab === 'cards' && cards}
+        </main>
+
+        {tab === 'detail' && (
+          <div className="m-tradebar">
+            <div className="mt-price">
+              <b className={tone(q.ch)}>{q.usd !== null ? '$' + q.usd.toFixed(2) : num(q.krw) + '원'}</b>
+              <small className={tone(q.ch)}>{pct(q.ch)}</small>
+            </div>
+            <button className="btn sell" disabled={!tradeState.allowed || held === 0} onClick={() => setSheet('sell')}>
+              {easy ? '팔기' : '매도'}
+            </button>
+            <button className="btn buy" disabled={!tradeState.allowed} onClick={() => setSheet('buy')}>
+              {easy ? '사기' : '매수'}
+            </button>
+          </div>
+        )}
+
+        <nav className="bottom-nav five">
+          {(
+            [
+              ['list', '📋', '종목'],
+              ['detail', '📈', '차트'],
+              ['news', '📰', '뉴스'],
+              ['assets', '💰', easy ? '내 재산' : '자산'],
+              ['cards', '🃏', '카드'],
+            ] as [Tab, string, string][]
+          ).map(([t, i, l]) => (
+            <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
+              <span>{i}</span>
+              {l}
+              {t === 'news' && newsSymbols.size > 0 && tab !== 'news' && <i className="nav-dot" />}
+              {t === 'cards' && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
+              {t === 'assets' && myOrders.some((o) => o.status === 'open' && o.day === day) && <i className="nav-dot gold" />}
+            </button>
+          ))}
+        </nav>
+
+        <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
+          {sheet && (
+            <TradePanel
+              key={selected + sheet}
+              ui={ui}
+              symbol={selected}
+              price={q.krw}
+              usd={q.usd}
+              fx={fxNow}
+              cash={portfolio.cash}
+              held={held}
+              avgCost={portfolio.holdings[selected]?.avgCost ?? 0}
+              trade={tradeState}
+              onTrade={trade}
+              orders={myOrders.filter((o) => o.symbol === selected && o.day === day)}
+              reservedCash={reservedCash}
+              onOrder={placeOrder}
+              onCancel={cancelOrder}
+              initialSide={sheet}
+            />
+          )}
+        </BottomSheet>
+
+        <BottomSheet open={menu} onClose={() => setMenu(false)} title="설정">
+          <div className="m-settings">
+            <div className="m-macro wrap">{macroChips}</div>
+            <div className="row">{settings}</div>
+          </div>
+        </BottomSheet>
+
+        {overlays}
+      </div>
+    );
+  }
+
+  /* ================= PC ================= */
   return (
     <div className={'game ui-' + ui}>
       <header className="hud">
@@ -327,54 +706,15 @@ export function GameController({ session, onExit }: Props) {
             <b>{day + 1}일차</b>
             <span>/ {total}</span>
           </div>
-          {remaining !== null && closing === null && (
-            <div className={'timer' + (remaining <= 10 ? ' hurry' : '')}>
-              ⏱ {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}
-            </div>
+          {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}>⏱ {timerText}</div>}
+          {ev && (
+            <span className="ev-chip" title={ev.desc}>
+              {dDay(ev.day, day)} {ev.title.replace(/ \(\d\/3\)/, '')}
+            </span>
           )}
         </div>
-        <div className="hud-macro">
-          <span className="mchip idx">
-            <Term k="지수">국내</Term>
-            <b>{idxNow.toFixed(2)}</b>
-            <i className={tone(idxNow / idxPrev - 1)}>{pct(idxNow / idxPrev - 1)}</i>
-          </span>
-          <span className="mchip idx">
-            미국500
-            <b>{usNow.toFixed(2)}</b>
-            <i className={tone(usNow / usPrev - 1)}>{pct(usNow / usPrev - 1)}</i>
-          </span>
-          {macroChip('금리', 'rate', (v) => v.toFixed(2) + '%')}
-          {macroChip('미 금리', 'usRate', (v) => v.toFixed(2) + '%', '금리')}
-          {macroChip('환율', 'fx', (v) => v.toLocaleString() + '원')}
-          {macroChip('유가', 'oil', (v) => '$' + v.toFixed(1))}
-        </div>
-        <div className="hud-right">
-          <div className="mode-toggle" role="group" aria-label="화면 모드">
-            <button className={easy ? 'on' : ''} onClick={() => setUi('easy')}>
-              초보
-            </button>
-            <button className={!easy ? 'on' : ''} onClick={() => setUi('pro')}>
-              일반
-            </button>
-          </div>
-          <button className="icon-btn" onClick={() => setTutorial(true)} aria-label="도움말">
-            ?
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => {
-              setMuted(!muted);
-              setMutedState(!muted);
-            }}
-            aria-label="소리"
-          >
-            {muted ? '🔇' : '🔊'}
-          </button>
-          <button className="icon-btn" onClick={onExit} aria-label="로비로">
-            ⎋
-          </button>
-        </div>
+        <div className="hud-macro">{macroChips}</div>
+        <div className="hud-right">{settings}</div>
       </header>
 
       <section className="score">
@@ -401,148 +741,36 @@ export function GameController({ session, onExit }: Props) {
           <div className="score-solo muted">연습 모드 · 목표: 시장보다 많이 벌기</div>
         )}
         <button className={'btn end-turn' + (endedToday ? ' waiting' : '')} disabled={!canAct || busy} onClick={endTurn}>
-          {endedToday ? '상대 기다리는 중…' : day + 1 >= total ? '마지막 장 마감 🏁' : '장 마감 →'}
+          {endLabel}
           {easy && !endedToday && <small>다 정했으면 눌러요</small>}
         </button>
       </section>
 
       <main className="board">
-        <section className={'pane p-list' + (tab === 'list' ? ' active' : '')}>
-          <StockBrowser
-            market={m}
-            day={displayDay}
-            closed={displayClosed}
-            portfolio={portfolio}
-            watch={watch}
-            onToggleWatch={toggleWatch}
-            selected={selected}
-            onSelect={selectStock}
-            newsSymbols={newsSymbols}
-            filter={filter}
-            onFilter={setFilter}
-          />
-        </section>
-        <section className={'pane p-detail' + (tab === 'detail' ? ' active' : '')}>
-          <StockDetail
-            ui={ui}
-            market={m}
-            symbol={selected}
-            day={displayDay}
-            closed={displayClosed}
-            cash={portfolio.cash}
-            holding={portfolio.holdings[selected]}
-            news={news}
-            watched={watch.includes(selected)}
-            onToggleWatch={() => toggleWatch(selected)}
-            onSelect={selectStock}
-            onSelectSector={selectSector}
-            trade={tradeState}
-            onTrade={trade}
-          />
-        </section>
-        <section className={'pane p-side' + (tab === 'info' ? ' active' : '')}>
-          <nav className="side-anchors">
-            <button onClick={() => jump('sec-news')}>📰 뉴스</button>
-            <button onClick={() => jump('sec-assets')}>💰 {easy ? '내 재산' : '자산'}</button>
-            <button onClick={() => jump('sec-cards')}>🃏 카드 {view.myItems.total}</button>
-          </nav>
-          <div className="side-body" ref={sideRef}>
-            <section id="sec-news" className="side-sec">
-              <NewsPanel
-                ui={ui}
-                day={day}
-                news={news}
-                tomorrow={view.reveals.tomorrow}
-                rumorCheck={view.reveals.rumorCheck}
-                bestSector={view.reveals.bestSector}
-                spy={view.reveals.spy}
-                prices={prices}
-                change={change}
-                onSelect={selectStock}
-                onSelectSector={selectSector}
-              />
+        <section className="pane p-list">{browser}</section>
+        <section className="pane p-detail">{detail}</section>
+        <section className="pane p-side">
+          <div className="side-body">
+            <section className="side-sec">
+              <Calendar market={m} day={day} onSelect={selectStock} compact />
             </section>
-            <section id="sec-assets" className="side-sec">
+            <section className="side-sec">{newsPanel}</section>
+            <section className="side-sec">
               <h4 className="sec-head">💰 {easy ? '내 재산' : '자산'}</h4>
-              <AssetsPanel ui={ui} portfolio={portfolio} prices={prices} equity={equity} onSelect={selectStock} />
+              {assets}
             </section>
-            <section id="sec-cards" className="side-sec">
+            <section className="side-sec">
               <h4 className="sec-head">🃏 찬스 카드</h4>
-              <CardsPanel
-                solo={solo}
-                day={day}
-                totalDays={total}
-                mine={view.myItems}
-                cash={portfolio.cash}
-                usedToday={usedToday}
-                canAct={canAct}
-                onBuy={buyItem}
-                onUse={(k) => useCard(k)}
-                effectsOnMe={effectsOnMe}
-                busy={busy}
-              />
+              {cards}
             </section>
           </div>
         </section>
       </main>
-
-      <nav className="bottom-nav">
-        {(
-          [
-            ['list', '📋', '종목'],
-            ['detail', '📈', '차트·거래'],
-            ['info', '📰', '뉴스·자산·카드'],
-          ] as [Tab, string, string][]
-        ).map(([t, i, l]) => (
-          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-            <span>{i}</span>
-            {l}
-            {t === 'info' && newsSymbols.size > 0 && tab !== 'info' && <i className="nav-dot" />}
-          </button>
-        ))}
-      </nav>
-
-      {!solo && (
-        <>
-          <ReactionButton
-            onSend={(r) => {
-              sendReaction(r);
-              pushBubble({ ...r, id: Date.now(), from: me, mine: true });
-            }}
-          />
-          <ReactionBubbles items={bubbles.map((b) => ({ ...b, nickname: players.find((p) => p.id === b.from)?.nickname ?? '' }))} />
-        </>
-      )}
-
-      {toast && <div className={'toast ' + toast.kind}>{toast.text}</div>}
-
-      {closing !== null && (
-        <DayCloseOverlay
-          market={m}
-          day={closing}
-          myEquity={equity}
-          myDelta={equity - (closing === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, closing - 1), pricesAt(m, closing - 1, true)))}
-          last={closing + 1 >= total}
-          onNext={nextDay}
-        />
-      )}
-      {fakeModal && (
-        <FakeNewsModal
-          onCancel={() => setFakeModal(false)}
-          onSubmit={(symbol, t) => {
-            setFakeModal(false);
-            useCard('fake', { symbol, tone: t });
-          }}
-        />
-      )}
-      {tutorial && (
-        <Tutorial
-          onDone={() => {
-            markTutorialSeen();
-            setTutorial(false);
-          }}
-        />
-      )}
+      <div className="kbd-hint muted">
+        <kbd>/</kbd> 검색 · <kbd>↑</kbd>
+        <kbd>↓</kbd> 종목 이동 · <kbd>Enter</kbd> 주문
+      </div>
+      {overlays}
     </div>
   );
 }

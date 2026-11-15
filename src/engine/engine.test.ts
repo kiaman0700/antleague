@@ -12,6 +12,7 @@ function game(over: Partial<GameData['room']> = {}): GameData {
     ],
     trades: [],
     items: [],
+    orders: [],
   };
 }
 const now = Date.now();
