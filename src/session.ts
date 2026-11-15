@@ -2,27 +2,13 @@ export type UiMode = 'easy' | 'pro';
 
 export interface Session {
   mode: 'solo' | 'multi';
+  /** 둘이서 할 때만 */
   roomId: string | null;
+  code?: string;
   playerId: string;
   nickname: string;
-  seed: number;
-  totalDays: number;
-  turnSeconds: number;
   ui: UiMode;
-  /** 방 코드 (주소창 표시용) */
-  code?: string;
 }
-
-/** 연습 모드는 서버가 없으니 진행 상황을 브라우저에 저장 (페이지 이동/새로고침해도 유지) */
-export interface SoloSave {
-  session: Session;
-  day: number;
-  trades: import('./game/portfolio').Trade[];
-  items: import('./game/items').ItemRow[];
-}
-const SOLO = 'stockduel.solo';
-export const loadSolo = () => json<SoloSave | null>(SOLO, null);
-export const saveSolo = (s: SoloSave | null) => set(SOLO, s ? JSON.stringify(s) : null);
 
 export const DAY_OPTIONS = [
   { days: 10, label: '10일', desc: '약 10~15분' },

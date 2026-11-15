@@ -1,54 +1,33 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { LineChart } from '../components/Chart';
-import { deriveItems, ITEM_MAP, type ItemKind, type ItemRow } from '../game/items';
-import type { Market } from '../game/market';
-import { computePortfolio, equityHistory, START_CASH, type Trade } from '../game/portfolio';
+import type { View } from '../engine/engine';
+import { deriveItems, ITEM_MAP, type ItemKind } from '../game/items';
+import { KR_INDEX_BASE, type Market } from '../game/market';
+import { computePortfolio, equityHistory, START_CASH } from '../game/portfolio';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { pct, tone, won, wonShort } from '../lib/format';
 import { play } from '../lib/sound';
-import { fetchTrades, saveResult, type Player } from '../net/room';
 import type { Session } from '../session';
 
 interface Props {
   session: Session;
   market: Market;
-  myTrades: Trade[];
-  players: Player[];
-  itemRows: ItemRow[];
+  final: NonNullable<View['final']>;
   onExit: () => void;
 }
 
 const COLORS = ['var(--me)', 'var(--opp)'];
 
-export function ResultScreen({ session, market, myTrades, players, itemRows, onExit }: Props) {
+export function ResultScreen({ session, market, final, onExit }: Props) {
   const solo = session.mode === 'solo';
-  const [allTrades, setAllTrades] = useState<Trade[] | null>(solo ? myTrades : null);
-  const [err, setErr] = useState('');
   const last = market.totalDays - 1;
 
-  const load = () => {
-    if (!session.roomId) return;
-    setErr('');
-    fetchTrades(session.roomId)
-      .then(setAllTrades)
-      .catch((e) => setErr(String(e.message ?? e)));
-  };
-  useEffect(() => {
-    if (solo) return;
-    const t = setTimeout(load, 800);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const results = useMemo(() => {
-    if (!allTrades) return null;
-    const people = solo
-      ? [{ id: session.playerId, nickname: session.nickname }]
-      : [...players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
-    const items = deriveItems(session.seed, people.map((p) => p.id), itemRows, last, market.totalDays, solo);
+    const people = [...final.players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
+    const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2);
     return people.map((p) => {
-      const trades = allTrades.filter((t) => t.player_id === p.id);
-      const spends = itemRows.filter((r) => r.player_id === p.id && r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost }));
+      const trades = final.trades.filter((t) => t.player_id === p.id);
+      const spends = final.items.filter((r) => r.player_id === p.id && r.action === 'buy').map((r) => ({ day: r.day, cost: r.cost }));
       const pf = computePortfolio(trades, spends);
       const hist = equityHistory(trades, spends, market);
       const equity = hist[hist.length - 1];
@@ -65,45 +44,22 @@ export function ResultScreen({ session, market, myTrades, players, itemRows, onE
       const fakesReceived = items.effects.filter((e) => e.to === p.id && e.kind === 'fake' && !e.blocked).length;
       return { id: p.id, nickname: p.nickname, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
-  }, [allTrades, players, session, market, itemRows, solo, last]);
+  }, [final, session.playerId, market, last]);
 
-  const winner =
-    results && results.length === 2 ? (results[0].equity === results[1].equity ? null : results[0].equity > results[1].equity ? results[0] : results[1]) : null;
+  const winner = results.length === 2 ? (results[0].equity === results[1].equity ? null : results[0].equity > results[1].equity ? results[0] : results[1]) : null;
 
-  const saved = useMemo(() => ({ done: false }), []);
+  const played = useRef(false);
   useEffect(() => {
-    if (!results || solo || results.length !== 2 || !session.roomId || saved.done) return;
-    saved.done = true;
-    saveResult(
-      session.roomId,
-      results.map((r) => ({ nickname: r.nickname, equity: Math.round(r.equity), ret: r.ret })),
-      winner?.nickname ?? null,
-    ).catch(() => {});
+    if (played.current || solo) return;
+    played.current = true;
     play(winner?.id === session.playerId ? 'win' : 'lose');
-  }, [results, solo, session, winner, saved]);
+  }, [solo, winner, session.playerId]);
 
-  const indexRet = market.index[last].close / 2500 - 1;
+  const indexRet = market.index[last].close / KR_INDEX_BASE - 1;
   const stockRank = useMemo(
     () => STOCKS.map((s) => ({ s, r: market.bars[s.symbol][last].close / market.base[s.symbol] - 1 })).sort((a, b) => b.r - a.r),
     [market, last],
   );
-
-  if (!results) {
-    return (
-      <div className="center-msg">
-        <div className="spinner" />
-        <p>결과 집계 중…</p>
-        {err && (
-          <>
-            <p className="error">{err}</p>
-            <button className="btn" onClick={load}>
-              다시 시도
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
 
   const me = results.find((r) => r.id === session.playerId)!;
   const iWon = winner?.id === session.playerId;

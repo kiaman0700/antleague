@@ -1,25 +1,31 @@
-import { gaussian, mulberry32, pick, range, Rng } from '../lib/rng';
-import * as T from './news';
-import { SECTOR_MAP, SECTORS, STOCKS, STOCK_MAP } from './stocks';
+import { gaussian, mulberry32, pick, range, type Rng } from '../lib/rng.js';
+import * as T from './news.js';
+import { COMPANIES, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
 /** 하루 장중 가격 포인트 수 (마감 애니메이션 / 라인차트용) */
 export const INTRADAY_POINTS = 8;
 export const LIMIT_UP = 1.3;
 export const LIMIT_DOWN = 0.7;
+export const KR_INDEX_BASE = 2500;
+export const US_INDEX_BASE = 5000;
 
 export type NewsKind = 'macro' | 'sector' | 'company';
+export type MacroType = 'rate' | 'fed' | 'oil' | 'fx' | 'kr' | 'us';
 
 export interface NewsEvent {
   day: number;
   kind: NewsKind;
   symbol: string | null;
   sector: string | null;
+  macro?: MacroType;
   headline: string;
   rumor: boolean;
   /** 헤드라인이 말하는 방향 (루머는 실제와 다를 수 있음) */
   tone: 'good' | 'bad';
   /** 루머일 때 실제 방향 (아이템 '루머 감별기'용) */
   realTone: 'good' | 'bad';
+  /** 이 뉴스와 관련된 종목 (뉴스 아래 바로가기) */
+  related: string[];
 }
 
 export interface Bar {
@@ -32,8 +38,10 @@ export interface Bar {
 }
 
 export interface Macro {
-  /** 기준금리 % */
+  /** 한국 기준금리 % */
   rate: number;
+  /** 미국 기준금리 % */
+  usRate: number;
   /** 원/달러 */
   fx: number;
   /** 유가 $ */
@@ -43,12 +51,18 @@ export interface Macro {
 export interface Market {
   seed: number;
   totalDays: number;
-  /** 첫날 시가 이전 기준가 */
+  /** 첫날 시가 이전 기준가 (원) */
   base: Record<string, number>;
+  /** 모든 종목의 원화 가격 — 내 돈은 전부 원화로 계산 */
   bars: Record<string, Bar[]>;
+  /** 미국 주식의 달러 가격 (표시용) */
+  usd: Record<string, Bar[]>;
+  baseUsd: Record<string, number>;
   index: Bar[];
-  /** 각 날짜 아침(뉴스 반영 후) 거시 지표 */
+  usIndex: Bar[];
+  /** 각 날짜 아침(뉴스 반영 후) 거시 지표. macro0 = 첫날 전 */
   macro: Macro[];
+  macro0: Macro;
   news: NewsEvent[];
 }
 
@@ -56,79 +70,149 @@ function roundPrice(p: number): number {
   const unit = p >= 50000 ? 100 : p >= 10000 ? 50 : p >= 5000 ? 10 : 5;
   return Math.max(unit, Math.round(p / unit) * unit);
 }
+const roundUsd = (p: number) => Math.max(0.01, Math.round(p * 100) / 100);
+const round2 = (v: number) => Math.round(v * 100) / 100;
 
 function fill(tpl: string, vars: Record<string, string>) {
   return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 
+const ETFS = STOCKS.filter((s) => s.etf);
+
+/* ---------------- 연관 종목 ---------------- */
+
+const MACRO_RELATED: Record<MacroType, string[]> = {
+  rate: ['KBNK', 'BILD', 'CLOD', 'HBIO', 'HOME', 'BLOK'],
+  fed: ['QNTX', 'NXRA', 'HYPR', 'U500', 'UTEC', 'USDX'],
+  oil: ['OILK', 'OILX', 'SKYA', 'SUNE', 'TRVL', 'VOLA'],
+  fx: ['USDX', 'HDMR', 'CORE', 'SKYA', 'U500', 'MLKY'],
+  kr: ['KIDX', 'KLEV', 'KINV', 'SECU', 'CORE', 'NEOT'],
+  us: ['U500', 'UTEC', 'NXRA', 'HYPR', 'MEGA', 'SEMI'],
+};
+
+function etfsHolding(symbols: string[]) {
+  return ETFS.filter((e) => e.etf!.track.type === 'basket' && etfMembers(e.etf!).some((m) => symbols.includes(m))).map((e) => e.symbol);
+}
+
+function uniq(list: string[], max = 6) {
+  return [...new Set(list)].slice(0, max);
+}
+
+export function relatedForCompany(s: StockDef): string[] {
+  const peers = COMPANIES.filter((p) => p.sector === s.sector && p.symbol !== s.symbol).map((p) => p.symbol);
+  const linked = Object.entries(SECTOR_MAP[s.sector].links)
+    .filter(([, w]) => w >= 0.2)
+    .flatMap(([id]) => COMPANIES.filter((c) => c.sector === id).slice(0, 1).map((c) => c.symbol));
+  return uniq([s.symbol, ...peers.slice(0, 2), ...linked, ...etfsHolding([s.symbol])]);
+}
+
+export function relatedForSector(id: string): string[] {
+  const own = COMPANIES.filter((c) => c.sector === id).map((c) => c.symbol);
+  const linked = Object.entries(SECTOR_MAP[id].links)
+    .filter(([, w]) => w >= 0.2)
+    .flatMap(([sid]) => COMPANIES.filter((c) => c.sector === sid).slice(0, 1).map((c) => c.symbol));
+  return uniq([...own, ...linked, ...etfsHolding(own)]);
+}
+
+/* ---------------- 생성 ---------------- */
+
 /** 같은 (seed, totalDays)면 항상 같은 시장 — 두 기기가 서버 없이 같은 시장을 본다 */
 export function generateMarket(seed: number, totalDays: number): Market {
   const rng = mulberry32(seed);
   const news: NewsEvent[] = [];
-  const base: Record<string, number> = {};
-  for (const s of STOCKS) base[s.symbol] = roundPrice(s.basePrice * range(rng, 0.85, 1.15));
 
-  let macro: Macro = { rate: pick(rng, [2.75, 3.0, 3.25, 3.5]), fx: Math.round(range(rng, 1280, 1420)), oil: Math.round(range(rng, 65, 95)) };
+  let macro: Macro = {
+    rate: pick(rng, [2.75, 3.0, 3.25, 3.5]),
+    usRate: pick(rng, [3.75, 4.0, 4.25, 4.5, 4.75]),
+    fx: Math.round(range(rng, 1280, 1420)),
+    oil: Math.round(range(rng, 65, 95)),
+  };
+  const macro0 = macro;
   const macroByDay: Macro[] = [];
 
-  // 결과: 각 종목의 하루 '뉴스 충격(S)'과 '잡음(N)' 로그수익률
+  // 기준가
+  const baseUsd: Record<string, number> = {};
+  const base: Record<string, number> = {};
+  for (const s of COMPANIES) {
+    if (s.currency === 'USD') {
+      baseUsd[s.symbol] = roundUsd(s.basePrice * range(rng, 0.85, 1.15));
+      base[s.symbol] = roundPrice(baseUsd[s.symbol] * macro.fx);
+    } else base[s.symbol] = roundPrice(s.basePrice * range(rng, 0.85, 1.15));
+  }
+  for (const e of ETFS) base[e.symbol] = roundPrice(e.basePrice * range(rng, 0.8, 1.6));
+
   const bars: Record<string, Bar[]> = Object.fromEntries(STOCKS.map((s) => [s.symbol, []]));
+  const usd: Record<string, Bar[]> = Object.fromEntries(COMPANIES.filter((s) => s.currency === 'USD').map((s) => [s.symbol, []]));
   const last: Record<string, number> = { ...base };
+  const lastUsd: Record<string, number> = { ...baseUsd };
   const indexBars: Bar[] = [];
-  let indexLevel = 2500;
+  const usIndexBars: Bar[] = [];
+  let krLevel = KR_INDEX_BASE;
+  let usLevel = US_INDEX_BASE;
 
   for (let day = 0; day < totalDays; day++) {
     // ---- 1) 오늘의 뉴스 ----
     let dRate = 0;
+    let dUsRate = 0;
     let fxPct = gaussian(rng) * 0.35;
     let oilPct = gaussian(rng) * 1.3;
-    let sentiment = 0;
+    let krSent = 0;
+    let usSent = 0;
     const sectorShock: Record<string, number> = {};
     const stockShock: Record<string, number> = {};
     const addSec = (id: string, v: number) => (sectorShock[id] = (sectorShock[id] ?? 0) + v);
     const addStock = (sym: string, v: number) => (stockShock[sym] = (stockShock[sym] ?? 0) + v);
+    const pushMacro = (macroType: MacroType, headline: string, tone: 'good' | 'bad') =>
+      news.push({ day, kind: 'macro', symbol: null, sector: null, macro: macroType, headline, rumor: false, tone, realTone: tone, related: MACRO_RELATED[macroType] });
 
-    const count = day === 0 ? 2 : 1 + (rng() < 0.55 ? 1 : 0) + (rng() < 0.2 ? 1 : 0);
+    const count = day === 0 ? 2 : 1 + (rng() < 0.55 ? 1 : 0) + (rng() < 0.25 ? 1 : 0);
     for (let i = 0; i < count; i++) {
       const r = rng();
       if (r < 0.04 && day > 2) {
-        // 블랙스완 / 대형 호재
+        // 블랙스완 / 대형 호재 — 한국·미국 모두
         const crash = rng() < 0.6;
-        sentiment += crash ? -range(rng, 0.045, 0.075) : range(rng, 0.03, 0.05);
-        const tone = crash ? 'bad' : 'good';
-        news.push({ day, kind: 'macro', symbol: null, sector: null, headline: pick(rng, crash ? T.MACRO.crash : T.MACRO.rally), rumor: false, tone, realTone: tone });
-      } else if (r < 0.24) {
+        const mag = crash ? -range(rng, 0.045, 0.075) : range(rng, 0.03, 0.05);
+        krSent += mag;
+        usSent += mag * 0.8;
+        if (crash) fxPct += range(rng, 1, 2.5); // 위기 땐 달러 강세
+        pushMacro('kr', pick(rng, crash ? T.MACRO.crash : T.MACRO.rally), crash ? 'bad' : 'good');
+      } else if (r < 0.27) {
         const t = rng();
-        let headline: string;
-        let tone: 'good' | 'bad';
-        if (t < 0.25) {
-          // 금리
+        if (t < 0.18) {
           const cut = macro.rate > 1.0 && (macro.rate >= 5 || rng() < 0.55);
           const d = rng() < 0.75 ? 0.25 : 0.5;
           dRate += cut ? -d : d;
-          headline = fill(pick(rng, cut ? T.MACRO.rateCut : T.MACRO.rateHike), { d: d.toFixed(2) });
-          tone = cut ? 'good' : 'bad';
-        } else if (t < 0.5) {
+          fxPct += cut ? 0.5 : -0.5; // 금리 내리면 원화 약세
+          pushMacro('rate', fill(pick(rng, cut ? T.MACRO.rateCut : T.MACRO.rateHike), { d: d.toFixed(2) }), cut ? 'good' : 'bad');
+        } else if (t < 0.34) {
+          const cut = macro.usRate > 1.0 && (macro.usRate >= 5.5 || rng() < 0.55);
+          const d = rng() < 0.75 ? 0.25 : 0.5;
+          dUsRate += cut ? -d : d;
+          fxPct += cut ? -range(rng, 0.6, 1.4) : range(rng, 0.6, 1.4); // 미국 금리 오르면 달러 강세
+          pushMacro('fed', fill(pick(rng, cut ? T.MACRO.fedCut : T.MACRO.fedHike), { d: d.toFixed(2) }), cut ? 'good' : 'bad');
+        } else if (t < 0.52) {
           const up = rng() < 0.5;
           const d = range(rng, 5, 12);
           oilPct += up ? d : -d;
-          headline = fill(pick(rng, up ? T.MACRO.oilUp : T.MACRO.oilDown), { d: d.toFixed(0) });
-          tone = up ? 'bad' : 'good';
-        } else if (t < 0.72) {
+          pushMacro('oil', fill(pick(rng, up ? T.MACRO.oilUp : T.MACRO.oilDown), { d: d.toFixed(0) }), up ? 'bad' : 'good');
+        } else if (t < 0.68) {
           const up = rng() < 0.5;
           const d = range(rng, 1.2, 2.8);
           fxPct += up ? d : -d;
-          headline = fill(pick(rng, up ? T.MACRO.fxUp : T.MACRO.fxDown), { d: d.toFixed(1) });
-          tone = up ? 'bad' : 'good';
+          pushMacro('fx', fill(pick(rng, up ? T.MACRO.fxUp : T.MACRO.fxDown), { d: d.toFixed(1) }), up ? 'bad' : 'good');
+        } else if (t < 0.84) {
+          const good = rng() < 0.5;
+          krSent += (good ? 1 : -1) * range(rng, 0.012, 0.028);
+          pushMacro('kr', pick(rng, good ? T.MACRO.good : T.MACRO.bad), good ? 'good' : 'bad');
         } else {
           const good = rng() < 0.5;
-          sentiment += (good ? 1 : -1) * range(rng, 0.012, 0.028);
-          headline = pick(rng, good ? T.MACRO.good : T.MACRO.bad);
-          tone = good ? 'good' : 'bad';
+          const m = (good ? 1 : -1) * range(rng, 0.012, 0.028);
+          usSent += m;
+          krSent += m * 0.4; // 미국 증시는 한국에도 영향
+          pushMacro('us', pick(rng, good ? T.MACRO.usGood : T.MACRO.usBad), good ? 'good' : 'bad');
         }
-        news.push({ day, kind: 'macro', symbol: null, sector: null, headline, rumor: false, tone, realTone: tone });
-      } else if (r < 0.48) {
-        const sec = pick(rng, SECTORS);
+      } else if (r < 0.5) {
+        const sec = pick(rng, STOCK_SECTORS);
         const good = rng() < 0.5;
         const rumor = rng() < 0.2;
         const realGood = rumor ? (rng() < 0.6 ? good : !good) : good;
@@ -144,9 +228,10 @@ export function generateMarket(seed: number, totalDays: number): Market {
           rumor,
           tone: good ? 'good' : 'bad',
           realTone: realGood ? 'good' : 'bad',
+          related: relatedForSector(sec.id),
         });
       } else {
-        const s = pick(rng, STOCKS);
+        const s = pick(rng, COMPANIES);
         const sec = SECTOR_MAP[s.sector];
         const good = rng() < 0.5;
         const rumor = rng() < 0.25;
@@ -155,8 +240,7 @@ export function generateMarket(seed: number, totalDays: number): Market {
         // 이미 소문이 퍼져 '재료 소멸' — 좋은 뉴스에도 떨어지는 경우
         if (!rumor && rng() < 0.12) mag = -mag * 0.3;
         addStock(s.symbol, mag);
-        // 같은 업종 경쟁사도 업황 기대감에 함께 반응, 연관 업종은 조금
-        for (const p of STOCKS) if (p.sector === s.sector && p.symbol !== s.symbol) addStock(p.symbol, mag * 0.25);
+        for (const p of COMPANIES) if (p.sector === s.sector && p.symbol !== s.symbol) addStock(p.symbol, mag * 0.25);
         for (const [link, w] of Object.entries(sec.links)) addSec(link, mag * w * 0.3);
         const pool = [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
         news.push({
@@ -168,30 +252,50 @@ export function generateMarket(seed: number, totalDays: number): Market {
           rumor,
           tone: good ? 'good' : 'bad',
           realTone: realGood ? 'good' : 'bad',
+          related: relatedForCompany(s),
         });
       }
     }
 
-    // ---- 2) 거시 지표 갱신 ----
+    // ---- 2) 거시 지표 ----
+    const prevMacro = macro;
     macro = {
-      rate: Math.round(Math.min(6, Math.max(0.5, macro.rate + dRate)) * 100) / 100,
+      rate: round2(Math.min(6, Math.max(0.5, macro.rate + dRate))),
+      usRate: round2(Math.min(7, Math.max(0.25, macro.usRate + dUsRate))),
       fx: Math.round(macro.fx * (1 + fxPct / 100)),
       oil: Math.round(macro.oil * (1 + oilPct / 100) * 10) / 10,
     };
     macroByDay.push(macro);
+    const fxRet = Math.log(macro.fx / prevMacro.fx);
+    const oilRet = Math.log(macro.oil / prevMacro.oil);
 
-    // ---- 3) 가격 ----
-    const marketNoise = 0.0003 + 0.008 * gaussian(rng);
+    // ---- 3) 업종 흐름 ----
+    const global = gaussian(rng);
+    const krNoise = 0.0003 + 0.0055 * global + 0.006 * gaussian(rng);
+    const usNoise = 0.0004 + 0.0065 * global + 0.005 * gaussian(rng);
     const sectorRet: Record<string, { s: number; n: number }> = {};
-    for (const sec of SECTORS) {
-      const known = sec.beta * sentiment + sec.rate * dRate + (sec.fx * fxPct) / 100 + (sec.oil * oilPct) / 100 + (sectorShock[sec.id] ?? 0);
-      const noise = sec.beta * marketNoise + sec.vol * gaussian(rng);
+    for (const sec of STOCK_SECTORS) {
+      const isUS = sec.region === 'US';
+      const known =
+        sec.beta * (isUS ? usSent : krSent) +
+        sec.rate * (isUS ? dUsRate : dRate + 0.3 * dUsRate) +
+        (sec.fx * fxPct) / 100 +
+        (sec.oil * oilPct) / 100 +
+        (sectorShock[sec.id] ?? 0);
+      const noise = sec.beta * (isUS ? usNoise : krNoise) + sec.vol * gaussian(rng);
       sectorRet[sec.id] = { s: known, n: noise };
     }
 
-    let idxOpen = 0;
-    let idxClose = 0;
-    for (const s of STOCKS) {
+    // ---- 4) 개별 종목 ----
+    const rOpenK: Record<string, number> = {};
+    const rDayK: Record<string, number> = {};
+    let krO = 0,
+      krC = 0,
+      krN = 0,
+      usO = 0,
+      usC = 0,
+      usN = 0;
+    for (const s of COMPANIES) {
       const sr = sectorRet[s.sector];
       const S = s.sectorBeta * sr.s + (stockShock[s.symbol] ?? 0);
       const N = s.sectorBeta * sr.n + s.drift + s.vol * gaussian(rng);
@@ -199,31 +303,80 @@ export function generateMarket(seed: number, totalDays: number): Market {
       const g = range(rng, 0.3, 0.7);
       const rOpen = g * S + 0.3 * N;
       const rDay = (1 - g) * S + 0.7 * N;
-      const prev = last[s.symbol];
-      // 실제 한국 시장처럼 하루 ±30% 가격제한폭(상한가/하한가)
-      const limit = (p: number) => Math.min(prev * LIMIT_UP, Math.max(prev * LIMIT_DOWN, Math.max(s.basePrice * 0.05, p)));
-      const open = roundPrice(limit(prev * Math.exp(rOpen)));
-      const close = roundPrice(limit(open * Math.exp(rDay)));
-      const path = intradayPath(rng, open, close, s.vol + SECTOR_MAP[s.sector].vol).map((p, i, a) =>
-        i === 0 || i === a.length - 1 ? p : roundPrice(limit(p)),
-      );
-      bars[s.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
-      idxOpen += Math.log(open / prev);
-      idxClose += Math.log(close / prev);
-      last[s.symbol] = close;
+      const vol = s.vol + SECTOR_MAP[s.sector].vol;
+
+      if (s.currency === 'USD') {
+        const prev = lastUsd[s.symbol];
+        const lim = (p: number) => Math.min(prev * 1.5, Math.max(prev * 0.5, p));
+        const open = roundUsd(lim(prev * Math.exp(rOpen)));
+        const close = roundUsd(lim(open * Math.exp(rDay)));
+        const path = intradayPath(rng, open, close, vol, false).map(roundUsd);
+        usd[s.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
+        lastUsd[s.symbol] = close;
+        // 원화 환산 (오늘 환율)
+        const kPath = path.map((p) => roundPrice(p * macro.fx));
+        const kb = { open: kPath[0], close: kPath[kPath.length - 1], high: Math.max(...kPath), low: Math.min(...kPath), path: kPath };
+        bars[s.symbol].push(kb);
+        usO += Math.log(open / prev);
+        usC += Math.log(close / prev);
+        usN++;
+      } else {
+        const prev = last[s.symbol];
+        // 실제 한국 시장처럼 하루 ±30% 가격제한폭(상한가/하한가)
+        const lim = (p: number) => Math.min(prev * LIMIT_UP, Math.max(prev * LIMIT_DOWN, Math.max(s.basePrice * 0.05, p)));
+        const open = roundPrice(lim(prev * Math.exp(rOpen)));
+        const close = roundPrice(lim(open * Math.exp(rDay)));
+        const path = intradayPath(rng, open, close, vol).map((p, i, a) => (i === 0 || i === a.length - 1 ? p : roundPrice(lim(p))));
+        bars[s.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
+        krO += Math.log(open / prev);
+        krC += Math.log(close / prev);
+        krN++;
+      }
+      const b = bars[s.symbol][day];
+      rOpenK[s.symbol] = Math.log(b.open / last[s.symbol]);
+      rDayK[s.symbol] = Math.log(b.close / b.open);
+      last[s.symbol] = b.close;
     }
-    const n = STOCKS.length;
-    const io = indexLevel * Math.exp(idxOpen / n);
-    const ic = indexLevel * Math.exp(idxClose / n);
-    const ipath = intradayPath(rng, io, ic, 0.006, false).map((v) => Math.round(v * 100) / 100);
-    indexBars.push({ open: round2(io), close: round2(ic), high: Math.max(...ipath), low: Math.min(...ipath), path: ipath });
-    indexLevel = ic;
+
+    // ---- 5) 지수 ----
+    const io = krLevel * Math.exp(krO / krN);
+    const ic = krLevel * Math.exp(krC / krN);
+    const ip = intradayPath(rng, io, ic, 0.006, false).map(round2);
+    indexBars.push({ open: round2(io), close: round2(ic), high: Math.max(...ip), low: Math.min(...ip), path: ip });
+    krLevel = ic;
+    const uo = usLevel * Math.exp(usO / usN);
+    const uc = usLevel * Math.exp(usC / usN);
+    const up = intradayPath(rng, uo, uc, 0.006, false).map(round2);
+    usIndexBars.push({ open: round2(uo), close: round2(uc), high: Math.max(...up), low: Math.min(...up), path: up });
+    usLevel = uc;
+
+    // ---- 6) ETF: 담고 있는 것의 원화 수익률 × 배율 ----
+    for (const e of ETFS) {
+      const def = e.etf!;
+      let ro = 0;
+      let rd = 0;
+      if (def.track.type === 'oil') {
+        ro = 0.6 * oilRet;
+        rd = 0.4 * oilRet + 0.004 * gaussian(rng);
+      } else if (def.track.type === 'fx') {
+        ro = fxRet;
+        rd = 0.0015 * gaussian(rng);
+      } else {
+        const members = etfMembers(def);
+        ro = members.reduce((a, m) => a + rOpenK[m], 0) / members.length;
+        rd = members.reduce((a, m) => a + rDayK[m], 0) / members.length;
+      }
+      const prev = last[e.symbol];
+      const open = roundPrice(Math.max(100, prev * Math.exp(def.lev * ro)));
+      const close = roundPrice(Math.max(100, open * Math.exp(def.lev * rd)));
+      const path = intradayPath(rng, open, close, 0.004 * Math.abs(def.lev));
+      bars[e.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
+      last[e.symbol] = close;
+    }
   }
 
-  return { seed, totalDays, base, bars, index: indexBars, macro: macroByDay, news };
+  return { seed, totalDays, base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news };
 }
-
-const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** open에서 close로 가는 브라운 브리지 형태의 장중 흐름 */
 function intradayPath(rng: Rng, open: number, close: number, vol: number, round = true): number[] {
@@ -242,15 +395,26 @@ function intradayPath(rng: Rng, open: number, close: number, vol: number, round 
   return out;
 }
 
-/** 해당 날짜의 '현재가': 장중(턴 진행 중)엔 시가, 마감 후엔 종가 */
+/** 해당 날짜의 '현재가'(원): 장중(턴 진행 중)엔 시가, 마감 후엔 종가 */
 export function priceAt(m: Market, symbol: string, day: number, closed: boolean): number {
   const b = m.bars[symbol][Math.min(day, m.totalDays - 1)];
+  return closed ? b.close : b.open;
+}
+
+export function usdAt(m: Market, symbol: string, day: number, closed: boolean): number | null {
+  const u = m.usd[symbol];
+  if (!u) return null;
+  const b = u[Math.min(day, m.totalDays - 1)];
   return closed ? b.close : b.open;
 }
 
 /** 전일 종가 (첫날은 기준가) */
 export function prevClose(m: Market, symbol: string, day: number): number {
   return day <= 0 ? m.base[symbol] : m.bars[symbol][day - 1].close;
+}
+export function prevCloseUsd(m: Market, symbol: string, day: number): number | null {
+  if (!m.usd[symbol]) return null;
+  return day <= 0 ? m.baseUsd[symbol] : m.usd[symbol][day - 1].close;
 }
 
 export function pricesAt(m: Market, day: number, closed: boolean): Record<string, number> {

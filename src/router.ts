@@ -5,7 +5,7 @@ import type { Session } from './session';
 export type Route =
   | { kind: 'lobby' }
   | { kind: 'waiting'; roomId: string; playerId: string; nickname: string; code: string }
-  | { kind: 'game'; session: Session; offset: number }
+  | { kind: 'game'; session: Session }
   | { kind: 'resolve'; path: string };
 
 export function pathOf(r: Route): string {

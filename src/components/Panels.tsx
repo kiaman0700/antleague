@@ -1,40 +1,59 @@
 import { useState } from 'react';
 import { ITEM_MAP, ITEMS, canBuy, canUse, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
-import type { Market, NewsEvent } from '../game/market';
-import { START_CASH, type PortfolioState } from '../game/portfolio';
-import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
+import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
+import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
+import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
 
 /* ------------------------------ 뉴스 ------------------------------ */
 
-export interface ShownNews extends NewsEvent {
-  fake?: boolean;
-}
-
 interface NewsProps {
   ui: UiMode;
   day: number;
-  news: ShownNews[];
+  news: NewsEvent[];
   tomorrow: NewsEvent[] | null;
   rumorCheck: boolean;
   bestSector: string | null;
+  spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
+  prices: Record<string, number>;
+  change: (symbol: string) => number;
   onSelect: (symbol: string) => void;
   onSelectSector: (sector: string) => void;
 }
 
 const KIND_LABEL = { macro: '시장', sector: '업종', company: '기업' } as const;
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, onSelect, onSelectSector }: NewsProps) {
+function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change: (s: string) => number; onSelect: (s: string) => void }) {
+  if (!symbols.length) return null;
+  return (
+    <div className="related">
+      <span className="related-label">관련</span>
+      {symbols.map((sym) => {
+        const ch = change(sym);
+        return (
+          <button
+            key={sym}
+            className="rel-chip"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(sym);
+            }}
+          >
+            {STOCK_MAP[sym].name}
+            <i className={tone(ch)}>{pct(ch, 1)}</i>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, prices, change, onSelect, onSelectSector }: NewsProps) {
   const [showOld, setShowOld] = useState(false);
   const today = news.filter((n) => n.day === day);
   const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
-
-  const click = (n: NewsEvent) => {
-    if (n.symbol) onSelect(n.symbol);
-    else if (n.sector) onSelectSector(n.sector);
-  };
 
   return (
     <div className="news-panel">
@@ -42,8 +61,9 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, onS
         <div className="reveal paper">
           <div className="reveal-title">📰 내일 신문 (나만 보여요)</div>
           {tomorrow.map((n, i) => (
-            <div key={i} className={'reveal-line ' + n.tone}>
-              {n.headline}
+            <div key={i} className="reveal-item">
+              <div className={'reveal-line ' + n.tone}>{n.headline}</div>
+              <RelatedChips symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
             </div>
           ))}
         </div>
@@ -58,6 +78,23 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, onS
             </button>{' '}
             입니다.
           </div>
+          <RelatedChips symbols={COMPANIES.filter((c) => c.sector === bestSector).map((c) => c.symbol)} change={change} onSelect={onSelect} />
+        </div>
+      )}
+      {spy && (
+        <div className="reveal spy">
+          <div className="reveal-title">👀 {spy.nickname}의 계좌</div>
+          <div className="reveal-line">
+            현금 <b>{wonShort(spy.cash)}</b>
+          </div>
+          {Object.keys(spy.holdings).length === 0 && <div className="reveal-line">주식 없이 전부 현금이에요</div>}
+          {Object.entries(spy.holdings).map(([sym, h]) => (
+            <button key={sym} className="spy-row" onClick={() => onSelect(sym)}>
+              <span>{STOCK_MAP[sym].name}</span>
+              <span>{num(h.qty)}주</span>
+              <b>{wonShort(h.qty * prices[sym])}</b>
+            </button>
+          ))}
         </div>
       )}
 
@@ -65,29 +102,28 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, onS
         {day + 1}일차 아침 뉴스 <span className="count-badge">{today.length}</span>
       </h4>
       {today.map((n, i) => (
-        <button key={i} className={'news-card ' + n.tone} onClick={() => click(n)}>
+        <div key={i} className={'news-card ' + n.tone}>
           <div className="news-meta">
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (
-              <span className="muted">
+              <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>
                 {SECTOR_MAP[n.sector].emoji} {SECTOR_MAP[n.sector].name}
-              </span>
+              </button>
             )}
             {n.rumor && (
               <span className="rumor">
                 <Term k="루머" />
               </span>
             )}
-            {n.rumor && rumorCheck && !n.fake && (
-              <span className={'verdict ' + (n.tone === n.realTone ? 'true' : 'false')}>🔍 {n.tone === n.realTone ? '진짜' : '가짜'}</span>
-            )}
+            {n.rumor && rumorCheck && <span className={'verdict ' + (n.tone === n.realTone ? 'true' : 'false')}>🔍 {n.tone === n.realTone ? '진짜' : '가짜'}</span>}
           </div>
           <div className="news-headline">
             <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
             {n.headline.replace('[루머] ', '')}
           </div>
-          {ui === 'easy' && n.kind !== 'macro' && <div className="news-go">눌러서 {n.symbol ? '종목' : '업종'} 보기 →</div>}
-        </button>
+          <RelatedChips symbols={n.related} change={change} onSelect={onSelect} />
+          {ui === 'easy' && i === 0 && <div className="news-go">관련 종목을 누르면 바로 차트로 이동해요</div>}
+        </div>
       ))}
 
       {old.length > 0 && (
@@ -98,9 +134,12 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, onS
           {showOld && (
             <ul className="old-news">
               {old.map((n, i) => (
-                <li key={i} className={n.tone} onClick={() => click(n)}>
+                <li key={i} className={n.tone}>
                   <span className="d">{n.day + 1}일</span>
-                  <span>{n.headline}</span>
+                  <span className="old-body">
+                    {n.headline}
+                    <RelatedChips symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -189,9 +228,10 @@ interface CardsProps {
   onBuy: (k: ItemKind) => void;
   onUse: (k: ItemKind) => void;
   effectsOnMe: string[];
+  busy?: boolean;
 }
 
-export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe }: CardsProps) {
+export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
   const [shop, setShop] = useState(false);
   const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
   const nextGrant = Math.ceil((day + 1) / GRANT_EVERY) * GRANT_EVERY;
@@ -229,7 +269,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                 <small>{d.desc}</small>
               </div>
               {k !== 'shield' ? (
-                <button className="btn sm primary" disabled={!!why} title={why ?? ''} onClick={() => onUse(k)}>
+                <button className="btn sm primary" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
                   사용
                 </button>
               ) : (
@@ -252,7 +292,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                   </b>
                   <small>{d.desc}</small>
                 </div>
-                <button className="btn sm" disabled={!!why} title={why ?? ''} onClick={() => onBuy(d.kind)}>
+                <button className="btn sm" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
                   {wonShort(d.cost)}
                 </button>
               </div>
@@ -268,7 +308,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
 /* ------------------------------ 가짜 뉴스 만들기 ------------------------------ */
 
 export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (symbol: string, tone: 'good' | 'bad') => void }) {
-  const [symbol, setSymbol] = useState(STOCKS[0].symbol);
+  const [symbol, setSymbol] = useState(COMPANIES[0].symbol);
   const [t, setT] = useState<'good' | 'bad'>('good');
   return (
     <div className="modal-bg" onClick={onCancel}>
@@ -278,7 +318,7 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
         <label className="field">
           <span>어느 회사?</span>
           <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-            {STOCKS.map((s) => (
+            {COMPANIES.map((s) => (
               <option key={s.symbol} value={s.symbol}>
                 {SECTOR_MAP[s.sector].emoji} {s.name}
               </option>
@@ -306,40 +346,6 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
   );
 }
 
-/* ------------------------------ 염탐 결과 ------------------------------ */
-
-export function SpyModal({ nickname, portfolio, prices, onClose }: { nickname: string; portfolio: PortfolioState | null; prices: Record<string, number>; onClose: () => void }) {
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>👀 {nickname}의 계좌</h3>
-        {!portfolio ? (
-          <p className="muted">불러오는 중…</p>
-        ) : (
-          <>
-            <div className="spy-cash">
-              현금 <b>{won(portfolio.cash)}</b>
-            </div>
-            {Object.keys(portfolio.holdings).length === 0 && <p className="empty">주식이 하나도 없어요 (전부 현금)</p>}
-            {Object.entries(portfolio.holdings).map(([s, h]) => (
-              <div key={s} className="spy-row">
-                <span>{STOCK_MAP[s].name}</span>
-                <span>{num(h.qty)}주</span>
-                <b>{wonShort(h.qty * prices[s])}</b>
-              </div>
-            ))}
-          </>
-        )}
-        <div className="modal-actions">
-          <button className="btn primary" onClick={onClose}>
-            확인
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------------ 하루 결산 ------------------------------ */
 
 interface DayCloseProps {
@@ -357,7 +363,10 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, last, onNext }
     return { s, r: market.bars[s.symbol][day].close / prev - 1 };
   }).sort((a, b) => b.r - a.r);
   const idx = market.index[day];
-  const idxPrev = day === 0 ? 2500 : market.index[day - 1].close;
+  const idxPrev = day === 0 ? KR_INDEX_BASE : market.index[day - 1].close;
+  const us = market.usIndex[day];
+  const usPrev = day === 0 ? US_INDEX_BASE : market.usIndex[day - 1].close;
+  const ur = us.close / usPrev - 1;
   const ir = idx.close / idxPrev - 1;
   return (
     <div className="modal-bg strong">
@@ -369,7 +378,8 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, last, onNext }
         </div>
         <div className="muted">오늘 내 손익 · 총자산 {wonShort(myEquity)}</div>
         <div className="close-index">
-          <Term k="지수">종합지수</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span>
+          <Term k="지수">국내 종합</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span> · 미국500 <b>{us.close.toFixed(2)}</b>{' '}
+          <span className={tone(ur)}>{pct(ur)}</span>
         </div>
         <div className="movers">
           <div>

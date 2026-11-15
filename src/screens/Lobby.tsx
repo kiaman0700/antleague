@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { createRoom, fetchHistory, fetchPlayer, fetchRoom, joinRoom, measureClockOffset, randomSeed, type MatchResult, type Room } from '../net/room';
-import { DAY_OPTIONS, loadNick, loadSaved, loadSolo, loadUi, saveMulti, saveNick, saveSolo, saveUi, TURN_OPTIONS, type Session, type UiMode } from '../session';
+import { loadSolo, newSolo, saveSolo } from '../engine/local';
 import { pct } from '../lib/format';
+import { supabase } from '../lib/supabase';
+import { api } from '../net/api';
+import { DAY_OPTIONS, loadNick, loadUi, saveNick, saveUi, TURN_OPTIONS, type Session, type UiMode } from '../session';
+
+export interface ResumeInfo {
+  roomId: string;
+  code: string;
+  status: 'waiting' | 'playing';
+  playerId: string;
+  nickname: string;
+  mode: string;
+}
+interface MatchResult {
+  id: string;
+  winner_nickname: string | null;
+  results: { nickname: string; equity: number; ret: number }[];
+  created_at: string;
+}
 
 interface Props {
   onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void;
-  onGame: (session: Session, offset: number) => void;
-}
-
-export function roomToSession(room: Room, playerId: string, nickname: string, ui: UiMode): Session {
-  return { mode: "multi", roomId: room.id, playerId, nickname, seed: room.seed, totalDays: room.total_days, turnSeconds: room.turn_seconds, ui, code: room.code };
+  onGame: (session: Session) => void;
 }
 
 export function ModePicker({ value, onChange }: { value: UiMode; onChange: (m: UiMode) => void }) {
@@ -35,28 +47,21 @@ export function Lobby({ onWaiting, onGame }: Props) {
   const [ui, setUi] = useState<UiMode>(loadUi);
   const [days, setDays] = useState(20);
   const [turnSec, setTurnSec] = useState(90);
-  const [code, setCode] = useState(() => new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '');
+  const [code, setCode] = useState(() => new URLSearchParams(location.search).get('room')?.toUpperCase().slice(0, 6) ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [history, setHistory] = useState<MatchResult[]>([]);
-  const [resume, setResume] = useState<{ room: Room; playerId: string; nickname: string; ui: UiMode } | null>(null);
-  const online = !!supabase;
+  const [resume, setResume] = useState<ResumeInfo | null>(null);
   const [soloSave, setSoloSave] = useState(() => {
     const s = loadSolo();
-    return s && s.day < s.session.totalDays ? s : null;
+    return s && s.data.room.status !== 'finished' ? s : null;
   });
+  const online = !!supabase;
 
   useEffect(() => {
-    fetchHistory().then(setHistory).catch(() => {});
-    const saved = loadSaved();
-    if (saved && online) {
-      Promise.all([fetchRoom(saved.roomId), fetchPlayer(saved.playerId)])
-        .then(([room, player]) => {
-          if (!room || !player || room.status === 'finished') return saveMulti(null);
-          setResume({ room, playerId: player.id, nickname: player.nickname, ui: player.mode });
-        })
-        .catch(() => {});
-    }
+    if (!online) return;
+    api<MatchResult[]>('history').then(setHistory).catch(() => {});
+    api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
   }, [online]);
 
   const record = useMemo(() => {
@@ -88,29 +93,27 @@ export function Lobby({ onWaiting, onGame }: Props) {
 
   const create = () =>
     run(async () => {
-      const { room, player } = await createRoom(nick.trim(), ui, days, turnSec);
-      saveMulti({ roomId: room.id, playerId: player.id, nickname: player.nickname });
-      onWaiting(room.id, player.id, player.nickname, room.code);
+      const r = await api<{ roomId: string; playerId: string; code: string }>('create', { nickname: nick.trim(), mode: ui, totalDays: days, turnSeconds: turnSec });
+      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
     });
 
   const join = () =>
     run(async () => {
-      if (code.trim().length !== 4) throw new Error('4자리 방 코드를 입력해 주세요.');
-      const { room, player } = await joinRoom(code, nick.trim(), ui);
-      saveMulti({ roomId: room.id, playerId: player.id, nickname: player.nickname });
-      onWaiting(room.id, player.id, player.nickname, room.code);
+      if (code.trim().length !== 6) throw new Error('6자리 방 코드를 입력해 주세요.');
+      const r = await api<{ roomId: string; playerId: string; code: string }>('join', { code, nickname: nick.trim(), mode: ui });
+      onWaiting(r.roomId, r.playerId, nick.trim(), r.code);
     });
 
   const solo = () =>
     run(async () => {
-      onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: nick.trim(), seed: randomSeed(), totalDays: days, turnSeconds: 0, ui }, 0);
+      const s = newSolo(nick.trim(), days);
+      onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui });
     });
 
-  const doResume = async () => {
+  const doResume = () => {
     if (!resume) return;
-    if (resume.room.status === 'waiting') return onWaiting(resume.room.id, resume.playerId, resume.nickname, resume.room.code);
-    const offset = await measureClockOffset();
-    onGame(roomToSession(resume.room, resume.playerId, resume.nickname, resume.ui), offset);
+    if (resume.status === 'waiting') return onWaiting(resume.roomId, resume.playerId, resume.nickname, resume.code);
+    onGame({ mode: 'multi', roomId: resume.roomId, code: resume.code, playerId: resume.playerId, nickname: resume.nickname, ui: resume.mode === 'pro' ? 'pro' : 'easy' });
   };
 
   return (
@@ -138,10 +141,10 @@ export function Lobby({ onWaiting, onGame }: Props) {
       {soloSave && (
         <div className="panel pad resume">
           <div>
-            하던 연습 게임이 있어요 · <b>{soloSave.day + 1}일차</b> / {soloSave.session.totalDays}일
+            하던 연습 게임이 있어요 · <b>{soloSave.data.room.day + 1}일차</b> / {soloSave.data.room.total_days}일
           </div>
           <div className="row">
-            <button className="btn primary" onClick={() => onGame(soloSave.session, 0)}>
+            <button className="btn primary" onClick={() => onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: soloSave.nickname, ui })}>
               연습 이어하기
             </button>
             <button
@@ -160,20 +163,14 @@ export function Lobby({ onWaiting, onGame }: Props) {
       {resume && (
         <div className="panel pad resume">
           <div>
-            <b>{resume.nickname}</b>님, 진행 중인 방 <code>{resume.room.code}</code>이 있어요.
+            <b>{resume.nickname}</b>님, {resume.status === 'waiting' ? '대기 중인' : '진행 중인'} 방 <code>{resume.code}</code>이 있어요.
           </div>
           <div className="row">
             <button className="btn primary" onClick={doResume}>
-              이어하기
+              {resume.status === 'waiting' ? '대기실로' : '이어하기'}
             </button>
-            <button
-              className="btn ghost"
-              onClick={() => {
-                saveMulti(null);
-                setResume(null);
-              }}
-            >
-              무시
+            <button className="btn ghost" onClick={() => setResume(null)}>
+              닫기
             </button>
           </div>
         </div>
@@ -223,9 +220,9 @@ export function Lobby({ onWaiting, onGame }: Props) {
           <input
             className="code-input"
             value={code}
-            maxLength={4}
-            placeholder="방 코드 4자리"
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            maxLength={6}
+            placeholder="방 코드 6자리"
+            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
             onKeyDown={(e) => e.key === 'Enter' && join()}
           />
           <button className="btn" disabled={busy || !online} onClick={join}>
@@ -235,7 +232,7 @@ export function Lobby({ onWaiting, onGame }: Props) {
         <button className="btn ghost full" disabled={busy} onClick={solo}>
           혼자 연습하기
         </button>
-        {!online && <p className="warn">Supabase 설정이 없어서 지금은 혼자 연습만 할 수 있어요.</p>}
+        {!online && <p className="warn">온라인 설정이 없어서 지금은 혼자 연습만 할 수 있어요.</p>}
         {err && <p className="error">{err}</p>}
       </div>
 
@@ -243,10 +240,10 @@ export function Lobby({ onWaiting, onGame }: Props) {
         <h3>이렇게 놀아요</h3>
         <ol>
           <li>
-            <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 같은 업종·연관 업종도 함께 움직여요.
+            <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 뉴스 아래 <b>관련 종목</b>을 누르면 바로 이동해요.
           </li>
           <li>
-            금리·환율·유가가 바뀌면 업종마다 다르게 반응해요. <b>[루머]</b>는 틀릴 수도 있어요.
+            국내·미국 주식과 <b>ETF</b>(지수·레버리지·인버스·원유·달러)까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요.
           </li>
           <li>
             다 정했으면 <b>장 마감</b>. 둘 다 누르면 하루가 흘러요.

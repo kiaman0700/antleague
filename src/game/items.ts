@@ -1,4 +1,4 @@
-import { mulberry32 } from '../lib/rng';
+import { mulberry32 } from '../lib/rng.js';
 
 export type ItemKind = 'paper' | 'detector' | 'spy' | 'analyst' | 'freeze' | 'fake' | 'fee' | 'shield';
 export type ItemType = 'info' | 'attack' | 'defense';

@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import type { Reaction } from '../net/room';
-
-const EMOJIS = ['😂', '😭', '🔥', '👏', '😎', '🙏', '🤑', '💀'];
-const PHRASES = ['가즈아!', '물렸다…', '부럽다', '이번엔 내가 이김', '살려줘', '잘 가~'];
+import { EMOJIS, PHRASES, type Reaction } from '../net/api';
 
 export function ReactionButton({ onSend }: { onSend: (r: { emoji?: string; text?: string }) => void }) {
   const [open, setOpen] = useState(false);
@@ -37,7 +34,7 @@ export function ReactionButton({ onSend }: { onSend: (r: { emoji?: string; text?
   );
 }
 
-export function ReactionBubbles({ items }: { items: (Reaction & { mine?: boolean })[] }) {
+export function ReactionBubbles({ items }: { items: (Reaction & { mine?: boolean; nickname: string })[] }) {
   return (
     <div className="bubbles" aria-live="polite">
       {items.map((r) => (

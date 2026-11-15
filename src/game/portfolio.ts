@@ -1,5 +1,5 @@
-import type { Market } from './market';
-import { STOCKS } from './stocks';
+import type { Market } from './market.js';
+import { STOCKS } from './stocks.js';
 
 export const START_CASH = 10_000_000;
 export const FEE_RATE = 0.001;
