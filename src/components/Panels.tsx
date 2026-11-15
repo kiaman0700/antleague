@@ -1,5 +1,7 @@
+import { josa } from '../engine/engine';
 import { useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
+import { CardGuide } from './CardGuide';
 import { ITEM_MAP, ITEMS, canBuy, canUse, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
@@ -95,7 +97,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             <button className="linkish" onClick={() => onSelect(scout.symbol)}>
               {STOCK_MAP[scout.symbol].name}
             </button>
-            은(는) 오늘 마감 때 <b className={scout.up ? 'up' : 'down'}>{scout.up ? '▲ 오를' : '▼ 내릴'}</b> 것 같아요.
+            {josa(STOCK_MAP[scout.symbol].name, '은', '는').slice(STOCK_MAP[scout.symbol].name.length)} 오늘 마감 때 <b className={scout.up ? 'up' : 'down'}>{scout.up ? '▲ 오를' : '▼ 내릴'}</b> 것 같아요.
           </div>
         </div>
       )}
@@ -262,6 +264,7 @@ interface CardsProps {
 
 export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
   const [shop, setShop] = useState(false);
+  const [guide, setGuide] = useState(false);
   const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
   const nextGrant = Math.ceil((day + 1) / GRANT_EVERY) * GRANT_EVERY;
   return (
@@ -275,10 +278,16 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
         <h4 className="sec-title">
           내 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
         </h4>
-        <button className="btn sm" onClick={() => setShop((v) => !v)}>
-          {shop ? '닫기' : <><Icon name="cart" /> 상점</>}
-        </button>
+        <span className="row">
+          <button className="btn sm ghost" onClick={() => setGuide(true)}>
+            <Icon name="book" /> 카드 도감
+          </button>
+          <button className="btn sm" onClick={() => setShop((v) => !v)}>
+            {shop ? '닫기' : <><Icon name="cart" /> 상점</>}
+          </button>
+        </span>
       </div>
+      {guide && <CardGuide onClose={() => setGuide(false)} />}
       <p className="muted small">
         시작할 때 2장, {GRANT_EVERY}일마다 1장을 무료로 받아요{nextGrant < totalDays ? ` (다음: ${nextGrant + 1}일차)` : ''}. 같은 카드는 한 판에 {USE_LIMIT}번까지.
       </p>

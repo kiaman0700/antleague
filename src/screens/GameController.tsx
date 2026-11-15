@@ -11,7 +11,9 @@ import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import type { View } from '../engine/engine';
-import { loadSolo, makeDemo, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { loadSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
+import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
 import { withLive } from '../game/live';
@@ -43,7 +45,7 @@ const COL_WIDTH: Record<PcCol, string> = { list: 'minmax(260px, 300px)', detail:
 function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
-  const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : session.demo ? makeDemo(session.nickname) : loadSolo()));
+  const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : session.tutorial ? makeTutorial(session.nickname) : session.demo ? makeDemo(session.nickname) : loadSolo()));
   const [soloNow, setSoloNow] = useState(() => solo?.frozenAt ?? Date.now());
   useEffect(() => {
     // 화면 편집용 가상 게임은 멈춘 장면 (시간·가격·날짜 고정)
@@ -76,8 +78,8 @@ function useGameSource(session: Session) {
     [multi, session.roomId, session.demo, live, solo],
   );
 
-  if (multi) return { view: live.view, market: live.market, offset: live.offset, error: live.error, act, busy };
-  return { view: soloV, market: soloV?.market ?? null, offset: 0, error: solo ? null : '연습 게임을 찾을 수 없어요.', act, busy };
+  if (multi) return { view: live.view, market: live.market, offset: live.offset, error: live.error, act, busy, tutorialInfo: null };
+  return { view: soloV, market: soloV?.market ?? null, offset: 0, error: solo ? null : '연습 게임을 찾을 수 없어요.', act, busy, tutorialInfo: solo?.tutorial ?? null };
 }
 
 /** 모바일: 탭 = 페이지. 주소(#news 등)와 연결해서 뒤로 가기로 이전 탭으로 */
@@ -105,10 +107,13 @@ function useMobileTab(mobile: boolean, start: Tab = 'news') {
 }
 
 export function GameController({ session, onExit }: Props) {
-  const solo = session.mode === 'solo';
+  // 튜토리얼은 브라우저 엔진이지만 봇과 대결하는 화면으로 보여 줌
+  const solo = session.mode === 'solo' && !session.tutorial;
   const me = session.playerId;
   const mobile = useIsMobile();
-  const { view, market: rawMarket, offset, error, act, busy } = useGameSource(session);
+  const { view, market: rawMarket, offset, error, act, busy, tutorialInfo } = useGameSource(session);
+  const [tutStep, setTutStep] = useState(0);
+  const [cardGuide, setCardGuide] = useState(false);
   // 서버가 보낸 '지금 칸까지의 장중 가격'을 오늘 막대에 합침 → 현재가·차트가 5초마다 움직임
   const market = useMemo(() => (rawMarket ? withLive(rawMarket, view?.live) : null), [rawMarket, view?.live]);
 
@@ -127,12 +132,19 @@ export function GameController({ session, onExit }: Props) {
   };
   // 모든 금액 표시 단위 (초보 만원 · 일반 원 · 내 설정)
   applyMoneyUnit(prefs, ui);
-  const [selected, setSelected] = useState(STOCKS[0].symbol);
+  // 튜토리얼은 '뉴스에서 종목 찾기'를 직접 해 보도록 처음 선택을 튜토리얼 종목이 아닌 것으로
+  const [selected, setSelected] = useState(() => STOCKS.find((x) => x.symbol !== tutorialInfo?.symbol)!.symbol);
   const [tab, setTab] = useMobileTab(mobile, effective(prefs).layout.mStart);
+  // 튜토리얼: 단계에 맞는 탭을 모바일에서 열어 줌 (훅은 항상 같은 순서로 — 화면 준비 전 return 보다 위)
+  const tutTab = session.tutorial ? TUTORIAL_STEPS[tutStep]?.tab : undefined;
+  useEffect(() => {
+    if (mobile && tutTab) setTab(tutTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep, mobile]);
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
-  const [tutorial, setTutorial] = useState(() => !session.demo && session.ui === 'easy' && !tutorialSeen());
+  const [tutorial, setTutorial] = useState(() => !session.demo && !session.tutorial && session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
@@ -373,6 +385,11 @@ export function GameController({ session, onExit }: Props) {
   };
   const endTurn = () => {
     if (!canAct) return;
+    // 튜토리얼: 안내가 '장 마감' 단계에 오기 전에는 하루를 넘기지 않음 (설명 순서가 꼬이지 않게)
+    if (session.tutorial && tutStep < TUTORIAL_STEPS.findIndex((x) => x.title === '장 마감')) {
+      showToast('안내를 따라오면 곧 장 마감을 눌러 볼 거예요', 'warn');
+      return;
+    }
     play('tap');
     run('endTurn', {}, () => {});
   };
@@ -424,7 +441,7 @@ export function GameController({ session, onExit }: Props) {
   const setUi = (m: UiMode) => {
     setUiState(m);
     saveUi(m);
-    if (!solo) api('mode', { roomId: session.roomId, mode: m }).catch(() => {});
+    if (session.mode === 'multi') api('mode', { roomId: session.roomId, mode: m }).catch(() => {});
   };
 
   // ---------- 모바일: 아래로 스크롤하면 상단을 접고, 위로 올리면 다시 펼침 ----------
@@ -640,6 +657,19 @@ export function GameController({ session, onExit }: Props) {
       busy={busy}
     />
   );
+  // ---------- 튜토리얼 ----------
+  const tutCtx = {
+    mobile,
+    selected,
+    symbol: tutorialInfo?.symbol ?? '',
+    symbolName: tutorialInfo ? STOCK_MAP[tutorialInfo.symbol]?.name ?? '' : '',
+    headline: tutorialInfo?.headline ?? '',
+    myTrades: view?.myTrades.length ?? 0,
+    detectorUsed: (view?.myItems.used.detector ?? 0) > 0,
+    serverDay: serverDay ?? 0,
+    closing: closing !== null,
+    viewDay: viewDay ?? 0,
+  };
   const overlays = (
     <>
       {toast && <div className={'toast ' + toast.kind + (layout.toastPos === 'bottom' ? ' at-bottom' : '')}>{toast.text}</div>}
@@ -696,6 +726,10 @@ export function GameController({ session, onExit }: Props) {
           <ReactionBubbles items={bubbles.map((b) => ({ ...b, nickname: players.find((p) => p.id === b.from)?.nickname ?? '' }))} />
         </>
       )}
+    {session.tutorial && tutStep < TUTORIAL_STEPS.length && (
+        <TutorialGuide step={tutStep} ctx={tutCtx} onNext={() => setTutStep((x) => x + 1)} onExit={onExit} onOpenCards={() => setCardGuide(true)} />
+      )}
+      {cardGuide && <CardGuide onClose={() => setCardGuide(false)} />}
     </>
   );
   const settings = (

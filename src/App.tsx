@@ -69,6 +69,15 @@ export default function App() {
     case 'game':
       return <GameController key={`${route.session.mode}-${route.session.roomId}-${route.session.playerId}`} session={route.session} onExit={() => navigate({ kind: 'lobby' })} />;
     default:
+      // 튜토리얼: 봇과 함께 단계별 안내 (저장 안 함)
+      if (route.kind === 'lobby' && route.page === 'tutorial')
+        return (
+          <GameController
+            key="tutorial"
+            session={{ mode: 'solo', roomId: null, playerId: 'me', nickname: loadNick() || '나', ui: 'easy', tutorial: true }}
+            onExit={() => navigate({ kind: 'lobby', page: 'home' }, { replace: true })}
+          />
+        );
       // 커스텀 모드 화면 편집: 실제 게임 화면(저장 안 되는 가상 게임)에서 바로 편집
       if (route.kind === 'lobby' && route.page === 'customize')
         return (

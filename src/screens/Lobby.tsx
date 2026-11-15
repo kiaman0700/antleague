@@ -39,7 +39,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies';
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial';
 
 interface Props {
   page: LobbyPage;
@@ -453,6 +453,9 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       </nav>
 
       <div className="home-links">
+        <button className="btn ghost sm" onClick={() => go('tutorial')}>
+          <Icon name="play" /> 튜토리얼
+        </button>
         <button className="btn ghost sm" onClick={() => go('companies')}>
           <Icon name="book" /> 기업 도감
         </button>

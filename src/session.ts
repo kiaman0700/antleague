@@ -10,6 +10,8 @@ export interface Session {
   ui: UiMode;
   /** 화면 편집용 가상 게임 (저장 안 함, 편집 모드로 열림) */
   demo?: boolean;
+  /** 튜토리얼 (봇과 함께, 단계별 안내) */
+  tutorial?: boolean;
 }
 
 export const DAY_OPTIONS = [

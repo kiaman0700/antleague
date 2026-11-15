@@ -1,5 +1,6 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
 import { buildView, CURRENT_RULES_VERSION, dayClock, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
+import { STOCK_MAP } from '../game/stocks.js';
 
 const KEY = 'stockduel.solo2';
 /** 혼자 연습 하루 길이 선택지(초) */
@@ -13,7 +14,57 @@ export interface SoloSave {
   demo?: boolean;
   /** 멈춘 장면의 시각 */
   frozenAt?: number;
+  /** 튜토리얼 게임 (봇과 함께, 시간이 흐르지 않음, 저장하지 않음) */
+  tutorial?: { symbol: string; headline: string };
 }
+
+/** 튜토리얼 봇 */
+export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
+
+/**
+ * 튜토리얼 시나리오: 첫날 아침에 '좋은 기업 뉴스'가 있는 시장을 골라 고정.
+ * 시간은 흐르지 않고(장 마감은 직접), 봇이 함께 함
+ */
+export function makeTutorial(nickname: string): SoloSave {
+  let seed = 7000;
+  let pick: { symbol: string; headline: string } | null = null;
+  for (; seed < 9000 && !pick; seed++) {
+    const m = marketFor(seed, 6, CURRENT_RULES_VERSION);
+    const n = m.news.find((x) => x.day === 0 && x.kind === 'company' && x.tone === 'good' && !x.rumor && !x.fake && x.at == null && x.symbol && !STOCK_MAP[x.symbol].etf);
+    if (n && m.bars[n.symbol!][0].close > m.bars[n.symbol!][0].open) pick = { symbol: n.symbol!, headline: n.headline };
+  }
+  seed--;
+  const now = new Date().toISOString();
+  const data: GameData = {
+    room: { id: 'tutorial', code: 'TUTOR0', seed, status: 'playing', total_days: 6, turn_seconds: 180, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: CURRENT_RULES_VERSION },
+    players: [
+      { id: 'me', room_id: 'tutorial', nickname: nickname || '나', mode: 'easy', ready: true, ended_day: -1, created_at: '1', version: 0 },
+      { id: TUTORIAL_BOT.id, room_id: 'tutorial', nickname: TUTORIAL_BOT.nickname, mode: 'easy', ready: true, ended_day: -1, created_at: '2', version: 0 },
+    ],
+    trades: [],
+    // 나: 루머 감별기·방패를 들고 시작 (카드 연습용)
+    items: [
+      { id: 'tut-i1', player_id: 'me', day: 0, kind: 'detector', action: 'buy', cost: 0, created_at: now },
+      { id: 'tut-i2', player_id: 'me', day: 0, kind: 'shield', action: 'buy', cost: 0, created_at: now },
+    ],
+    orders: [],
+  };
+  const m = marketFor(seed, 6, CURRENT_RULES_VERSION);
+  // 봇: 첫날 지수 ETF 를 조금 삼
+  data.trades.push({ id: 'tut-b1', player_id: TUTORIAL_BOT.id, day: 0, symbol: 'KIDX', side: 'buy', qty: 200, price: m.bars.KIDX[0].open, fee: 0.0015, created_at: now });
+  return { nickname: nickname || '나', data, tutorial: pick ?? { symbol: 'CORE', headline: '' } };
+}
+
+/** 봇의 정해진 행동: 둘째 날 아침에 나에게 수수료 폭탄 (내 방패가 막는 걸 보여 줌) */
+function botActs(d: GameData) {
+  if (d.room.day === 1) {
+    const at = new Date().toISOString();
+    d.items.push({ id: 'tut-b2', player_id: TUTORIAL_BOT.id, day: 1, kind: 'fee', action: 'buy', cost: 0, created_at: at });
+    d.items.push({ id: 'tut-b3', player_id: TUTORIAL_BOT.id, day: 1, kind: 'fee', action: 'use', cost: 0, payload: { target: 'me' }, created_at: at });
+  }
+}
+
+
 
 /** 새 하루의 마감 시각 (장 시작 3초 뒤부터 칸이 흐름) */
 const freshDeadline = (daySec: number, now: number) => now + (daySec + 3) * 1000;
@@ -116,7 +167,7 @@ export function soloSync(s: SoloSave, now = Date.now()): SoloSave {
   if (d.room.deadline !== null && now >= d.room.deadline) changed = advance(d, now) || changed;
   if (!changed) return s;
   const out = { ...s, data: d };
-  if (!s.demo) saveSolo(out);
+  if (!s.demo && !s.tutorial) saveSolo(out);
   return out;
 }
 
@@ -153,14 +204,15 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'endTurn': {
       // 혼자 연습: 장 마감을 누르면 남은 시간을 건너뛰고 바로 다음 날
       const { day } = validateEndTurn(d, 'me', now);
-      d.players[0].ended_day = day;
-      advance(d, now);
+      // 튜토리얼: 봇도 같이 마감
+      for (const p of d.players) if (p.id === 'me' || s.tutorial) p.ended_day = day;
+      if (advance(d, now) && s.tutorial) botActs(d);
       break;
     }
     default:
       throw new GameError('알 수 없는 요청이에요.');
   }
   const out = { ...s, data: d };
-  if (!s.demo) saveSolo(out);
+  if (!s.demo && !s.tutorial) saveSolo(out);
   return out;
 }
