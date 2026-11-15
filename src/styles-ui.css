@@ -1879,3 +1879,27 @@ button.tag:hover,
 .privacy li {
   font-weight: 400;
 }
+
+/* 좁은 차트 칸: 보유 정보 4칸 → 자리가 모자라면 2칸으로, 숫자는 한 줄 */
+.my-holding {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+.my-holding b {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 좁은 칸에서 '내 보유' 손익이 잘리지 않게 (넘치면 흐르는 글자) */
+.pinned-head {
+  min-width: 0;
+}
+.pinned-head .ph-right {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pinned-head .pl-pill {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}

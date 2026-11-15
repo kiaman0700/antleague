@@ -187,8 +187,10 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
           ) : (
             <span className="ph-right">
               <span className={'pl-pill ' + tone(totalPl)}>
-                {arrow(totalPl)} {sign(totalPl)}
-                {wonShort(Math.abs(totalPl))} ({pct(totalCost ? totalPl / totalCost : 0)})
+                <FitText>
+                  {arrow(totalPl)} {sign(totalPl)}
+                  {wonShort(Math.abs(totalPl))} ({pct(totalCost ? totalPl / totalCost : 0)})
+                </FitText>
               </span>
               <Icon name={holdOpen ? 'up' : 'down'} size={14} className="muted" />
             </span>

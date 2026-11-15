@@ -40,7 +40,8 @@ export function columnTemplate(cols: PcZone[], zones: Record<PcZone, PcPanel[]>,
     if (!shown.length) return '120px';
     if (shown.some((p) => WIDE.includes(p))) return 'minmax(0, 1fr)';
     const w = Math.max(COL_MIN, Math.min(COL_MAX, colW[z] ?? COL_DEFAULT));
-    return `minmax(${Math.min(220, w)}px, ${w}px)`;
+    // 화면이 좁으면(작은 노트북·태블릿 가로) 옆 칸이 같이 줄어서 가운데(차트)가 너무 좁아지지 않게
+    return `minmax(220px, min(${w}px, ${colW[z] ? 34 : 24}vw))`;
   });
   // 넓은 칸이 없으면 가운데(없으면 첫 내용 있는 칸)를 넓게
   if (!template.includes('minmax(0, 1fr)') && template.length) {
