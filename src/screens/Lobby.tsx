@@ -636,7 +636,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <ul className="hr-list">
             {account.recent.slice(0, 5).map((m) => (
               <li key={m.room_id} className="hr-row static">
-                <span className={'hr-rank r' + m.rank}>{m.rank}등</span>
+                <span className={'hr-rank r' + m.rank}>{m.rank}위</span>
                 <small className="muted">
                   {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                 </small>
