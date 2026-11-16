@@ -271,7 +271,6 @@ export function StockDetail(props: Props) {
             </span>
           ) : (
             <button className="tag" onClick={() => onSelectSector(s.sector)}>
-              {isUS ? "🇺🇸 " : ""}
               <SectorIcon id={sec.id} /> {sec.name}
             </button>
           )}

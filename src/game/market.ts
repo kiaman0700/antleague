@@ -635,8 +635,8 @@ export function planCalendar(seed: number, totalDays: number, rngIn?: Rng): { ev
   const add = (day: number, kind: EventKind, title: string, desc: string) => day >= 0 && events.push({ day, kind, title, desc });
   const last = totalDays - 2;
 
-  add(free(2, last), 'fomc', '🇺🇸 미 연준 금리 결정', '미국 금리가 바뀔 수 있는 날. 미국 주식과 환율이 크게 움직여요.');
-  add(free(2, last), 'bok', '🇰🇷 한국은행 금통위', '한국 기준금리 결정일. 은행·건설·성장주가 크게 반응해요.');
+  add(free(2, last), 'fomc', '미 연준 금리 결정', '미국 금리가 바뀔 수 있는 날. 미국 주식과 환율이 크게 움직여요.');
+  add(free(2, last), 'bok', '한국은행 금통위', '한국 기준금리 결정일. 은행·건설·성장주가 크게 반응해요.');
   const windows = totalDays >= 20 ? 2 : 1;
   for (let w = 0; w < windows; w++) {
     const start = free(1 + Math.floor((w * totalDays) / windows), Math.min(last - 2, Math.floor(((w + 1) * totalDays) / windows) - 3));
