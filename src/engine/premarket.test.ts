@@ -124,3 +124,15 @@ describe('리뷰 수정: 기권·대상·찌라시 순서', () => {
     for (let i = 0; i < 3; i++) expect(Math.abs(pos[i] / n - 1 / 3)).toBeLessThan(0.07);
   });
 });
+
+describe('기권 승리 결과', () => {
+  it('재산이 같아도 기권한 사람은 뒤, 남은 사람이 승자', async () => {
+    const { finalResults } = await import('./engine.js');
+    const d = game(8, 3);
+    d.room = { ...d.room, status: 'finished', day: d.room.total_days };
+    d.players[0] = { ...d.players[0], left_game: true };
+    const fin = finalResults(d);
+    expect(fin.winner).toBe('b');
+    expect(fin.results[fin.results.length - 1].nickname).toBe('a');
+  });
+});

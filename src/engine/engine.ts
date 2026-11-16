@@ -150,7 +150,7 @@ export interface View {
     blackout: boolean;
   };
   /** 게임이 끝나면 모든 기록 공개 */
-  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string }[]; badges: Record<string, string[]> } | null;
+  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean }[]; badges: Record<string, string[]> } | null;
 }
 
 export interface LiveView {
@@ -593,7 +593,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   }
 
   if (finished) {
-    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname })), badges: finalResults(d).badges };
+    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game })), badges: finalResults(d).badges };
   }
   return base;
 }
@@ -841,10 +841,12 @@ export function finalResults(d: GameData) {
   });
   const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
-    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [] };
+    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game };
   });
-  const ranked = [...results].sort((a, b) => b.equity - a.equity);
-  const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0].nickname : null;
+  // 기권한 사람은 재산과 상관없이 뒤로 (끝까지 한 사람끼리는 재산 순)
+  const ranked = [...results].sort((a, b) => Number(a.left) - Number(b.left) || b.equity - a.equity);
+  const stay = ranked.filter((r) => !r.left);
+  const winner = ranked.length >= 2 && stay.length >= 1 && (stay.length === 1 || stay[0].equity !== stay[1].equity) ? stay[0].nickname : null;
   return { results: ranked, winner, badges };
 }
 

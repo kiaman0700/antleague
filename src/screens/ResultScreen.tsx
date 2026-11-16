@@ -83,16 +83,21 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       const worst = closed.reduce<(typeof closed)[number] | null>((a, c) => (!a || c.pnl < a.pnl ? c : a), null);
       const used = (Object.entries(items.players[p.id]?.used ?? {}) as [ItemKind, number][]).filter(([, n]) => n > 0);
       const fakesReceived = items.effects.filter((e) => e.to === p.id && e.kind === 'fake' && !e.blocked).length;
-      return { id: p.id, nickname: p.nickname, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
+      return { id: p.id, nickname: p.nickname, left: !!p.left, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
   }, [final, session.playerId, market, last, START_CASH]);
 
-  const ranked = [...results].sort((a, b) => b.equity - a.equity);
-  const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0] : null;
+  // 기권한 사람은 재산과 상관없이 뒤로 — 상대가 기권하면 남은 사람이 이김
+  const ranked = [...results].sort((a, b) => Number(a.left) - Number(b.left) || b.equity - a.equity);
+  const stay = ranked.filter((r) => !r.left);
+  const winner = ranked.length >= 2 && stay.length >= 1 && (stay.length === 1 || stay[0].equity !== stay[1].equity) ? stay[0] : null;
   // 같은 재산이면 같은 순위 (비기면 둘 다 1위)
   const rankOf = (id: string) => {
-    const eq = ranked.find((r) => r.id === id)?.equity ?? 0;
-    return ranked.filter((r) => r.equity > eq).length;
+    const me = ranked.find((r) => r.id === id);
+    if (!me) return 0;
+    // 기권한 사람은 끝까지 한 사람들 뒤
+    if (me.left) return ranked.filter((r) => !r.left).length + ranked.filter((r) => r.left && r.equity > me.equity).length;
+    return ranked.filter((r) => !r.left && r.equity > me.equity).length;
   };
 
   const played = useRef(false);
@@ -175,7 +180,10 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             <div className="crown"><Icon name="crown" size={40} /></div>
             <h1>{winner.nickname} 승리!</h1>
             <p>
-              2위와 {wonShort(ranked[0].equity - ranked[1].equity)} 차이 · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
+              {ranked.slice(1).every((r) => r.left)
+                ? ranked.length > 2 ? '다른 사람들이 모두 기권해서 이겼어요' : '상대가 기권해서 이겼어요'
+                : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
+              · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
             </p>
           </>
         ) : (
@@ -190,6 +198,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           <div key={r.id} className={'panel score-card' + (winner?.id === r.id ? ' champ' : '')} style={{ borderTopColor: COLORS[i] }}>
             <small style={{ color: COLORS[i] }}>
               {!solo && <span className="medal">{rankBadge(rankOf(r.id))}</span>}
+              {r.left && <span className="left-tag">기권</span>}
               {r.nickname}
               {titleOf(final.badges[r.id] ?? []) && <span className="title-tag"><BadgeIcon id={titleOf(final.badges[r.id] ?? [])!.id} size={13} /> {titleOf(final.badges[r.id] ?? [])!.name}</span>}
             </small>
