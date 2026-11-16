@@ -4,6 +4,7 @@ import { getEffective } from "../prefs";
 import { Icon, SectorIcon } from "./Icon";
 import type { Market, NewsEvent } from "../game/market";
 import { releaseTick } from "../game/intraday";
+import { roundPrice, roundUsd } from "../game/market";
 import {
   buyCost,
   maxBuyQty,
@@ -210,7 +211,7 @@ export function StockDetail(props: Props) {
           key={symbol + ":live:" + k}
           ui={ui}
           symbol={symbol + "-live"}
-          bars={intradayBars(series[day].open, series[day].path, k)}
+          bars={intradayBars(series[day].open, series[day].path, k, `${symbol}:${day}`, isUS ? roundUsd : roundPrice)}
           totalDays={Math.ceil(live.n / k)}
           liveOpenOnly={false}
           refLine={
@@ -980,8 +981,21 @@ function autoK(n: number) {
 function clock(sec: number) {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
-/** 오늘 5초 가격들을 k칸씩 묶어 봉으로 (첫 봉 시가 = 오늘 시가, 다음 봉 시가 = 앞 봉 종가) */
-function intradayBars(open: number, ticks: number[], k: number) {
+/** 꾸밈용 0~1 난수 (화면에 이미 보이는 값으로만 정해짐 — 앞으로의 가격과 무관) */
+function h01(s: string) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 10007) / 10007;
+}
+/**
+ * 오늘 5초 가격들을 k칸씩 묶어 봉으로 (첫 봉 시가 = 오늘 시가, 다음 봉 시가 = 앞 봉 종가).
+ * 진짜 차트처럼 5초 안에서도 오르내린 흔적(꼬리)을 그림: 시가·종가 사이 움직임 크기에 맞춘 작은 꼬리.
+ * 꼬리는 지금까지 보인 두 가격과 종목·칸 번호로만 정해져서, 다음 가격을 알려 주지 않음
+ */
+function intradayBars(open: number, ticks: number[], k: number, seed = "", round: (v: number) => number = (v) => v) {
   const out: {
     open: number;
     high: number;
@@ -990,17 +1004,25 @@ function intradayBars(open: number, ticks: number[], k: number) {
     path: number[];
   }[] = [];
   let prev = open;
+  const dayHi = Math.max(open, ...ticks);
+  const dayLo = Math.min(open, ...ticks);
   for (let i = 0; i < ticks.length; i += k) {
     const g = ticks.slice(i, i + k);
     if (!g.length) break;
     const o = prev;
-    out.push({
-      open: o,
-      high: Math.max(o, ...g),
-      low: Math.min(o, ...g),
-      close: g[g.length - 1],
-      path: g,
+    let hi = Math.max(o, ...g);
+    let lo = Math.min(o, ...g);
+    let p0 = o;
+    g.forEach((c, j) => {
+      const move = Math.abs(c - p0);
+      const base = Math.max(move * 0.55, c * 0.0006);
+      const up = round(Math.max(p0, c) + base * h01(`${seed}:${i + j}:u`));
+      const dn = round(Math.min(p0, c) - base * h01(`${seed}:${i + j}:d`));
+      hi = Math.max(hi, Math.min(dayHi, up));
+      lo = Math.min(lo, Math.max(dayLo, dn));
+      p0 = c;
     });
+    out.push({ open: o, high: hi, low: lo, close: g[g.length - 1], path: g });
     prev = g[g.length - 1];
   }
   return out.length

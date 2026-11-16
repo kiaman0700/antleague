@@ -9,3 +9,4 @@ sim/.out/
 scripts/e2e/.accounts.json
 scripts/e2e/.members.json
 scripts/e2e/.ui-friend.json
+scripts/e2e/.join-tmp.mjs

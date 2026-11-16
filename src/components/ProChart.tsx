@@ -94,32 +94,54 @@ export function ProChart({
   const plotH = H - padT - padB;
 
   // 설정: 초보=라인, 일반=캔들이 기본. 바꾼 건 모드별로 기억
-  const prefKey = `stockduel.chart.${ui}`;
+  // 장중 차트는 설정에서 '일별과 같게'면 일별과 같은 값을 함께 쓰고, 아니면 따로 기억
+  const eff = getEffective();
+  const liveOwn = !!unit && (eff.liveChartType ?? "same") !== "same";
+  const prefKey = liveOwn ? `stockduel.chartLive.${ui}` : `stockduel.chart.${ui}`;
   // 내 화면 설정에서 차트 모양을 정했으면 그걸 기본으로
-  const fixedType = getEffective().chartType;
-  const [type, setType] = useState<ChartType>(() =>
+  const pickFixed = () => {
+    const e = getEffective();
+    const live = !!unit && (e.liveChartType ?? "same") !== "same";
+    return live ? (e.liveChartType as ChartType | "auto") : e.chartType;
+  };
+  const fixedType = pickFixed();
+  const [type, setTypeRaw] = useState<ChartType>(() =>
     fixedType !== "auto"
       ? fixedType
       : load<{ type: ChartType }>(prefKey, {
           type: ui === "easy" ? "line" : "candle",
         }).type,
   );
+  // 같은 값을 쓰는 다른 차트(일별↔장중)도 바로 같이 바뀌게
+  const setType = (t: ChartType) => {
+    setTypeRaw(t);
+    save(prefKey, { type: t });
+    window.dispatchEvent(new CustomEvent("stockduel:chartType", { detail: { key: prefKey, type: t } }));
+  };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ key: string; type: ChartType }>).detail;
+      if (d?.key === prefKey) setTypeRaw(d.type);
+    };
+    window.addEventListener("stockduel:chartType", on);
+    return () => window.removeEventListener("stockduel:chartType", on);
+  }, [prefKey]);
   const [inds, setInds] = useState<Indicator[]>(() =>
     load(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : []),
   );
-  useEffect(() => save(prefKey, { type }), [prefKey, type]);
   useEffect(() => save(`stockduel.ind.${ui}`, inds), [ui, inds]);
   useEffect(() => {
-    const fixed = getEffective().chartType;
-    setType(
+    const fixed = pickFixed();
+    setTypeRaw(
       fixed !== "auto"
         ? fixed
-        : load<{ type: ChartType }>(`stockduel.chart.${ui}`, {
+        : load<{ type: ChartType }>(prefKey, {
             type: ui === "easy" ? "line" : "candle",
           }).type,
     );
     setInds(load(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : []));
-  }, [ui]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui, prefKey, eff.chartType, eff.liveChartType]);
 
   const drawKey = unit?.drawKey ?? `stockduel.draw.${symbol}`;
   const [drawings, setDrawings] = useState<Drawing[]>(() => load(drawKey, []));
@@ -208,10 +230,17 @@ export function ProChart({
           if (arr?.[i] != null) vals.push(arr[i]!);
       }
     }
-    if (refLine) vals.push(refLine.value);
-    if (!vals.length) vals.push(1);
+    if (!vals.length) vals.push(refLine?.value ?? 1);
     let lo = Math.min(...vals);
     let hi = Math.max(...vals);
+    // 기준선(어제 종가·내 평균 단가)은 가까이 있을 때만 범위에 넣음 — 멀면 봉이 납작해지니 선은 위/아래 끝에 붙여 표시
+    if (refLine) {
+      const span = Math.max(hi - lo, hi * 0.01);
+      if (refLine.value >= lo - span * 0.6 && refLine.value <= hi + span * 0.6) {
+        lo = Math.min(lo, refLine.value);
+        hi = Math.max(hi, refLine.value);
+      }
+    }
     if (lo === hi) {
       lo *= 0.98;
       hi *= 1.02;
@@ -409,12 +438,21 @@ export function ProChart({
   };
 
   // ---------- 그리기 ----------
-  const gridVals = [0.15, 0.38, 0.62, 0.85].map(
-    (t) => yMin + (yMax - yMin) * t,
-  );
+  // 가격 눈금: 실제 증권 앱처럼 딱 떨어지는 값(1·2·2.5·5 × 10ⁿ 간격)
+  const gridVals = (() => {
+    const span = yMax - yMin;
+    if (!(span > 0)) return [yMin];
+    const raw = span / 4;
+    const p10 = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * p10).find((s) => s >= raw) ?? 10 * p10;
+    const out: number[] = [];
+    for (let v = Math.ceil(yMin / step) * step; v <= yMax && out.length < 8; v += step) out.push(v);
+    return out;
+  })();
   const lastPrice = closes[lastIdx];
   const visible = (i: number) => i >= view[0] - 1 && i <= view[1] + 1;
-  const bw = Math.max(2, Math.min(16, slot * 0.62));
+  // 봉 굵기: 칸의 70% (실제 차트처럼 봉 사이 틈은 좁게)
+  const bw = Math.max(2, Math.min(24, slot * 0.7));
   const up = lastIdx > 0 ? lastPrice >= closes[0] : true;
   const lineColor = up ? "var(--up)" : "var(--down)";
   const pathOf = (vals: (number | null)[]) => {
@@ -652,20 +690,31 @@ export function ProChart({
                 className={"marker " + mk.tone}
               />
             ))}
-          {refLine && (
-            <g>
-              <line
-                x1={padL}
-                x2={W - padR}
-                y1={y(refLine.value)}
-                y2={y(refLine.value)}
-                className="ref"
-              />
-              <text x={padL + 4} y={y(refLine.value) - 5} className="ref-label">
-                {refLine.label}
-              </text>
-            </g>
-          )}
+          {refLine &&
+            (() => {
+              const ry = y(refLine.value);
+              // 화면 밖이면 선 대신 위/아래 끝에 화살표 글자로
+              if (ry < padT)
+                return (
+                  <text x={padL + 4} y={padT + 12} className="ref-label">
+                    ▲ {refLine.label}
+                  </text>
+                );
+              if (ry > H - padB)
+                return (
+                  <text x={padL + 4} y={H - padB - 6} className="ref-label">
+                    ▼ {refLine.label}
+                  </text>
+                );
+              return (
+                <g>
+                  <line x1={padL} x2={W - padR} y1={ry} y2={ry} className="ref" />
+                  <text x={padL + 4} y={ry - 5} className="ref-label">
+                    {refLine.label}
+                  </text>
+                </g>
+              );
+            })()}
 
           {/* 볼린저 밴드 */}
           {series
@@ -747,7 +796,7 @@ export function ProChart({
               const cls = upBar ? "c-up" : "c-down";
               if (type === "ohlc")
                 return (
-                  <g key={i} className={cls} strokeWidth={1.6}>
+                  <g key={i} className={cls} strokeWidth={1.4} shapeRendering="crispEdges">
                     <line x1={x(i)} x2={x(i)} y1={y(b.high)} y2={y(b.low)} />
                     <line
                       x1={x(i) - bw / 2}
@@ -772,14 +821,15 @@ export function ProChart({
                     x2={x(i)}
                     y1={y(b.high)}
                     y2={y(b.low)}
-                    strokeWidth={1.2}
+                    strokeWidth={1}
+                    shapeRendering="crispEdges"
                   />
                   <rect
                     x={x(i) - bw / 2}
                     y={top}
                     width={bw}
-                    height={Math.max(1.5, bot - top)}
-                    rx={1.5}
+                    height={Math.max(1, bot - top)}
+                    shapeRendering="crispEdges"
                   />
                 </g>
               );

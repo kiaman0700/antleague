@@ -79,13 +79,15 @@ export interface Prefs {
   chart: 'live' | 'daily';
   /** 일별 차트 모양: auto = 모드 기본(초보 라인, 일반 캔들) */
   chartType: 'auto' | 'line' | 'candle' | 'ohlc';
+  /** 장중 차트 모양: same = 일별과 똑같이(한쪽을 바꾸면 같이 바뀜), 아니면 따로 */
+  liveChartType: 'same' | 'auto' | 'line' | 'candle' | 'ohlc';
   /** 화면 배치 */
   layout: Layout;
 }
 
 const KEY = 'stockduel.prefs';
 /** 커스텀을 끈 상태에서 쓰는 값 = 모드 기본 */
-const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, regionOrder: null, chart: 'live', chartType: 'auto', layout: DEFAULT_LAYOUT };
+const BASE: Omit<Prefs, 'enabled'> = { money: 'auto', sectorPins: null, regionOrder: null, chart: 'live', chartType: 'auto', liveChartType: 'same', layout: DEFAULT_LAYOUT };
 const DEFAULT: Prefs = { enabled: false, ...BASE };
 
 const PANELS: PcPanel[] = ['timeline', 'list', 'detail', 'news', 'cards'];

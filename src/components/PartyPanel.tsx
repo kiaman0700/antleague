@@ -4,6 +4,7 @@
  * 랭킹전·1대1 에는 파티로 못 들어감 (점수 몰아주기·다구리 방지)
  */
 import { useCallback, useEffect, useState } from 'react';
+import { ask } from './ConfirmHost';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
 import { tierShort } from './TierBadge';
@@ -66,7 +67,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
     }
   };
   const leave = async () => {
-    if (!window.confirm(party?.isLeader ? '파티를 없앨까요? (같이 찾던 대기도 취소돼요)' : '파티에서 나갈까요?')) return;
+    if (!(await ask(party?.isLeader ? '파티를 없앨까요? (같이 찾던 대기도 취소돼요)' : '파티에서 나갈까요?', { ok: party?.isLeader ? '파티 없애기' : '나가기', danger: true }))) return;
     await api('partyLeave').catch(() => {});
     await reload();
   };

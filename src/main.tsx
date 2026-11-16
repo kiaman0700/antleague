@@ -1,4 +1,5 @@
 import React from 'react';
+import { ConfirmHost } from './components/ConfirmHost';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
+      <ConfirmHost />
     </ErrorBoundary>
   </React.StrictMode>,
 );

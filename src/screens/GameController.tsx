@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ask } from '../components/ConfirmHost';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab, type PcCol } from '../prefs';
@@ -142,6 +143,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const [prefsOpen, setPrefsOpen] = useState(false);
   // 화면 편집 모드: 실제 게임 화면에서 배치를 바꿈 (가상 게임이면 처음부터 편집 중)
   const [editing, setEditing] = useState(!!session.demo);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
   const layout = effective(prefs).layout;
   const startEdit = () => {
     setPrefs({ enabled: true });
@@ -508,6 +511,11 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         searchRef.current?.querySelector('input')?.focus();
       }
       if (typing) return;
+      if (e.key === 'Enter' && !editingRef.current && !(e.target as HTMLElement)?.closest('button, a, [role=button], [tabindex], .modal-bg, .sheet-bg')) {
+        e.preventDefault();
+        setSheet('buy');
+        return;
+      }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         const rows = [...document.querySelectorAll<HTMLElement>('.stock-list .srow')];
         const i = rows.findIndex((r) => r.classList.contains('sel'));
@@ -670,7 +678,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       reservedCash={reservedCash}
       onOrder={placeOrder}
       onCancel={cancelOrder}
-      inlineTrade={!mobile}
+      inlineTrade={false}
     />
   );
   const newsPanel = (
@@ -744,8 +752,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </button>
             <button
               className="btn full danger"
-              onClick={() => {
-                if (!window.confirm('기권하면 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?')) return;
+              onClick={async () => {
+                if (!(await ask('기권하면 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?', { ok: '기권하기', danger: true }))) return;
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .catch(() => {})
@@ -795,6 +803,30 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         xy={mobile ? layout.mToastXY : layout.toastXY}
         onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
       />
+      {!mobile && (
+        <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
+          {sheet && (
+            <TradePanel
+              key={selected + sheet}
+              ui={ui}
+              symbol={selected}
+              price={quote(m, selected, displayDay, displayClosed).krw}
+              usd={quote(m, selected, displayDay, displayClosed).usd}
+              fx={fxNow}
+              cash={portfolio.cash}
+              held={portfolio.holdings[selected]?.qty ?? 0}
+              avgCost={portfolio.holdings[selected]?.avgCost ?? 0}
+              trade={tradeState}
+              onTrade={trade}
+              orders={myOrders.filter((o) => o.symbol === selected && o.day === day)}
+              reservedCash={reservedCash}
+              onOrder={placeOrder}
+              onCancel={cancelOrder}
+              initialSide={sheet}
+            />
+          )}
+        </BottomSheet>
+      )}
       {intro && room && (
         <MatchIntro
           title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : '대결 시작'}
@@ -910,10 +942,12 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           if (session.mode === 'multi' && room?.status === 'playing') setExitAsk(true);
           else if (session.mode === 'solo' && !session.demo && !session.tutorial && room?.status !== 'finished') {
             // 연습은 나가면 그 게임은 끝 (창이 닫히거나 끊긴 경우에만 로비에서 '이어하기'를 물어봄)
-            if (!window.confirm('연습을 그만둘까요? 지금 하던 연습 게임은 사라져요.')) return;
-            soloQuit.current = true;
-            saveSolo(null);
-            onExit();
+            void ask('연습을 그만둘까요? 지금 하던 연습 게임은 사라져요.', { ok: '그만두기', danger: true }).then((yes) => {
+              if (!yes) return;
+              soloQuit.current = true;
+              saveSolo(null);
+              onExit();
+            });
           } else onExit();
         }} aria-label="로비로" title="로비로">
         <Icon name="exit" size={18} />
@@ -935,7 +969,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         <b>
           <Icon name="sliders" size={16} /> 화면 편집 중
         </b>
-        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기 · 아래 탭 순서 · 견본 알림은 끌어서 놓기' : '손잡이를 잡고 끌면 바뀔 배치가 바로 보여요 · 노란 막대로 크기 조절 · 견본 알림도 끌어서 놓기'}</small>
+        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기 · 아래 탭 순서 · 견본 알림은 끌어서 놓기' : '손잡이를 잡고 끌면 바뀔 배치가 바로 보여요 · 막대로 크기 조절 · 견본 알림은 끌어서 놓기 (가운데·끝에 맞춰 붙어요)'}</small>
       </div>
       <div className="eb-actions">
         {mobile && (
@@ -950,22 +984,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </select>
           </label>
         )}
-        <label className="eb-start">
-          속보 알림
-          <select
-            value={(mobile ? layout.mToastXY : layout.toastXY) ? 'free' : layout.toastPos}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === 'free') setLayout(mobile ? { mToastXY: { x: 1, y: 0.15 } } : { toastXY: { x: 1, y: 0.15 } });
-              else setLayout({ toastPos: v as 'top' | 'bottom', ...(mobile ? { mToastXY: null } : { toastXY: null }) });
-            }}
-            title="견본 알림을 끌어서 어디든 놓을 수도 있어요"
-          >
-            <option value="top">위 가운데</option>
-            <option value="bottom">아래 가운데</option>
-            <option value="free">직접 놓기 (끌어서)</option>
-          </select>
-        </label>
         <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
           <Icon name="settings" size={14} /> 옵션
         </button>
@@ -990,10 +1008,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         <>
           <div className="m-row">
             <MarketTicker market={m} day={displayDay} closed={displayClosed} pins={pins} onOpen={() => setMarketSheet(true)} />
-            <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
-              <span><Icon name="settings" size={18} /></span>
-              <small>설정</small>
-            </button>
           </div>
         </>
       ),
@@ -1074,6 +1088,10 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                 <span className="mh-cmp muted">상대를 기다리는 중</span>
               )}
             </div>
+            {/* 설정은 늘 위에 고정 (스크롤해도 같은 자리) */}
+            <button className="m-gear" onClick={() => setMenu(true)} aria-label="설정" title="설정">
+              <Icon name="settings" size={18} />
+            </button>
             <button
               className={'m-end2' + (endedToday ? ' waiting' : '') + (remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')}
               disabled={endedToday ? !canCancelEnd || busy : !canAct || busy}
@@ -1115,16 +1133,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </EditSlot>
           ))}
           {/* 시장 줄을 숨겨도 설정 버튼은 남김 */}
-          {!editing && !layout.mHeader.find((r) => r.id === 'ticker')?.on && (
-            <div className="m-row only-menu">
-              <button className="m-menu" onClick={() => setMenu(true)} aria-label="설정">
-                <span>
-                  <Icon name="settings" size={18} />
-                </span>
-                <small>설정</small>
-              </button>
-            </div>
-          )}
           </div>
 
         <main className={'m-page p-' + tab + (tablet && (tab === 'list' || tab === 'detail') ? ' split' : '')}>
@@ -1284,9 +1292,18 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           </div>
           {!solo ? (
             <>
-              <div className="tug" aria-hidden>
-                <div className="tug-me" style={{ width: `${share * 100}%` }} />
-                <div className="tug-mid" />
+              <div className="tug-wrap">
+                <span className={'tug-lead ' + (opponent?.status === 'left' ? 'muted' : myRank === 1 ? 'up' : 'down')}>
+                  {opponent?.status === 'left' ? '상대가 나갔어요' : myRank === 1 ? '내가 앞서는 중' : '상대가 앞서는 중'}
+                </span>
+                <div className="tug" aria-hidden>
+                  <div className="tug-me" style={{ width: `${share * 100}%` }} />
+                  <div className="tug-mid" />
+                </div>
+                <span className="tug-ends" aria-hidden>
+                  <i>{myRank === 1 ? '1위' : '2위'}</i>
+                  <i>{myRank === 1 ? '2위' : '1위'}</i>
+                </span>
               </div>
               <div className="score-opp">
                 <small>
@@ -1321,10 +1338,21 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           openOrders={openOrderCount}
           onOpen={() => setDrawer('assets')}
         />
-        <button className={'btn end-turn' + (endedToday ? ' waiting' : '')} disabled={endedToday ? !canCancelEnd || busy : !canAct || busy} onClick={endedToday ? cancelEnd : endTurn}>
-          {endLabel}
-          {easy && !endedToday && <small>다 정했으면 눌러요</small>}
-          {endedToday && <small>다른 사람 기다리는 중 · 넘어가기 전까지 취소 가능</small>}
+        <button
+          className={'btn end-turn' + (endedToday ? ' waiting' : '') + (remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')}
+          disabled={endedToday ? !canCancelEnd || busy : !canAct || busy}
+          onClick={endedToday ? cancelEnd : endTurn}
+          title={endedToday ? '다음 날로 넘어가기 전까지 취소할 수 있어요' : '오늘 거래를 끝내고 마감해요'}
+        >
+          <span className="et-main">
+            <Icon name={endedToday ? 'refresh' : 'check'} size={18} />
+            {endLabel}
+          </span>
+          <small className="et-sub">
+            {endedToday
+              ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}명${timerText ? ' · ' + timerText : ''}`
+              : `${day + 1}일차${timerText ? ' · ' + timerText + ' 남음' : ''}`}
+          </small>
         </button>
       </section>
 
@@ -1345,7 +1373,14 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           ) : id === 'detail' ? (
             <section className="pane p-detail">
               {detail}
-              <TradeJump easy={easy} canSell={(portfolio.holdings[selected]?.qty ?? 0) > 0} price={`${num(quote(m, selected, displayDay, displayClosed).krw)}원`} />
+              <TradeJump
+                easy={easy}
+                canSell={(portfolio.holdings[selected]?.qty ?? 0) > 0}
+                price={`${num(quote(m, selected, displayDay, displayClosed).krw)}원`}
+                openOrders={myOrders.filter((o) => o.symbol === selected && o.day === day && o.status === 'open').length}
+                onBuy={() => setSheet('buy')}
+                onSell={() => setSheet('sell')}
+              />
             </section>
           ) : id === 'news' ? (
             <section className="pane p-news">

@@ -49,7 +49,7 @@
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 75%);
   z-index: 0;
 }
-.lobby-shell.client > * {
+.lobby-shell.client > *:not(.modal-bg):not(.invite-pop):not(.mm-notice):not(.mm-pill) {
   position: relative;
   z-index: 1;
 }
@@ -1461,3 +1461,192 @@ body:has(.result) {
 @keyframes vsFade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes vsIn { from { opacity: 0; transform: translateY(14px) scale(.96) } to { opacity: 1; transform: none } }
 @media (prefers-reduced-motion: reduce) { .vs-intro, .vs-card { animation: none; } }
+
+/* 게임 안 확인 창 (브라우저 confirm 대신) */
+.confirm-bg { z-index: 400; }
+.confirm-modal { max-width: 360px; width: calc(100% - 32px); padding: 22px 20px 16px; }
+.confirm-text { margin: 0 0 18px; font-size: 15px; line-height: 1.55; font-weight: 600; word-break: keep-all; }
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.confirm-actions .btn { min-height: 44px; justify-content: center; }
+
+/* ===== 찬스 카드: 진짜 카드처럼 ===== */
+.gc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 8px; }
+.gc-row { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; flex-direction: initial; }
+.gcard { --tc: #8b7bff; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gcard.t-info { --tc: #5aa9ff; }
+.gcard.t-attack { --tc: #ff5d73; }
+.gcard.t-defense { --tc: #34d39a; }
+.gcard.t-bonus { --tc: #f5b83d; }
+.gc-face { position: relative; aspect-ratio: 5 / 7; display: flex; flex-direction: column; border-radius: 12px; padding: 8px 9px 9px; overflow: hidden;
+  background:
+    radial-gradient(120% 70% at 50% 34%, color-mix(in srgb, var(--tc) 22%, transparent), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 14px),
+    linear-gradient(170deg, #1d1d33, #111120);
+  border: 1.5px solid color-mix(in srgb, var(--tc) 70%, transparent);
+  box-shadow: inset 0 0 0 3px #111120, inset 0 0 0 4px color-mix(in srgb, var(--tc) 25%, transparent), 0 6px 18px rgba(0,0,0,.35);
+  transition: transform .15s, box-shadow .15s; }
+.gcard:not(.dim):hover .gc-face { transform: translateY(-2px); box-shadow: inset 0 0 0 3px #111120, inset 0 0 0 4px color-mix(in srgb, var(--tc) 40%, transparent), 0 10px 24px rgba(0,0,0,.45), 0 0 18px color-mix(in srgb, var(--tc) 25%, transparent); }
+.gc-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; }
+.gc-type { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--tc) 22%, transparent); color: var(--tc); }
+.gc-code { color: rgba(255,255,255,.4); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.gc-count { color: #fff; background: rgba(255,255,255,.12); padding: 1px 6px; border-radius: 99px; }
+.gc-price { color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; }
+.gc-art { position: relative; flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+.gc-chart { position: absolute; left: 0; right: 0; bottom: 18%; width: 100%; height: 40%; opacity: .35; }
+.gc-chart polyline { fill: none; stroke: var(--tc); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.gc-orb { position: relative; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; color: var(--tc);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tc) 35%, #1b1b30), #14142a 70%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tc) 45%, transparent), 0 0 22px color-mix(in srgb, var(--tc) 30%, transparent); }
+.gc-orb .ico { color: var(--tc); }
+.gc-name { font-size: 14px; font-weight: 800; text-align: center; line-height: 1.25; padding: 4px 0 2px; border-top: 1px solid rgba(255,255,255,.07); word-break: keep-all; }
+.gc-desc { margin: 2px 0 0; font-size: 11px; line-height: 1.4; color: var(--muted, #9aa0b4); text-align: center; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
+.gc-auto { margin-top: 4px; align-self: center; font-size: 10px; font-weight: 700; color: var(--tc); }
+.gc-why { margin-top: 4px; font-size: 10px; line-height: 1.3; color: #ffb4b4; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gcard.dim .gc-face { filter: saturate(.55); opacity: .82; }
+.gc-foot { display: flex; justify-content: center; }
+.gc-foot .btn { min-height: 36px; }
+.gc-tag { font-size: 11px; color: var(--muted, #9aa0b4); }
+/* 작은 카드 (PC 카드 칸) */
+.gc-sm .gc-face { padding: 6px 6px 7px; border-radius: 10px; }
+.gc-sm .gc-orb { width: 42px; height: 42px; }
+.gc-sm .gc-name { font-size: 12px; }
+.gc-sm .gc-top { font-size: 9px; }
+.gc-sm .gc-auto { font-size: 9px; }
+.gc-sm .gc-foot .btn { min-height: 32px; padding: 0 6px; }
+.tray-cards.gc-row .tc-auto { font-size: 12px; color: var(--muted, #9aa0b4); padding: 6px 0; }
+/* 모바일 카드 칸(가로 줄) */
+.m-page .tray-cards.gc-row { display: grid !important; grid-template-columns: repeat(3, minmax(96px, 1fr)); overflow: visible; }
+@media (max-width: 380px) { .gc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gc-desc { -webkit-line-clamp: 4; } }
+@media (prefers-reduced-motion: reduce) { .gc-face { transition: none; } }
+
+/* 속보 알림 끌기: 맞춤 보조선 */
+.snap-guide { position: fixed; display: none; z-index: 950; pointer-events: none; background: #ff4fa3; box-shadow: 0 0 6px rgba(255,79,163,.7); }
+.snap-guide.v { top: 0; bottom: 0; width: 1px; }
+.snap-guide.h { left: 0; right: 0; height: 1px; }
+
+/* 모바일 게임: 설정 버튼은 위 고정 줄 오른쪽 */
+.m-gear { flex: 0 0 auto; align-self: center; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03); color: var(--muted, #9aa0b4); }
+.m-gear:hover, .m-gear:active { color: #fff; background: rgba(255,255,255,.08); }
+
+/* 화면 편집(모바일 줄): 이름표·버튼을 칸 위에 띄워서, 편집 중에도 칸 크기가 실제와 같게 */
+.edit-slot { margin-top: 16px; }
+.edit-slot > .es-bar { position: absolute; top: -14px; right: 6px; z-index: 6; margin: 0; padding: 1px 3px 1px 8px; gap: 4px; font-size: 11px;
+  background: #1f1a40; border: 1px solid rgba(139,123,255,.55); border-radius: 99px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.edit-slot > .es-bar .es-btn { width: 26px; height: 26px; border-radius: 99px; }
+
+/* ===== PC 게임 위 점수줄 ===== */
+/* 장 마감 버튼: 글을 가운데로, 버튼 크기에 맞게 */
+.desk .end-turn { justify-content: center; gap: 4px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; min-width: 168px; padding: 10px 18px; }
+.desk .end-turn small { font-size: 12px; font-weight: 600; max-width: 150px; text-align: center; line-height: 1.35; word-break: keep-all; }
+/* 1대1 줄다리기: 누가 앞서는지 + 순위 */
+.tug-wrap { display: grid; gap: 5px; min-width: 0; }
+.tug-lead { justify-self: center; font-size: 12px; font-weight: 800; }
+.tug-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted, #9aa0b4); }
+.tug-ends i { font-style: normal; font-weight: 700; }
+.desk .vs-box .tug { height: 12px; }
+/* PC 시장 지표: 좁으면 칩을 작게, 넘치면 양끝을 흐리게(옆으로 밀 수 있음을 보여 줌) */
+.desk .hud-macro { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); padding: 0 10px; }
+@media (max-width: 1440px) {
+  .desk .hud-macro { gap: 4px; }
+  .desk .mchip { padding: 5px 8px; gap: 4px; font-size: 11px; }
+  .desk .mchip b { font-size: 12px; }
+}
+
+/* 차트 크게 보기: 차트 칸(작은 칸) 높이 제한을 받지 않고 화면을 채움 */
+.desk .p-detail .chart-full svg.chart,
+.chart-full svg.chart { max-height: calc(100vh - 190px); max-height: calc(100dvh - 190px); }
+
+/* ===== 설정·더보기 ===== */
+.more-h { margin: 0 0 6px; font-size: 14px; color: var(--muted, #9aa0b4); font-weight: 700; }
+.more-row .mr-t { flex: 1; min-width: 0; display: grid; text-align: left; line-height: 1.3; }
+.more-row .mr-t small { font-size: 11.5px; color: var(--muted, #9aa0b4); font-weight: 500; }
+.more-sound .ms-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.more-sound .ms-row > span { display: grid; gap: 2px; }
+.switch { position: relative; width: 46px; height: 26px; border-radius: 99px; border: 0; background: rgba(255,255,255,.14); flex: 0 0 auto; cursor: pointer; transition: background .15s; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch.on { background: #8b7bff; }
+.switch.on i { transform: translateX(20px); }
+/* PC: 왼쪽 = 내 계정·화면·소리, 오른쪽 = 메뉴 타일 (게임 클라이언트 설정 화면처럼) */
+@media (min-width: 861px) {
+  .more-page { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; max-width: 1100px; }
+  .more-page > .panel { margin: 0; }
+  .more-page > .more-links { grid-column: 2; grid-row: 1 / span 4; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; }
+  .more-page > .more-links .more-h { grid-column: 1 / -1; }
+  .more-page > .more-links .more-row { min-height: 72px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: rgba(255,255,255,.025); padding: 12px 14px; gap: 12px; }
+  .more-page > .more-links .more-row:hover { border-color: rgba(139,123,255,.5); background: rgba(139,123,255,.08); }
+  .more-page > .more-links .more-row > .ico:first-child { width: 22px; height: 22px; color: #b9b0ff; }
+  .more-page > .more-links .more-row .mr-t b { font-size: 15px; }
+}
+@media (min-width: 1400px) {
+  .more-page > .more-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ===== PC: 사기·팔기 바(차트 칸 아래 고정) + 가운데 주문 창 ===== */
+.desk .trade-jump { position: sticky; bottom: 0; display: flex; margin-top: auto; padding: 10px 14px; background: var(--surface); border-top: 1px solid var(--line); }
+.desk .trade-jump .tj-price { display: flex; align-items: baseline; gap: 8px; font-size: 16px; }
+.desk .trade-jump .tj-orders { font-size: 12px; font-weight: 700; color: #f5b83d; }
+.desk .trade-jump .btn { min-width: 112px; min-height: 42px; font-size: 15px; font-weight: 800; justify-content: center; }
+.game.desk .sheet-bg { align-items: center; justify-content: center; padding: 24px; }
+.game.desk .sheet { width: min(480px, 100%); max-height: min(86vh, 760px); border: 1px solid var(--line-2); border-radius: 18px; animation: tradePop .18s ease-out; padding-bottom: 6px; }
+.game.desk .sheet .sheet-grab { display: none; }
+@keyframes tradePop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .game.desk .sheet { animation: none; } }
+
+/* ===== PC 장 마감 버튼: 칸을 꽉 채우는 큰 판 대신, 가운데 놓인 단단한 버튼 ===== */
+.desk .desk-score > .end-turn,
+.desk .desk-score:has(.end-status):has(.vs-box) > .end-turn,
+.desk .desk-score:has(.rank-strip) > .end-turn {
+  align-self: center; height: 68px; min-width: 176px; padding: 0 20px; gap: 3px; justify-content: center;
+  border-radius: 14px; background: #8b7bff; box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 6px 16px rgba(139,123,255,.28);
+  transition: background .15s, transform .08s;
+}
+.desk .end-turn:hover:not(:disabled) { background: #9a8cff; }
+.desk .end-turn:active:not(:disabled) { transform: translateY(1px); }
+.desk .end-turn .et-main { display: inline-flex; align-items: center; gap: 7px; font-size: 18px; font-weight: 800; line-height: 1.1; }
+.desk .end-turn .et-sub { font-size: 12px; font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; white-space: nowrap; max-width: none; }
+.desk .end-turn.hurry { background: #ff5d73; box-shadow: 0 6px 16px rgba(255,93,115,.3); }
+.desk .end-turn.waiting { background: transparent; color: var(--text); border: 1px solid var(--line-2); box-shadow: none; }
+.desk .end-turn.waiting:hover:not(:disabled) { background: rgba(255,255,255,.05); }
+.desk .end-turn:disabled:not(.waiting) { background: var(--surface-2); color: var(--muted); box-shadow: none; }
+
+/* 찬스 카드 설명: PC 는 마우스를 올리면 카드 위에, 휴대폰은 누르면 크게 */
+.gcard { position: relative; }
+.gc-face { cursor: default; }
+.gc-face:focus-visible { outline: 2px solid var(--tc); outline-offset: 2px; }
+.gc-pop { --tc: #8b7bff; position: fixed; transform: translate(-50%, -100%); width: 240px; z-index: 300; padding: 10px 12px; border-radius: 12px;
+  background: #1b1832; border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  display: grid; gap: 4px; text-align: left; pointer-events: none; animation: fade .12s ease-out; }
+.gc-pop.below { transform: translate(-50%, 0); }
+.gc-pop.t-info { --tc: #5aa9ff; } .gc-pop.t-attack { --tc: #ff5d73; } .gc-pop.t-defense { --tc: #34d39a; } .gc-pop.t-bonus { --tc: #f5b83d; }
+.gc-pop b { font-size: 14px; }
+.gc-pop p { margin: 0; font-size: 12.5px; line-height: 1.5; color: #d9dbe6; word-break: keep-all; }
+.gc-type-tip { font-size: 11px; font-weight: 700; color: var(--tc); }
+.gc-pop .gc-why { display: block; -webkit-line-clamp: unset; text-align: left; }
+@media (hover: none), (pointer: coarse) { .gc-face { cursor: pointer; } }
+/* 휴대폰: 자세히 보기 창 */
+.gc-detail-bg { z-index: 120; }
+.gc-detail { width: min(340px, 100%); display: grid; gap: 14px; justify-items: center; animation: tradePop .18s ease-out; }
+.gc-detail > .gcard { width: 170px; }
+.gc-detail-txt { width: 100%; display: grid; gap: 6px; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line-2); }
+.gc-detail-txt > b { font-size: 17px; }
+.gc-detail-txt p { margin: 0; font-size: 14px; line-height: 1.55; word-break: keep-all; }
+.gc-detail-txt .gc-why { display: block; -webkit-line-clamp: unset; text-align: left; font-size: 12px; }
+.gc-detail-act { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 6px; }
+.gc-detail-act .btn { min-height: 44px; }
+.gc-detail { --tc: #b9b0ff; }
+
+/* PC 차트 칸: 주문 칸이 빠졌으니 차트가 칸 높이에 맞춰 커짐 — 제목·차트·사기/팔기 바가 스크롤 없이 한 번에 보이게 (회사 소개는 그 아래) */
+@container detail (min-height: 0px) {
+  .desk .p-detail svg.chart { max-height: clamp(140px, calc(100cqh - 262px), 520px); }
+}
+/* 제목·태그 한 줄, 가격·설명 한 줄 */
+.desk .p-detail .detail-head { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; row-gap: 2px; align-items: center; }
+.desk .p-detail .detail-head .title-line { grid-column: 1; }
+.desk .p-detail .detail-head .tags { grid-column: 2; margin: 0; }
+.desk .p-detail .detail-head .price-line { grid-column: 1; margin: 0; }
+.desk .p-detail .detail-head .sub-price { grid-column: 2; align-self: end; margin: 0 0 6px; }
+/* 오늘 장중/일별 · 봉 간격을 한 줄에, 차트 아래 도움말은 숨김(마우스를 올리면 커서로 알 수 있음) */
+.desk .p-detail .chart-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.desk .p-detail .chart-wrap > .pchart { flex: 1 1 100%; min-width: 0; }
+.desk .p-detail .chart-wrap > .pc-seg { margin: 0; }
+.desk .p-detail .pc-help { display: none; }

@@ -1,6 +1,6 @@
 /** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FitText } from './FitText';
+import { GameCard } from './GameCard';
 import { CardIcon, Icon, type IconName } from './Icon';
 import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
@@ -176,28 +176,29 @@ export function CardTray({
           <Icon name="cart" /> 상점 · 전체
         </button>
       </div>
-      <div className="tray-cards">
+      <div className="tray-cards gc-row">
         {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
         {owned.map(([k, n]) => {
           const d = ITEM_MAP[k];
           const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
           return (
-            <div key={k} className={'tcard t-' + d.type} title={d.desc}>
-              <span className="tc-emoji"><CardIcon kind={d.kind} size={18} /></span>
-              <span className="tc-name">
-                <FitText>
-                  {d.name}
-                  {n > 1 && <em> ×{n}</em>}
-                </FitText>
-              </span>
-              {ITEM_MAP[k].passive ? (
-                <span className="tc-auto">자동</span>
-              ) : (
-                <button className="btn sm primary" disabled={!!why || busy} title={why ?? d.desc} onClick={() => onUse(k)}>
-                  사용
-                </button>
-              )}
-            </div>
+            <GameCard
+              key={k}
+              kind={k}
+              count={n}
+              size="sm"
+              why={d.passive ? null : why}
+              dim={!d.passive && !!why}
+              footer={
+                d.passive ? (
+                  <span className="tc-auto">자동</span>
+                ) : (
+                  <button className="btn sm primary full" disabled={!!why || busy} title={why ?? d.desc} onClick={() => onUse(k)}>
+                    사용
+                  </button>
+                )
+              }
+            />
           );
         })}
       </div>

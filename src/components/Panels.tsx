@@ -1,4 +1,5 @@
 import { josa } from '../engine/engine';
+import { GameCard } from './GameCard';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
@@ -295,54 +296,57 @@ export function CardsPanel({ solo, players = 3, day, totalDays, mine, cash, used
       </p>
 
       {!shop && owned.length === 0 && <p className="empty">카드가 없어요. 상점에서 살 수 있어요.</p>}
-      {!shop &&
-        owned.map(([k, n]) => {
-          const d = ITEM_MAP[k];
-          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '장 마감 후·시간이 끝난 뒤에는 쓸 수 없어요';
-          return (
-            <div key={k} className={'card-item t-' + d.type}>
-              <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
-              <div className="ci-body">
-                <b>
-                  {d.name} {n > 1 && <span className="muted">×{n}</span>}
-                </b>
-                <small>{d.desc}</small>
-                {why && !ITEM_MAP[k].passive && <small className="ci-why">{why}</small>}
-              </div>
-              {!ITEM_MAP[k].passive ? (
-                <button className="btn sm primary" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
-                  사용
-                </button>
-              ) : (
-                <span className="muted small">자동</span>
-              )}
-            </div>
-          );
-        })}
+      {!shop && owned.length > 0 && (
+        <div className="gc-grid">
+          {owned.map(([k, n]) => {
+            const d = ITEM_MAP[k];
+            const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '장 마감 후·시간이 끝난 뒤에는 쓸 수 없어요';
+            return (
+              <GameCard
+                key={k}
+                kind={k}
+                count={n}
+                why={d.passive ? null : why}
+                dim={!d.passive && !!why}
+                footer={
+                  d.passive ? undefined : (
+                    <button className="btn sm primary full" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
+                      사용
+                    </button>
+                  )
+                }
+              />
+            );
+          })}
+        </div>
+      )}
 
       {shop && (
-        <div className="shop">
+        <div className="shop gc-grid">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
             const cost = itemCost(d.kind, players);
             const why = canAct ? canBuy(mine, d.kind, cash, cost) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
             return (
-              <div key={d.kind} className={'card-item t-' + d.type}>
-                <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
-                <div className="ci-body">
-                  <b>
-                    {d.name} <span className={'type-tag ' + d.type}>{{ info: '정보', attack: '방해', defense: '방어', bonus: '보너스' }[d.type]}</span>
-                  </b>
-                  <small>{d.desc}</small>
-                  {why && <small className="ci-why">{why}</small>}
-                </div>
-                <button className="btn sm" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
-                  {wonShort(cost)}
-                </button>
-              </div>
+              <GameCard
+                key={d.kind}
+                kind={d.kind}
+                corner={<span className="gc-price">{wonShort(cost)}</span>}
+                why={why}
+                dim={!!why}
+                footer={
+                  <button className="btn sm full" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
+                    <Icon name="cart" size={14} /> 사기
+                  </button>
+                }
+              />
             );
           })}
-          {solo && <p className="muted small">방해·방어 카드는 둘이서 할 때만 나와요.</p>}
         </div>
+      )}
+      {shop && (
+        <>
+          {solo && <p className="muted small">방해·방어 카드는 둘이서 할 때만 나와요.</p>}
+        </>
       )}
     </div>
   );

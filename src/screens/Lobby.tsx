@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
@@ -17,6 +18,7 @@ import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
+import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
 import { BadgeIcon, Icon } from '../components/Icon';
@@ -655,34 +657,36 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
             </div>
           </section>
+          <SoundSetting />
           <section className="panel pad more-links">
+            <h3 className="more-h">메뉴</h3>
             {online && (
               <button className="more-row" onClick={() => go('ranking')}>
-                <Icon name="crown" /> 랭킹 <Icon name="right" size={14} />
+                <Icon name="crown" /> <span className="mr-t"><b>랭킹</b><small>회원 순위와 티어</small></span> <Icon name="right" size={14} />
               </button>
             )}
             {online && (
               <button className="more-row" onClick={() => go('records')}>
-                <Icon name="medal" /> 업적 <Icon name="right" size={14} />
+                <Icon name="medal" /> <span className="mr-t"><b>업적</b><small>모은 업적·칭호·프로필 사진</small></span> <Icon name="right" size={14} />
               </button>
             )}
             <button className="more-row" onClick={() => go('practice')}>
-              <Icon name="target" /> 연습 (혼자 연습·튜토리얼) <Icon name="right" size={14} />
+              <Icon name="target" /> <span className="mr-t"><b>연습</b><small>혼자 연습 · 튜토리얼</small></span> <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => go('companies')}>
-              <Icon name="book" /> 공부 <Icon name="right" size={14} />
+              <Icon name="book" /> <span className="mr-t"><b>공부</b><small>투자 기초 · 기업 살펴보기</small></span> <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
-              <Icon name="play" /> 튜토리얼 <Icon name="right" size={14} />
+              <Icon name="play" /> <span className="mr-t"><b>튜토리얼</b><small>연습봇과 한 판 따라 하기</small></span> <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => openModal('howto')}>
-              <Icon name="help" /> 게임 방법 <Icon name="right" size={14} />
+              <Icon name="help" /> <span className="mr-t"><b>게임 방법</b><small>규칙을 한눈에</small></span> <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => openModal('feedback')}>
-              <Icon name="bell" /> 의견·버그 보내기 <Icon name="right" size={14} />
+              <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => openModal('privacy')}>
-              <Icon name="lock" /> 개인정보 처리 안내 <Icon name="right" size={14} />
+              <Icon name="lock" /> <span className="mr-t"><b>개인정보 처리 안내</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
             </button>
           </section>
         </div>
@@ -1005,7 +1009,7 @@ function ForgetMe() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const forget = async () => {
-    if (!window.confirm('이 기기의 계정과 게임 기록(전적·업적·연습 저장·화면 설정)을 모두 지울까요? 되돌릴 수 없어요.')) return;
+    if (!(await ask('이 기기의 계정과 게임 기록(전적·업적·연습 저장·화면 설정)을 모두 지울까요? 되돌릴 수 없어요.', { ok: '모두 지우기', danger: true }))) return;
     setBusy(true);
     setErr('');
     try {
@@ -1166,8 +1170,8 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
           <button
             className="btn danger ghost"
             disabled={busy}
-            onClick={() => {
-              if (playing && !window.confirm('기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?')) return;
+            onClick={async () => {
+              if (playing && !(await ask('기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?', { ok: '기권하기', danger: true }))) return;
               setBusy(true);
               api('leave', { roomId: multi.roomId })
                 .catch(() => {})
@@ -1449,5 +1453,23 @@ function TierProgress({ rating }: { rating: number }) {
       </div>
       <small className="muted">{t.division ? `다음 단계까지 ${50 - t.points}점` : `마스터 +${t.points}점`}</small>
     </div>
+  );
+}
+
+/** 효과음 켜기/끄기 (이 기기에 기억) */
+function SoundSetting() {
+  const [m, setM] = useState(isMuted);
+  return (
+    <section className="panel pad more-sound">
+      <div className="ms-row">
+        <span>
+          <b>효과음</b>
+          <small className="muted">마감·체결·매칭 소리</small>
+        </span>
+        <button className={'switch' + (m ? '' : ' on')} role="switch" aria-checked={!m} onClick={() => (setMuted(!m), setM(!m))}>
+          <i />
+        </button>
+      </div>
+    </section>
   );
 }

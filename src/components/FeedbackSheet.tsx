@@ -4,6 +4,7 @@
  * 버그를 고치는 데 필요한 화면 정보(주소·화면 크기·브라우저 종류·게임 일차)는 자동으로 붙이고,
  * 이름·연락처 같은 개인정보는 받지 않음
  */
+import { ask } from './ConfirmHost';
 import { useState } from 'react';
 import { api } from '../net/api';
 import { Icon } from './Icon';
@@ -56,7 +57,7 @@ export function FeedbackSheet({ onClose, initialKind = 'bug', initialText = '', 
     <Sheet
       title={<><Icon name="news" size={18} /> 의견·버그 보내기</>}
       onClose={onClose}
-      guard={() => state === 'done' || !text.trim() || window.confirm('쓰던 내용이 사라져요. 닫을까요?')}
+      guard={async () => state === 'done' || !text.trim() || (await ask('쓰던 내용이 사라져요. 닫을까요?', { ok: '닫기' }))}
     >
       {state === 'done' ? (
         <div className="fb-done">

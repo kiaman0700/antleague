@@ -3,6 +3,7 @@
  * 서버는 user id 를 보내지 않음 — 화면의 id 는 '친구 관계 줄'의 id
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { ask } from '../components/ConfirmHost';
 import { api } from '../net/api';
 import { refreshAccount, useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
@@ -144,7 +145,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
     );
 
   const confirmThen = (q: string, fn: () => Promise<unknown>, ok: string) => {
-    if (window.confirm(q)) run(fn, ok);
+    void ask(q, { danger: true }).then((yes) => { if (yes) void run(fn, ok); });
   };
 
   return (

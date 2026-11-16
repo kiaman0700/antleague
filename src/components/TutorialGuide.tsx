@@ -3,6 +3,7 @@
  * '해 보기' 단계는 직접 해야(조건이 맞아야) 다음으로 넘어감. 시간은 멈춰 있음
  */
 import { useEffect, useRef, useState } from 'react';
+import { ask } from './ConfirmHost';
 import { josa } from '../engine/engine';
 import { Icon } from './Icon';
 
@@ -69,7 +70,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: '사 보기',
     text: (c) => `${josa(c.symbolName, '을', '를')} 사 보세요. 금액(또는 수량)을 정하고 '사기'를 누르면 돼요.`,
     // 모바일: 사기 창(시트)이 열리면 그 창을 비추고 말풍선은 위로
-    target: '.p-detail .trade, .sheet .trade, .m-tradebar',
+    target: '.sheet .trade, .p-detail .trade-jump, .m-tradebar',
     tab: 'detail',
     wait: (c) => c.myTrades > 0,
     waitHint: '사기를 눌러 사 보세요',
@@ -199,7 +200,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
             {step + 1} / {TUTORIAL_STEPS.length}
           </span>
           <b>{s.title}</b>
-          <button className="icon-btn sm" onClick={() => window.confirm('튜토리얼을 그만할까요? 다시 하려면 처음부터 해야 해요.') && onExit()} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
+          <button className="icon-btn sm" onClick={() => void ask('튜토리얼을 그만할까요? 다시 하려면 처음부터 해야 해요.', { ok: '그만하기' }).then((yes) => yes && onExit())} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
             <Icon name="x" size={14} />
           </button>
         </div>

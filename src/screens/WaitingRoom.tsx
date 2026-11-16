@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ask } from '../components/ConfirmHost';
 import { api, useLiveView } from '../net/api';
 import { loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
 import { ModePicker } from './Lobby';
@@ -143,9 +144,9 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     run(() => api('mode', { roomId, mode: m }));
   };
 
-  const leave = () => {
-    if (isHost && view.players.length > 1 && !window.confirm('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?')) return;
-    if (isHost && view.players.length <= 1 && !window.confirm('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?')) return;
+  const leave = async () => {
+    if (isHost && view.players.length > 1 && !(await ask('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?', { ok: '나가기' }))) return;
+    if (isHost && view.players.length <= 1 && !(await ask('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?', { ok: '나가기' }))) return;
     api('leave', { roomId }).catch(() => {}).finally(onLeave);
   };
   const readyCount = view.players.filter((p) => p.ready || p.id === room.hostId).length;
@@ -207,7 +208,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                 {isHost && p.id !== playerId && (
                   <button
                     className="slot-kick"
-                    onClick={() => window.confirm(`${p.nickname} 님을 내보낼까요?`) && run(() => api('kick', { roomId, target: p.id }))}
+                    onClick={() => void ask(`${p.nickname} 님을 내보낼까요?`, { ok: '내보내기', danger: true }).then((yes) => { if (yes) void run(() => api('kick', { roomId, target: p.id })); })}
                     aria-label={`${p.nickname} 내보내기`}
                     title="내보내기"
                   >

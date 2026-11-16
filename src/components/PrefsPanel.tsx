@@ -2,21 +2,20 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { isCustom, resetPrefs, setPrefs, usePrefs } from '../prefs';
 import { manExact } from '../lib/format';
-import { STOCK_SECTORS } from '../game/stocks';
 import type { UiMode } from '../session';
-import { Icon, SectorIcon } from './Icon';
+import { Icon } from './Icon';
 
 /** 열려 있는 창 순서 (Esc 는 맨 위 창만) */
 const sheetStack: number[] = [];
 let sheetSeq = 0;
 
-export function Sheet({ title, onClose, children, wide, guard }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; guard?: () => boolean }) {
+export function Sheet({ title, onClose, children, wide, guard }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; guard?: () => boolean | Promise<boolean> }) {
   // guard: 닫기 전에 확인 (예: 쓰던 글이 있으면 물어봄). 닫기 버튼(X)은 그대로 닫힘
   const guardRef = useRef(guard);
   guardRef.current = guard;
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  const soft = () => (!guardRef.current || guardRef.current()) && closeRef.current();
+  const soft = async () => (!guardRef.current || (await guardRef.current())) && closeRef.current();
   useEffect(() => {
     // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘
     const id = ++sheetSeq;
@@ -64,15 +63,6 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
 
 export function PrefsPanel({ ui }: { ui: UiMode }) {
   const p = usePrefs();
-  const pins = p.sectorPins ?? [];
-  const move = (i: number, d: number) => {
-    const next = [...pins];
-    const j = i + d;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
-    setPrefs({ sectorPins: next });
-  };
-  const toggle = (id: string) => setPrefs({ sectorPins: pins.includes(id) ? pins.filter((x) => x !== id) : [...pins, id] });
 
   return (
     <div className="prefs">
@@ -121,37 +111,17 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
       </div>
 
       <div className="field">
-        <span>자주 보는 업종 (종목 목록 위에 이 순서로 나와요)</span>
-        {pins.length > 0 && (
-          <ol className="pin-order">
-            {pins.map((id, i) => {
-              const s = STOCK_SECTORS.find((x) => x.id === id);
-              if (!s) return null;
-              return (
-                <li key={id}>
-                  <SectorIcon id={id} />
-                  <span className="grow">{s.name}</span>
-                  <button className="icon-btn sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`${s.name} 위로`}>
-                    <Icon name="up" />
-                  </button>
-                  <button className="icon-btn sm" onClick={() => move(i, 1)} disabled={i === pins.length - 1} aria-label={`${s.name} 아래로`}>
-                    <Icon name="down" />
-                  </button>
-                  <button className="icon-btn sm" onClick={() => toggle(id)} aria-label={`${s.name} 빼기`}>
-                    <Icon name="x" />
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        <div className="pin-pick">
-          {STOCK_SECTORS.filter((s) => !pins.includes(s.id)).map((s) => (
-            <button key={s.id} className="chip" onClick={() => toggle(s.id)}>
-              <SectorIcon id={s.id} /> {s.name} <Icon name="plus" />
-            </button>
-          ))}
-        </div>
+        <span>장중 차트 모양</span>
+        <Seg
+          value={p.liveChartType ?? 'same'}
+          onChange={(liveChartType) => setPrefs({ liveChartType })}
+          options={[
+            { v: 'same', label: '일별과 같게', sub: '한쪽을 바꾸면 같이' },
+            { v: 'line', label: '라인' },
+            { v: 'candle', label: '캔들' },
+            { v: 'ohlc', label: '바' },
+          ]}
+        />
       </div>
 
       <button className="btn ghost full" onClick={resetPrefs}>
