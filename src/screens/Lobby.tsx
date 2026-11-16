@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { MatchFinder } from '../components/MatchFinder';
-import { AccountChip, BottomNav, Brand, lastTab, rememberTab, SideNav, useGuestGate, type NavTab } from '../components/LobbyNav';
+import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
+import { SocialPanel, TopBar } from '../components/ClientChrome';
 import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
@@ -1247,6 +1248,7 @@ const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
 export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
+  const [socialOpen, setSocialOpen] = useState(false);
   // 받은 친구 신청 수 → 메뉴 배지 (회원만, 30초마다)
   const friends = useFriendsPoll(online && account.status === 'member');
   // 파티 상태는 어느 메뉴에 있든 확인 — 파티장이 찾기를 시작하면 파티원은 일반전 화면으로 데려가 같이 찾음
@@ -1315,34 +1317,60 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <Hub key="casual" tab="casual" go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} party={party} reloadParty={reloadParty} />;
   }
 
+  // 플레이: 랭킹전/일반전 화면으로 (이미 거기면 '찾기' 버튼으로 눈길을 줌)
+  const play = () => {
+    const t: LobbyPage = resolved === 'ranked' || resolved === 'casual' ? resolved : 'casual';
+    if (t !== resolved) return go(t);
+    const btn = document.querySelector<HTMLButtonElement>('.match-finder .btn.primary.xl');
+    btn?.focus();
+    btn?.classList.add('cl-pulse');
+    setTimeout(() => btn?.classList.remove('cl-pulse'), 1200);
+  };
   return (
-    <div className="lobby-shell">
-      <SideNav
+    <div className="lobby-shell client">
+      <TopBar
         active={active}
         account={account}
         online={online}
         onGo={goTab}
+        onPlay={play}
         onProfile={() => go('me')}
         onLogin={() => go('login')}
-        badges={badges}
-        footer={
-          <>
+        socialBadge={badges.friends}
+        socialOpen={socialOpen}
+        onSocial={() => setSocialOpen((v) => !v)}
+      />
+      <div className="cl-body">
+        <main className="lobby-main">
+          <div className="lobby-topbar">
+            <Brand />
+            <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
+          </div>
+          <div className="lobby-body">{body}</div>
+          <footer className="cl-foot">
             <button className="linkish-soft" onClick={() => setModal('feedback')}>
               의견·버그 보내기
             </button>
+            <span aria-hidden> · </span>
             <button className="linkish-soft" onClick={() => setModal('privacy')}>
               개인정보 처리 안내
             </button>
-          </>
-        }
-      />
-      <main className="lobby-main">
-        <div className="lobby-topbar">
-          <Brand />
-          <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
-        </div>
-        <div className="lobby-body">{body}</div>
-      </main>
+          </footer>
+        </main>
+        {online && (
+          <div className={'cl-social-wrap' + (socialOpen ? ' open' : '')}>
+            <SocialPanel
+              account={account}
+              party={party}
+              reloadParty={reloadParty}
+              onFriends={() => (setSocialOpen(false), go('friends'))}
+              onLogin={() => go('login')}
+              onSignup={() => go('signup')}
+              onClose={() => setSocialOpen(false)}
+            />
+          </div>
+        )}
+      </div>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
