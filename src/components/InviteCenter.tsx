@@ -50,6 +50,12 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [note, setNote] = useState('');
+  // 짧은 안내(거절됨·답 없음·취소함)는 5초 뒤 저절로 사라짐 (눌러서 바로 닫을 수도 있음)
+  useEffect(() => {
+    if (!note) return;
+    const t = setTimeout(() => setNote(''), 5000);
+    return () => clearTimeout(t);
+  }, [note]);
   const seen = useRef(new Set<string>());
   const entered = useRef(false);
 
@@ -202,6 +208,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
               onClick={() => {
                 api('inviteCancel', { id: waitingDuel.id }).catch(() => {});
                 setDuel({ ...waitingDuel, status: 'cancelled' });
+                setNote(`${waitingDuel.to} 님께 보낸 1대1 신청을 취소했어요.`);
                 seen.current.add('d:' + waitingDuel.id);
               }}
             >
