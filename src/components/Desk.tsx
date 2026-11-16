@@ -181,7 +181,7 @@ export function CardTray({
         </button>
       </div>
       {/* 카드는 손에 쥔 것처럼 겹쳐 두고, 마우스를 올리면 부채꼴로 촤라락 펼쳐지며 올린 카드가 위로 (터치 기기는 나란히) */}
-      <div className={'tray-cards gc-row fan' + (owned.length > 1 ? ' many' : '')} style={{ ['--n' as string]: owned.length }}>
+      <div className={'tray-cards gc-row fan' + (owned.length > 1 ? ' many' : '')} data-n={owned.length} style={{ ['--n' as string]: owned.length }}>
         {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
         {owned.map(([k, n], i) => {
           const d = ITEM_MAP[k];

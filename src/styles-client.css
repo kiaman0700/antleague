@@ -1784,3 +1784,24 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
     transform: translateX(calc(var(--i) * var(--gap))) translateY(-14px) rotate(0deg) scale(1.06);
   }
 }
+
+/* ===== 부채꼴 손패 다듬기 ===== */
+@media (hover: hover) and (pointer: fine) {
+  /* 카드가 적으면 크게, 펼침 간격도 칸 폭을 더 채우게 (좌우가 비어 보이지 않게) */
+  .tray-cards.fan[data-n='1'] .fan-slot,
+  .tray-cards.fan[data-n='2'] .fan-slot { --w: 104px; --gap: min(118px, calc((100cqw - var(--w) - 16px) / max(1, var(--n) - 1))); }
+  .tray-cards.fan[data-n='3'] .fan-slot { --w: 94px; --gap: min(88px, calc((100cqw - var(--w) - 16px) / 2)); }
+  .tray-cards.fan[data-n='1'], .tray-cards.fan[data-n='2'] { height: 176px; }
+  /* 부드럽게: 길고 끝이 느려지는 움직임 + 가운데부터 바깥으로 살짝 늦게 (촤라락) */
+  .tray-cards.fan .fan-slot {
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(max(var(--i), var(--i) * -1) * 28ms);
+    will-change: transform;
+  }
+  /* 올린 카드는 바로 반응 (늦게 뜨지 않게) */
+  .tray-cards.fan .fan-slot:hover { transition-duration: 0.28s; transition-delay: 0s; }
+  /* 접힐 때는 거꾸로: 바깥부터 */
+  .tray-cards.fan:not(:hover) .fan-slot { transition-delay: calc((2 - max(var(--i), var(--i) * -1)) * 20ms); }
+  .tray-cards.fan .gc-face { transition: box-shadow 0.3s ease; }
+  .tray-cards.fan .fan-slot:hover .gc-face { box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--tc) 60%, transparent); }
+}
