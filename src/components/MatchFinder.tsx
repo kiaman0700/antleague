@@ -239,7 +239,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         </h3>
       )}
       {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
-      {inParty ? <p className="muted small mf-note">파티는 <b>다인전</b>(4명 방)으로 같이 찾아요.</p> : seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))}
+      {inParty ? <p className="muted small mf-note">파티는 <b>다인전</b>으로 같이 찾아요. 4명 방이 기본이고, 1분 30초 넘게 못 모이면 3명 방으로 시작해요.</p> : seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))}
       {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(sizeEff, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(sizeEff, 'normal'))]], (v) => save({ ...pref, speed: v }))}
       {!member && !loading && !fixedKind && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
       {err && <p className="error">{err}</p>}
@@ -249,7 +249,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           {waitingIn(sizeEff, pref.speed) > 0 && <small className="muted"> · {waitingIn(sizeEff, pref.speed)}명 기다리는 중</small>}
         </p>
       )}
-      {inParty && kind === 'ranked' && <p className="muted small mf-note">파티 중에는 랭킹전을 찾을 수 없어요. 친구끼리 점수를 주고받지 못하게, 랭킹전은 혼자만 찾아요.</p>}
+      {inParty && kind === 'ranked' && <p className="muted small mf-note">랭킹전은 파티 없이 혼자 찾아요 (친구도 각자 찾으면 같은 판에서 만날 수 있어요). 파티에서 나오면 찾을 수 있어요.</p>}
       <button className="btn primary xl full" onClick={start} disabled={searching || loading || joining || (inParty && (!party!.isLeader || kind === 'ranked'))}>
         <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
       </button>

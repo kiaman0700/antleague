@@ -97,9 +97,9 @@ describe('파티·랭킹전 분리', () => {
     const g = pickGroup(me, [tp('mate', 1000, 0, 'P'), tp('a', 1000, 0, null), tp('b', 1000, 0, null)], 'multi', now);
     expect(g?.map((x) => x.id).sort()).toEqual(['a', 'b', 'mate', 'me']);
   });
-  it('파티가 낀 판은 3명으로 시작하지 않음 (오래 기다려도)', () => {
-    const me = tp('me', 1000, 300, 'P');
-    expect(pickGroup(me, [tp('mate', 1000, 300, 'P'), tp('a', 1000, 300, null)], 'multi', now)).toBeNull();
+  it('파티 2 + 혼자 1: 1분 30초 전엔 기다리고, 넘으면 3명 판으로 시작', () => {
+    expect(pickGroup(tp('me', 1000, 60, 'P'), [tp('mate', 1000, 60, 'P'), tp('a', 1000, 60, null)], 'multi', now)).toBeNull();
+    expect(pickGroup(tp('me', 1000, 95, 'P'), [tp('mate', 1000, 95, 'P'), tp('a', 1000, 95, null)], 'multi', now)?.length).toBe(3);
   });
   it('파티 둘이면 2+2', () => {
     const me = tp('me', 1000, 0, 'P');

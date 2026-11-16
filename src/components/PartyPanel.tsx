@@ -37,6 +37,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
   const friends = useFriends();
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState<Record<string, string>>({});
+  const [fresh, setFresh] = useState<Record<string, boolean>>({});
   const [err, setErr] = useState('');
   useEffect(() => {
     if (open) refreshFriends();
@@ -50,6 +51,8 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
     try {
       await api('partyInvite', { friendId: id });
       setSent((x) => ({ ...x, [id]: 'ok' }));
+      setFresh((x) => ({ ...x, [id]: true }));
+      setTimeout(() => setFresh((x) => ({ ...x, [id]: false })), 5000);
       await reload();
     } catch (e) {
       setSent((x) => ({ ...x, [id]: e instanceof Error ? e.message : '초대하지 못했어요' }));
@@ -74,7 +77,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
           </button>
         )}
       </div>
-      {!inParty && <p className="muted small">친구 1명과 파티를 만들어 일반전 다인전을 같이 찾을 수 있어요. 파티는 4명 방에만 들어가요.</p>}
+      {!inParty && <p className="muted small">친구 1명과 파티를 만들어 일반전 다인전을 같이 찾을 수 있어요. 4명 방이 기본이고, 1분 30초 넘게 못 모이면 3명 방에도 들어가요.</p>}
       {party && (
         <ul className="party-members">
           {party.members.map((m, i) => (
@@ -105,11 +108,11 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
                   {sent[f.id] && sent[f.id] !== 'ok' && <small className="error">{sent[f.id]}</small>}
-                  {sent[f.id] === 'ok' && <small className="good-msg">초대했어요 · 2분 안에 수락하면 들어와요</small>}
+                  {sent[f.id] === 'ok' && <small className="good-msg">불렀어요 · 2분 안에 수락하면 들어와요 (못 받았으면 다시 부르기)</small>}
                 </span>
                 <span className="fr-act">
-                  <button className="btn sm" disabled={sent[f.id] === 'ok'} onClick={() => invite(f.id)}>
-                    부르기
+                  <button className="btn sm" disabled={!!fresh[f.id]} onClick={() => invite(f.id)}>
+                    {fresh[f.id] ? '보냄' : sent[f.id] === 'ok' ? '다시 부르기' : '부르기'}
                   </button>
                 </span>
               </li>

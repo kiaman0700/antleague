@@ -301,26 +301,30 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
  */
 /** 같은 두 사람이 하루(24시간)에 점수를 주고받는 판 수 상한 — 짜고 치기(점수 몰아주기) 방지 */
 export const PAIR_DAILY_LIMIT = 3;
+/** 같은 두 사람이 24시간 안에 이미 n판 점수를 주고받았으면 이번 판 점수 비중: 3판까지 그대로, 6판까지 절반, 그 뒤로 없음
+ *  (사람이 적어 같은 상대와 자주 만나도 게임은 얼마든지 — 점수 몰아주기만 막음) */
+export const pairWeight = (n: number) => (n < PAIR_DAILY_LIMIT ? 1 : n < PAIR_DAILY_LIMIT * 2 ? 0.5 : 0);
 
 /**
  * 순위 → Elo 점수 변화. 기권한 사람은 랭킹전에서 꼴찌로 침 (지는 중에 나가서 점수를 지키지 못하게).
- * skipPair(a,b) 가 true 인 쌍은 점수에 넣지 않음
+ * weight(a,b): 그 쌍의 점수 비중 (1 = 그대로, 0.5 = 절반, 0 = 반영 안 함)
  */
 export function eloDeltas(
   members: { user_id: string; rating: number }[],
   rankOf: Map<string, number>,
-  skipPair: (a: string, b: string) => boolean = () => false,
+  weight: (a: string, b: string) => number = () => 1,
 ) {
   const delta = new Map<string, number>();
   for (const a of members) {
     let d = 0;
     for (const o of members) {
-      if (o.user_id === a.user_id || skipPair(a.user_id, o.user_id)) continue;
+      const w = o.user_id === a.user_id ? 0 : weight(a.user_id, o.user_id);
+      if (w <= 0) continue;
       const ra = rankOf.get(a.user_id)!;
       const ro = rankOf.get(o.user_id)!;
       const s = ra < ro ? 1 : ra > ro ? 0 : 0.5;
       const e = 1 / (1 + Math.pow(10, (o.rating - a.rating) / 400));
-      d += s - e;
+      d += w * (s - e);
     }
     delta.set(a.user_id, Math.round((32 / Math.max(1, members.length - 1)) * d));
   }
@@ -350,7 +354,7 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const eloRank = new Map<string, number>();
     const order = [...members].sort((x, y) => (quit.has(x.user_id) ? 1 : 0) - (quit.has(y.user_id) ? 1 : 0) || rankOf.get(x.user_id)! - rankOf.get(y.user_id)!);
     order.forEach((m, i) => eloRank.set(m.user_id, quit.has(m.user_id) ? members.length : i + 1));
-    // 같은 두 사람이 24시간 안에 이미 3판 넘게 점수를 주고받았으면 그 쌍은 빼기
+    // 같은 두 사람이 24시간 안에 점수를 주고받은 판 수 → 많을수록 이번 판 점수 비중을 줄임
     const since = new Date(Date.now() - 86_400_000).toISOString();
     const past = ((await sb.from('match_players').select('room_id, user_id').in('user_id', members.map((m) => m.user_id)).eq('rated', true).gte('created_at', since)).data ?? []) as { room_id: string; user_id: string }[];
     const byRoom = new Map<string, string[]>();
@@ -358,7 +362,7 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const pairKey = (a: string, b: string) => (a < b ? a + b : b + a);
     const pairCount = new Map<string, number>();
     for (const us of byRoom.values()) for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) pairCount.set(pairKey(us[i], us[j]), (pairCount.get(pairKey(us[i], us[j])) ?? 0) + 1);
-    delta = eloDeltas(members, eloRank, (a, b) => (pairCount.get(pairKey(a, b)) ?? 0) >= PAIR_DAILY_LIMIT);
+    delta = eloDeltas(members, eloRank, (a, b) => pairWeight(pairCount.get(pairKey(a, b)) ?? 0));
   }
   for (const p of members) {
     const rank = rankOf.get(p.user_id)!;

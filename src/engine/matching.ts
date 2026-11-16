@@ -62,11 +62,15 @@ export const compatible = (a: Ticket, b: Ticket, now: number, max: WindowMax = C
  */
 /** 파티 최대 인원 (일반전 다인전만) — 3명 파티가 1명을 괴롭히는 판이 없게 2명까지 */
 export const PARTY_MAX = 2;
+/** 파티가 낀 3명 판(파티 2 + 혼자 1)은 1분 30초 넘게 못 모였을 때만 — 사람이 적어도 끝없이 기다리지 않게.
+ *  (2대1 이 돼도 방해 카드는 한 사람에게 하루 한 번만이라 몰매는 막힘) */
+export const PARTY_WAIT_FOR_3 = 90_000;
 
 /**
  * me 를 포함한 한 판 인원을 고름. 못 고르면 null
  * - 다인전은 고른 사람끼리 '모두 서로' 범위 안 (1000점과 1400점이 1200점을 사이에 두고 만나지 않게)
- * - 파티(party 가 같은 표들)는 한 덩어리로 같이 들어감. 파티가 낀 판은 4명일 때만 (2+2 또는 2+1+1)
+ * - 파티(party 가 같은 표들)는 한 덩어리로 같이 들어감. 파티가 낀 판은 4명(2+2, 2+1+1)이 기본,
+ *   1분 30초 넘게 못 모이면 3명(2+1)도
  * - forbid(a, b) 가 true 인 두 사람은 같은 판에 넣지 않음 (랭킹전: 친구끼리·같은 인터넷)
  */
 export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: number, max: WindowMax = CASUAL_MAX_WINDOW, forbid?: (a: Ticket, b: Ticket) => boolean): Ticket[] | null {
@@ -103,11 +107,11 @@ export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: n
   }
   const flat = group.flatMap((u) => u.members);
   if (total >= MULTI_FULL) return flat;
-  // 3명 판은 파티 없이 혼자인 사람들끼리만, 40초 넘게 기다렸을 때
-  if (total >= MULTI_MIN && group.every((u) => u.members.length === 1)) {
-    const g3 = flat.slice(0, MULTI_MIN);
-    const oldest = Math.min(...g3.map((t) => t.createdAt));
-    if (now - oldest >= MULTI_WAIT_FOR_3) return g3;
+  // 3명 판: 혼자인 사람들끼리는 40초, 파티가 끼면 1분 30초 넘게 기다렸을 때
+  if (total === MULTI_MIN) {
+    const hasParty = group.some((u) => u.members.length > 1);
+    const oldest = Math.min(...flat.map((t) => t.createdAt));
+    if (now - oldest >= (hasParty ? PARTY_WAIT_FOR_3 : MULTI_WAIT_FOR_3)) return flat;
   }
   return null;
 }
@@ -125,6 +129,8 @@ export interface WaitInput {
   waitedMs: number;
   /** 랭킹전이면 범위 상한 함수 */
   max?: WindowMax;
+  /** 내가 파티(2명)로 찾는 중이면 2 */
+  partySize?: number;
   rating?: number;
 }
 
@@ -154,13 +160,14 @@ export function estimateWaitSec(i: WaitInput): number | null {
     const c = [viaWindow, viaArrive].filter((x): x is number => x !== null);
     return c.length ? round(Math.min(...c)) : null;
   }
-  const have = 1 + i.similar;
+  const have = Math.max(1 + i.similar, i.partySize ?? 1);
   if (have >= MULTI_FULL) return 5;
+  const wait3 = (i.partySize ?? 1) > 1 ? PARTY_WAIT_FOR_3 : MULTI_WAIT_FOR_3;
   const need3 = Math.max(0, MULTI_MIN - have);
   const t3 = arrive(need3);
   if (t3 === null) return null;
   // 3명이 모여도 가장 오래 기다린 사람이 40초를 넘겨야 시작 (그 사이 4번째가 오면 바로)
-  const wait40 = Math.max(0, MULTI_WAIT_FOR_3 / 1000 - (waited + t3));
+  const wait40 = Math.max(0, wait3 / 1000 - (waited + t3));
   const t4 = arrive(MULTI_FULL - have);
   return round(t3 + (t4 !== null ? Math.min(wait40, Math.max(0, t4 - t3)) : wait40));
 }

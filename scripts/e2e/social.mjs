@@ -200,17 +200,22 @@ if (got[0]) {
 await A({ action: 'partyLeave' });
 ok('파티장이 나가면 파티 없어짐', (await B({ action: 'party' })).b.party === null);
 
-// ---- 랭킹전: 친구끼리는 같은 판에 안 들어감 ----
+// ---- 랭킹전: 친구끼리도 같은 판에서 만날 수 있음 (사람이 적을 때 대기가 길어지지 않게) ----
 await A({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
 await B({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
-let rmatched = false;
-for (let i = 0; i < 4; i++) {
+let rm = [null, null];
+for (let i = 0; i < 10 && (!rm[0] || !rm[1]); i++) {
   const x = (await A({ action: 'queueStatus' })).b;
   const y = (await B({ action: 'queueStatus' })).b;
-  if (x?.status === 'matched' || y?.status === 'matched') rmatched = true;
-  await new Promise((r) => setTimeout(r, 1200));
+  if (x?.status === 'matched') rm[0] = x;
+  if (y?.status === 'matched') rm[1] = y;
+  await new Promise((r) => setTimeout(r, 800));
 }
-ok('랭킹전: 친구끼리는 매칭 안 됨', !rmatched);
+ok('랭킹전: 친구끼리도 매칭됨', rm[0] && rm[1] && rm[0].roomId === rm[1].roomId, JSON.stringify(rm));
+if (rm[0]) {
+  await A({ action: 'leave', roomId: rm[0].roomId });
+  await B({ action: 'leave', roomId: rm[0].roomId });
+}
 await A({ action: 'queueLeave' });
 await B({ action: 'queueLeave' });
 

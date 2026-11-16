@@ -256,6 +256,13 @@ async function insertSecret(row: { room_id: string; seed: number; password_hash:
 
 /** 회원이면 프로필 닉네임, 아니면 입력한 닉네임 */
 /** 게임에서 쓸 닉네임: 회원은 프로필 닉네임(입력값 무시), 게스트는 입력값 — 단 회원이 쓰는 닉네임은 못 씀(사칭 방지) */
+/** 최근에 내가 '만든' 커스텀 방 수 (매칭·초대로 들어간 자리는 세지 않음 — 매칭을 많이 해도 방 만들기가 막히지 않게) */
+async function roomsMadeSince(uid: string, since: string) {
+  const r = await db().from('players').select('id, rooms!inner(kind, host_id)').eq('user_id', uid).gte('created_at', since).limit(200);
+  if (r.error) return 0;
+  return ((r.data ?? []) as unknown as { id: string; rooms: { kind: string | null; host_id: string | null } }[]).filter((p) => (p.rooms.kind ?? 'custom') === 'custom' && p.rooms.host_id === p.id).length;
+}
+
 async function nickFor(uid: string, raw: unknown) {
   const p = await getProfile(db(), uid);
   if (p) return p.nickname;
@@ -388,8 +395,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const passwordHash = isPrivate ? hashPassword(cleanPassword(b.password)) : null;
       // 방 만들기 남용 방지: 1시간에 10개까지
       const since = new Date(Date.now() - 3600_000).toISOString();
-      const recent = must(await sb.from('players').select('id', { count: 'exact', head: false }).eq('user_id', uid).gte('created_at', since), 'recent') as unknown[];
-      if (recent.length >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
+      rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
+      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
 
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
@@ -595,8 +602,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         return addToRoom(nr, uid, me.nickname, me.mode);
       }
       const since = new Date(Date.now() - 3600_000).toISOString();
-      const recent = must(await sb.from('players').select('id').eq('user_id', uid).gte('created_at', since), 'recent') as unknown[];
-      if (recent.length >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
+      rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
+      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
       const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', roomId).maybeSingle(), 'pw') as { password_hash: string | null } | null;
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
@@ -718,7 +725,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const counts: Record<string, number> = {};
       for (const r of rows) if (r.user_id !== uid) counts[r.queue] = (counts[r.queue] ?? 0) + 1;
       // 대기열마다 '지금 찾으면' 예상 대기 (내 점수 기준)
-      const myRating = (await getProfile(sb, uid))?.rating ?? 1000;
+      const myProf = await getProfile(sb, uid);
+      const myRating = myProf?.rating ?? 1000;
+      const myParty = myProf ? ((await partyOf(uid))?.members.length ?? 1) : 1;
       const st = await matchStats();
       const eta: Record<string, number | null> = {};
       for (const kind of ['ranked', 'casual'] as const)
@@ -726,7 +735,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
           for (const speed of ['quick', 'normal'] as const) {
             const q = `${kind}_${size}_${speed}`;
             const others = rows.filter((r) => r.queue === q && r.user_id !== uid);
-            eta[q] = waitEstimate(q, myRating, 0, others.map((o) => o.rating), st);
+            // 파티(2명)면 다인전 예상은 파티 기준, 1대1·랭킹전은 파티로 못 들어가므로 혼자 기준
+            eta[q] = waitEstimate(q, myRating, 0, others.map((o) => o.rating), st, Date.now(), kind === 'casual' && size === 'multi' ? myParty : 1);
           }
       return { counts, eta, online: st.online };
     }
@@ -769,11 +779,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const toT = (t: { id: string; rating: number; created_at: string; party_id?: string | null }) => ({ id: t.id, rating: t.rating, createdAt: new Date(t.created_at).getTime(), party: t.party_id ?? null });
       const meT = toT(mine);
       const st = await matchStats();
-      const etaSec = waitEstimate(mine.queue, mine.rating, nowMs - meT.createdAt, waiting.filter((w) => w.id !== mine.id).map((w) => w.rating), st, nowMs);
+      const etaSec = waitEstimate(mine.queue, mine.rating, nowMs - meT.createdAt, waiting.filter((w) => w.id !== mine.id).map((w) => w.rating), st, nowMs, mine.party_id ? 2 : 1);
       const similar = waiting.filter((w) => w.id !== mine.id && compatible(meT, toT(w), nowMs, maxWin)).length;
       const waitingInfo = { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, similar, online: st.online, etaSec, window: ratingWindow(meT, nowMs, maxWin) };
-      const forbid = q.kind === 'ranked' ? await rankedForbid(waiting.map((w) => ({ id: w.id, user_id: w.user_id }))) : undefined;
-      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin, forbid);
+      // 친구·같은 상대끼리도 만날 수 있음 (사람이 적을 때 대기가 길어지지 않게). 짜고 치기는 점수 쪽에서 막음
+      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin);
       if (!group) return waitingInfo;
       // 같은 사람들을 둘이 동시에 잡으려다 서로 계속 실패하지 않게: 무리 중 가장 먼저 온 사람의 확인 때만 방을 만듦
       const first = [...group].sort((x, y) => x.createdAt - y.createdAt || (x.id < y.id ? -1 : 1))[0];
@@ -1289,23 +1299,6 @@ async function partyAct(action: string, b: Body, uid: string): Promise<unknown> 
   throw new GameError('알 수 없는 요청이에요.');
 }
 
-/**
- * 랭킹전: 친구끼리는 같은 판에 넣지 않음 (짜고 점수 주고받기 방지).
- * 같은 인터넷(IP) 분리는 하지 않음 — 통신사·학교·PC방은 여러 사람이 IP 하나를 같이 써서 남끼리도 못 만나게 됨.
- * 대신 같은 상대 하루 3판 제한·기권 꼴찌가 있음
- */
-async function rankedForbid(tickets: { id: string; user_id: string }[]) {
-  const ids = tickets.map((t) => t.user_id);
-  const fr = ids.length > 1 ? (((await db().from('friendships').select('user_a, user_b').eq('status', 'accepted').in('user_a', ids).in('user_b', ids)).data ?? []) as { user_a: string; user_b: string }[]) : [];
-  const pairs = new Set(fr.map((f) => f.user_a + '|' + f.user_b));
-  const byId = new Map(tickets.map((t) => [t.id, t]));
-  return (a: { id: string }, b: { id: string }) => {
-    const x = byId.get(a.id);
-    const y = byId.get(b.id);
-    if (!x || !y) return false;
-    return pairs.has(x.user_id + '|' + y.user_id) || pairs.has(y.user_id + '|' + x.user_id);
-  };
-}
 
 /* ---------- 매칭 예상 대기 ---------- */
 /** 최근 1시간 매칭 기록(대기열별 들어온 사람 수)과 접속 중인 사람 수. 15초 캐시 */
@@ -1331,7 +1324,7 @@ async function matchStats() {
  * 예상 대기(초): 같은 대기열에서 기다리는 사람(점수 범위 안/밖), 최근 1시간 이 대기열에 들어온 사람 수,
  * 지금 접속 중인 사람 수(일부가 들어올 거라고 어림)를 함께 봄
  */
-function waitEstimate(queue: string, rating: number, waitedMs: number, others: number[], st: { recent: Record<string, number>; online: number }, now = Date.now()) {
+function waitEstimate(queue: string, rating: number, waitedMs: number, others: number[], st: { recent: Record<string, number>; online: number }, now = Date.now(), partySize = 1) {
   const q = parseQueue(queue);
   if (!q) return null;
   const max = q.kind === 'ranked' ? rankedMax : CASUAL_MAX_WINDOW;
@@ -1340,7 +1333,7 @@ function waitEstimate(queue: string, rating: number, waitedMs: number, others: n
   const sim = others.filter((r) => compatible(me, { id: 'o', rating: r, createdAt: now - waitedMs }, now, max)).length;
   const gaps = others.map((r) => Math.abs(r - rating)).filter((g, i) => !compatible(me, { id: 'o', rating: others[i], createdAt: now - waitedMs }, now, max));
   const arrivalsPerMin = (st.recent[queue] ?? 0) / 60 + (st.online * 0.1) / 8;
-  return estimateWaitSec({ size: q.size, similar: sim, nearestGap: gaps.length ? Math.min(...gaps) : null, arrivalsPerMin, waitedMs, max });
+  return estimateWaitSec({ size: q.size, similar: sim, nearestGap: gaps.length ? Math.min(...gaps) : null, arrivalsPerMin, waitedMs, max, partySize });
 }
 
 /** 방에서 나가기: 게임 중이면 기권, 대기실이면 자리 빼기(방장이면 넘기기), 끝난 방은 그대로 */

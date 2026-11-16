@@ -11,6 +11,8 @@ import { refreshFriends, useFriends } from './Friends';
 function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => void }) {
   const d = useFriends();
   const [sent, setSent] = useState<Record<string, 'ok' | string>>({});
+  // 방금 보낸 친구는 5초 동안만 '보냄' — 그 뒤엔 다시 초대 가능 (실수로 거절했거나 못 봤을 때)
+  const [fresh, setFresh] = useState<Record<string, boolean>>({});
   useEffect(() => {
     refreshFriends();
   }, []);
@@ -18,6 +20,8 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
     try {
       await api('inviteRoom', { roomId, friendId: id });
       setSent((x) => ({ ...x, [id]: 'ok' }));
+      setFresh((x) => ({ ...x, [id]: true }));
+      setTimeout(() => setFresh((x) => ({ ...x, [id]: false })), 5000);
     } catch (e) {
       setSent((x) => ({ ...x, [id]: e instanceof Error ? e.message : '초대하지 못했어요' }));
     }
@@ -37,14 +41,14 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
               {sent[f.id] && sent[f.id] !== 'ok' && <small className="error">{sent[f.id]}</small>}
             </span>
             <span className="fr-act">
-              <button className="btn sm" disabled={sent[f.id] === 'ok'} onClick={() => invite(f.id)}>
-                {sent[f.id] === 'ok' ? <><Icon name="check" size={14} /> 보냄</> : '초대'}
+              <button className="btn sm" disabled={!!fresh[f.id]} onClick={() => invite(f.id)}>
+                {fresh[f.id] ? <><Icon name="check" size={14} /> 보냄</> : sent[f.id] === 'ok' ? '다시 초대' : '초대'}
               </button>
             </span>
           </li>
         ))}
       </ul>
-      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 로비에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이).</p>
+      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 로비에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이). 친구가 실수로 거절했으면 다시 초대하면 돼요.</p>
     </Sheet>
   );
 }
