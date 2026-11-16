@@ -59,7 +59,7 @@ npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면�
 `supabase/schema.sql` = 전체 스키마(초기화용, 데이터 삭제됨). 추가 변경은 번호 붙인 파일로:
 `002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — 적용 완료.
 `005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) · `006_rules_version.sql`(room_secrets.rules_version, 새 방=2) — 적용 완료.
-`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) · `012_guest_log.sql`(손님 계정 생성 기록, IP 해시) · `013_feedback.sql`(의견 보내기) · `014`~`016`(의견 읽음·회원·매칭) · `017_match_safety.sql`(대기표 claimed_at·matched_at, `apply_rating` 원자적 점수 함수) · `018`~`024`(친구·초대·파티·안전장치·티어·사진·배치 채우기) · `025_premarket.sql`(players.pre_day 장 전 준비 완료) · `026_rules_version_range.sql`(규칙 버전 칸 제한 1~99 — 예전 1~9 제한 때문에 v10 방이 몰래 v1 로 저장되던 문제. 서버는 이제 칸이 없을 때만 내려서 저장) · `027_cleanup.sql`(`cleanup_stale()` 서버 전용 — 만료 초대·이틀 지난 guest_log·응답 없는 대기표·하루 지난 대기실·마감 7일 지난 진행 중 방 삭제, pg_cron `stockduel-cleanup` 매시 17분) · `028_revoke_sessions.sql`(`revoke_user_sessions` 서버 전용 — 비밀번호 바꾸기·찾기 뒤 모든 기기 로그인 끊음) · `029_private_reactions.sql`(이모지 반응은 비공개 Realtime 채널, `react_member` 로 그 방(기권 안 한) 사람만 듣고 보냄 — e2e `reactions.mjs`) · `030_party_lobby.sql`(party_members.lobby_at — 파티로 돌아왔는지) — 적용 완료.
+`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) · `012_guest_log.sql`(손님 계정 생성 기록, IP 해시) · `013_feedback.sql`(의견 보내기) · `014`~`016`(의견 읽음·회원·매칭) · `017_match_safety.sql`(대기표 claimed_at·matched_at, `apply_rating` 원자적 점수 함수) · `018`~`024`(친구·초대·파티·안전장치·티어·사진·배치 채우기) · `025_premarket.sql`(players.pre_day 장 전 준비 완료) · `026_rules_version_range.sql`(규칙 버전 칸 제한 1~99 — 예전 1~9 제한 때문에 v10 방이 몰래 v1 로 저장되던 문제. 서버는 이제 칸이 없을 때만 내려서 저장) · `027_cleanup.sql`(`cleanup_stale()` 서버 전용 — 만료 초대·이틀 지난 guest_log·응답 없는 대기표·하루 지난 대기실·마감 7일 지난 진행 중 방 삭제, pg_cron `stockduel-cleanup` 매시 17분) · `028_revoke_sessions.sql`(`revoke_user_sessions` 서버 전용 — 비밀번호 바꾸기·찾기 뒤 모든 기기 로그인 끊음) · `029_private_reactions.sql`(이모지 반응은 비공개 Realtime 채널, `react_member` 로 그 방(기권 안 한) 사람만 듣고 보냄 — e2e `reactions.mjs`) · `030_party_lobby.sql`(party_members.lobby_at — 파티로 돌아왔는지) · `031_consent_test.sql`(profiles.terms_version 가입 때 동의한 약관 판, profiles.is_test 자동 시험 회원 — 공개 랭킹에서 뺌, 아이디가 e2e… 로 시작하면 서버가 표시) — 적용 완료.
 새 마이그레이션은 파일을 만들고(여러 번 실행해도 안전하게) **승인 없이** `npm run db -- apply` 로 직접 적용한 뒤 보고 (사용자 지시, 2026-11-16). 배포(main 푸시)도 검수 통과 후 직접.
 서버는 마이그레이션 전에도 죽지 않게(없는 테이블이면 빈 목록 등) 방어적으로 작성.
 
@@ -126,3 +126,11 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 반응(이모지) broadcast 채널은 방 ID 를 알면 들어올 수 있음 → 받는 쪽에서 정해진 목록만 표시
 - 요청 제한은 서버 인스턴스 메모리 기준(완벽한 전역 제한은 아님)
 - Windows 는 국기 이모지를 글자(KR/US)로 표시함 → 화면엔 💵·🏛️ 같은 일반 아이콘 선호
+
+## 2026-11-17 정한 것
+- 가입 동의: [필수] 만 14세·이용약관·개인정보 수집·이용 + 모두 동의 (서버 `agreeTerms` 확인, `TERMS_VERSION`). [선택] 받는 정보 없음 → [선택] 칸·문구 만들지 않기
+- 이용약관·개인정보처리방침: `src/components/Legal.tsx` (`LEGAL_VERSION` 과 서버 `TERMS_VERSION` 같게). 모든 로비 화면 아래 안내 줄(휴대폰 포함) + 운영자 정보(개인 운영, 사업자 정보 없음)
+- 데이터: DB 하나로 둠(시험 회원은 is_test 로 랭킹 제외, 삭제 없음). 백업은 정식 출시 전이라 안 함
+- 디자인: AI·템플릿 같은 장식 빼기 — 제목 그라데이션·빛 번짐·꾸밈 무늬·각진 모양 없앰, 둥근 모서리·단색·자간 -0.01em·굵기 400~800·small 12px. 겹치기 규칙은 `styles-kit.css` 맨 아래
+- 커밋·배포는 큰 단위로만, 로컬 검수 뒤 (작은 수정마다 배포 금지 — Vercel 하루 제한)
+- 대화 글은 무조건 쉬운 한국어. 사이트 안은 필요하면 영어 가능

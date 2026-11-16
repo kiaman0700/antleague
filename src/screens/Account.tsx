@@ -295,7 +295,6 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
                 보기
               </button>
             </div>
-            <small className="muted">[선택] 항목은 없어요. 광고·마케팅 정보는 받지도 보내지도 않아요.</small>
           </div>
         )}
         {err && <p className="error">{err}</p>}
