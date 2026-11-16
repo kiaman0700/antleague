@@ -1310,8 +1310,8 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
 
 /* ---------- 일반전 파티 (회원, 최대 2명, 일반전 다인전만 같이 찾기) ---------- */
 const PARTY_INVITE_MS = 2 * 60_000;
-/** 파티원이 로비(파티 칸)에 돌아와 있다고 보는 시간 — 로비는 3초마다 파티 정보를 받음 */
-const PARTY_BACK_MS = 15_000;
+/** 파티원이 로비(파티 칸)에 돌아와 있다고 보는 시간 — 로비는 3초마다(창이 뒤에 있으면 10초~브라우저가 늦추면 1분) 파티 정보를 받음. 판은 10분 넘게 걸리므로 결과 화면에 있는 사람과는 구분됨 */
+const PARTY_BACK_MS = 70_000;
 const PARTY_ACTIONS = ['party', 'partyInvite', 'partyLeave'];
 
 /** 내 파티: 파티 id · 파티장 · 구성원 user id (없으면 null). 018~020 전이면 null */

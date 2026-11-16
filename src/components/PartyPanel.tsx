@@ -3,7 +3,7 @@
  * 파티장이 '찾기'를 누르면 파티원 화면도 자동으로 '찾는 중'이 되고, 매칭되면 같은 방으로 들어감
  * 랭킹전·1대1 에는 파티로 못 들어감 (점수 몰아주기·다구리 방지)
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loading } from './ui';
 import { ask } from './ConfirmHost';
 import { api } from '../net/api';
@@ -24,8 +24,11 @@ export interface PartyState {
 /** 파티 상태: 3초마다(화면이 보일 때) — 파티장이 찾기 시작하면 파티원도 바로 따라가게 */
 export function useParty(member: boolean) {
   const [party, setParty] = useState<PartyState | null>(null);
+  const lastAt = useRef(0);
   const load = useCallback(() => {
-    if (!member || document.visibilityState !== 'visible') return Promise.resolve();
+    // 창이 뒤에 있어도 10초마다는 확인 — 로비에 있는 파티원이 다른 탭을 봐도 '돌아옴'(15초)이 풀려 파티장 찾기를 막지 않게
+    if (!member || (document.visibilityState !== 'visible' && Date.now() - lastAt.current < 10_000)) return Promise.resolve();
+    lastAt.current = Date.now();
     return api<{ party: PartyState | null }>('party')
       .then((r) => setParty(r.party))
       .catch((e) => {
