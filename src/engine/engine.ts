@@ -96,7 +96,14 @@ export interface PublicPlayer {
   tradeCount: number;
   /** on = 접속 중, away = 자리 비움(오래 응답 없음), left = 나감(기권) */
   status: 'on' | 'away' | 'left';
+  /** 상대의 수익률 구간(%) [이상, 미만] — 내 것·끝난 게임은 null (정확한 값) */
+  band?: [number, number] | null;
+  /** 지금 순위 (서버가 정확한 재산으로 계산) */
+  rank?: number;
 }
+
+/** 상대 수익률을 보여 주는 구간 폭(%p) */
+export const RET_BAND = 2;
 
 export interface Notice {
   key: string;
@@ -433,13 +440,19 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const items = itemsOf(d);
   const mine = items.players[meId] ?? base.myItems;
 
+  // 순위는 서버가 정확한 재산으로 정하고, 상대의 재산은 금액 대신 '수익률 구간'(2%p 단위)만 보냄
+  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), prices))]));
+  const order = [...players].sort((a, b) => exacts.get(b.id)! - exacts.get(a.id)! || a.created_at.localeCompare(b.created_at)).map((p) => p.id);
   base.players = players.map((p) => {
-    const pf = portfolioOf(d, p.id);
-    const exact = Math.round(equityWith(pf, prices));
+    const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;
+    const lo = Math.floor(((exact / START_CASH - 1) * 100) / RET_BAND) * RET_BAND;
     return {
       ...base.players.find((x) => x.id === p.id)!,
-      equity: mine ? exact : Math.round(exact / 100_000) * 100_000,
+      // 상대: 구간 가운데 값(대략) — 화면은 금액 대신 구간으로 보여 줌
+      equity: mine ? exact : Math.round(START_CASH * (1 + (lo + RET_BAND / 2) / 100)),
+      band: mine ? null : ([lo, lo + RET_BAND] as [number, number]),
+      rank: order.indexOf(p.id) + 1,
       tradeCount: d.trades.filter((t) => t.player_id === p.id && (mine || t.day < r.day)).length,
     };
   });

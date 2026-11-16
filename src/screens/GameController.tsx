@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab, type PcCol } from '../prefs';
-import { loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
+import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
@@ -587,7 +587,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const oppEnded = opponent ? opponent.endedDay >= day : false;
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
-  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '오늘은 상대의 거래 정지 카드 때문에 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '📵 정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
+  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '누군가의 거래 정지 카드 때문에 오늘은 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
   const ev = nextEvent(m, day);
   const timerText = remaining !== null && closing === null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
   const endLabel = endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
@@ -1030,15 +1030,14 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                   </strong>
                   <span className="muted">/ {rows.length}명</span>
                   <span className={myRank === 1 ? 'up' : 'down'}>
-                    · {myRank === 1 ? `2위와 +${wonShort(rows[0].equity - (rows[1]?.equity ?? rows[0].equity))}` : `1위와 −${wonShort(rows[0].equity - equity)}`}
+                    · {myRank === 1 ? '선두!' : `1위 수익률 ${rows[0].band ? bandText(rows[0].band) : pct(rows[0].equity / START_CASH - 1)}`}
                   </span>
                   <i>›</i>
                 </button>
               ) : opponent ? (
                 <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
-                  <span className={tone(equity - opponent.equity)}>
-                    {opponent.nickname}보다 {equity >= opponent.equity ? '+' : '−'}
-                    {wonShort(Math.abs(equity - opponent.equity))}
+                  <span className={myRank === 1 ? 'up' : 'down'}>
+                    {myRank === 1 ? `${opponent.nickname}보다 앞서는 중` : `${opponent.nickname}보다 뒤지는 중`}
                   </span>
                   <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중'}</span>
                 </button>
@@ -1253,8 +1252,17 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                 <small>
                   {opponent?.nickname ?? '상대'} {opponent && <em className={oppEnded ? 'ok' : ''}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중…'}</em>}
                 </small>
-                <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
-                <span className={tone(oppRet)}>{opponent ? pct(oppRet) : ''}</span>
+                {opponent?.band ? (
+                  <>
+                    <b className={tone(oppRet)} title="상대의 정확한 재산은 보이지 않아요">{bandText(opponent.band)}</b>
+                    <span className="muted">수익률 구간</span>
+                  </>
+                ) : (
+                  <>
+                    <b>{opponent ? wonShort(opponent.equity) : '-'}</b>
+                    <span className={tone(oppRet)}>{opponent ? pct(oppRet) : ''}</span>
+                  </>
+                )}
               </div>
             </>
           ) : (

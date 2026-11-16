@@ -23,6 +23,15 @@ export interface RankRow {
   me: boolean;
   /** on = 접속 중, away = 자리 비움, left = 나감(기권) */
   status: 'on' | 'away' | 'left';
+  /** 상대 수익률 구간(%) — 상대의 정확한 재산은 보이지 않음 */
+  band?: [number, number] | null;
+  rank?: number;
+}
+
+/** 수익률 구간 글자: [4,6] → "+4~6%", [-2,0] → "-2~0%" */
+export function bandText(b: [number, number]) {
+  const f = (v: number) => (v > 0 ? '+' + v : String(v));
+  return `${f(b[0])}~${b[1] > 0 && b[0] >= 0 ? b[1] : f(b[1])}%`;
 }
 
 const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
@@ -30,8 +39,9 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number): RankRow[] {
   return players
-    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on') }))
-    .sort((a, b) => b.equity - a.equity);
+    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank }))
+    // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
+    .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
 
 /** PC 점수줄: 가로 순위 칩 */
@@ -45,9 +55,15 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
             <b>
               <FitText>{r.nickname}</FitText>
             </b>
-            <small className={tone(r.equity / START_CASH - 1)}>
-              {wonShort(r.equity)} · {pct(r.equity / START_CASH - 1, 1)}
-            </small>
+            {r.band ? (
+              <small className={tone(r.band[0] + r.band[1])} title="상대의 정확한 재산은 보이지 않아요 (수익률 구간)">
+                수익률 {bandText(r.band)}
+              </small>
+            ) : (
+              <small className={tone(r.equity / START_CASH - 1)}>
+                {wonShort(r.equity)} · {pct(r.equity / START_CASH - 1, 1)}
+              </small>
+            )}
           </span>
           {r.status !== 'on' ? (
             <span className={'rs gone ' + r.status} title={r.status === 'left' ? '게임에서 나갔어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
@@ -100,9 +116,9 @@ export function EndStatus({ rows: all, countdown, compact }: { rows: RankRow[]; 
 
 /** 모바일 시트 / 어디서나 쓰는 세로 순위표 */
 export function RankList({ rows }: { rows: RankRow[] }) {
-  const top = rows[0]?.equity ?? START_CASH;
   return (
     <div className="rank-list">
+      <p className="muted small">상대의 정확한 재산은 보이지 않고 수익률 구간(2%p)만 보여요. 순위는 정확해요.</p>
       {rows.map((r, i) => (
         <div key={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{rankBadge(i)}</span>
@@ -116,9 +132,17 @@ export function RankList({ rows }: { rows: RankRow[] }) {
             <small>{r.ended ? <><Icon name="check" size={12} /> 장 마감</> : '고민 중…'}</small>
           </span>
           <span className="rv">
-            <b>{wonShort(r.equity)}</b>
-            <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1)}</small>
-            {i > 0 && <small className="muted">1위와 {wonShort(top - r.equity)}</small>}
+            {r.band ? (
+              <>
+                <b className={tone(r.band[0] + r.band[1])}>{bandText(r.band)}</b>
+                <small className="muted">수익률 구간</small>
+              </>
+            ) : (
+              <>
+                <b>{wonShort(r.equity)}</b>
+                <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1)}</small>
+              </>
+            )}
           </span>
         </div>
       ))}

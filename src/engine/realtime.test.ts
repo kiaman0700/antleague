@@ -92,8 +92,12 @@ describe('화면 데이터: 지금 칸까지만', () => {
     const t = dayTicks(m, 'NEOT', 2, N);
     const eq = (v: typeof v0, id: string) => v.players.find((p) => p.id === id)!.equity;
     expect(eq(v1, 'a') - eq(v0, 'a')).toBe(100 * (t[30] - t[0]));
-    expect(eq(v0, 'b') % 100_000 === 0 && eq(v1, 'b') % 100_000 === 0).toBe(true);
-    expect(Math.abs(eq(v1, 'b') - (eq(v1, 'a')))).toBeLessThanOrEqual(50_000);
+    // 상대는 수익률 구간(2%p)의 가운데 값만 — 칸마다 바뀌는 정확한 값이 아님
+    const ob = v1.players.find((p) => p.id === 'b')!.band!;
+    const myRet = (eq(v1, 'a') / 10_000_000 - 1) * 100;
+    expect(myRet).toBeGreaterThanOrEqual(ob[0] - 0.2);
+    expect(myRet).toBeLessThan(ob[1] + 0.2);
+    expect(eq(v1, 'b') % 100_000).toBe(0);
   });
 });
 
