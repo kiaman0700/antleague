@@ -1,0 +1,6 @@
+# 개미리그 보안 문제 제보 / Security contact
+# 보안 문제를 찾으면 아래 메일로 알려 주세요. 공개하기 전에 고칠 시간을 주시면 감사하겠습니다.
+Contact: mailto:kiaman0700@naver.com
+Expires: 2027-11-17T00:00:00.000Z
+Preferred-Languages: ko, en
+Canonical: https://antleague.vercel.app/.well-known/security.txt
