@@ -117,7 +117,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const me = session.playerId;
   const mobile = useIsMobile();
   // 세로 태블릿(넓은 휴대폰 배치): 종목 목록과 차트·주문을 나란히
-  const wide = useIsMobile('(min-width: 700px)');
+  // 가로로 눕힌 휴대폰(높이가 낮음)은 제외
+  const wide = useIsMobile('(min-width: 700px) and (min-height: 600px)');
   const tablet = mobile && wide;
   const { view, market: rawMarket, offset, error, act, busy, tutorialInfo } = useGameSource(session);
   const [tutStep, setTutStep] = useState(0);
@@ -1020,7 +1021,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       <div className={'m-game ui-' + ui + (editing ? ' editing' : '')}>
         {editBar}
         {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 (편집 중에는 펼쳐 둠) */}
-        <header className={'m-top' + (!editing && (headerCollapsed || tab === 'detail') ? ' collapsed' : '')}>
+        <header className={'m-top' + (!editing && (headerCollapsed || (tab === 'detail' && !tablet)) ? ' collapsed' : '')}>
           {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
           <div className="m-hero">
             <div className="mh-left">

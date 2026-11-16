@@ -446,9 +446,9 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         </div>
       </header>
 
+      {online && <AdminBanner onOpen={() => go('admin')} />}
       {(resume || soloSave) && (
         <div className="resume-list">
-          {online && <AdminBanner onOpen={() => go('admin')} />}
           {resume && (
             <div className="resume-card">
               <span className="rc-text">

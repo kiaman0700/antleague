@@ -104,6 +104,8 @@ export interface PublicPlayer {
 
 /** 상대 수익률을 보여 주는 구간 폭(%p) */
 export const RET_BAND = 2;
+/** 순위·구간을 다시 계산하는 간격 (칸 수, 6칸 = 30초) */
+export const RANK_EVERY_TICKS = 6;
 
 export interface Notice {
   key: string;
@@ -441,8 +443,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const mine = items.players[meId] ?? base.myItems;
 
   // 순위는 서버가 정확한 재산으로 정하고, 상대의 재산은 금액 대신 '수익률 구간'(2%p 단위)만 보냄
-  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), prices))]));
-  const order = [...players].sort((a, b) => exacts.get(b.id)! - exacts.get(a.id)! || a.created_at.localeCompare(b.created_at)).map((p) => p.id);
+  // 상대의 순위·구간은 30초(6칸) 단위 가격으로만 → 칸마다 바뀌는 값으로 정확한 재산을 좁혀 가지 못하게
+  const coarse = open ? (() => {
+    const c = dayClock(r, now);
+    return livePriceMap(d, m, c.startAt + Math.floor(c.tick / RANK_EVERY_TICKS) * RANK_EVERY_TICKS * TICK_MS);
+  })() : prices;
+  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), p.id === meId ? prices : coarse))]));
+  const rankEq = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), coarse))]));
+  const order = [...players].sort((a, b) => rankEq.get(b.id)! - rankEq.get(a.id)! || a.created_at.localeCompare(b.created_at)).map((p) => p.id);
   base.players = players.map((p) => {
     const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;
@@ -658,9 +666,10 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
 }
 
-/** 오늘 이 사람이 이미 방해를 받았는지 (적용·방패로 막힘·반사로 되돌림 모두, 반사로 되돌려 맞은 사람도 포함) */
+/** 오늘 이 사람이 이미 방해를 받았는지 (적용·방패로 막힘·반사로 되돌림 모두 — 원래 대상 기준) */
 export function attackedToday(items: ReturnType<typeof deriveItems>, playerId: string, day: number): boolean {
-  return items.effects.some((e) => e.usedDay === day && (e.to === playerId || (e.reflected && e.by === playerId)));
+  // 반사로 자기 공격을 되맞은 경우(e.to === e.from)는 넣지 않음 — 넣으면 거울 주인이 거절 메시지로 공격자를 알아낼 수 있음
+  return items.effects.some((e) => e.usedDay === day && ((e.to === playerId && !(e.reflected && e.to === e.from)) || (e.reflected && e.by === playerId)));
 }
 
 export function validateEndTurn(d: GameData, meId: string, now: number) {

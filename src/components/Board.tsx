@@ -167,7 +167,7 @@ export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind;
               <button key={r.id} className="target-row" onClick={() => onPick(r.id)}>
                 <b>{r.nickname}</b>
                 <span>
-                  {wonShort(r.equity)} <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1, 1)}</small>
+                  {r.band ? <small className={tone(r.band[0] + r.band[1])}>수익률 {bandText(r.band)}</small> : <>{wonShort(r.equity)} <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1, 1)}</small></>}
                 </span>
               </button>
             ))}

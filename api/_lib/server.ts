@@ -790,7 +790,9 @@ const adminEmails = () =>
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-const isAdminUser = (u: { email?: string | null; email_confirmed_at?: string | null }) => !!u.email && !!u.email_confirmed_at && adminEmails().includes(u.email.toLowerCase());
+// 운영자 = 서버(비밀 키)만 쓸 수 있는 app_metadata.role 이 'admin' 인 계정. 이메일만으로는 절대 운영자가 아님
+// (누가 같은 이메일로 먼저 가입해도 운영자가 될 수 없음)
+const isAdminUser = (u: { app_metadata?: Record<string, unknown> | null; is_anonymous?: boolean }) => u.app_metadata?.role === 'admin' && !u.is_anonymous;
 
 /**
  * 운영자 계정 만들기: 운영자 이메일 + 서버만 아는 1회용 설정 코드(ADMIN_SETUP_CODE)가 있어야 함.
@@ -802,10 +804,13 @@ async function adminSignup(b: Body, ip: string) {
   const password = typeof b.password === 'string' ? b.password : '';
   const code = typeof b.code === 'string' ? b.code.trim() : '';
   const want = process.env.ADMIN_SETUP_CODE ?? '';
-  const codeOk = want.length >= 16 && code.length === want.length && timingSafeEqual(Buffer.from(code), Buffer.from(want));
-  if (!codeOk || !adminEmails().includes(email)) throw new GameError('운영자 이메일이나 설정 코드가 맞지 않아요.', 403);
+  const codeOk = want.length >= 16 && code.length === want.length && timingSafeEqual(Buffer.from(code.toUpperCase()), Buffer.from(want.toUpperCase()));
+  // 설정 코드가 있어야만 운영자 계정. (ADMIN_EMAILS 를 정해 두면 그 이메일만 — 비워 두면 아무 이메일이나:
+  // 누가 그 이메일로 먼저 가입해 막아 버려도 다른 이메일로 만들 수 있게)
+  const allow = adminEmails();
+  if (!codeOk || (allow.length > 0 && !allow.includes(email)) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new GameError('이메일이나 설정 코드가 맞지 않아요.', 403);
   if (password.length < 10 || password.length > 72) throw new GameError('비밀번호는 10~72자로 정해 주세요.');
-  const res = await db().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { admin: true } });
+  const res = await db().auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: 'admin' } });
   if (res.error) {
     if (/already|registered|exists/i.test(res.error.message)) throw new GameError('이미 만든 계정이에요. 로그인해 주세요.', 409);
     throw new GameError('계정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 500);

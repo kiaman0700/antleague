@@ -47,11 +47,14 @@ describe('방해 카드: 한 사람에게 하루 한 번', () => {
     d.items.push(row('c', 'shield', 'buy', null, 1), row('a', 'freeze', 'buy'), row('a', 'freeze', 'use', { target: 'c' }), row('b', 'fee', 'buy'));
     expect(err(() => validateUseItem(d, 'b', now, { kind: 'fee', payload: { target: 'c' } }))).toMatch(/이미 누군가/);
   });
-  it('반사로 되돌아간 경우: 원래 대상도, 되돌려 맞은 사람도 그날 이미 방해받은 것으로 침', () => {
+  it('반사로 되돌아간 경우: 원래 대상은 그날 방해받은 것으로 치고, 되맞은 공격자는 넣지 않음 (거울 주인이 공격자를 알아내지 못하게)', () => {
     const d = game();
-    d.items.push(row('c', 'mirror', 'buy', null, 1), row('a', 'freeze', 'buy'), row('a', 'freeze', 'use', { target: 'c' }), row('b', 'fee', 'buy'));
+    d.items.push(row('c', 'mirror', 'buy', null, 1), row('a', 'freeze', 'buy'), row('a', 'freeze', 'use', { target: 'c' }), row('b', 'fee', 'buy'), row('c', 'fee', 'buy'));
     expect(err(() => validateUseItem(d, 'b', now, { kind: 'fee', payload: { target: 'c' } }))).toMatch(/이미 누군가/);
-    expect(err(() => validateUseItem(d, 'b', now, { kind: 'fee', payload: { target: 'a' } }))).toMatch(/이미 누군가/);
+    expect(err(() => validateUseItem(d, 'b', now, { kind: 'fee', payload: { target: 'a' } }))).toBeNull();
+    // 거울 주인 C 가 A·B 에게 시험 삼아 써 봐도 둘 다 똑같이 허용 → 누가 공격했는지 알 수 없음
+    expect(err(() => validateUseItem(d, 'c', now, { kind: 'fee', payload: { target: 'a' } }))).toBeNull();
+    expect(err(() => validateUseItem(d, 'c', now, { kind: 'fee', payload: { target: 'b' } }))).toBeNull();
   });
   it('다음 날에는 다시 쓸 수 있음', () => {
     const d = game();
