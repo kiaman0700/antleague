@@ -693,6 +693,15 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const text = typeof b.text === 'string' ? [...b.text.normalize('NFC')].filter((ch) => ch.charCodeAt(0) === 10 || ch.charCodeAt(0) === 9 || ch.charCodeAt(0) >= 32).join('').trim() : '';
       if (text.length < 2 || text.length > 1000) throw new GameError('내용을 2~1000자로 적어 주세요.');
       const page = typeof b.page === 'string' ? b.page.slice(0, 160) : null;
+      // 서버 메모리 제한은 인스턴스마다 따로라 DB 로도 막음: 한 계정 하루 20개, 전체 1시간 300개 (의견함 도배 방지)
+      const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
+      const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+      const [mineDay, allHour] = await Promise.all([
+        sb.from('feedback').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', dayAgo),
+        sb.from('feedback').select('id', { count: 'exact', head: true }).gte('created_at', hourAgo),
+      ]);
+      if ((mineDay.count ?? 0) >= 20) throw new GameError('오늘은 의견을 충분히 보냈어요. 내일 다시 보내 주세요.', 429);
+      if ((allHour.count ?? 0) >= 300) throw new GameError('지금 의견이 많이 몰렸어요. 잠시 후 다시 보내 주세요.', 429);
       const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page });
       if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
       return { ok: true };
