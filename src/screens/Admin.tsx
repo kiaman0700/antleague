@@ -4,7 +4,8 @@
  * 의견 내용은 서버가 운영자 계정인지 확인한 뒤에만 보내 줌 — 화면을 열어도 다른 사람은 아무것도 볼 수 없음
  */
 import { useCallback, useEffect, useState } from 'react';
-import { EmptyState } from '../components/ui';
+import { EmptyState, Loading } from '../components/ui';
+import { useAccount } from '../net/account';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
 import { Icon } from '../components/Icon';
@@ -20,6 +21,7 @@ interface Row {
 const KIND: Record<Row['kind'], string> = { bug: '버그·오류', idea: '아이디어', privacy: '개인정보', etc: '무엇이든' };
 
 export function Admin({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
+  const member = useAccount().status === 'member';
   const [state, setState] = useState<'checking' | 'login' | 'inbox'>('checking');
   const [msg, setMsg] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -72,19 +74,21 @@ export function Admin({ onBack, onLogin }: { onBack: () => void; onLogin: () => 
         </div>
       </header>
 
-      {state === 'checking' && <p className="muted center">확인하는 중…</p>}
+      {state === 'checking' && <Loading label="확인하는 중…" />}
 
       {state === 'login' && (
         <section className="panel pad admin-login">
           <h3>운영자만 볼 수 있어요</h3>
-          <p className="muted small">운영자로 지정된 회원 계정으로 로그인하면 이 화면에서 의견함을 볼 수 있어요.</p>
+          <p className="muted small">{member ? '지금 로그인한 계정은 운영자가 아니에요.' : '운영자로 지정된 회원 계정으로 로그인하면 이 화면에서 의견함을 볼 수 있어요.'}</p>
           <div className="modal-actions">
-            <button className="btn ghost" onClick={onBack}>
+            <button className={'btn ' + (member ? 'primary' : 'ghost')} onClick={onBack}>
               홈으로
             </button>
-            <button className="btn primary" onClick={onLogin}>
-              로그인하러 가기
-            </button>
+            {!member && (
+              <button className="btn primary" onClick={onLogin}>
+                로그인하러 가기
+              </button>
+            )}
           </div>
         </section>
       )}
