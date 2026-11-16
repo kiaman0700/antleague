@@ -1092,6 +1092,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       )}
     </>
   );
+  // 나가면 게임이 끝나는 경우(진행 중인 대결 = 기권, 연습 = 그만두기)는 '나가기', 아니면 '홈으로'
+  const exitLabel =
+    (session.mode === 'multi' && room?.status === 'playing') || (session.mode === 'solo' && !session.demo && !session.tutorial && room?.status !== 'finished') ? '나가기' : '홈으로';
   const settings = (
     <>
       <div className="mode-toggle" role="group" aria-label="화면 모드">
@@ -1145,9 +1148,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               onExit();
             });
           } else onExit();
-        }} aria-label="홈으로" title="홈으로">
+        }} aria-label={exitLabel} title={exitLabel}>
         <Icon name="exit" size={18} />
-        <span className="ib-label">{session.mode === 'multi' && room?.status === 'playing' ? '나가기' : '홈으로'}</span>
+        <span className="ib-label">{exitLabel}</span>
       </button>
     </>
   );
