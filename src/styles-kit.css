@@ -231,3 +231,6 @@
 
 /* PC 대결: 오른쪽 아래 이모지 버튼이 단축키 안내(Esc 닫기)를 가리지 않게 안내 글을 왼쪽으로 */
 .desk:has(.react-wrap) .kbd-hint { padding-right: 76px; }
+
+/* 대결 나가기 창: '다른 기기로 옮기기'는 버튼이 아닌 안내 — 점선 상자로 위 선택지들과 가장자리·안쪽 여백을 맞춤 */
+.rejoin-box { border: 1px dashed var(--line-2, rgba(255,255,255,.14)); border-radius: 12px; padding: 12px 14px; background: transparent; display: grid; gap: 6px; }
