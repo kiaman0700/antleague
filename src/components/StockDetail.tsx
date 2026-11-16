@@ -23,7 +23,7 @@ import { num, pct, tone, won, wonShort } from "../lib/format";
 import type { OrderRow } from "../engine/engine";
 import type { UiMode } from "../session";
 import { useIsMobile } from "./Extras";
-import { ProChart } from "./ProChart";
+import { drawKeyFor, ProChart } from "./ProChart";
 import { Term } from "./Term";
 
 interface Props {
@@ -243,7 +243,7 @@ export function StockDetail(props: Props) {
               [Math.max(4, Math.round(120 / (k * tickSec))), "최근"],
               [null, "오늘 전체"],
             ],
-            drawKey: `stockduel.draw.${symbol}.d${day}`,
+            drawKey: drawKeyFor(symbol, day),
             now: { tick: live.tick, perBar: k, startAt: live.startAt, n: live.n, tickSec },
           }}
         />

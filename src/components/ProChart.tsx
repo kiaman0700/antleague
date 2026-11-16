@@ -69,6 +69,20 @@ interface Props {
 
 const W = 680;
 
+/** 차트에 그은 선은 판마다 따로 저장 (지난 판의 선이 새 판에 나타나지 않게). 게임 화면이 판이 바뀔 때 정함 */
+let drawScope = 'x';
+export const drawKeyFor = (symbol: string, day?: number) => `stockduel.draw.${drawScope}.${symbol}` + (day === undefined ? '' : `.d${day}`);
+export function setDrawScope(scope: string) {
+  drawScope = scope.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'x';
+  // 다른 판에서 그은 선은 지움 (이 기기 저장 공간이 계속 쌓이지 않게)
+  try {
+    const keep = `stockduel.draw.${drawScope}.`;
+    for (const k of Object.keys(localStorage)) if (k.startsWith('stockduel.draw.') && !k.startsWith(keep)) localStorage.removeItem(k);
+  } catch {
+    /* 저장소를 못 쓰면 그냥 둠 */
+  }
+}
+
 export function ProChart({
   ui,
   symbol,
@@ -146,7 +160,7 @@ export function ProChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ui, prefKey, eff.chartType, eff.liveChartType]);
 
-  const drawKey = unit?.drawKey ?? `stockduel.draw.${symbol}`;
+  const drawKey = unit?.drawKey ?? drawKeyFor(symbol);
   const [drawings, setDrawings] = useState<Drawing[]>(() => load(drawKey, []));
   useEffect(() => setDrawings(load(drawKey, [])), [drawKey]);
   useEffect(() => save(drawKey, drawings), [drawKey, drawings]);

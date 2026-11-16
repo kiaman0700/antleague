@@ -4,8 +4,8 @@ import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
 import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
-import { TierBadge } from '../components/TierBadge';
-import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
+import { TierBadge, TierEmblem } from '../components/TierBadge';
+import { isPlaced, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 import { Companies } from './Companies';
@@ -512,31 +512,49 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </section>
           </div>
         ) : (
-          <section className="panel pad ranked-guest">
-            <i className="rg-icon">
-              <Icon name="trophy" size={34} />
-            </i>
-            <h3>랭킹전은 회원만 할 수 있어요</h3>
-            <p className="muted">실력이 비슷한 회원끼리 겨루고, 이기면 랭킹 점수가 올라요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
-            <div className="rg-actions">
-              <button className="btn primary" onClick={() => go('signup')}>
-                <Icon name="userPlus" /> 회원가입
+          <div className="hub-grid">
+            <section className="panel pad ranked-guest">
+              <i className="rg-icon">
+                <Icon name="trophy" size={34} />
+              </i>
+              <h3>랭킹전은 회원만 할 수 있어요</h3>
+              <p className="muted">실력이 비슷한 회원끼리 겨루고, 이기면 랭킹 점수가 올라요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+              <div className="rg-actions">
+                <button className="btn primary" onClick={() => go('signup')}>
+                  <Icon name="userPlus" /> 회원가입
+                </button>
+                <button className="btn" onClick={() => go('login')}>
+                  로그인
+                </button>
+              </div>
+              <button className="linkish-soft" onClick={() => go('casual')}>
+                먼저 일반전으로 해 볼래요
               </button>
-              <button className="btn" onClick={() => go('login')}>
-                로그인
-              </button>
-            </div>
-            <button className="linkish-soft" onClick={() => go('casual')}>
-              먼저 일반전으로 해 볼래요
-            </button>
-          </section>
+            </section>
+            {/* 무엇을 얻는지 보여 주기: 티어 사다리 */}
+            <section className="panel pad tier-ladder" aria-label="랭킹 티어">
+              <h3>
+                <Icon name="crown" size={18} /> 랭킹 티어
+              </h3>
+              <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해져요.</p>
+              <ol>
+                {[...TIERS].reverse().map((t) => (
+                  <li key={t.id}>
+                    <TierEmblem rating={t.id === 'bronze' ? 900 : t.min} size={30} />
+                    <b style={{ color: t.color }}>{t.name}</b>
+                    <small className="muted">{t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점부터'}</small>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </div>
         ))}
 
       {tab === 'casual' &&
         (online ? (
-          <div className={'hub-grid' + (member ? '' : ' one')}>
+          <div className="hub-grid">
             {finder('casual')}
-            {member && <PartyPanel party={party} reload={reloadParty} />}
+            {member ? <PartyPanel party={party} reload={reloadParty} /> : <MatchFlow />}
           </div>
         ) : (
           <OfflineNote />
@@ -735,6 +753,34 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
       {gate.el}
     </div>
+  );
+}
+
+/** 한 판이 흘러가는 순서 (처음 온 사람용) */
+function MatchFlow() {
+  const steps: [string, string, string][] = [
+    ['search', '대결 찾기', '비슷한 사람과 자동으로 묶여요. 모두 같은 시장·같은 뉴스로 시작해요.'],
+    ['news', '장 전', '둘째 날부터 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어요.'],
+    ['activity', '장중', '가격이 1초마다 움직여요. 속보를 보고 사고팔고, 찬스 카드를 써요.'],
+    ['trophy', '결과', '마지막 날 재산이 가장 많은 사람이 이겨요.'],
+  ];
+  return (
+    <section className="panel pad match-flow" aria-label="한 판 진행 순서">
+      <h3>한 판은 이렇게 진행돼요</h3>
+      <ol>
+        {steps.map(([icon, t, d]) => (
+          <li key={t}>
+            <i>
+              <Icon name={icon as 'search'} size={18} />
+            </i>
+            <span>
+              <b>{t}</b>
+              <small className="muted">{d}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

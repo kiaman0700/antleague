@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
+import { setDrawScope } from '../components/ProChart';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab, type PcCol } from '../prefs';
@@ -251,6 +252,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const displayDay = closing ?? day;
   const displayClosed = closing !== null;
   const prices = useMemo(() => (market ? pricesAt(market, displayDay, displayClosed) : {}), [market, displayDay, displayClosed]);
+  // 차트 선은 판마다 따로 (대결은 방 번호, 연습은 판마다 다른 첫 가격으로 구분)
+  const drawScope = session.tutorial ? 'tut' : session.roomId ? session.roomId.slice(0, 12) : market ? 's' + Math.round(market.bars.CORE?.[0]?.open ?? 0) : null;
+  useMemo(() => drawScope && setDrawScope(drawScope), [drawScope]);
 
   // ---------- 내 상태 ----------
   const myItemRows: ItemRow[] = view?.myItemRows ?? [];
