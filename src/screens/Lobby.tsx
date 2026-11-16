@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
@@ -1362,6 +1362,8 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
   const [socialOpen, setSocialOpen] = useState(false);
+  // 옆에서 나오는 친구·파티 패널: Esc 로 닫기 (열린 창이 따로 있으면 그 창이 먼저)
+  useEscape(() => !document.querySelector('.modal-bg, .sheet-bg') && setSocialOpen(false), socialOpen);
   // 운영자면 위 메뉴에 의견함 + 안 읽은 수 (30초마다, 운영자 확인은 서버가)
   const [adminUnread, setAdminUnread] = useState<number | undefined>(undefined);
   useEffect(() => {

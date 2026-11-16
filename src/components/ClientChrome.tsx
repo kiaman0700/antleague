@@ -108,7 +108,7 @@ export function TopBar({
         {adminUnread !== undefined && onAdmin && <AdminInboxButton unread={adminUnread} onClick={onAdmin} />}
         <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} />
         {online && (
-          <button className={'cl-social-btn' + (socialOpen ? ' on' : '')} onClick={onSocial} aria-label="친구·파티" title="친구·파티">
+          <button className={'cl-social-btn' + (socialOpen ? ' on' : '')} onClick={onSocial} aria-label="친구·파티" aria-expanded={socialOpen} title="친구·파티">
             <Icon name="users" size={18} />
             {socialBadge > 0 && <i className="ln-badge">{socialBadge > 9 ? '9+' : socialBadge}</i>}
           </button>
