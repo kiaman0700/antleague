@@ -1,4 +1,7 @@
 /** 공부: 게임 전에 미리 익혀 두기 — 투자 기초(규칙·변수) · 기업 살펴보기(회사·ETF) */
+import { CARD_RULES_TEXT, CardGuideBody } from "../components/CardGuide";
+import { GRANT_EVERY, holdLimit, USE_LIMIT } from "../game/items";
+import { CURRENT_RULES_VERSION } from "../engine/engine";
 import { useMemo, useState } from "react";
 import { companyInfo, type CompanyInfo } from "../game/companyInfo";
 import { SECTOR_MAP, STOCK_SECTORS, STOCKS } from "../game/stocks";
@@ -131,12 +134,22 @@ function Detail({
   );
 }
 
+/** 찬스 카드 꿀팁 (규칙과 같은 말만: 보유 한도·무료 지급 주기·같은 카드 사용 횟수는 게임 값에서) */
+const CARD_TIPS: { icon: "search" | "news" | "cards" | "lock" | "warn" | "sparkles"; title: string; body: string }[] = [
+  { icon: "search", title: "감별기는 장 전에", body: "루머 감별기는 오늘 아침 뉴스와 장 전 찌라시가 진짜인지 알려줘요. 장이 열리기 전에 쓰면 그 결과로 예약 주문까지 걸 수 있어요." },
+  { icon: "news", title: "내일 신문은 오늘 준비", body: "내일 아침 뉴스를 오늘 미리 보는 카드예요. 좋은 뉴스가 나올 종목을 오늘 장이 끝나기 전에 사 두면 내일 시작부터 앞서요." },
+  { icon: "cards", title: `카드는 ${holdLimit(CURRENT_RULES_VERSION)}장까지`, body: `가진 카드가 꽉 차면 ${GRANT_EVERY}일마다 주는 무료 카드를 못 받아요. 아끼지 말고 써서 자리를 비워 두세요. 같은 카드는 한 판에 ${USE_LIMIT}번까지 쓸 수 있어요.` },
+  { icon: "warn", title: "방해는 1등에게", body: "방해 카드는 한 사람에게 하루 한 번만 통해요. 이미 맞은 사람에게 쓰면 거절되고 카드는 그대로 남아요. 가장 앞선 사람을 노리세요." },
+  { icon: "lock", title: "방어는 갖고만 있으면", body: "방패·반사 거울은 쓰지 않아도 갖고 있으면 방해를 자동으로 막거나 되돌려요. 앞서 나가고 있을 때 하나쯤 들고 있으면 든든해요." },
+  { icon: "sparkles", title: "용돈 봉투는 운", body: "열면 확률에 따라 돈을 받거나 잃어요. 현금이 10만원 이상 있을 때만 쓸 수 있어요. 큰 판이 아닌 날 가볍게 열어 보세요." },
+];
+
 export function Companies({ onBack }: { onBack: () => void }) {
   const [region, setRegion] = useState<Region>("all");
   const [sector, setSector] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const [view, setView] = useState<"companies" | "basics">("basics");
+  const [view, setView] = useState<"companies" | "basics" | "cards">("basics");
   const infos = useMemo(() => STOCKS.map((s) => companyInfo(s.symbol)), []);
   const shown = infos.filter(
     (i) =>
@@ -183,6 +196,7 @@ export function Companies({ onBack }: { onBack: () => void }) {
           [
             ["basics", "투자 기초"],
             ["companies", "기업 살펴보기"],
+            ["cards", "찬스 카드"],
           ] as const
         ).map(([k, l]) => (
           <button
@@ -196,6 +210,25 @@ export function Companies({ onBack }: { onBack: () => void }) {
           </button>
         ))}
       </div>
+      {view === "cards" && (
+        <>
+          <p className="muted small">{CARD_RULES_TEXT}</p>
+          <div className="study-basics card-tips">
+            {CARD_TIPS.map((t, i) => (
+              <section key={t.title} className="panel pad study-card">
+                <div className="sc-head">
+                  <span className="sc-num">{String(i + 1).padStart(2, "0")}</span>
+                  <Icon name={t.icon} size={18} />
+                  <h3>{t.title}</h3>
+                </div>
+                <p>{t.body}</p>
+              </section>
+            ))}
+          </div>
+          <h3 className="study-sub">카드 도감</h3>
+          <CardGuideBody />
+        </>
+      )}
       {view === "basics" && (
         <>
           <p className="muted small">

@@ -12,11 +12,11 @@ const TYPE: Record<ItemType, { label: string; tip: string }> = {
   bonus: { label: '보너스', tip: '쓰면 바로 이득' },
 };
 
-export function CardGuide({ onClose }: { onClose: () => void }) {
+/** 카드 도감 내용 (창·공부 화면에서 같이 씀) */
+export function CardGuideBody() {
   const groups: ItemType[] = ['info', 'attack', 'defense', 'bonus'];
   return (
-    <Sheet title="카드 도감" onClose={onClose} wide>
-      <p className="muted small">카드는 시작할 때와 며칠마다 무료로 받고, 상점에서 살 수도 있어요. 방해·염탐·방어 카드는 다른 사람과 대결할 때만 쓸 수 있고, 한 사람에게는 하루 한 번만 쓸 수 있어요(막히거나 되돌아가도 한 번). 1대1에서는 방해 카드 값이 1.5배예요.</p>
+    <>
       {groups.map((g) => (
         <section key={g} className="cg-group">
           <h4 className={'cg-type t-' + g}>
@@ -34,6 +34,18 @@ export function CardGuide({ onClose }: { onClose: () => void }) {
           </div>
         </section>
       ))}
+    </>
+  );
+}
+
+export const CARD_RULES_TEXT =
+  '카드는 시작할 때와 며칠마다 무료로 받고, 상점에서 살 수도 있어요. 방해·염탐·방어 카드는 다른 사람과 대결할 때만 쓸 수 있고, 한 사람에게는 하루 한 번만 쓸 수 있어요(막히거나 되돌아가도 한 번). 1대1에서는 방해 카드 값이 1.5배예요.';
+
+export function CardGuide({ onClose }: { onClose: () => void }) {
+  return (
+    <Sheet title="카드 도감" onClose={onClose} wide>
+      <p className="muted small">{CARD_RULES_TEXT}</p>
+      <CardGuideBody />
     </Sheet>
   );
 }
