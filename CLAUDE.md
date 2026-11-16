@@ -23,6 +23,7 @@ npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드
 npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면용 환경변수만 설정 (비밀 키 금지), 다음 배포부터 적용
 ```
 - DB 는 `.env.local` 의 `SUPABASE_DB_URL`(Session pooler 주소 — 직접 주소는 IPv6 라 이 네트워크에서 안 됨)
+- 서버 위치: Supabase 는 서울(ap-northeast-2, 2026-11-16 뭄바이에서 이전 — `scripts/move-region.mjs schema|compare|copy`), Vercel 함수도 `vercel.json` `regions: ["icn1"]`(DB 옆에 두어야 함 — 미국에 있을 땐 요청 1.4초, 옆에 두니 0.26초)
 - Vercel 은 `.env.local` 의 `VERCEL_TOKEN`(팀 토큰) + `.vercel/project.json`. Vercel CLI 는 한글 컴퓨터 이름·팀 토큰 때문에 안 돼서 API 를 직접 씀. 배포는 main 푸시로 자동
 `.env.local` 이 필요 (git 에 안 올라감): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`(publishable, 공개돼도 됨), `SUPABASE_SECRET_KEY`(서버 전용, 절대 VITE_ 접두사 금지·공유 금지), `SUPABASE_DB_URL`·`VERCEL_TOKEN`(도구용, 절대 출력·공유 금지).
 
