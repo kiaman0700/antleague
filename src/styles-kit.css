@@ -169,3 +169,6 @@
 /* 하루 결산 팝업: 지수 줄 — 지수 하나씩은 한 덩어리로, 사이에 가는 점 */
 .close-index { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; }
 .close-index .ci-item { white-space: nowrap; }
+
+/* 휴대폰 설정: 화면 모드 버튼 3개가 줄을 똑같이 나눠 씀 (왼쪽에 몰리지 않게) */
+.m-settings .mode-toggle > button { flex: 1 1 0; }

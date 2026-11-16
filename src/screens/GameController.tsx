@@ -1054,7 +1054,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           커스텀
         </button>
       </div>
-      <button className="icon-btn" onClick={() => setTutorial(true)} aria-label="도움말" title="도움말">
+      <button className="icon-btn" onClick={() => (setMenu(false), setTutorial(true))} aria-label="도움말" title="도움말">
         <Icon name="help" size={18} />
         <span className="ib-label">도움말</span>
       </button>
