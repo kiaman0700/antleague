@@ -385,3 +385,7 @@ body { background: var(--bg) !important; }
 .vs-x { text-shadow: none !important; }
 /* 패널 제목(h3) 크기·굵기 통일: 16px / 800 (예전엔 화면마다 16·17px, 700·800 이 섞여 있었음) */
 .hr-head h3, .more-page .more-links .more-h, .more-page .more-menus .more-links .more-h { font-size: 16px; font-weight: 800; }
+/* AI 티 나는 장식(이어서): 로비·대기실·결과 화면 배경의 보라 빛 번짐과 격자 무늬, 결과 띠의 빛 번짐 → 단색 */
+.lobby-shell.client, .waiting.wr-client, body:has(.result) { background: var(--bg) !important; }
+.lobby-shell.client::before { display: none !important; }
+.banner.win, .banner.lose { background: var(--surface) !important; }
