@@ -14,7 +14,7 @@
 npm run dev      # http://localhost:5173 (+ /api/game 서버 함수도 같이 뜸)
 npm test         # 단위 테스트 (엔진·보안 규칙)
 npm run build    # 타입체크 + 빌드
-npm run e2e      # 실제 서버를 익명 계정 여러 개로 테스트 (dev 서버 켜져 있어야 함)
+npm run e2e      # 실제 서버를 익명 계정 여러 개로 테스트 (dev 서버 켜져 있어야 함). 하나가 실패해도 끝까지 돌고 요약. 일부만: npm run e2e -- social cards
 BASE=https://antleague.vercel.app npm run e2e   # 배포본 테스트
 npm run db -- check                         # Supabase 연결·마이그레이션 상태 (읽기만)
 npm run db -- balance                       # 실제로 끝난 대결의 승률·수익률 (1대1/3인+, 카드·레버리지 쓴 사람별, 읽기만, 시험용 판 제외)
