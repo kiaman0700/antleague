@@ -900,3 +900,28 @@ button.hr-row:hover {
   border-top: 1px solid var(--line);
   padding-top: 6px;
 }
+
+/* 손가락으로 누르기 쉽게: 친구 줄 버튼·가로 넘기기 화살표 최소 크기 */
+.fr-act .btn.sm,
+.fr-act .icon-btn.sm {
+  min-height: 34px;
+  min-width: 34px;
+}
+@media (pointer: coarse) {
+  .sl-arrow {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+/* 터치 기기: 업종 태그도 누르는 영역 넓힘 (모양은 그대로) */
+@media (pointer: coarse), (max-width: 700px) {
+  .tags .tag {
+    position: relative;
+  }
+  .tags .tag::after {
+    content: '';
+    position: absolute;
+    inset: -6px -3px;
+  }
+}
