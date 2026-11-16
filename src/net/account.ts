@@ -16,6 +16,8 @@ export interface MyProfile {
   rating: number;
   /** 랭킹전 판 수 (2판까지 배치) */
   ranked_games?: number;
+  /** 프로필 사진 프리셋 id */
+  avatar?: string;
   games: number;
   wins: number;
   best_ret: number | null;

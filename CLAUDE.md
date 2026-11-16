@@ -1,4 +1,4 @@
-# 주식 대결 — 작업 인수인계
+# 개미리그 (예전 이름 '주식 대결') — 작업 인수인계
 
 여럿(2~6명)이 같은 가상 주식시장에서 겨루는 턴제 웹 게임. 한국어 UI.
 배포: https://game-taupe-three-58.vercel.app · 저장소: github.com/kiaman0700/game

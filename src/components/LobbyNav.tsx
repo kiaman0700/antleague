@@ -4,9 +4,10 @@
  * - 모바일·태블릿 세로(860px 이하): 화면 아래 탭바 5칸
  * - 게스트가 온라인 기능을 처음 누르면: 게스트/회원 차이를 보여 주고, '게스트로 시작'일 때만 닉네임을 받음
  */
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { tierText } from './TierBadge';
+import { Avatar } from './Avatar';
 import { api } from '../net/api';
 import { loadNick, saveNick } from '../session';
 import type { AccountState } from '../net/account';
@@ -24,7 +25,7 @@ const MAIN: [NavTab, string, IconName][] = [
 const SUB: [NavTab, string, IconName][] = [
   ['ranking', '랭킹', 'crown'],
   ['records', '업적', 'medal'],
-  ['companies', '기업 공부', 'book'],
+  ['companies', '공부', 'book'],
   ['more', '설정·더보기', 'settings'],
 ];
 
@@ -60,25 +61,11 @@ interface NavProps {
 }
 const Badge = ({ n }: { n?: number }) => (n ? <i className="ln-badge" aria-label={`새 알림 ${n}개`}>{n > 9 ? '9+' : n}</i> : null);
 
-export function Brand() {
-  // 같은 화면에 로고가 두 번(숨긴 왼쪽 메뉴·위 머리줄) 있어도 색이 사라지지 않게 id 를 따로
-  const gid = 'lng' + useId().replace(/:/g, '');
+export function Brand({ compact }: { compact?: boolean }) {
+  // 개미리그 가로형 로고 (어두운 배경용). 좁은 곳에서는 마크만
   return (
     <span className="ln-brand">
-      <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden>
-        <rect width="64" height="64" rx="18" fill={`url(#${gid})`} />
-        <path d="M14 42 L26 30 L34 36 L50 20" stroke="#0b0d12" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="50" cy="20" r="4" fill="#0b0d12" />
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#ffe08a" />
-            <stop offset="1" stopColor="#f5b83d" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <b>
-        주식 <em>대결</em>
-      </b>
+      {compact ? <img src="/brand/mark.svg" alt="개미리그" width={30} height={30} /> : <img src="/brand/logo-dark.svg" alt="개미리그" height={30} />}
     </span>
   );
 }
@@ -89,7 +76,7 @@ export function AccountChip({ account, online, onProfile, onLogin, compact }: { 
   if (account.status === 'member' && account.profile)
     return (
       <button className={'acc-chip' + (compact ? ' compact' : '')} onClick={onProfile} aria-label="마이프로필">
-        <span className="acc-av">{account.profile.nickname.slice(0, 1)}</span>
+        <Avatar id={account.profile.avatar} name={account.profile.nickname} size={30} className="acc-av" />
         <span className="acc-txt">
           <b>{account.profile.nickname}</b>
           <small>{tierText(account.profile.rating, account.profile.ranked_games)}</small>

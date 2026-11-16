@@ -9,8 +9,10 @@ import type { AccountState } from '../net/account';
 import { api } from '../net/api';
 import { refreshFriends, useFriends } from '../screens/Friends';
 import { pokeInvites } from './InviteCenter';
+import { okWhileMatching } from '../net/matchStore';
 import type { PartyState } from './PartyPanel';
 import { tierShort } from './TierBadge';
+import { Avatar } from './Avatar';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string][] = [
@@ -22,7 +24,7 @@ const MAIN: [NavTab, string][] = [
 const SUB: [NavTab, string, IconName][] = [
   ['ranking', '랭킹', 'crown'],
   ['records', '업적', 'medal'],
-  ['companies', '기업 공부', 'book'],
+  ['companies', '공부', 'book'],
   ['more', '설정', 'settings'],
 ];
 
@@ -32,6 +34,9 @@ export function TopBar({
   online,
   onGo,
   onPlay,
+  playLabel,
+  matching,
+  onCancelMatch,
   onProfile,
   onLogin,
   socialBadge,
@@ -45,6 +50,11 @@ export function TopBar({
   online: boolean;
   onGo: (t: NavTab) => void;
   onPlay: () => void;
+  /** 플레이 버튼 아래: 마지막에 찾던 설정 */
+  playLabel?: string;
+  /** 매칭 대기 중이면 대기열·흐르는 시간 */
+  matching?: { text: string; time: string; linking: boolean } | null;
+  onCancelMatch?: () => void;
   onProfile: () => void;
   onLogin: () => void;
   socialBadge: number;
@@ -59,9 +69,24 @@ export function TopBar({
       <div className="cl-left">
         <Brand />
         {online && (
-          <button className="cl-play" onClick={onPlay}>
-            <span>플레이</span>
-          </button>
+          matching ? (
+            <span className="cl-play-wrap">
+              <button className="cl-play searching" onClick={onPlay} title="찾고 있는 대결 보기">
+                <span>{matching.linking ? '방 만드는 중' : '매칭 중'} {matching.time}</span>
+                <small>{matching.text}</small>
+              </button>
+              {!matching.linking && (
+                <button className="cl-play-x" onClick={onCancelMatch} aria-label="그만 찾기" title="그만 찾기">
+                  <Icon name="x" size={16} />
+                </button>
+              )}
+            </span>
+          ) : (
+            <button className="cl-play" onClick={onPlay} title={playLabel ? `${playLabel}으로 바로 매칭 대기` : undefined}>
+              <span>플레이</span>
+              {playLabel && <small>{playLabel}</small>}
+            </button>
+          )
         )}
       </div>
       <nav className="cl-nav" aria-label="메뉴">
@@ -193,9 +218,9 @@ export function SocialPanel({
               )}
             </div>
             <div className="cs-slots">
-              {(party?.members ?? [{ nickname: account.profile?.nickname ?? '나', rating: account.profile?.rating ?? 1000, ranked: account.profile?.ranked_games ?? 0, leader: true, me: true }]).map((m, i) => (
+              {(party?.members ?? [{ nickname: account.profile?.nickname ?? '나', rating: account.profile?.rating ?? 1000, ranked: account.profile?.ranked_games ?? 0, avatar: account.profile?.avatar, leader: true, me: true }]).map((m, i) => (
                 <div key={i} className={'cs-slot filled' + (m.me ? ' me' : '')} title={`${m.nickname} · ${tierShort(m.rating, m.ranked)}`}>
-                  <span className="cs-av">{m.nickname.slice(0, 1)}</span>
+                  <Avatar id={m.avatar} name={m.nickname} size={36} className="cs-av" />
                   <small>{m.nickname}</small>
                   {m.leader && inParty && <em>파티장</em>}
                 </div>
@@ -233,8 +258,8 @@ export function SocialPanel({
                   </div>
                   {list.map((f) => (
                     <div key={f.id} className={'cs-friend st-' + (f.status ?? 'offline')}>
-                      <span className="cs-av">
-                        {f.nickname.slice(0, 1)}
+                      <span className="cs-av-wrap">
+                        <Avatar id={f.avatar} name={f.nickname} size={32} className="cs-av" />
                         <i className="cs-dot" />
                       </span>
                       <span className="cs-name">
@@ -248,6 +273,7 @@ export function SocialPanel({
                             disabled={!!busy}
                             title="1대1 신청 (신속 · 점수 없음)"
                             onClick={() =>
+                              okWhileMatching('1대1 신청은') &&
                               act('c' + f.id, async () => {
                                 await api('challenge', { friendId: f.id, speed: 'quick' });
                                 pokeInvites();

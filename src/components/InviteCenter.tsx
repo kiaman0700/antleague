@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
+import { cancelMatch, getMatch } from '../net/matchStore';
 import { Icon } from './Icon';
 import { SPEED_PRESET } from '../engine/matching';
 import { loadUi, type Session, type UiMode } from '../session';
@@ -132,6 +133,8 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
     setErr('');
     setBusy(true);
     try {
+      // 매칭 대기 중이었으면 (방·1대1 을 받을 때) 그 대기는 먼저 취소
+      if (accept && inv.kind !== 'party' && getMatch().phase !== 'idle') await cancelMatch();
       const r = await api<{ kind: string; roomId: string; playerId: string; code: string; nickname: string }>('inviteRespond', { id: inv.id, accept, mode: loadUi() });
       setIncoming((xs) => xs.filter((x) => x.id !== inv.id));
       if (!accept) return;

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
-import { MatchFinder } from '../components/MatchFinder';
+import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
+import { cancelMatch, consumeMatched, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { TierBadge } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
@@ -312,7 +313,7 @@ function Privacy({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={<><Icon name="lock" size={18} /> 개인정보 처리 안내</>} onClose={onClose}>
       <div className="privacy">
-        <p>주식 대결은 회원가입 없이 익명으로 플레이해요. 이름·이메일·전화번호 같은 개인정보는 받지 않아요.</p>
+        <p>개미리그는 게스트로도 플레이할 수 있어요. 이름·이메일·전화번호 같은 개인정보는 받지 않아요.</p>
         <h4>저장하는 것</h4>
         <ul>
           <li>이 기기를 구분하는 익명 계정 번호 (로그인용)</li>
@@ -429,8 +430,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       ui={profile.ui}
       onNeedNick={() => gate.guard(() => {})}
       onLogin={() => go('login')}
-      onMatched={(m) => onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: profile.ui })}
-      party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length } : null}
+      party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length, queue: party.queue } : null}
     />
   );
 
@@ -530,17 +530,17 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {tab === 'custom' &&
         (online ? (
           <nav className="home-actions three">
-            <button className="tile" onClick={() => gate.guard(() => go('create'))}>
+            <button className="tile" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
               <i><Icon name="plus" size={24} /></i>
               <b>방 만들기</b>
               <small>인원·길이·시간을 직접 · 점수 없음</small>
             </button>
-            <button className="tile" onClick={() => gate.guard(() => go('rooms'))}>
+            <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               <i><Icon name="search" size={24} /></i>
               <b>방 찾기</b>
               <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
             </button>
-            <button className="tile" onClick={() => gate.guard(() => setModal('code'))}>
+            <button className="tile" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setModal('code'))}>
               <i><Icon name="key" size={24} /></i>
               <b>코드로 입장</b>
               <small>친구에게 받은 6자리 코드</small>
@@ -555,7 +555,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <h3>
               <Icon name="door" size={18} /> 지금 열린 방
             </h3>
-            <button className="btn sm ghost" onClick={() => gate.guard(() => go('rooms'))}>
+            <button className="btn sm ghost" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               전체 보기 <Icon name="right" size={14} />
             </button>
           </div>
@@ -565,7 +565,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <ul className="hr-list">
               {roomList.slice(0, 6).map((r) => (
                 <li key={r.id}>
-                  <button className="hr-row" onClick={() => gate.guard(() => go('rooms'))}>
+                  <button className="hr-row" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
                     <span className="hr-title">
                       {r.isPrivate && <Icon name="lock" size={13} />} <FitText>{r.title}</FitText>
                     </span>
@@ -614,12 +614,12 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'practice' && (
         <nav className="home-actions">
-          <button className="tile" onClick={() => setModal('practice')}>
+          <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && setModal('practice')}>
             <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
             <small>나만의 속도로 · 이 기기에 저장</small>
           </button>
-          <button className="tile" onClick={() => go('tutorial')}>
+          <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
             <i><Icon name="play" size={24} /></i>
             <b>튜토리얼</b>
             <small>연습봇과 한 단계씩</small>
@@ -631,7 +631,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           </button>
           <button className="tile" onClick={() => go('companies')}>
             <i><Icon name="book" size={24} /></i>
-            <b>기업 공부</b>
+            <b>공부</b>
             <small>종목·업종 알아보기</small>
           </button>
         </nav>
@@ -687,9 +687,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <Icon name="target" /> 연습 (혼자 연습·튜토리얼) <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => go('companies')}>
-              <Icon name="book" /> 기업 공부 <Icon name="right" size={14} />
+              <Icon name="book" /> 공부 <Icon name="right" size={14} />
             </button>
-            <button className="more-row" onClick={() => go('tutorial')}>
+            <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
               <Icon name="play" /> 튜토리얼 <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => openModal('howto')}>
@@ -797,7 +797,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           </button>
         ))}
         <span className="grow" />
-        <button className="chip" onClick={() => gate.guard(() => setCodeOpen(true))}>
+        <button className="chip" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setCodeOpen(true))}>
           <Icon name="key" /> 코드로 입장
         </button>
       </div>
@@ -812,13 +812,13 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
             <b>{loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
             {loadErr && <small>인터넷 연결을 확인해 주세요. 6초마다 다시 시도해요.</small>}
             <small>직접 방을 만들고 친구를 불러 보세요.</small>
-            <button className="btn primary" onClick={() => gate.guard(() => go('create'))}>
+            <button className="btn primary" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
               <Icon name="plus" /> 방 만들기
             </button>
           </div>
         )}
         {shown.map((r) => (
-          <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => gate.guard(() => enter(r))}>
+          <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => enter(r))}>
             <span className="rr-main">
               <b>
                 {r.isPrivate && (
@@ -902,7 +902,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
   const pwOk = !isPrivate || (password.length >= 4 && password.length <= 20);
   const est = estimateMinutes(days, turnSec);
-  const create = () => gate.guard(() => void doCreate());
+  const create = () => okWhileMatching('방 만들기는') && gate.guard(() => void doCreate());
   const doCreate = async () => {
     setErr('');
     if (!pwOk) return setErr('비밀번호는 4~20자로 정해 주세요.');
@@ -1344,14 +1344,37 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <Hub key="casual" tab="casual" go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} party={party} reloadParty={reloadParty} />;
   }
 
-  // 플레이: 랭킹전/일반전 화면으로 (이미 거기면 '찾기' 버튼으로 눈길을 줌)
+  // 플레이: 마지막에 찾던 설정(랭킹전/일반전 · 1대1/다인전 · 신속/일반)으로 바로 매칭 대기
+  const member = account.status === 'member';
+  const inParty = !!party && party.members.length > 1;
+  const match = useMatch();
+  const matching = match.phase !== 'idle';
+  // 상대가 잡히면 (어느 메뉴에 있든) 바로 게임으로
+  useEffect(() => {
+    if (!match.matched) return;
+    const m = consumeMatched();
+    if (m) onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: loadUi() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.matched]);
+  const [, setClock] = useState(0);
+  useEffect(() => {
+    if (!matching) return;
+    const id = setInterval(() => setClock((x) => x + 1), 1000);
+    return () => clearInterval(id);
+  }, [matching]);
+  const waitedSec = matching ? Math.max(0, Math.floor((Date.now() - match.startedAt) / 1000)) : 0;
+  const goMatchTab = () => go(match.queue?.startsWith('ranked') ? 'ranked' : 'casual');
   const play = () => {
-    const t: LobbyPage = resolved === 'ranked' || resolved === 'casual' ? resolved : 'casual';
+    if (matching) return goMatchTab();
+    const pref = loadMatchPref();
+    const t: LobbyPage = pref.kind === 'ranked' && member && !inParty ? 'ranked' : 'casual';
+    try {
+      localStorage.setItem(FIND_AGAIN, t);
+    } catch {
+      /* 저장소 없음 */
+    }
     if (t !== resolved) return go(t);
-    const btn = document.querySelector<HTMLButtonElement>('.match-finder .btn.primary.xl');
-    btn?.focus();
-    btn?.classList.add('cl-pulse');
-    setTimeout(() => btn?.classList.remove('cl-pulse'), 1200);
+    window.dispatchEvent(new Event('stockduel:play'));
   };
   return (
     <div className="lobby-shell client">
@@ -1361,6 +1384,9 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         online={online}
         onGo={goTab}
         onPlay={play}
+        playLabel={online ? playLabel(member, inParty) : undefined}
+        matching={matching ? { text: queueText(match.queue), time: mmss(waitedSec), linking: match.phase === 'linking' } : null}
+        onCancelMatch={() => void cancelMatch()}
         onProfile={() => go('me')}
         onLogin={() => go('login')}
         socialBadge={badges.friends}
@@ -1379,6 +1405,27 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             </span>
           </div>
           <div className="lobby-body">{body}</div>
+          {matching && (
+            <div className="mm-pill" role="status">
+              <span className="mf-spin sm" aria-hidden />
+              <button className="mm-txt" onClick={goMatchTab}>
+                <b>{match.phase === 'linking' ? '방 만드는 중…' : '매칭 중'}</b>
+                <small>
+                  {queueText(match.queue)} · {mmss(waitedSec)}
+                </small>
+              </button>
+              {match.phase !== 'linking' && (
+                <button className="mm-x" onClick={() => void cancelMatch()} aria-label="그만 찾기">
+                  <Icon name="x" size={16} />
+                </button>
+              )}
+            </div>
+          )}
+          {match.notice && (
+            <div className="mm-notice" role="alert">
+              {match.notice}
+            </div>
+          )}
           <footer className="cl-foot">
             <button className="linkish-soft" onClick={() => setModal('feedback')}>
               의견·버그 보내기

@@ -7,8 +7,10 @@ import { api } from '../net/api';
 import { refreshAccount, useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
 import { pokeInvites } from '../components/InviteCenter';
+import { okWhileMatching } from '../net/matchStore';
 import { BADGES } from '../game/achievements';
 import { tierShort } from '../components/TierBadge';
+import { Avatar } from '../components/Avatar';
 
 export interface FriendItem {
   id: string;
@@ -17,6 +19,7 @@ export interface FriendItem {
   rating: number;
   /** 랭킹전 판 수 (2판까지 배치 — 티어 대신 '배치 중') */
   ranked?: number;
+  avatar?: string;
   status?: 'online' | 'playing' | 'offline';
   at?: string;
 }
@@ -181,7 +184,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
           <ul className="fr-list">
             {d.incoming.map((f) => (
               <li key={f.id} className="fr-row">
-                <span className="fr-av">{f.nickname.slice(0, 1)}</span>
+                <Avatar id={f.avatar} name={f.nickname} size={38} className="fr-av" />
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
                   <small className="muted">
@@ -226,7 +229,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
               const [label, cls] = STATUS[f.status ?? 'offline'];
               return (
                 <li key={f.id} className="fr-row">
-                  <span className={'fr-av ' + cls}>{f.nickname.slice(0, 1)}</span>
+                  <Avatar id={f.avatar} name={f.nickname} size={38} className={'fr-av ' + cls} />
                   <span className="fr-txt">
                     <b>{f.nickname}</b>
                     <small className="muted">
@@ -238,7 +241,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                       className="btn sm"
                       disabled={busy}
                       title="친구에게 1대1 대결 신청 (신속 · 점수 없음)"
-                      onClick={() => run(async () => (await api('challenge', { friendId: f.id, speed: 'quick' }), pokeInvites()))}
+                      onClick={() => okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'quick' }), pokeInvites()))}
                     >
                       <Icon name="users" size={14} /> 1대1
                     </button>
@@ -273,7 +276,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
           <ul className="fr-list">
             {d.outgoing.map((f) => (
               <li key={f.id} className="fr-row">
-                <span className="fr-av">{f.nickname.slice(0, 1)}</span>
+                <Avatar id={f.avatar} name={f.nickname} size={38} className="fr-av" />
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
                   <small className="muted">답을 기다리는 중 · 7일 뒤 자동으로 사라져요</small>

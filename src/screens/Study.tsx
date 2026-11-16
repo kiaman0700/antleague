@@ -1,9 +1,8 @@
 /**
- * 기업 공부: 투자 기초(이 게임 규칙에 맞춘 짧은 설명) + 퀴즈(게임 데이터로 문제를 만들어 풀어 보기)
+ * 공부: 투자 기초 — 매판 가격·뉴스는 달라도 늘 같은 '움직이는 원리'를 미리 익혀 두기
  * 설명의 업종 예시는 실제 게임 데이터(업종 민감도)에서 뽑음 — 게임과 다른 말을 하지 않게
  */
-import { useMemo, useState } from 'react';
-import { STOCK_SECTORS, STOCKS, SECTOR_MAP } from '../game/stocks';
+import { STOCK_SECTORS } from '../game/stocks';
 import { Icon } from '../components/Icon';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
@@ -101,127 +100,5 @@ export function StudyBasics() {
         </section>
       ))}
     </div>
-  );
-}
-
-/* ---------- 퀴즈 ---------- */
-interface Q {
-  text: string;
-  options: string[];
-  answer: number;
-  why: string;
-}
-const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5);
-
-function makeQuiz(): Q[] {
-  const qs: Q[] = [];
-  const krs = STOCK_SECTORS.filter((s) => s.region === 'KR');
-  // 1) 거시 변수 문제 2개
-  const macro: ['rate' | 'fx' | 'oil', string][] = [
-    ['rate', '금리가 오르면'],
-    ['fx', '환율(원/달러)이 오르면'],
-    ['oil', '유가가 오르면'],
-  ];
-  for (const [key, label] of shuffle(macro).slice(0, 2)) {
-    const th = key === 'rate' ? 0.08 : 0.3;
-    const cand = krs.filter((s) => Math.abs(s[key]) >= th);
-    if (!cand.length) continue;
-    const s = pick(cand);
-    const good = s[key] > 0;
-    qs.push({
-      text: `${label} '${s.name}' 업종은?`,
-      options: ['유리해요 (오르기 쉬워요)', '불리해요 (내리기 쉬워요)', '거의 상관없어요'],
-      answer: good ? 0 : 1,
-      why: `이 게임에서 ${s.name} 업종은 ${label} ${good ? '유리' : '불리'}해요.`,
-    });
-  }
-  // 2) 회사 → 업종 문제 2개
-  const cos = shuffle(STOCKS.filter((s) => !s.etf)).slice(0, 2);
-  for (const c of cos) {
-    const right = SECTOR_MAP[c.sector].name;
-    const wrong = shuffle(STOCK_SECTORS.filter((s) => s.id !== c.sector && s.region === SECTOR_MAP[c.sector].region).map((s) => s.name)).slice(0, 2);
-    const options = shuffle([right, ...wrong]);
-    qs.push({ text: `'${c.name}'은(는) 어떤 업종일까요?`, options, answer: options.indexOf(right), why: `${c.name}: ${c.desc}` });
-  }
-  // 3) 레버리지·인버스 문제 1개
-  const levs = STOCKS.filter((s) => s.etf && s.etf.lev !== 1);
-  if (levs.length) {
-    const e = pick(levs);
-    const lev = e.etf!.lev;
-    const options = ['따라가는 것을 그대로 따라가요', '하루 움직임의 2배로 움직여요', '따라가는 것과 반대로 움직여요'];
-    qs.push({
-      text: `'${e.name}'은(는) 어떻게 움직일까요?`,
-      options,
-      answer: lev > 1 ? 1 : lev < 0 ? 2 : 0,
-      why: `${lev > 1 ? `${lev}배 레버리지` : '인버스'} 상품이에요. 이 게임에서는 레버리지·인버스를 합쳐 총재산의 30%까지만 살 수 있어요.`,
-    });
-  }
-  return shuffle(qs);
-}
-
-export function StudyQuiz() {
-  const [round, setRound] = useState(0);
-  const qs = useMemo(() => makeQuiz(), [round]);
-  const [i, setI] = useState(0);
-  const [chosen, setChosen] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
-  const done = i >= qs.length;
-  const q = qs[i];
-  const restart = () => {
-    setRound((r) => r + 1);
-    setI(0);
-    setChosen(null);
-    setScore(0);
-  };
-  if (done)
-    return (
-      <section className="panel pad quiz-done">
-        <Icon name="trophy" size={32} />
-        <h3>
-          {qs.length}문제 중 {score}개 맞혔어요!
-        </h3>
-        <p className="muted">{score === qs.length ? '완벽해요! 이제 실전에서 뉴스를 읽어 보세요.' : '틀린 문제는 투자 기초와 기업 살펴보기에서 다시 확인해 보세요.'}</p>
-        <button className="btn primary" onClick={restart}>
-          새 문제로 다시 풀기
-        </button>
-      </section>
-    );
-  return (
-    <section className="panel pad quiz">
-      <div className="qz-top">
-        <small className="muted">
-          문제 {i + 1} / {qs.length}
-        </small>
-        <small className="muted">맞힌 수 {score}</small>
-      </div>
-      <h3>{q.text}</h3>
-      <div className="qz-options">
-        {q.options.map((o, k) => {
-          const state = chosen === null ? '' : k === q.answer ? ' right' : k === chosen ? ' wrong' : ' dim';
-          return (
-            <button
-              key={k}
-              className={'qz-opt' + state}
-              disabled={chosen !== null}
-              onClick={() => {
-                setChosen(k);
-                if (k === q.answer) setScore((s) => s + 1);
-              }}
-            >
-              {o}
-            </button>
-          );
-        })}
-      </div>
-      {chosen !== null && (
-        <div className={'qz-why ' + (chosen === q.answer ? 'right' : 'wrong')}>
-          <b>{chosen === q.answer ? '정답!' : '아쉬워요'}</b> {q.why}
-          <button className="btn sm primary" onClick={() => (setI(i + 1), setChosen(null))}>
-            {i + 1 < qs.length ? '다음 문제' : '결과 보기'}
-          </button>
-        </div>
-      )}
-    </section>
   );
 }

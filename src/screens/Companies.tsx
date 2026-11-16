@@ -1,11 +1,11 @@
-/** 기업 공부: 기업 살펴보기(회사·ETF) · 투자 기초 · 퀴즈 */
+/** 공부: 게임 전에 미리 익혀 두기 — 투자 기초(규칙·변수) · 기업 살펴보기(회사·ETF) */
 import { useMemo, useState } from "react";
 import { companyInfo, type CompanyInfo } from "../game/companyInfo";
 import { SECTOR_MAP, STOCK_SECTORS, STOCKS } from "../game/stocks";
 import { Icon, SectorIcon } from "../components/Icon";
 import { SlideChips } from "../components/SlideChips";
 import { FitText } from "../components/FitText";
-import { StudyBasics, StudyQuiz } from "./Study";
+import { StudyBasics } from "./Study";
 
 type Region = "all" | "국내" | "미국" | "ETF";
 
@@ -136,9 +136,7 @@ export function Companies({ onBack }: { onBack: () => void }) {
   const [sector, setSector] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const [view, setView] = useState<"companies" | "basics" | "quiz">(
-    "companies",
-  );
+  const [view, setView] = useState<"companies" | "basics">("basics");
   const infos = useMemo(() => STOCKS.map((s) => companyInfo(s.symbol)), []);
   const shown = infos.filter(
     (i) =>
@@ -177,15 +175,14 @@ export function Companies({ onBack }: { onBack: () => void }) {
         <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
           <Icon name="back" size={18} />
         </button>
-        <h2>기업 공부</h2>
+        <h2>공부</h2>
         <div className="ph-right" />
       </header>
-      <div className="seg study-tabs" role="tablist" aria-label="기업 공부">
+      <div className="seg study-tabs" role="tablist" aria-label="공부">
         {(
           [
-            ["companies", "기업 살펴보기"],
             ["basics", "투자 기초"],
-            ["quiz", "퀴즈"],
+            ["companies", "기업 살펴보기"],
           ] as const
         ).map(([k, l]) => (
           <button
@@ -199,8 +196,14 @@ export function Companies({ onBack }: { onBack: () => void }) {
           </button>
         ))}
       </div>
-      {view === "basics" && <StudyBasics />}
-      {view === "quiz" && <StudyQuiz />}
+      {view === "basics" && (
+        <>
+          <p className="muted small">
+            매판 가격과 뉴스는 다 달라요. 그래도 주가가 움직이는 원리는 같아서, 미리 알아 두면 처음 보는 상황에서도 빨리 판단할 수 있어요.
+          </p>
+          <StudyBasics />
+        </>
+      )}
       {view === "companies" && (
         <>
           <p className="muted small">

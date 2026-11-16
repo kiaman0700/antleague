@@ -3,6 +3,8 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { useEffect, useState } from 'react';
+import { Avatar } from '../components/Avatar';
+import { AVATARS, canUseAvatar } from '../game/avatars';
 import { TierBadge } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { api } from '../net/api';
@@ -289,6 +291,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [cur, setCur] = useState('');
+  const [pickAv, setPickAv] = useState(false);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -347,7 +350,12 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         }
       />
       <section className="panel pad me-card">
-        <div className="me-avatar">{p.nickname.slice(0, 1)}</div>
+        <button className="me-avatar-btn" onClick={() => setPickAv((v) => !v)} title="프로필 사진 바꾸기" aria-label="프로필 사진 바꾸기">
+          <Avatar id={p.avatar} name={p.nickname} size={64} />
+          <span className="me-av-edit">
+            <Icon name="settings" size={12} />
+          </span>
+        </button>
         <div className="me-info">
           <b>
             {p.nickname} <Icon name="check" size={14} className="verified" />
@@ -365,6 +373,44 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <small>{p.rankPos ? `${p.rankPos}위` : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
         </button>
       </section>
+
+      {pickAv && (
+        <section className="panel pad av-picker">
+          <h3>
+            프로필 사진 <small className="muted">업적을 깨면 사진이 더 열려요</small>
+          </h3>
+          <div className="av-grid">
+            {AVATARS.map((a) => {
+              const open = canUseAvatar(a.id, Object.keys(acc.badges));
+              const on = (p.avatar ?? 'default') === a.id;
+              const need = a.need ? BADGES.find((b) => b.id === a.need) : null;
+              return (
+                <button
+                  key={a.id}
+                  className={'av-opt' + (on ? ' on' : '') + (open ? '' : ' locked')}
+                  disabled={on}
+                  aria-label={open ? `${a.name} 사진으로 바꾸기` : `잠긴 사진: 업적 ${need?.name ?? ''}을 깨면 열려요`}
+                  onClick={() =>
+                    open
+                      ? act(() => api('updateProfile', { avatar: a.id }), '프로필 사진을 바꿨어요')
+                      : (setMsg(''), setErr(`잠긴 사진이에요. 업적 '${need?.name ?? ''}'을(를) 깨면 열려요 — ${need?.desc ?? ''}`))
+                  }
+                >
+                  <Avatar id={a.id} name={p.nickname} size={52} />
+                  {!open && (
+                    <span className="av-lock">
+                      <Icon name="lock" size={14} />
+                    </span>
+                  )}
+                  <small>{open ? a.name : need?.name ?? '잠김'}</small>
+                </button>
+              );
+            })}
+          </div>
+          {err && <p className="error small">{err}</p>}
+          {msg && <p className="ok-msg small">{msg}</p>}
+        </section>
+      )}
 
       <section className="panel pad me-stats">
         <div>
@@ -508,6 +554,7 @@ interface RankRowT {
   rating: number;
   games: number;
   wins: number;
+  avatar?: string;
 }
 export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
   const acc = useAccount();
@@ -556,6 +603,7 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
             return (
               <li key={r.rank + r.nickname} className={mine ? 'me' : ''}>
                 <span className={'rb-rank r' + Math.min(r.rank, 4)}>{r.rank}</span>
+                <Avatar id={r.avatar} name={r.nickname} size={30} />
                 <span className="rb-name">
                   <b>{r.nickname}</b>
                   {t && (

@@ -7,12 +7,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
 import { tierShort } from './TierBadge';
+import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { refreshFriends, useFriends } from '../screens/Friends';
 
 export interface PartyState {
   isLeader: boolean;
-  members: { nickname: string; rating: number; ranked?: number; leader: boolean; me: boolean }[];
+  members: { nickname: string; rating: number; ranked?: number; avatar?: string; leader: boolean; me: boolean }[];
   searching: boolean;
   queue: string | null;
 }
@@ -86,7 +87,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
         <ul className="party-members">
           {party.members.map((m, i) => (
             <li key={i} className={m.me ? 'me' : ''}>
-              <span className="fr-av">{m.nickname.slice(0, 1)}</span>
+              <Avatar id={m.avatar} name={m.nickname} size={30} className="fr-av" />
               <b>{m.nickname}</b>
               {m.leader && <em className="party-leader">파티장</em>}
               <small className="muted">{tierShort(m.rating, m.ranked)}</small>

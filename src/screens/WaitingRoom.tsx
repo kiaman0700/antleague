@@ -126,7 +126,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
 
   const copy = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: '주식 대결 초대', text: `방 코드 ${room.code}`, url: link });
+      if (navigator.share) await navigator.share({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
       else {
         await navigator.clipboard.writeText(link);
         setCopied(true);

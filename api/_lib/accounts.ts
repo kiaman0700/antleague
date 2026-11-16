@@ -11,6 +11,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { BADGES } from '../../src/game/achievements.js';
 import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
+import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 const USERNAME_RE = /^[a-z0-9_]{4,16}$/;
@@ -27,6 +28,8 @@ export interface Profile {
   best_ret: number | null;
   /** 랭킹전으로 점수가 반영된 판 수 (2판까지는 배치) */
   ranked_games?: number;
+  /** 프로필 사진 프리셋 id */
+  avatar?: string;
 }
 
 const hash = (v: string) => {
@@ -60,7 +63,7 @@ export function cleanNewPassword(v: unknown): string {
 }
 
 export async function getProfile(sb: SupabaseClient, uid: string): Promise<Profile | null> {
-  let r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games').eq('user_id', uid).maybeSingle();
+  let r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games, avatar').eq('user_id', uid).maybeSingle();
   if (r.error && /ranked_games/.test(r.error.message)) r = (await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret').eq('user_id', uid).maybeSingle()) as typeof r; // 022 전
   if (r.error) return null; // 015 전이면 회원 기능 없음
   return (r.data as Profile | null) ?? null;
@@ -187,6 +190,13 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         if (nickname !== p.nickname && !(await nicknameFree(sb, nickname, uid))) throw new GameError('이미 쓰는 닉네임이에요.', 409);
         patch.nickname = nickname;
       }
+      if (b.avatar !== undefined) {
+        // 프로필 사진: 프리셋만, 업적으로 여는 사진은 그 업적을 깼을 때만 (서버가 다시 확인)
+        const id = typeof b.avatar === 'string' ? b.avatar : '';
+        if (!AVATAR_MAP[id]) throw new GameError('없는 사진이에요.');
+        if (!canUseAvatar(id, Object.keys(await earnedBadges(sb, uid)))) throw new GameError('아직 열리지 않은 사진이에요. 업적을 깨면 열려요.', 403);
+        patch.avatar = id;
+      }
       if (b.title !== undefined) {
         if (b.title === null) patch.title = null;
         else {
@@ -223,7 +233,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
 
     case 'ranking': {
       // 랭킹에는 배치(랭킹전 2판)를 마친 회원만
-      const top = ((await sb.from('profiles').select('nickname, title, rating, games, wins').gte('ranked_games', PLACEMENT_GAMES).order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100)).data ?? []) as {
+      const top = ((await sb.from('profiles').select('nickname, title, rating, games, wins, avatar').gte('ranked_games', PLACEMENT_GAMES).order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100)).data ?? []) as {
         nickname: string;
         title: string | null;
         rating: number;

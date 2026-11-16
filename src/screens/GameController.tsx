@@ -1237,7 +1237,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       {editBar}
       <header className="hud">
         <div className="hud-left">
-          <div className="brand-sm">주식 대결</div>
+          <div className="brand-sm"><img src="/brand/logo-dark.svg" alt="개미리그" height={22} /></div>
           <div className="daypill">
             <b>{day + 1}일차</b>
             <span>/ {total}</span>

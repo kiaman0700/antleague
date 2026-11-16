@@ -1314,13 +1314,13 @@ async function partyAct(action: string, b: Body, uid: string): Promise<unknown> 
       rateLimit(uid + ':party', 60, 60_000);
       const p = await partyOf(uid);
       if (!p) return { party: null };
-      const profs = (((await sb.from('profiles').select('user_id, nickname, rating, ranked_games').in('user_id', p.members)).data ?? []) as { user_id: string; nickname: string; rating: number; ranked_games?: number }[]);
+      const profs = (((await sb.from('profiles').select('user_id, nickname, rating, ranked_games, avatar').in('user_id', p.members)).data ?? []) as { user_id: string; nickname: string; rating: number; ranked_games?: number; avatar?: string }[]);
       const tickets = (((await sb.from('match_tickets').select('user_id, room_id, queue').eq('party_id', p.id)).data ?? []) as { user_id: string; room_id: string | null; queue: string }[]);
       const searching = tickets.length > 0 && tickets.every((t) => !t.room_id);
       return {
         party: {
           isLeader: p.leader === uid,
-          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, ranked: profs.find((x) => x.user_id === u)?.ranked_games ?? 0, leader: u === p.leader, me: u === uid })),
+          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, ranked: profs.find((x) => x.user_id === u)?.ranked_games ?? 0, avatar: profs.find((x) => x.user_id === u)?.avatar ?? 'default', leader: u === p.leader, me: u === uid })),
           searching,
           queue: tickets[0]?.queue ?? null,
         },

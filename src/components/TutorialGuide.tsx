@@ -37,7 +37,7 @@ export interface TutorialStep {
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    title: '주식 대결에 온 걸 환영해요',
+    title: '개미리그에 온 걸 환영해요',
     text: () => '1,000만원으로 시작해서, 마지막 날 재산이 가장 많은 사람이 이겨요. 오늘 상대는 연습봇이에요. 튜토리얼 동안은 시간이 멈춰 있으니 천천히 따라오세요.',
   },
   {
@@ -128,7 +128,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '튜토리얼 끝!',
-    text: () => '튜토리얼 끝! 이제 홈에서 혼자 연습이나 친구와 대결을 시작해 보세요. 회사 공부는 홈의 기업 공부 메뉴에서 할 수 있어요.',
+    text: () => '튜토리얼 끝! 이제 홈에서 혼자 연습이나 친구와 대결을 시작해 보세요. 회사 공부는 홈의 공부 메뉴에서 할 수 있어요.',
   },
 ];
 

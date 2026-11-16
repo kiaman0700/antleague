@@ -24,10 +24,10 @@ export function pathOf(r: Route): string {
 }
 
 const TITLES: Record<Route['kind'], string> = {
-  lobby: '주식 대결',
-  waiting: '대기실 · 주식 대결',
-  game: '게임 중 · 주식 대결',
-  resolve: '주식 대결',
+  lobby: '개미리그',
+  waiting: '대기실 · 개미리그',
+  game: '게임 중 · 개미리그',
+  resolve: '개미리그',
 };
 
 const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking' };
