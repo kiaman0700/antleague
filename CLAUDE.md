@@ -81,6 +81,7 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 익명 로그인이 IP 당 제한(429)에 걸리면 서버 손님 계정(`action:'guest'`, 관리자 API로 가짜 이메일 계정 → 비밀번호 로그인)으로 대체. 같은 IP 시간당 60·전체 3000 (guest_log)
 - v4 규칙: 레버리지·인버스 ETF(lev≠1)는 합쳐서 총재산의 30%까지만 살 수 있음(`LEVERAGE_CAP`, `leveragedCap`) — 다인전에서 몰빵 한 방이 이기던 문제 (시뮬 4인 41%→29%)
 - 운영자·개인정보 보호 책임자: Vercel 환경변수 `VITE_OPERATOR_CONTACT` = "이준엽 · kiaman0700@naver.com" (사용자가 공개 동의, 2026-11-16) → 개인정보 안내에 표시
+- 보안 제보 안내: `public/.well-known/security.txt` (운영자 연락처, Expires 2027-11-17 — 그 전에 날짜 늘리기)
 - 운영자: 운영자 계정 = 회원 아이디 kiaman0700 (사용자 요청, 2026-11-16). 운영자는 일반 회원 로그인 후 위 메뉴(모바일은 위 머리줄)에 고정된 '의견함' 버튼 + 안 읽은 수(`adminUnread`, 30초마다). **화면·API 로 운영자를 만들거나 지정하는 방법은 없음**(adminSignup·ADMIN_SETUP_CODE·ADMIN_EMAILS 모두 제거, Vercel 설정도 삭제). 지정/해제는 이 컴퓨터에서만 `npm run db -- set-admin|unset-admin <아이디>`, 목록 `npm run db -- admins` — 사용자가 따로 말하지 않으면 쓰지 말 것
 - 방해 카드: 한 사람에게 하루 한 번 (막힘·반사 포함, 반사로 맞은 사람도). 두 번째는 서버가 거절하고 카드는 그대로. 모든 방해 알림은 익명(쓴 사람·상대 방어 카드 종류 숨김)
 - 점수판: 상대는 순위 + 수익률 구간(2%p, `band`)만. 정확한 재산은 나와 끝난 게임만
