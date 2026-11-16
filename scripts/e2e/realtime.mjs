@@ -29,7 +29,8 @@ ok('미래 칸은 없음', Object.values(s2.live.krw).every((a) => a.length === 
 const before = await state();
 const t = await A({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 1 });
 const after = await state();
-const cands = new Set([...before.live.krw.CORE.slice(-1), ...after.live.krw.CORE.slice(-2)]);
+// 1초 칸이면 요청을 주고받는 사이(1~2초)에도 칸이 여러 번 바뀜 → 요청 전 마지막 칸부터 요청 뒤 마지막 칸까지 모두 후보
+const cands = new Set(after.live.krw.CORE.slice(Math.max(0, before.live.krw.CORE.length - 1)));
 ok('거래 가격 = 지금 칸 가격', t.s === 200 && cands.has(t.b.price), `price=${t.b?.price} cands=${[...cands]}`);
 ok('화면이 보낸 가격 무시', (await A({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 1, price: 1 })).b?.price > 1);
 
