@@ -3,6 +3,7 @@
 //   npm run db -- show supabase/005_x.sql    적용할 SQL 내용만 보여 줌 (실행 안 함)
 //   npm run db -- apply supabase/005_x.sql   SQL 을 한 트랜잭션으로 적용 (실패하면 전부 되돌림)
 //   npm run db -- feedback                   이용자가 보낸 의견 보기 (읽기만)
+//   npm run db -- balance [--all]            실제로 끝난 대결로 밸런스 보기 (읽기만, 기본은 테스트 계정 판 제외)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +73,58 @@ try {
     const r = await c.query('select id, kind, body, page, created_at from public.feedback order by created_at desc limit 30');
     for (const f of r.rows) console.log(`#${f.id} [${f.kind}] ${new Date(f.created_at).toLocaleString('ko-KR')} ${f.page ?? ''}\n  ${f.body.split('\n').join('\n  ')}`);
     if (!r.rows.length) console.log('아직 받은 의견이 없어요.');
+    await c.end();
+  } else if (cmd === 'balance') {
+    // 실제로 끝난 대결로 밸런스 확인 (읽기만). 사람 이름·아이디는 출력하지 않음
+    const all = process.argv.includes('--all');
+    const c = await connect();
+    const games = (await c.query(`
+      select r.id, r.created_at, coalesce(s.rules_version, 1) as v, h.results,
+             (select count(*) from public.players p where p.room_id = r.id) as n
+        from public.rooms r join public.match_history h on h.room_id = r.id
+        left join public.room_secrets s on s.room_id = r.id
+       where r.status = 'finished'`)).rows;
+    const items = (await c.query(`select i.room_id, p.nickname, i.kind, i.action from public.items i join public.players p on p.id = i.player_id`)).rows;
+    const trades = (await c.query(`select t.room_id, p.nickname, t.symbol, t.side from public.trades t join public.players p on p.id = t.player_id`)).rows;
+    // 자동 점검(e2e)·시험용 판 거르기: 한 글자 이름·봇 이름 등
+    const TEST = /^(?:[A-Z]|[A-Z][a-z0-9]{3,8}|봇|기권봇|테스트봇|매칭[A-D]|x|b\d|화면확인|아무거나)$/;
+    // 아무도 한 번도 거래하지 않은 판(자동 점검·바로 기권)은 밸런스에 의미가 없어 뺌
+    const traded = new Set(trades.map((t) => t.room_id));
+    const real = games.filter((g) => all || (traded.has(g.id) && !(g.results ?? []).some((r) => TEST.test(r.nickname))));
+    const ATK = new Set(['freeze', 'blackout', 'fake', 'fee']);
+    const INFO = new Set(['paper', 'analyst', 'scout', 'detector', 'spy']);
+    const LEV = new Set(['KLEV', 'KINV', 'USLEV', 'USINV', 'UTQQ', 'SQQQ']);
+    const stat = () => ({ n: 0, win: 0, ret: 0 });
+    const by = {};
+    const add = (key, won, ret) => { const s = (by[key] ??= stat()); s.n++; s.win += won; s.ret += ret; };
+    for (const g of real) {
+      const res = g.results ?? [];
+      const size = Number(g.n) === 2 ? '1대1' : '3인+';
+      const top = res.filter((r) => !r.left).sort((a, b) => b.equity - a.equity);
+      const winners = top.length && (top.length === 1 || top[0].equity !== top[1].equity) ? new Set([top[0].nickname]) : new Set();
+      for (const r of res) {
+        const mine = items.filter((i) => i.room_id === g.id && i.nickname === r.nickname);
+        const usedAtk = mine.some((i) => i.action === 'use' && ATK.has(i.kind));
+        const usedInfo = mine.some((i) => i.action === 'use' && INFO.has(i.kind));
+        const bought = mine.some((i) => i.action === 'buy');
+        const lev = trades.some((t) => t.room_id === g.id && t.nickname === r.nickname && t.side === 'buy' && LEV.has(t.symbol));
+        const nTr = trades.filter((t) => t.room_id === g.id && t.nickname === r.nickname).length;
+        const won = winners.has(r.nickname) ? 1 : 0;
+        const ret = Number(r.ret ?? 0);
+        add(`${size} 전체`, won, ret);
+        add(`${size} 방해 카드 씀`, won, ret);
+        if (!usedAtk) by[`${size} 방해 카드 씀`].n--, (by[`${size} 방해 카드 씀`].win -= won), (by[`${size} 방해 카드 씀`].ret -= ret);
+        if (usedInfo) add(`${size} 정보 카드 씀`, won, ret);
+        if (bought) add(`${size} 카드 산 사람`, won, ret);
+        if (lev) add(`${size} 레버리지·인버스 삼`, won, ret);
+        if (nTr === 0) add(`${size} 한 번도 안 삼`, won, ret);
+        if (r.left) add(`${size} 기권`, won, ret);
+      }
+    }
+    console.log(`끝난 대결 ${real.length}판 (전체 ${games.length}판${all ? '' : ', 시험용 판 제외'})`);
+    if (!real.length) console.log('아직 실제 대결 기록이 없어요. 사람들이 대결을 하면 여기서 승률·수익률을 볼 수 있어요.');
+    for (const [k, s] of Object.entries(by).sort()) if (s.n > 0) console.log(`- ${k}: ${s.n}명 · 승률 ${((s.win / s.n) * 100).toFixed(1)}% · 평균 수익률 ${((s.ret / s.n) * 100).toFixed(1)}%`);
+    console.log('※ 1대1 기대 승률 50%, 3인+ 는 인원에 따라 25~33%. 한쪽이 크게 높으면 그 전략·카드가 너무 셈');
     await c.end();
   } else if (cmd === 'admins') {
     // 운영자 계정 목록 (읽기만). 이메일은 앞 2글자만

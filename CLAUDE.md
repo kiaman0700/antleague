@@ -17,6 +17,7 @@ npm run build    # 타입체크 + 빌드
 npm run e2e      # 실제 서버를 익명 계정 여러 개로 테스트 (dev 서버 켜져 있어야 함)
 BASE=https://game-taupe-three-58.vercel.app npm run e2e   # 배포본 테스트
 npm run db -- check                         # Supabase 연결·마이그레이션 상태 (읽기만)
+npm run db -- balance                       # 실제로 끝난 대결의 승률·수익률 (1대1/3인+, 카드·레버리지 쓴 사람별, 읽기만, 시험용 판 제외)
 npm run db -- apply supabase/00X_이름.sql     # SQL 적용 (한 트랜잭션). 적용 전 사용자에게 내용 보여주고 확인받기
 npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드 로그·환경변수 이름·서버 오류
 npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면용 환경변수만 설정 (비밀 키 금지), 다음 배포부터 적용
