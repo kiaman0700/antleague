@@ -337,13 +337,8 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
                 count={n}
                 why={d.passive ? null : why}
                 dim={!d.passive && !!why}
-                footer={
-                  d.passive ? undefined : (
-                    <button className="btn sm primary full" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
-                      사용
-                    </button>
-                  )
-                }
+                action={d.passive ? undefined : { label: `${d.name} 사용하기`, disabled: !!why || busy, onClick: () => onUse(k) }}
+                footer={d.passive ? <span className="gc-tag">자동</span> : undefined}
               />
             );
           })}
@@ -363,11 +358,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
                 corner={<span className="gc-price">{wonShort(cost)}</span>}
                 why={why}
                 dim={!!why}
-                footer={
-                  <button className="btn sm full" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
-                    <Icon name="cart" size={14} /> 사기
-                  </button>
-                }
+                action={{ label: `${wonShort(cost)}에 사기`, disabled: !!why || busy, onClick: () => onBuy(d.kind) }}
               />
             );
           })}

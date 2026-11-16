@@ -1729,3 +1729,15 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 .chart .now-mark line { stroke: #f5b83d; stroke-width: 1.2; stroke-dasharray: 3 3; }
 .chart .now-mark rect { fill: #f5b83d; }
 .chart .now-mark text { fill: #1a1406; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* 차트 모양 고르기 견본 */
+.chart-sample { width: 72px; height: 28px; margin-bottom: 4px; }
+.chart-sample polyline { fill: none; stroke: #8b7bff; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.chart-sample g line { stroke-width: 1.2; }
+.chart-sample g.up line, .chart-sample g.up rect { stroke: var(--up); fill: var(--up); }
+.chart-sample g.down line, .chart-sample g.down rect { stroke: var(--down); fill: var(--down); }
+
+/* 카드를 눌러서 쓰기: 쓸 수 있는 카드는 눌리는 모양 */
+.gcard:not(.dim) .gc-face[role='button'] { cursor: pointer; }
+.gcard:not(.dim) .gc-face[role='button']:active { transform: scale(0.97); }
+.gc-detail-act .btn.primary { min-width: 0; }

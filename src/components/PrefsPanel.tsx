@@ -48,11 +48,49 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   );
 }
 
-function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string; sub?: string }[]; onChange: (v: T) => void }) {
+/** 차트 모양 견본 (라인·캔들·바) — 고를 때 어떤 모양인지 바로 보이게 */
+function ChartSample({ kind }: { kind: 'line' | 'candle' | 'ohlc' }) {
+  // 같은 가격 흐름을 세 모양으로: [시가, 고가, 저가, 종가]
+  const bars = [
+    [14, 8, 17, 10],
+    [10, 6, 13, 12],
+    [12, 9, 18, 16],
+    [16, 4, 17, 6],
+    [6, 2, 9, 4],
+  ];
+  return (
+    <svg className={'chart-sample k-' + kind} viewBox="0 0 60 22" aria-hidden>
+      {kind === 'line' ? (
+        <polyline points={bars.map((b, i) => `${6 + i * 12},${b[3]}`).join(' ')} />
+      ) : (
+        bars.map(([o, h, l, c], i) => {
+          const x = 6 + i * 12;
+          const up = c < o; // 위쪽이 작은 값(화면 좌표)
+          return (
+            <g key={i} className={up ? 'up' : 'down'}>
+              <line x1={x} x2={x} y1={h} y2={l} />
+              {kind === 'candle' ? (
+                <rect x={x - 3} y={Math.min(o, c)} width={6} height={Math.max(1, Math.abs(c - o))} />
+              ) : (
+                <>
+                  <line x1={x - 3.5} x2={x} y1={o} y2={o} />
+                  <line x1={x} x2={x + 3.5} y1={c} y2={c} />
+                </>
+              )}
+            </g>
+          );
+        })
+      )}
+    </svg>
+  );
+}
+
+function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string; sub?: string; sample?: 'line' | 'candle' | 'ohlc' }[]; onChange: (v: T) => void }) {
   return (
     <div className="seg" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
       {options.map((o) => (
         <button key={o.v} className={value === o.v ? 'on' : ''} onClick={() => onChange(o.v)}>
+          {o.sample && <ChartSample kind={o.sample} />}
           <b>{o.label}</b>
           {o.sub && <small>{o.sub}</small>}
         </button>
@@ -103,9 +141,9 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
           onChange={(chartType) => setPrefs({ chartType })}
           options={[
             { v: 'auto', label: '모드 기본', sub: '초보 라인 · 일반 캔들' },
-            { v: 'line', label: '라인' },
-            { v: 'candle', label: '캔들' },
-            { v: 'ohlc', label: '바' },
+            { v: 'line', label: '라인', sample: 'line' },
+            { v: 'candle', label: '캔들', sample: 'candle' },
+            { v: 'ohlc', label: '바', sample: 'ohlc' },
           ]}
         />
       </div>
@@ -117,9 +155,9 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
           onChange={(liveChartType) => setPrefs({ liveChartType })}
           options={[
             { v: 'same', label: '일별과 같게', sub: '한쪽을 바꾸면 같이' },
-            { v: 'line', label: '라인' },
-            { v: 'candle', label: '캔들' },
-            { v: 'ohlc', label: '바' },
+            { v: 'line', label: '라인', sample: 'line' },
+            { v: 'candle', label: '캔들', sample: 'candle' },
+            { v: 'ohlc', label: '바', sample: 'ohlc' },
           ]}
         />
       </div>

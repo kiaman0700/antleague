@@ -94,7 +94,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     target: '.p-cards, .m-page .cards',
     tab: 'cards',
     wait: (c) => c.detectorUsed,
-    waitHint: '루머 감별기의 사용을 눌러 보세요',
+    waitHint: '루머 감별기 카드를 누르고 "사용하기"를 눌러 보세요',
   },
   {
     title: '감별 결과',

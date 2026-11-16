@@ -194,15 +194,8 @@ export function CardTray({
               version={version}
               why={d.passive ? null : why}
               dim={!d.passive && !!why}
-              footer={
-                d.passive ? (
-                  <span className="tc-auto">자동</span>
-                ) : (
-                  <button className="btn sm primary full" disabled={!!why || busy} title={why ?? d.desc} onClick={() => onUse(k)}>
-                    사용
-                  </button>
-                )
-              }
+              action={d.passive ? undefined : { label: `${d.name} 사용하기`, disabled: !!why || busy, onClick: () => onUse(k) }}
+              footer={d.passive ? <span className="tc-auto">자동</span> : undefined}
             />
           );
         })}

@@ -42,6 +42,7 @@ export function GameCard({
   footer,
   desc = size !== 'sm',
   version = 6,
+  action,
 }: {
   /** 방 규칙 버전 (용돈 봉투 설명이 다름) */
   version?: number;
@@ -56,6 +57,11 @@ export function GameCard({
   dim?: boolean;
   footer?: ReactNode;
   desc?: boolean;
+  /**
+   * 카드를 누르면 크게 보이고 그 안에 이 버튼(사용·사기)이 나옴 — 크게 보기가 곧 '쓸까요?' 확인.
+   * 없으면 누를 때 설명만 크게
+   */
+  action?: { label: string; onClick: () => void; disabled?: boolean; primary?: boolean };
 }) {
   const d = { ...ITEM_MAP[kind], desc: itemDesc(kind, version) };
   const [open, setOpen] = useState(false);
@@ -73,9 +79,12 @@ export function GameCard({
     const below = r.top < 190;
     setPop({ x: Math.min(window.innerWidth - 125, Math.max(125, r.left + r.width / 2)), y: below ? r.bottom + 8 : r.top - 8, below });
   };
-  // 휴대폰·태블릿: 카드를 누르면 크게 + 설명 전부 (PC 는 마우스를 올리면 옆에 설명)
+  // 카드를 누르면 크게 + 설명 전부 + 사용(사기) 버튼 — 잘못 눌러 바로 쓰이지 않게 이 창이 확인 역할. 쓸 게 없으면 PC 는 마우스 올림 설명으로 충분
   const onFace = () => {
-    if (!canHover()) setOpen(true);
+    if (action || !canHover()) {
+      setPop(null);
+      setOpen(true);
+    }
   };
   return (
     <div className={`gcard gc-${size} t-${d.type}${dim ? ' dim' : ''}`}>
@@ -89,8 +98,22 @@ export function GameCard({
                 <span className="gc-type-tip">{CARD_TYPE[d.type]} 카드 · {TYPE_TIP[d.type]}</span>
                 <p>{d.desc}</p>
                 {why && <small className="gc-why">{why}</small>}
-                <div className="gc-detail-act" onClick={() => setOpen(false)}>
-                  {footer}
+                <div className="gc-detail-act">
+                  {action ? (
+                    <button
+                      className={'btn ' + (action.primary === false ? '' : 'primary')}
+                      disabled={action.disabled}
+                      autoFocus
+                      onClick={() => {
+                        setOpen(false);
+                        action.onClick();
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ) : (
+                    <span className="muted small">{d.passive ? '갖고 있으면 자동으로 발동돼요' : ''}</span>
+                  )}
                   <button className="btn ghost" onClick={() => setOpen(false)}>
                     닫기
                   </button>
@@ -118,7 +141,9 @@ export function GameCard({
         onFocus={(e) => showPop(e.currentTarget)}
         onBlur={() => setPop(null)}
         tabIndex={0}
-        aria-label={`${d.name}: ${d.desc}`}
+        role={action ? 'button' : undefined}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onFace())}
+        aria-label={`${d.name}: ${d.desc}${action ? ` (누르면 ${action.label})` : ''}`}
       >
         <div className="gc-top">
           <span className="gc-type">{CARD_TYPE[d.type]}</span>
