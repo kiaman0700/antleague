@@ -320,6 +320,10 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
 export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBack: () => void; onLogin: () => void; onRanking: () => void; onRecords: () => void }) {
   const acc = useAccount();
   const [nick, setNick] = useState('');
+  // 바꿀 닉네임을 입력하는 동안 쓸 수 있는지 바로 확인 (지금 닉네임과 대소문자만 다르면 확인 안 함)
+  const nickCheck = !!nick.trim() && nick.trim().toLowerCase() !== (acc.profile?.nickname ?? '').toLowerCase();
+  const nickOk = nick.trim().length >= 1 && nick.trim().length <= 10 && ![...nick].some((ch) => ch === '<' || ch === '>' || ch.charCodeAt(0) < 32);
+  const nickAvail = useAvailability('nickname', nick, nickCheck, nickOk);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [cur, setCur] = useState('');
@@ -469,11 +473,16 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       <section className="panel pad">
         <h3>닉네임</h3>
         <div className="row-input">
-          <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={10} aria-label="닉네임" />
-          <button className="btn sm primary" disabled={!nick.trim() || nick.trim() === p.nickname} onClick={() => act(() => api('updateProfile', { nickname: nick.trim() }), '닉네임을 바꿨어요. 다음 게임부터 적용돼요')}>
+          <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={10} aria-label="닉네임" aria-invalid={nickAvail === 'taken' || nickAvail === 'invalid'} />
+          <button className="btn sm primary" disabled={!nick.trim() || nick.trim() === p.nickname || nickAvail === 'taken' || nickAvail === 'invalid'} onClick={() => act(() => api('updateProfile', { nickname: nick.trim() }), '닉네임을 바꿨어요. 다음 게임부터 적용돼요')}>
             바꾸기
           </button>
         </div>
+        {nickCheck ? (
+          <div className="nick-avail" aria-live="polite">
+            <AvailMsg st={nickAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
+          </div>
+        ) : null}
         <small className="muted">게임·랭킹에 보이는 이름이에요. 다른 회원과 같은 닉네임은 쓸 수 없어요.</small>
       </section>
 

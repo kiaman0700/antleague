@@ -323,3 +323,5 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 }
 /* 창 자체에 옮긴 초점은 테두리를 그리지 않음 (창 안 버튼의 초점 표시는 그대로) */
 .modal[tabindex="-1"]:focus { outline: none; }
+/* 마이프로필 닉네임 바꾸기: 쓸 수 있는지 안내는 설명 위 따로 한 줄 */
+.nick-avail { margin: 6px 0 2px; font-size: 12px; }
