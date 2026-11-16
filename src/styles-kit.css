@@ -291,3 +291,7 @@
 .invite-pop { position: relative; }
 .invite-pop .ip-close { position: absolute; top: 10px; right: 10px; }
 .invite-pop h3 { padding-right: 36px; }
+
+/* 작은 카드: 종류 글자 9px → 10px, 장식용 영문 코드는 숨겨 자리 확보 */
+.gc-sm .gc-top { font-size: 10px; }
+.gc-sm .gc-code { display: none; }
