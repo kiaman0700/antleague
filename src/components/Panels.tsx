@@ -274,7 +274,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
           <div className="news-meta">
             {n.at !== undefined && <span className="breaking-badge"><Icon name="flame" size={11} /> 장중 속보</span>}
-            {isFresh(n) && <span className="new-badge">NEW</span>}
+            {isFresh(n) && <span className="new-badge">새 기사</span>}
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (
               <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>

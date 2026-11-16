@@ -294,7 +294,7 @@
 
 /* 작은 카드: 종류 글자 9px → 10px, 장식용 영문 코드는 숨겨 자리 확보 */
 .gc-sm .gc-top, .gc-sm .gc-auto { font-size: 10px; }
-.gc-sm .gc-code { display: none; }
+.gc-code { display: none; } /* 장식용 영문 코드(NEWS·HALT 등)는 모든 카드에서 숨김 — 한글 종류 표시만 */
 
 /* 결과 화면 시장 성적 '전체 보기' */
 .stock-rank-more { display: flex; margin: 12px auto 0; }
