@@ -7,6 +7,7 @@ import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
 import { FriendsPage, useFriendsPoll } from './Friends';
+import { InviteCenter } from '../components/InviteCenter';
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
@@ -1333,6 +1334,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       </main>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} />
+      {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}

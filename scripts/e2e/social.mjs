@@ -49,6 +49,12 @@ async function member(tag) {
   const f = (await U({ action: 'friends' })).b;
   for (const x of [...(f?.friends ?? []), ...(f?.outgoing ?? []), ...(f?.incoming ?? [])]) await U({ action: 'friendRemove', id: x.id });
   for (const x of f?.blocked ?? []) await U({ action: 'unblock', id: x.id });
+  // 지난 실행에서 남은 방·대결에서 나가기
+  for (let i = 0; i < 5; i++) {
+    const r = (await U({ action: 'resume' })).b;
+    if (!r?.roomId) break;
+    await U({ action: 'leave', roomId: r.roomId });
+  }
   return U;
 }
 
@@ -99,6 +105,48 @@ const acc = await B({ action: 'friendRespond', id: fb.incoming[0].id, accept: tr
 ok('B 수락', acc.s === 200 && acc.b.status === 'accepted');
 const fa2 = (await A({ action: 'friends' })).b;
 ok('A 친구 목록에 B (접속 중)', fa2.friends.length === 1 && fa2.friends[0].nickname === nB && fa2.friends[0].status === 'online', JSON.stringify(fa2.friends));
+// ---- 방 초대 ----
+const abId = fa2.friends[0].id;
+const room = (await A({ action: 'create', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '초대방', isPrivate: true, password: 'pw1234' })).b;
+ok('A 비밀방 만들기', !!room?.roomId, JSON.stringify(room));
+const fakeInv = await C({ action: 'inviteRoom', roomId: room.roomId, friendId: abId });
+ok('친구가 아닌 C 는 남의 관계 id 로 초대 불가', fakeInv.s === 404 || fakeInv.s === 403, String(fakeInv.s));
+const inv = await A({ action: 'inviteRoom', roomId: room.roomId, friendId: abId });
+ok('A → B 방 초대', inv.s === 200, inv.b?.error ?? '');
+const ib = (await B({ action: 'invites' })).b;
+ok('B 에게 방 초대가 보임 (보낸 사람 닉네임·방 제목)', ib.incoming.length === 1 && ib.incoming[0].from === nA && ib.incoming[0].title === '초대방', JSON.stringify(ib));
+ok('초대 응답에 user id·방 id 없음', !JSON.stringify(ib).includes(users.A.uid) && !JSON.stringify(ib).includes(room.roomId));
+const steal2 = await C({ action: 'inviteRespond', id: ib.incoming[0].id, accept: true });
+ok('남에게 온 초대로 입장 불가', steal2.s === 404);
+const accRoom = await B({ action: 'inviteRespond', id: ib.incoming[0].id, accept: true, mode: 'easy' });
+ok('B 초대 수락 → 비밀번호 없이 입장', accRoom.s === 200 && accRoom.b.roomId === room.roomId, JSON.stringify(accRoom.b));
+const reuse = await B({ action: 'inviteRespond', id: ib.incoming[0].id, accept: true });
+ok('같은 초대는 한 번만', reuse.s === 404);
+await B({ action: 'leave', roomId: room.roomId });
+await A({ action: 'leave', roomId: room.roomId });
+
+// ---- 1대1 신청 ----
+const ch1 = await A({ action: 'challenge', friendId: abId, speed: 'quick' });
+ok('A → B 1대1 신청', ch1.s === 200, ch1.b?.error ?? '');
+const ib2 = (await B({ action: 'invites' })).b;
+const duelInv = ib2.incoming.find((x) => x.kind === 'duel');
+ok('B 에게 1대1 신청이 보임', !!duelInv && duelInv.from === nA && duelInv.speed === 'quick', JSON.stringify(ib2));
+await B({ action: 'inviteRespond', id: duelInv.id, accept: false });
+const ia = (await A({ action: 'invites' })).b;
+ok('거절하면 A 에게 거절로 보임', ia.duel?.status === 'declined', JSON.stringify(ia.duel));
+await A({ action: 'challenge', friendId: abId, speed: 'normal' });
+const duelInv2 = (await B({ action: 'invites' })).b.incoming.find((x) => x.kind === 'duel');
+const accDuel = await B({ action: 'inviteRespond', id: duelInv2.id, accept: true, mode: 'pro' });
+ok('B 수락 → 둘이 바로 대결 시작', accDuel.s === 200 && accDuel.b.kind === 'duel' && !!accDuel.b.roomId, JSON.stringify(accDuel.b));
+const ia2 = (await A({ action: 'invites' })).b;
+ok('A 도 같은 방 자리를 받음', ia2.duel?.status === 'accepted' && ia2.duel.roomId === accDuel.b.roomId && !!ia2.duel.playerId, JSON.stringify(ia2.duel));
+const dv = (await A({ action: 'state', roomId: accDuel.b.roomId })).b;
+ok('친구 1대1: 진행 중 · 2명 · 일반 길이 · 랭킹 아님', dv.room.status === 'playing' && dv.players.length === 2 && dv.room.totalDays === 20 && dv.room.ranked === false && dv.room.kind === 'friend', JSON.stringify(dv.room));
+const busy = await A({ action: 'challenge', friendId: abId, speed: 'quick' });
+ok('대결 중에는 또 신청 불가', busy.s === 409);
+await A({ action: 'leave', roomId: accDuel.b.roomId });
+await B({ action: 'leave', roomId: accDuel.b.roomId });
+
 const again = await A({ action: 'friendRequest', nickname: nB });
 ok('이미 친구면 다시 신청 불가', again.s === 409);
 
@@ -119,6 +167,7 @@ ok('A 에게 C 의 신청이 보이지 않음 · 차단 목록에 C', !fa4.incom
 const fc = (await C({ action: 'friends' })).b;
 ok('C 화면에는 대기 중으로만 보임 (차단 표시 없음)', fc.outgoing.some((x) => x.nickname === nA) && fc.blocked.length === 0 && !fc.outgoing.some((x) => 'blocked' in x || 'status' in x));
 const aToC = await A({ action: 'friendRequest', nickname: nC });
+// (차단 뒤에는 친구가 아니므로 초대·1대1 신청도 못 함)
 ok('차단한 사람에게는 신청 전에 차단 풀기 안내', aToC.s === 409, aToC.b?.error);
 const ub = await A({ action: 'unblock', id: fa4.blocked[0].id });
 ok('차단 풀기', ub.s === 200);

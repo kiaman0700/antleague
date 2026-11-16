@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../net/api';
 import { useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
+import { pokeInvites } from '../components/InviteCenter';
 import { BADGES } from '../game/achievements';
 
 export interface FriendItem {
@@ -29,8 +30,9 @@ let data: FriendsData | null = null;
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 let inflight: Promise<void> | null = null;
-export function refreshFriends(): Promise<void> {
-  if (inflight) return inflight;
+/** fresh: 행동(수락·삭제 등) 직후 — 이미 가고 있던 요청은 행동 전 값이라, 끝난 뒤 한 번 더 받음 */
+export function refreshFriends(fresh = false): Promise<void> {
+  if (inflight) return fresh ? inflight.then(() => refreshFriends()) : inflight;
   inflight = api<FriendsData>('friends')
     .then((d) => {
       data = d;
@@ -98,7 +100,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
     try {
       await fn();
       if (ok) setMsg(ok);
-      await refreshFriends();
+      await refreshFriends(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -226,11 +228,22 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                     </small>
                   </span>
                   <span className="fr-act">
+                    <button
+                      className="btn sm"
+                      disabled={busy}
+                      title="친구에게 1대1 대결 신청 (신속 · 점수 없음)"
+                      onClick={() => run(async () => (await api('challenge', { friendId: f.id, speed: 'quick' }), pokeInvites()))}
+                    >
+                      <Icon name="users" size={14} /> 1대1
+                    </button>
                     <button className="icon-btn sm" aria-label={`${f.nickname} 메뉴`} aria-expanded={menu === f.id} onClick={() => setMenu(menu === f.id ? null : f.id)}>
                       <Icon name="list" size={16} />
                     </button>
                     {menu === f.id && (
                       <span className="fr-menu" role="menu">
+                        <button role="menuitem" onClick={() => run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites()))}>
+                          1대1 신청 · 일반 (약 20~30분)
+                        </button>
                         <button role="menuitem" onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>
                           친구 끊기
                         </button>

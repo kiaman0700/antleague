@@ -3,6 +3,51 @@ import { api, useLiveView } from '../net/api';
 import { loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
 import { ModePicker } from './Lobby';
 import { Icon } from '../components/Icon';
+import { Sheet } from '../components/PrefsPanel';
+import { useAccount } from '../net/account';
+import { refreshFriends, useFriends } from './Friends';
+
+/** 대기실에서 친구 초대 (회원만): 접속 중인 친구가 위로, 초대하면 5분 동안 비밀번호 없이 들어올 수 있음 */
+function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => void }) {
+  const d = useFriends();
+  const [sent, setSent] = useState<Record<string, 'ok' | string>>({});
+  useEffect(() => {
+    refreshFriends();
+  }, []);
+  const invite = async (id: string) => {
+    try {
+      await api('inviteRoom', { roomId, friendId: id });
+      setSent((x) => ({ ...x, [id]: 'ok' }));
+    } catch (e) {
+      setSent((x) => ({ ...x, [id]: e instanceof Error ? e.message : '초대하지 못했어요' }));
+    }
+  };
+  const list = d?.friends ?? [];
+  return (
+    <Sheet title={<><Icon name="userPlus" size={18} /> 친구 초대</>} onClose={onClose}>
+      {!d && <p className="muted small">불러오는 중…</p>}
+      {d && list.length === 0 && <p className="muted small">아직 친구가 없어요. 로비의 '친구'에서 닉네임으로 추가할 수 있어요.</p>}
+      <ul className="fr-list">
+        {list.map((f) => (
+          <li key={f.id} className="fr-row">
+            <span className={'fr-av st-' + (f.status ?? 'offline')}>{f.nickname.slice(0, 1)}</span>
+            <span className="fr-txt">
+              <b>{f.nickname}</b>
+              <small className="muted">{f.status === 'online' ? '접속 중' : f.status === 'playing' ? '게임 중' : '오프라인'}</small>
+              {sent[f.id] && sent[f.id] !== 'ok' && <small className="error">{sent[f.id]}</small>}
+            </span>
+            <span className="fr-act">
+              <button className="btn sm" disabled={sent[f.id] === 'ok'} onClick={() => invite(f.id)}>
+                {sent[f.id] === 'ok' ? <><Icon name="check" size={14} /> 보냄</> : '초대'}
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 로비에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이).</p>
+    </Sheet>
+  );
+}
 
 interface Props {
   roomId: string;
@@ -17,6 +62,8 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
   const [ui, setUi] = useState<UiMode>(loadUi);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const member = useAccount().status === 'member';
   const started = useRef(false);
 
   useEffect(() => {
@@ -104,6 +151,12 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
         <button className="btn sm" onClick={copy}>
           {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
         </button>
+        {member && view.players.length < room.maxPlayers && (
+          <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
+            <Icon name="userPlus" /> 친구 초대
+          </button>
+        )}
+        {inviteOpen && <InviteFriends roomId={roomId} onClose={() => setInviteOpen(false)} />}
         <p className="muted small">
           최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 제한 시간 {turnLabel}
           {room.isPrivate && <> · 방 목록에선 비밀번호 필요</>}

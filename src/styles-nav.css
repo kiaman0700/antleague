@@ -796,3 +796,47 @@ button.hr-row:hover {
   justify-content: center;
   font-size: 14px;
 }
+
+/* 친구 초대 알림 */
+.invite-pop {
+  max-width: 400px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.invite-pop h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.invite-pop p {
+  margin: 0;
+}
+.invite-pop .modal-actions {
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+.invite-note {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  max-width: calc(100vw - 32px);
+}
+.waiting .big-code + .btn + .btn {
+  margin-left: 6px;
+}
