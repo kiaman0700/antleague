@@ -9,6 +9,7 @@ import { Icon, SectorIcon } from "../components/Icon";
 import { SlideChips } from "../components/SlideChips";
 import { FitText } from "../components/FitText";
 import { StudyBasics } from "./Study";
+import { EmptyState } from "../components/ui";
 
 type Region = "all" | "국내" | "미국" | "ETF";
 
@@ -304,6 +305,15 @@ export function Companies({ onBack }: { onBack: () => void }) {
             />
           )}
           <p className="muted small">{shown.length}개</p>
+          {shown.length === 0 && (
+            <EmptyState
+              compact
+              icon="search"
+              title="찾는 회사가 없어요"
+              desc="이름이나 업종을 다르게 써 보세요."
+              action={<button className="btn sm" onClick={() => (setQ(""), setRegion("all"), setSector(null))}>검색 지우기</button>}
+            />
+          )}
           <div className="co-list">
             {shown.map((i) => {
               const isOpen = open === i.def.symbol;

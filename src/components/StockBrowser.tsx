@@ -9,6 +9,7 @@ import { Sparkline } from './Chart';
 import { reorderSubset, SlideChips } from './SlideChips';
 import { FitText } from './FitText';
 import { Dropdown } from './Dropdown';
+import { EmptyState } from './ui';
 import { effective, setPrefs, usePrefs } from '../prefs';
 
 export interface BrowserFilter {
@@ -302,7 +303,12 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
 
       <div className="stock-list">
         {rows.length === 0 && (
-          <p className="empty">{region === 'watch' ? '별을 눌러 관심 종목을 추가해 보세요' : region === 'held' ? '아직 가진 종목이 없어요' : '찾는 종목이 없어요'}</p>
+          <EmptyState
+            compact
+            icon={region === 'watch' ? 'star' : region === 'held' ? 'briefcase' : 'search'}
+            title={region === 'watch' ? '관심 종목이 없어요' : region === 'held' ? '아직 가진 종목이 없어요' : '찾는 종목이 없어요'}
+            desc={region === 'watch' ? '종목 옆 별을 누르면 여기에 모여요.' : region === 'held' ? undefined : '이름이나 업종을 다르게 써 보세요.'}
+          />
         )}
         {rows.map(({ s, krw, usd, ch }, i) => {
           const showHeader = grouped && (i === 0 || groupKey(rows[i - 1].s) !== groupKey(s));
