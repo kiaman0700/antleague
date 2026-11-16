@@ -1309,7 +1309,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               </small>
             </button>
           </div>
-          {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} compact />}
+          {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} compact />}
           <div className="m-progress-row" aria-label={`${total}일 중 ${day + 1}일차`}>
             <span className="mp-now">
               <b>{day + 1}일차</b>
@@ -1509,7 +1509,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           )}
         </div>
         )}
-        {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} />}
+        {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} />}
         <AssetSummary
           ui={ui}
           cash={portfolio.cash}

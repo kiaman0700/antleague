@@ -88,12 +88,14 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
 }
 
 /** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
-export function EndStatus({ rows: all, countdown, compact }: { rows: RankRow[]; countdown: boolean; compact?: boolean }) {
+export function EndStatus({ rows: all, countdown, compact, leftSec }: { rows: RankRow[]; countdown: boolean; compact?: boolean; leftSec?: number | null }) {
   // 나간·자리 비운 사람은 기다리지 않으므로 마감 인원 계산에서 뺌
   const rows = all.filter((r) => r.status === 'on');
   const gone = all.filter((r) => r.status !== 'on');
   const done = rows.filter((r) => r.ended).length;
-  const hint = !countdown && done < rows.length ? `${graceText(rows.length)} 카운트다운` : null;
+  // 남은 시간이 카운트다운(1대1 90초·3인 이상 30초)보다 짧으면 카운트다운은 의미가 없으니 안내하지 않음
+  const graceSec = rows.length <= 2 ? 90 : 30;
+  const hint = !countdown && done < rows.length && (leftSec == null || leftSec > graceSec) ? `${graceText(rows.length)} 카운트다운` : null;
   return (
     <div className={'end-status' + (compact ? ' compact' : '')} aria-label={`장 마감 ${done}/${rows.length}명`}>
       <span className="es-title">
