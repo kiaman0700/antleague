@@ -90,12 +90,17 @@ async function room(players, opts = {}) {
   const early = await A({ action: 'rematch', roomId });
   ok('끝나기 전엔 한 판 더 불가', early.s === 409, early.b?.error);
   // (v7) 둘째 날부터 장 전 시간 — 장 마감 전에 둘 다 준비 완료를 눌러야 장이 열림 (안 누르면 타이밍에 따라 날이 덜 넘어감)
-  for (let d = 0; d < 14; d++) {
+  // 서버가 느리면 한 번에 하루가 안 넘어갈 수 있어 넉넉히 (날이 그대로면 잠깐 쉬고 다시)
+  let lastDay = -1;
+  for (let d = 0; d < 40; d++) {
     await A({ action: 'preReady', roomId });
     await B({ action: 'preReady', roomId });
     await A({ action: 'endTurn', roomId });
     await B({ action: 'endTurn', roomId });
-    if ((await A({ action: 'state', roomId })).b?.room?.status === 'finished') break;
+    const st = (await A({ action: 'state', roomId })).b;
+    if (st?.room?.status === 'finished') break;
+    if (st?.room?.day === lastDay) await new Promise((r) => setTimeout(r, 600));
+    lastDay = st?.room?.day ?? lastDay;
   }
   const fin = (await A({ action: 'state', roomId })).b;
   ok('게임 끝', fin.room.status === 'finished', fin.room.status);
