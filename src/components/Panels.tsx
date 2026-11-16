@@ -435,7 +435,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
         카드를 누르면 '사용하기'가 나와요. 최대 {holdLimit(version)}장까지 가질 수 있고(꽉 차면 무료 카드를 못 받아요), 시작할 때 2장, {GRANT_EVERY}일마다 1장 무료{nextGrant < totalDays ? ` (다음: ${nextGrant + 1}일차)` : ''}. 같은 카드는 한 판에 {USE_LIMIT}번까지.
       </p>
 
-      {!shop && owned.length === 0 && <p className="empty">카드가 없어요. 상점에서 살 수 있어요.</p>}
+      {!shop && owned.length === 0 && <EmptyState compact icon="cards" title="가진 카드가 없어요" desc={`상점에서 사거나 ${GRANT_EVERY}일마다 무료로 받아요.`} />}
       {!shop && owned.length > 0 && (
         <div className="gc-grid">
           {owned.map(([k, n]) => {
