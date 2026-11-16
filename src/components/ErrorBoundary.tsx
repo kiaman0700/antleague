@@ -4,15 +4,17 @@
  */
 import { Component, type ReactNode } from 'react';
 import { resetLayout } from '../prefs';
+import { FeedbackSheet } from './FeedbackSheet';
 
 interface State {
   error: Error | null;
+  report: boolean;
 }
 
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { error: null };
+  state: State = { error: null, report: false };
   static getDerivedStateFromError(error: Error): State {
-    return { error };
+    return { error, report: false };
   }
   componentDidCatch(error: Error) {
     console.error('화면 오류', error);
@@ -41,6 +43,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             >
               화면 배치 초기화
             </button>
+            <button className="btn ghost" onClick={() => this.setState({ report: true })}>
+              이 오류 알리기
+            </button>
             {location.pathname.startsWith('/practice') && (
               <button
                 className="btn ghost"
@@ -59,6 +64,17 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             )}
           </div>
         </div>
+        {this.state.report && (
+          <FeedbackSheet
+            onClose={() => this.setState({ report: false })}
+            initialKind="bug"
+            initialText={`화면 오류가 났어요.
+무엇을 하다가 났는지: 
+
+(자동 기록) ${String(this.state.error?.message ?? '').slice(0, 300)}`}
+            context="오류 화면"
+          />
+        )}
       </div>
     );
   }

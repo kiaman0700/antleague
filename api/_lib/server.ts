@@ -642,7 +642,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 줄바꿈·탭 말고 보이지 않는 제어 문자는 뺌
       const text = typeof b.text === 'string' ? [...b.text.normalize('NFC')].filter((ch) => ch.charCodeAt(0) === 10 || ch.charCodeAt(0) === 9 || ch.charCodeAt(0) >= 32).join('').trim() : '';
       if (text.length < 2 || text.length > 1000) throw new GameError('내용을 2~1000자로 적어 주세요.');
-      const page = typeof b.page === 'string' ? b.page.slice(0, 60) : null;
+      const page = typeof b.page === 'string' ? b.page.slice(0, 160) : null;
       const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page });
       if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
       return { ok: true };

@@ -2087,3 +2087,18 @@ button.tag:hover,
     max-height: max(150px, calc(100cqh - 295px));
   }
 }
+.fb-done {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 10px 0 4px;
+  color: var(--green);
+}
+.fb-done p {
+  color: var(--text);
+  margin: 0;
+}
+.fb-kind {
+  flex-wrap: wrap;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
+import { FeedbackSheet } from '../components/FeedbackSheet';
 import { Companies } from './Companies';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
@@ -307,74 +308,6 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
   );
 }
 
-/** 의견 보내기: 버그·아이디어·개인정보 요청 → 운영자만 봄 */
-function Feedback({ onClose }: { onClose: () => void }) {
-  const [kind, setKind] = useState<'bug' | 'idea' | 'privacy' | 'etc'>('bug');
-  const [text, setText] = useState('');
-  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
-  const [err, setErr] = useState('');
-  const send = async () => {
-    setErr('');
-    if (text.trim().length < 2) return setErr('내용을 조금 더 적어 주세요.');
-    setState('busy');
-    try {
-      await api('feedback', { kind, text: text.trim(), page: location.pathname });
-      setState('done');
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setState('idle');
-    }
-  };
-  const KINDS = [
-    ['bug', '버그·불편'],
-    ['idea', '아이디어'],
-    ['privacy', '개인정보'],
-    ['etc', '기타'],
-  ] as const;
-  return (
-    <Modal title={<><Icon name="news" size={18} /> 의견 보내기</>} onClose={onClose}>
-      {state === 'done' ? (
-        <>
-          <p>보내 주셔서 고마워요! 꼼꼼히 읽어 볼게요.</p>
-          <div className="modal-actions">
-            <button className="btn primary" onClick={onClose}>
-              닫기
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="seg fb-kind">
-            {KINDS.map(([k, l]) => (
-              <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>
-                {l}
-              </button>
-            ))}
-          </div>
-          <textarea
-            className="fb-text"
-            value={text}
-            maxLength={1000}
-            rows={5}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={kind === 'bug' ? '어떤 화면에서 무엇을 했을 때 어떻게 됐는지 적어 주세요' : '자유롭게 적어 주세요'}
-          />
-          <small className="muted">{text.length}/1000 · 개인정보(이름·연락처)는 적지 말아 주세요</small>
-          {err && <p className="error">{err}</p>}
-          <div className="modal-actions">
-            <button className="btn ghost" onClick={onClose}>
-              취소
-            </button>
-            <button className="btn primary" onClick={send} disabled={state === 'busy' || !online}>
-              {state === 'busy' ? '보내는 중…' : '보내기'}
-            </button>
-          </div>
-        </>
-      )}
-    </Modal>
-  );
-}
-
 /** 운영자·개인정보 보호 책임자 (Vercel 환경변수 VITE_OPERATOR_CONTACT, 예: "홍길동 · contact@example.com") */
 const OPERATOR = ((import.meta.env.VITE_OPERATOR_CONTACT as string | undefined) ?? '').trim().slice(0, 120);
 
@@ -398,7 +331,7 @@ function Privacy({ onClose }: { onClose: () => void }) {
         </p>
         <h4>문의</h4>
         <p>
-          궁금한 점, 버그, 개인정보 관련 요청은 홈 아래 <b>의견 보내기</b>로 남겨 주세요. 보낸 내용은 운영자만 볼 수 있어요.
+          궁금한 점, 버그·오류, 개인정보 관련 요청(내 데이터 확인·삭제 등)은 홈 아래 또는 게임 중 설정의 <b>의견·버그 보내기</b>로 남겨 주세요. 운영자만 읽고 답변이 필요한 요청은 처리해요. 개인정보 관련 요청은 '개인정보'를 골라 보내 주세요.
         </p>
         {OPERATOR && (
           <>
@@ -617,7 +550,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       </div>
       <p className="home-foot">
         <button className="linkish-soft" onClick={() => setModal('feedback')}>
-          의견 보내기
+          의견·버그 보내기
         </button>
         <span className="muted"> · </span>
         <button className="linkish-soft" onClick={() => setModal('privacy')}>
@@ -629,7 +562,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
-      {modal === 'feedback' && <Feedback onClose={() => setModal(null)} />}
+      {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
       {modal === 'prefs' && (
         <Sheet title={<><Icon name="sliders" size={18} /> 내 화면 설정</>} onClose={() => setModal(null)}>
           <PrefsPanel ui={profile.ui} />

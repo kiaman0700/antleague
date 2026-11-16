@@ -18,6 +18,7 @@ import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
 import { ToastSpot } from '../components/ToastSpot';
 import { TradeJump } from '../components/TradeJump';
+import { FeedbackSheet } from '../components/FeedbackSheet';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -150,6 +151,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
   const [exitAsk, setExitAsk] = useState(false);
   const [rejoinCode, setRejoinCode] = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
     const on = () => setOnline(true);
@@ -837,6 +839,12 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         <TutorialGuide step={tutStep} ctx={tutCtx} onNext={() => setTutStep((x) => x + 1)} onExit={onExit} onOpenCards={() => setCardGuide(true)} />
       )}
       {cardGuide && <CardGuide onClose={() => setCardGuide(false)} />}
+      {feedbackOpen && (
+        <FeedbackSheet
+          onClose={() => setFeedbackOpen(false)}
+          context={`${session.mode === 'multi' ? `대결 ${view?.players.length ?? 0}명` : session.tutorial ? '튜토리얼' : '연습'} · ${(view?.room.day ?? 0) + 1}일차 · ${mobile ? '모바일' : 'PC'} 화면`}
+        />
+      )}
     </>
   );
   const settings = (
@@ -869,6 +877,11 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       >
         <Icon name={muted ? 'mute' : 'sound'} size={18} />
       </button>
+      {!session.demo && (
+        <button className="icon-btn" onClick={() => (setMenu(false), setFeedbackOpen(true))} aria-label="의견·버그 보내기" title="의견·버그 보내기">
+          <Icon name="news" size={18} />
+        </button>
+      )}
       <button className="icon-btn" onClick={() => {
           setMenu(false);
           if (session.mode === 'multi' && room?.status === 'playing') setExitAsk(true);
