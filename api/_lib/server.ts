@@ -647,7 +647,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       for (let i = 0; i < 5 && !room; i++) {
         const res = await sb
           .from('rooms')
-          .insert({ code: newCode(), total_days: old.total_days, turn_seconds: old.turn_seconds > 0 ? old.turn_seconds : 180, title: old.title, max_players: old.max_players, is_private: old.is_private })
+          // 기본 제목('○○의 방')이었으면 새 방장 이름으로 (방장은 바뀌었는데 예전 방장 이름이 남지 않게)
+          .insert({ code: newCode(), total_days: old.total_days, turn_seconds: old.turn_seconds > 0 ? old.turn_seconds : 180, title: /의 방$/.test(old.title) ? `${me.nickname}의 방` : old.title, max_players: old.max_players, is_private: old.is_private })
           .select('id, code')
           .single();
         if (!res.error) room = res.data;
