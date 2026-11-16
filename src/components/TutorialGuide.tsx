@@ -149,7 +149,10 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
 
   // 비출 곳 위치를 계속 따라감 (화면이 바뀌거나 스크롤돼도)
   useEffect(() => {
-    if (!s?.target) return setRect(null);
+    if (!s?.target) {
+      setAvoid(null);
+      return setRect(null);
+    }
     const find = () => {
       const el = s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0);
       const r = el?.getBoundingClientRect() ?? null;
