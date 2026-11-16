@@ -392,11 +392,11 @@ type HubTab = 'ranked' | 'casual' | 'custom' | 'practice' | 'more';
 type FrameModal = null | 'howto' | 'privacy' | 'feedback';
 
 const TAB_HEAD: Record<HubTab, { title: string; desc: string }> = {
-  ranked: { title: '랭킹전', desc: '실력이 비슷한 회원끼리 · 이기면 점수가 올라요' },
-  casual: { title: '일반전', desc: '부담 없이 한 판 · 점수 변화 없음' },
+  ranked: { title: '랭킹전', desc: '실력이 비슷한 회원끼리 겨뤄요. 이기면 점수가 올라요' },
+  casual: { title: '일반전', desc: '점수 걱정 없이 가볍게 한 판' },
   custom: { title: '커스텀', desc: '친구와 방을 만들어 규칙을 직접 정해요' },
   practice: { title: '연습', desc: '혼자 연습하고 규칙을 익혀요' },
-  more: { title: '설정·더보기', desc: '내 계정 · 화면 모드 · 도움말' },
+  more: { title: '설정·더보기', desc: '계정, 화면 모드, 도움말' },
 };
 
 function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit<Props, 'page'> & { tab: HubTab; openModal: (m: FrameModal) => void; party: PartyState | null; reloadParty: () => Promise<void> }) {
@@ -575,7 +575,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
               <i><Icon name="plus" size={24} /></i>
               <b>방 만들기</b>
-              <small>인원·길이·시간을 직접 · 점수 없음</small>
+              <small>인원·길이·시간을 직접 정해요(점수 없음)</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               <i><Icon name="search" size={24} /></i>
@@ -659,7 +659,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && setModal('practice')}>
             <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
-            <small>나만의 속도로 · 이 기기에 저장</small>
+            <small>나만의 속도로, 이 기기에 저장돼요</small>
           </button>
           <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
             <i><Icon name="play" size={24} /></i>
@@ -732,7 +732,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="target" /> <span className="mr-t"><b>연습</b><small>혼자서 마음껏 연습</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => go('companies')}>
-                <Icon name="book" /> <span className="mr-t"><b>공부</b><small>투자 기초 · 기업 살펴보기</small></span> <Icon name="right" size={14} />
+                <Icon name="book" /> <span className="mr-t"><b>공부</b><small>투자 기초와 기업 살펴보기</small></span> <Icon name="right" size={14} />
               </button>
             </section>
             <section className="panel pad more-links">
