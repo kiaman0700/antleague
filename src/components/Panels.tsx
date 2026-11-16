@@ -616,8 +616,9 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
           </div>
         )}
         <div className="close-index">
-          <Term k="지수">국내 종합</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span> · 미국500 <b>{us.close.toFixed(2)}</b>{' '}
-          <span className={tone(ur)}>{pct(ur)}</span>
+          {/* 지수 하나씩은 줄이 바뀌어도 쪼개지지 않게 */}
+          <span className="ci-item"><Term k="지수">국내 종합</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span></span>
+          <span className="ci-item">미국500 <b>{us.close.toFixed(2)}</b> <span className={tone(ur)}>{pct(ur)}</span></span>
         </div>
         <div className="movers">
           <div>

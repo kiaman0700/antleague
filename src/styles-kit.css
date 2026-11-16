@@ -152,3 +152,20 @@
   .result .center-actions { flex-direction: column; align-items: stretch; }
   .result .center-actions .btn { max-width: none; width: 100%; }
 }
+
+/* 휴대폰 차트: '오늘 장중·일봉'과 '5초·15초'를 한 줄에 (PC 와 같게) — 차트가 더 크게 보이게 */
+.m-game .chart-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.m-game .chart-wrap > .pchart { flex: 1 1 100%; min-width: 0; }
+.m-game .chart-wrap > .pc-seg { margin: 0; }
+
+/* 휴대폰 게임: 위에 뜨는 알림은 위 막대(내 재산·장 마감) 아래에 — 장 마감 버튼을 가리지 않게 */
+@media (max-width: 860px) {
+  .m-game ~ .toast:not(.at-bottom):not(.free):not(.movable),
+  .m-game .toast:not(.at-bottom):not(.free):not(.movable) {
+    top: calc(var(--m-top-h, 0px) + 8px);
+  }
+}
+
+/* 하루 결산 팝업: 지수 줄 — 지수 하나씩은 한 덩어리로, 사이에 가는 점 */
+.close-index { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; }
+.close-index .ci-item { white-space: nowrap; }

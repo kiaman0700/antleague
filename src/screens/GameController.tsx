@@ -155,7 +155,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     mTopRo.current?.disconnect();
     mTopRo.current = null;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => setMTopH(Math.round(el.getBoundingClientRect().height)));
+    const ro = new ResizeObserver(() => {
+      const h = Math.round(el.getBoundingClientRect().height);
+      setMTopH(h);
+      // 알림(화면 맨 위 층)도 이 막대 아래에 뜨게 문서 전체에 알려 줌
+      document.documentElement.style.setProperty('--m-top-h', h + 'px');
+    });
     ro.observe(el);
     mTopRo.current = ro;
   }, []);
