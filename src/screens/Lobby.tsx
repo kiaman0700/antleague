@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
@@ -23,7 +23,7 @@ import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
-import { isCustom, setPrefs, usePrefs } from '../prefs';
+import { setPrefs, usePrefs } from '../prefs';
 import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, markTutorialSeen, tutorialSeen, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
 
 export interface ResumeInfo {

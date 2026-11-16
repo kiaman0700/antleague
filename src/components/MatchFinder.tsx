@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
-import { cancelMatch, clearMatchErr, getMatch, mmss, queueText, startMatch, useMatch, type Matched } from '../net/matchStore';
+import { cancelMatch, clearMatchErr, getMatch, mmss, startMatch, useMatch, type Matched } from '../net/matchStore';
 import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { loadNick } from '../session';

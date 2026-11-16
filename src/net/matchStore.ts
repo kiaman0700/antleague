@@ -44,7 +44,6 @@ const set = (p: Partial<MatchState>) => {
   subs.forEach((f) => f());
 };
 export const getMatch = () => st;
-export const isSearching = () => st.phase !== 'idle';
 export function useMatch() {
   return useSyncExternalStore(
     (cb) => {

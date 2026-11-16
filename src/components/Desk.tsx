@@ -1,7 +1,7 @@
 /** PC 전용 조각: 재산 요약, 일정 타임라인, 카드 트레이, 오른쪽 서랍 */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { GameCard } from './GameCard';
-import { CardIcon, Icon, type IconName } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { canUse, holdLimit, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
 import { STOCK_MAP } from '../game/stocks';

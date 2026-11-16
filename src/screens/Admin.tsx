@@ -144,25 +144,3 @@ export function Admin({ onBack, onLogin }: { onBack: () => void; onLogin: () => 
   );
 }
 
-/** 홈: 운영자로 로그인했을 때만 보이는 새 의견 알림 (서버가 운영자인지 확인) */
-export function AdminBanner({ onOpen }: { onOpen: () => void }) {
-  const [unread, setUnread] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    api<{ isAdmin: boolean }>('me')
-      .then((me) => (me.isAdmin ? api<{ unread: number }>('adminInbox', { unread: true }) : null))
-      .then((r) => alive && r && setUnread(r.unread))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-  if (unread === null) return null;
-  return (
-    <button className={'admin-banner' + (unread > 0 ? ' has' : '')} onClick={onOpen}>
-      <Icon name="bell" size={16} />
-      <b>{unread > 0 ? `새 의견 ${unread}개` : '새 의견 없음'}</b>
-      <span>의견함 열기 ›</span>
-    </button>
-  );
-}

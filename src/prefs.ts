@@ -127,9 +127,6 @@ function read(): Prefs {
 let current = read();
 const listeners = new Set<() => void>();
 
-export function getPrefs() {
-  return current;
-}
 export function setPrefs(patch: Partial<Prefs>) {
   current = { ...current, ...patch };
   try {

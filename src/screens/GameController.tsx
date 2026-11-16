@@ -4,10 +4,10 @@ import { ask } from '../components/ConfirmHost';
 import { setDrawScope } from '../components/ProChart';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
-import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab, type PcCol } from '../prefs';
+import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab } from '../prefs';
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
-import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
+import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
@@ -49,8 +49,6 @@ const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
 const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '뉴스', assets: '내 재산', cards: '카드' };
 const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'news', assets: 'wallet', cards: 'cards' };
 const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', schedule: '일정', assets: '내 재산 요약' };
-const COL_LABEL: Record<PcCol, string> = { list: '종목 목록', detail: '차트·주문', side: '뉴스·카드' };
-const COL_WIDTH: Record<PcCol, string> = { list: 'minmax(260px, 300px)', detail: 'minmax(0, 1fr)', side: 'minmax(280px, 320px)' };
 
 /** 연습을 '그만두기'로 나갔는지 (나간 뒤 1초 타이머가 다시 저장하지 않게) */
 const soloQuit = { current: false };
@@ -706,7 +704,6 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
   const effectsOnMe = effects.map((k) => (k === 'freeze' ? '누군가의 거래 정지 카드 때문에 오늘은 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
-  const ev = nextEvent(m, day);
   const mmss2 = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   const timerText = inPre ? `장 전 ${mmss2(preLeft)}` : remaining !== null && closing === null ? mmss2(remaining) : null;
   const endLabel = inPre ? (preReadyMe ? '준비 완료함' : '준비 완료') : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';

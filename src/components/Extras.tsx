@@ -13,10 +13,6 @@ export function dDay(eventDay: number, day: number) {
   return eventDay === day ? '오늘' : `D-${eventDay - day}`;
 }
 
-export function nextEvent(m: Market, day: number) {
-  return m.events.find((e) => e.day >= day) ?? null;
-}
-
 export function Calendar({ market, day, onSelect, compact = false, hideTitle = false }: { market: Market; day: number; onSelect: (s: string) => void; compact?: boolean; hideTitle?: boolean }) {
   const upcoming = market.events.filter((e) => e.day >= day);
   const shown = compact ? upcoming.slice(0, 3) : upcoming;

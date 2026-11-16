@@ -92,31 +92,6 @@ export function AccountChip({ account, online, onProfile, onLogin, compact }: { 
   return <span className="acc-chip-skel" aria-hidden />;
 }
 
-/** PC·태블릿 가로: 왼쪽 세로 메뉴 */
-export function SideNav({ active, account, online, onGo, onProfile, onLogin, footer, badges }: NavProps) {
-  const item = ([k, label, icon]: [NavTab, string, IconName]) => (
-    <button key={k} className={'ln-item' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)}>
-      <span className="ln-ic">
-        <Icon name={icon} size={20} />
-        <Badge n={badges?.[k]} />
-      </span>
-      <span>{label}</span>
-    </button>
-  );
-  return (
-    <nav className="lobby-side" aria-label="메뉴">
-      <Brand />
-      <div className="ln-acc">
-        <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} />
-      </div>
-      <div className="ln-group">{MAIN.filter(([k]) => online || k === 'practice').map(item)}</div>
-      <div className="ln-sep" />
-      <div className="ln-group sub">{SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records')).map(item)}</div>
-      <div className="ln-foot">{footer}</div>
-    </nav>
-  );
-}
-
 /** 모바일·태블릿 세로: 아래 탭바 */
 export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'active' | 'onGo' | 'online' | 'badges'>) {
   // 아래 탭은 5칸: 연습은 온라인이면 '더보기' 안으로

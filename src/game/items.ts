@@ -39,7 +39,6 @@ export const ITEMS: ItemDef[] = [
   { kind: 'bonus', name: '용돈 봉투', emoji: '🎁', type: 'bonus', cost: 0, desc: '쓰면 확률에 따라 현금을 받거나 잃어요. 상점에서는 살 수 없고 무료 카드로만 나와요.', shopless: true },
 ];
 export const ITEM_MAP = Object.fromEntries(ITEMS.map((i) => [i.kind, i])) as Record<ItemKind, ItemDef>;
-export const ITEM_KINDS = ITEMS.map((i) => i.kind);
 
 export const START_CARDS = 2;
 export const GRANT_EVERY = 5;

@@ -6,7 +6,6 @@ let unit: MoneyUnit = 'won';
 export function setMoneyUnit(u: MoneyUnit) {
   unit = u;
 }
-export const getMoneyUnit = () => unit;
 
 /** 만 단위 정확 표기: 1억 2,345만 6,700원 / 5만 100원 / 108만원 / 9,500원 */
 export function manExact(n: number) {

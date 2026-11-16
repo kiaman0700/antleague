@@ -224,25 +224,7 @@ export function marketTiles(m: Market, day: number, closed: boolean): Tile[] {
   ];
 }
 
-export function MarketGrid({ market, day, closed, compact = false }: { market: Market; day: number; closed: boolean; compact?: boolean }) {
-  return (
-    <div className={'mgrid' + (compact ? ' compact' : '')}>
-      {marketTiles(market, day, closed).map((t) => (
-        <div key={t.key} className="mtile">
-          <small>
-            <Term k={t.term}>{t.label}</Term>
-          </small>
-          <b>{t.value}</b>
-          <span className={t.ch === null || Math.abs(t.ch) < 1e-9 ? 'flat' : tone(t.ch)}>{t.chText}</span>
-          {!compact && <em>{t.hint}</em>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ---------------- 모바일 상단 시장 티커: 그룹별로 돌아가며 보여주고, 고정한 건 그대로 ---------------- */
-
 
 const GROUPS: string[][] = [
   ['kr', 'us'],

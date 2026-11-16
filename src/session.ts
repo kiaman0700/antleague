@@ -48,18 +48,11 @@ export function estimateMinutes(days: number, turnSec: number) {
   return { typical: toMin(typical), max: toMin(turnSec) };
 }
 
-const SAVED = 'stockduel.saved';
 const NICK = 'stockduel.nick';
 const UI = 'stockduel.ui';
 const WATCH = 'stockduel.watch';
 const MUTE = 'stockduel.mute';
 const TUTORIAL = 'stockduel.tutorial';
-
-export interface SavedMulti {
-  roomId: string;
-  playerId: string;
-  nickname: string;
-}
 
 function get(key: string) {
   try {
@@ -85,8 +78,6 @@ function json<T>(key: string, fallback: T): T {
   }
 }
 
-export const loadSaved = () => json<SavedMulti | null>(SAVED, null);
-export const saveMulti = (s: SavedMulti | null) => set(SAVED, s ? JSON.stringify(s) : null);
 export const loadNick = () => get(NICK) ?? '';
 export const saveNick = (n: string) => set(NICK, n);
 export const loadUi = (): UiMode => (get(UI) === 'pro' ? 'pro' : 'easy');

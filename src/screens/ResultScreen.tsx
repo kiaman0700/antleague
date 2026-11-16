@@ -10,7 +10,7 @@ import { josa, type View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
 import { computePortfolio, equityHistory, startCashFor } from '../game/portfolio';
-import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
+import { STOCK_MAP, STOCKS } from '../game/stocks';
 import { pct, tone, won, wonShort } from '../lib/format';
 import { play } from '../lib/sound';
 import type { Session } from '../session';

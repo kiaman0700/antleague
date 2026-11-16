@@ -1,4 +1,3 @@
-import type { Bar } from '../game/market';
 
 const W = 640;
 
@@ -76,43 +75,6 @@ interface Common {
 }
 
 const defaultFmt = (v: number) => Math.round(v).toLocaleString('ko-KR');
-
-/** 일봉 캔들 차트. 마지막 봉이 '진행 중'이면 시가만 표시 */
-export function CandleChart({ bars, totalDays, height = 260, refLine, markers = [], fmt = defaultFmt, liveOpenOnly }: Common & { bars: Bar[]; liveOpenOnly: boolean }) {
-  const vals = bars.flatMap((b, i) => (liveOpenOnly && i === bars.length - 1 ? [b.open] : [b.high, b.low]));
-  const f = frame(vals, totalDays, height, refLine ? [refLine.value] : []);
-  const slot = (W - f.padL - f.padR) / totalDays;
-  const bw = Math.max(3, Math.min(14, slot * 0.6));
-  return (
-    <svg className="chart" viewBox={`0 0 ${W} ${height}`} role="img" aria-label="가격 차트">
-      <Axes f={f} count={totalDays} fmt={fmt} />
-      {markers.map((m, i) => (
-        <line key={i} x1={f.x(m.day)} x2={f.x(m.day)} y1={f.padT} y2={height - f.padB} className={'marker ' + m.tone} />
-      ))}
-      {refLine && <RefLine f={f} {...refLine} />}
-      {bars.map((b, i) => {
-        const live = liveOpenOnly && i === bars.length - 1;
-        if (live) {
-          return (
-            <g key={i}>
-              <line x1={f.x(i) - bw / 2 - 2} x2={f.x(i) + bw / 2 + 2} y1={f.y(b.open)} y2={f.y(b.open)} className="live-open" />
-              <circle cx={f.x(i)} cy={f.y(b.open)} r={4} className="live-dot" />
-            </g>
-          );
-        }
-        const up = b.close >= b.open;
-        const top = f.y(Math.max(b.open, b.close));
-        const bot = f.y(Math.min(b.open, b.close));
-        return (
-          <g key={i} className={up ? 'c-up' : 'c-down'}>
-            <line x1={f.x(i)} x2={f.x(i)} y1={f.y(b.high)} y2={f.y(b.low)} strokeWidth={1.2} />
-            <rect x={f.x(i) - bw / 2} y={top} width={bw} height={Math.max(1.5, bot - top)} rx={1.5} />
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 /** 초보용 라인 차트: 매일 종가를 잇고 오늘은 시가 */
 export function LineChart({
