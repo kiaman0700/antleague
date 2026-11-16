@@ -4,6 +4,15 @@ const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 /** publishable(anon) 키 — 브라우저에 공개돼도 되는 키. 실제 권한은 RLS + 서버 함수가 통제 */
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+// 예전 서버(지역 이전 전 프로젝트)의 로그인 토큰이 남아 있으면 지움 — 더는 쓰지 않는 로그인 정보를 기기에 두지 않게
+try {
+  const ref = url ? new URL(url).hostname.split('.')[0] : '';
+  if (ref)
+    for (const k of Object.keys(localStorage)) if (/^sb-[a-z0-9]+-auth-token/.test(k) && !k.startsWith(`sb-${ref}-`)) localStorage.removeItem(k);
+} catch {
+  /* 저장소를 못 쓰는 환경 — 무시 */
+}
+
 export const supabase: SupabaseClient | null = url && key ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
 
 let pending: Promise<string> | null = null;
