@@ -152,7 +152,20 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         if (best > 0) out.push({ icon: 'flame', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
       const tieEnd = gapOn(days - 1) === 0;
-      out.push({ icon: 'refresh', title: '1위 다툼', text: tieEnd ? '마지막 날까지 똑같아서 비겼어요' : changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
+      // 기권으로 끝난 판: 남은 사람이 한 명이면 재산이 같아도 비긴 게 아님
+      const stayers = results.filter((r) => !r.left);
+      const byForfeit = stayers.length === 1;
+      out.push({
+        icon: 'refresh',
+        title: '1위 다툼',
+        text: byForfeit
+          ? `${josa(stayers[0].nickname, '이', '가')} 끝까지 남아 이겼어요 (${results.length > 2 ? '다른 사람들' : '상대'} 기권)`
+          : tieEnd
+            ? '마지막 날까지 똑같아서 비겼어요'
+            : changes
+              ? `1위가 ${changes}번 바뀌었어요`
+              : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요`,
+      });
     }
     for (const r of results) {
       let best = 0;
