@@ -168,13 +168,13 @@ code {
   opacity: 0.38;
 }
 .btn.primary {
-  background: linear-gradient(180deg, #a597ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent), #8b7bff);
   border-color: transparent;
   color: #ffffff;
   box-shadow: 0 6px 20px rgba(139, 123, 255, 0.22);
 }
 .btn.primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ada1ff, #8576ff);
+  background: linear-gradient(180deg, #ada1ff, var(--accent));
 }
 .btn.ghost {
   background: transparent;
@@ -409,7 +409,7 @@ code {
 }
 .hero h1 em {
   font-style: normal;
-  background: linear-gradient(180deg, #c9c1ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent-text), #8b7bff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -762,7 +762,7 @@ code {
   background: var(--bg);
 }
 .end-turn {
-  background: linear-gradient(180deg, #a597ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent), #8b7bff);
   color: #ffffff;
   border: 0;
   padding: 12px 22px;
@@ -1370,11 +1370,11 @@ code {
 }
 .k-macro {
   background: rgba(167, 139, 250, 0.16);
-  color: #c4b5fd;
+  color: var(--accent-text);
 }
 .k-sector {
   background: rgba(47, 191, 113, 0.14);
-  color: #6ee7a8;
+  color: var(--success);
 }
 .k-company {
   background: var(--surface-3);
@@ -1626,7 +1626,7 @@ code {
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;
-  border-radius: 5px;
+  border-radius: 6px;
   margin-left: 4px;
   vertical-align: 2px;
 }

@@ -57,7 +57,7 @@ h4 .ico {
   color: var(--text-2);
 }
 .rank-badge.r1 {
-  background: linear-gradient(180deg, #c9c1ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent-text), #8b7bff);
   color: #ffffff;
 }
 .rank-badge.r2 {
@@ -378,17 +378,17 @@ h4 .ico {
 .s-battery { color: #34d399; }
 .s-auto { color: #94a3b8; }
 .s-bio { color: #f472b6; }
-.s-energy { color: #fbbf24; }
+.s-energy { color: var(--warn); }
 .s-air { color: #7dd3fc; }
 .s-ent { color: #c084fc; }
 .s-food { color: #fb923c; }
 .s-bank { color: #2dd4bf; }
 .s-build { color: #a3a3a3; }
-.s-crypto { color: #f59e0b; }
+.s-crypto { color: var(--warn); }
 .s-us_tech { color: #818cf8; }
 .s-us_semi { color: #3b82f6; }
-.s-us_ev { color: #4ade80; }
-.s-us_cons { color: #f87171; }
+.s-us_ev { color: var(--success); }
+.s-us_cons { color: var(--danger); }
 .s-etf { color: #cbd5e1; }
 /* 카드: 정보 파랑 · 방해 빨강 · 방어 초록 · 보너스 노랑 */
 .card-ico.k-paper,
@@ -418,7 +418,7 @@ h4 .ico {
 /* 일정 아이콘 */
 .sched-chip .ico,
 .tl-cell .ico {
-  color: #93c5fd;
+  color: var(--info);
 }
 .sched-chip.k-dividend .ico,
 .tl-cell.has .lucide-coins {
@@ -439,7 +439,7 @@ h4 .ico {
   height: 32px;
   min-width: 32px;
   min-height: 32px;
-  border-radius: 7px;
+  border-radius: 8px;
   border-color: transparent;
   background: transparent;
   color: var(--text-2);
@@ -955,11 +955,11 @@ button.tag:hover,
   align-items: center;
   gap: 5px;
   padding: 5px 8px 5px 10px;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid var(--line-2);
   background: var(--bg-2);
   color: var(--text-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
 }
 .dd-btn:hover,
@@ -1039,7 +1039,7 @@ button.tag:hover,
   gap: 3px;
 }
 .tl-legend .ico {
-  color: #93c5fd;
+  color: var(--info);
 }
 @container (min-width: 760px) {
   .tl-legend {
@@ -1055,7 +1055,7 @@ button.tag:hover,
 }
 
 /* 일정 종류별 아이콘 색 (날짜 줄·일정 칩·아이콘 뜻 공통) */
-.ico.ev-fomc { color: #4ade80 !important; }
+.ico.ev-fomc { color: var(--success) !important; }
 .ico.ev-bok { color: #60a5fa !important; }
 .ico.ev-earnings { color: #c084fc !important; }
 .ico.ev-expiry { color: #fb923c !important; }
@@ -1389,7 +1389,7 @@ button.tag:hover,
 }
 .cg-body small {
   color: var(--text-2);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 .cg-meta {
@@ -1541,7 +1541,7 @@ button.tag:hover,
 }
 .dock-rs i {
   display: block;
-  border-radius: 3px;
+  border-radius: 4px;
   background: rgba(139, 123, 255, 0.45);
   transition: background 0.15s, transform 0.15s;
 }
@@ -1701,7 +1701,7 @@ button.tag:hover,
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: 999px;
+  border-radius: 99px;
   background: #3a2a12;
   border: 1px solid var(--gold);
   color: var(--gold);
@@ -1733,7 +1733,7 @@ button.tag:hover,
 }
 .btn.danger {
   border-color: rgba(240, 68, 82, 0.55);
-  color: #ff9aa5;
+  color: var(--danger-text);
 }
 .btn.danger:hover {
   background: rgba(240, 68, 82, 0.12);
@@ -1766,7 +1766,7 @@ button.tag:hover,
 }
 .slot-kick:hover {
   border-color: rgba(240, 68, 82, 0.5);
-  color: #ff9aa5;
+  color: var(--danger-text);
 }
 
 /* ============ PC 작은 화면: 주문 칸 바로가기 바 ============ */
@@ -2048,7 +2048,7 @@ button.tag:hover,
     padding-right: 10px;
   }
   .m-asum b {
-    font-size: 11.5px;
+    font-size: 12px;
     text-overflow: clip;
   }
   .m-asum span {
@@ -2178,17 +2178,17 @@ button.tag:hover,
   font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 99px;
   background: var(--surface-3);
 }
 .ib-kind.k-bug {
-  color: #ff9aa5;
+  color: var(--danger-text);
 }
 .ib-kind.k-idea {
   color: var(--gold);
 }
 .ib-kind.k-privacy {
-  color: #93c5fd;
+  color: var(--info);
 }
 .ib-body {
   white-space: pre-wrap;
@@ -2246,7 +2246,7 @@ button.tag:hover,
 .m-tradebar .mt-why {
   flex: 1 1 100%;
   order: -1;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--gold);
   text-align: center;
 }
@@ -2271,7 +2271,7 @@ button.tag:hover,
   align-items: center;
   gap: 8px;
   padding: 6px 12px 6px 6px;
-  border-radius: 999px;
+  border-radius: 99px;
   border: 1px solid var(--line-2);
   background: var(--surface-2);
   color: var(--text);
@@ -2289,7 +2289,7 @@ button.tag:hover,
   place-items: center;
   font-weight: 800;
   color: #10131a;
-  background: linear-gradient(135deg, #c9c1ff, #8b7bff);
+  background: linear-gradient(135deg, var(--accent-text), #8b7bff);
   flex: 0 0 auto;
 }
 .acc-txt {
@@ -2510,7 +2510,7 @@ button.tag:hover,
   text-align: center;
 }
 .rb-rank.r1 {
-  color: #ffd166;
+  color: var(--warn);
 }
 .rb-rank.r2 {
   color: #cfd8e3;

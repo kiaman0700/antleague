@@ -429,7 +429,7 @@
 /* 시장 구분 칩: 칸 폭에 맞춰 줄바꿈, 좁으면 칩을 조금 작게 */
 .desk .regions .chip {
   padding: 5px 10px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 /* 수량 입력칸이 칸보다 넓어지지 않게 */

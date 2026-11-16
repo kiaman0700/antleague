@@ -1,4 +1,5 @@
 import { api } from '../net/api';
+import { balancedCols } from '../components/ui';
 import { TierBadge } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -259,7 +260,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
       <div className="panel pad">
         <h3><Icon name="medal" /> 이번 판 업적</h3>
-        <div className="badge-cols">
+        <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.length) }}>
           {results.map((r, i) => (
             <div key={r.id}>
               <small style={{ color: COLORS[i] }}>{r.nickname}</small>
@@ -283,7 +284,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
       <div className="panel pad">
         <h3><Icon name="sparkles" /> 하이라이트</h3>
-        <div className="hl-grid">
+        <div className="hl-grid" style={{ ['--cols' as string]: balancedCols(highlights.length) }}>
           {highlights.map((h, i) => (
             <button key={i} className="hl-card" onClick={() => h.day !== undefined && setReplayDay(h.day)}>
               <span className="hl-icon"><Icon name={h.icon as IconName} size={18} /></span>

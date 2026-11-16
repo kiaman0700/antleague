@@ -154,7 +154,7 @@
   font-weight: 700;
 }
 .flag {
-  color: #93c5fd;
+  color: var(--info);
   font-weight: 600;
 }
 
@@ -338,7 +338,7 @@ button.spy-row {
   top: 8px;
   bottom: 8px;
   width: 3px;
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--line-2);
 }
 .pin-row.up::before {

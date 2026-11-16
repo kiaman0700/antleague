@@ -119,7 +119,7 @@
 .acc-chip-skel {
   display: block;
   height: 42px;
-  border-radius: 999px;
+  border-radius: 99px;
   background: var(--surface);
   opacity: 0.6;
 }
@@ -370,7 +370,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 10px 4px;
-    font-size: 11.5px;
+    font-size: 12px;
     text-align: center;
     justify-content: center;
   }
@@ -463,7 +463,7 @@
 }
 @media (max-width: 380px) {
   .lobby-bottom button {
-    font-size: 10.5px;
+    font-size: 11px;
   }
   .lobby-topbar .ln-brand b {
     font-size: 15px;
@@ -483,10 +483,10 @@
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: 99px;
   background: var(--down);
   color: #fff;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   font-style: normal;
   line-height: 17px;
@@ -827,7 +827,7 @@ button.hr-row:hover {
   align-items: center;
   gap: 8px;
   padding: 10px 10px 10px 16px;
-  border-radius: 999px;
+  border-radius: 99px;
   background: var(--surface-3);
   border: 1px solid var(--line-2);
   box-shadow: var(--shadow);
@@ -885,7 +885,7 @@ button.hr-row:hover {
   font-weight: 800;
   color: var(--gold);
   border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  border-radius: 999px;
+  border-radius: 99px;
   padding: 1px 6px;
 }
 .party-empty {

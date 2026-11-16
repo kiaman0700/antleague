@@ -7,7 +7,7 @@
   gap: 4px;
   background: rgba(167, 139, 250, 0.14);
   border: 1px solid rgba(167, 139, 250, 0.35);
-  color: #d6c9ff;
+  color: var(--accent-text);
   border-radius: 99px;
   padding: 5px 11px;
   font-size: 12px;
@@ -36,7 +36,7 @@ kbd {
   background: var(--surface-2);
   border: 1px solid var(--line-2);
   border-bottom-width: 2px;
-  border-radius: 5px;
+  border-radius: 6px;
   padding: 1px 5px;
   margin: 0 1px;
   color: var(--text-2);
@@ -472,7 +472,7 @@ kbd {
   color: var(--green);
 }
 .m-end {
-  background: linear-gradient(180deg, #a597ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent), #8b7bff);
   color: #ffffff;
   border: 0;
   padding: 12px 16px;
@@ -706,7 +706,7 @@ kbd {
   max-height: 88dvh;
   background: var(--surface);
   border-top: 1px solid var(--line-2);
-  border-radius: 22px 22px 0 0;
+  border-radius: 20px 22px 0 0;
   display: flex;
   flex-direction: column;
   animation: sheet-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);

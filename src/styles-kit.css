@@ -1,5 +1,15 @@
 /* ============ 공통 화면 부품 (components/ui.tsx) — 모든 화면이 같은 모양을 쓰게 ============ */
 :root {
+  /* 색 토큰 — 화면은 이 이름만 씀 (주가 오름·내림 --up/--down 은 styles.css) */
+  --accent: #8b7bff;
+  --accent-strong: #6f5ef7;
+  --accent-text: #b9b0ff;
+  --accent-soft: rgba(139, 123, 255, 0.14);
+  --success: #34d399;
+  --danger: #ff5d73;
+  --danger-text: #ff9aa5;
+  --info: #60a5fa;
+  --warn: #f5b83d;
   --kit-accent: #8b7bff;
   --kit-accent-soft: rgba(139, 123, 255, 0.14);
   --kit-accent-text: #b9b0ff;
@@ -8,7 +18,7 @@
 }
 
 /* 불러오는 중 */
-.ui-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 28px 12px; color: var(--muted, #9aa0b4); font-size: 13.5px; }
+.ui-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 28px 12px; color: var(--muted, #9aa0b4); font-size: 14px; }
 .ui-loading.inline { justify-content: flex-start; padding: 6px 0; font-size: 13px; }
 .ui-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--kit-accent-soft); border-top-color: var(--kit-accent); animation: uiSpin 0.8s linear infinite; flex: 0 0 auto; }
 @keyframes uiSpin { to { transform: rotate(360deg); } }
@@ -18,16 +28,16 @@
 .ui-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 32px 16px; border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: var(--kit-radius); }
 .ui-empty.compact { padding: 18px 10px; }
 .ui-empty > i { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--kit-accent-soft); color: var(--kit-accent-text); margin-bottom: 4px; font-style: normal; }
-.ui-empty.compact > i { width: 40px; height: 40px; border-radius: 11px; }
+.ui-empty.compact > i { width: 40px; height: 40px; border-radius: 12px; }
 .ui-empty > b { font-size: 15px; font-weight: 800; }
 .ui-empty > small { color: var(--muted, #9aa0b4); font-size: 13px; line-height: 1.5; max-width: 34em; word-break: keep-all; }
 .ui-empty-act { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.ui-empty.error > i { background: rgba(255, 93, 115, 0.12); color: #ff8a9a; }
+.ui-empty.error > i { background: rgba(255, 93, 115, 0.12); color: var(--danger-text); }
 
 /* 아이콘 안내 목록 */
 .ui-iconlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ui-iconlist > li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start; }
-.ui-iconlist > li > i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--kit-accent-soft); color: var(--kit-accent-text); font-style: normal; }
+.ui-iconlist > li > i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--kit-accent-soft); color: var(--kit-accent-text); font-style: normal; }
 .ui-iconlist > li > span { display: grid; gap: 2px; padding-top: 5px; line-height: 1.55; font-size: 14px; word-break: keep-all; }
 .ui-iconlist > li b { font-size: 15px; font-weight: 800; }
 .ui-iconlist > li b + .ui-il-body { color: var(--muted, #9aa0b4); font-size: 13px; }
@@ -86,12 +96,17 @@
 
 /* 위험한 행동 버튼(기권·삭제·데이터 지우기): 어디서든 같은 경고색 — 파랑(=주가 내림)과 섞이지 않게 */
 .btn.danger,
-.btn.danger.ghost { color: #ff9aa5; border-color: rgba(240, 68, 82, 0.55); }
+.btn.danger.ghost { color: var(--danger-text); border-color: rgba(240, 68, 82, 0.55); }
 .btn.danger:hover:not(:disabled) { background: rgba(240, 68, 82, 0.12); color: #ffb3bb; }
 
 /* 화면 아래 짧은 확인 안내 */
 .ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #1f2433; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
-.ui-toast > svg, .ui-toast > .ico { color: #6ee7a8; flex: 0 0 auto; }
-.ui-toast.error > svg, .ui-toast.error > .ico { color: #ff9aa5; }
+.ui-toast > svg, .ui-toast > .ico { color: var(--success); flex: 0 0 auto; }
+.ui-toast.error > svg, .ui-toast.error > .ico { color: var(--danger-text); }
 @keyframes uiToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .ui-toast { animation: none; } }
+
+/* 결과 화면: 업적·하이라이트는 개수에 맞춘 칸 수 (마지막 줄에 하나만 남지 않게, components/ui balancedCols) */
+@media (min-width: 760px) {
+  .result .badge-cols, .result .hl-grid { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+}

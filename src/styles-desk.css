@@ -160,7 +160,7 @@
 }
 .tl-dday {
   background: rgba(167, 139, 250, 0.16);
-  color: #d6c9ff;
+  color: var(--accent-text);
   border-radius: 99px;
   padding: 2px 9px;
   font-size: 12px;

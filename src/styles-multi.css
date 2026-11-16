@@ -537,7 +537,7 @@
 }
 .sched-chip.soon b {
   background: rgba(167, 139, 250, 0.22);
-  color: #e4dbff;
+  color: var(--accent-text);
 }
 .sched-chip.today {
   border-color: rgba(139, 123, 255, 0.55);
@@ -677,7 +677,7 @@
   padding: 6px 14px;
   border: 0;
   border-radius: 14px;
-  background: linear-gradient(180deg, #a597ff, #8b7bff);
+  background: linear-gradient(180deg, var(--accent), #8b7bff);
   color: #ffffff;
   box-shadow: 0 6px 18px rgba(139, 123, 255, 0.22);
   transition: transform 0.08s;
@@ -696,7 +696,7 @@
   white-space: nowrap;
 }
 .m-end2.hurry {
-  background: linear-gradient(180deg, #ff7a88, #f2495c);
+  background: linear-gradient(180deg, var(--danger-text), #f2495c);
   color: #fff;
   animation: pulse 1s ease-in-out infinite;
 }

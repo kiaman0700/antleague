@@ -121,3 +121,6 @@ export function Toast({ text, tone }: { text: string; tone?: 'error' }) {
     </div>
   );
 }
+
+/** 카드를 나란히 놓을 칸 수: 마지막 줄에 하나만 남지 않게 (1~3 → 그대로, 4 → 2, 5 이상 → 3) */
+export const balancedCols = (n: number) => (n <= 3 ? Math.max(1, n) : n === 4 ? 2 : 3);

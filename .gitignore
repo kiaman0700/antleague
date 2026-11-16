@@ -17,3 +17,4 @@ scripts/e2e/.login-tmp.mjs
 scripts/e2e/.accounts*.json
 scripts/e2e/.dbg-social.mjs
 scripts/e2e/.rt-dbg.mjs
+scripts/e2e/.bot-tmp.mjs
