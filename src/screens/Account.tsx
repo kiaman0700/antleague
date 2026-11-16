@@ -61,6 +61,13 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
   );
 }
 
+/** 흔한 비밀번호 모양 (abcd1234·password1·qwer1234·같은 글자 반복·12345678 연속) — 막지는 않고 알려만 줌 */
+function weakPw(p: string): boolean {
+  const s = p.toLowerCase();
+  if (/^(.)+$/.test(s.replace(/\d+$/, '')) ) return true;
+  if (/(password|qwer|asdf|zxcv|abcd|1234|1q2w|iloveyou|admin|test)/.test(s) && s.length < 12) return true;
+  return s.length < 10 && /^[a-z]+\d+$/.test(s) && new Set(s).size <= 5;
+}
 type Avail = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid' | 'error';
 /** 입력이 멈추고 0.4초 뒤 서버에 중복 확인 (가입할 때만) */
 function useAvailability(field: 'username' | 'nickname', value: string, on: boolean, valid: boolean): Avail {
@@ -240,7 +247,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
           <span>{tab === 'reset' ? '새 비밀번호' : '비밀번호'}</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={72} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder={tab === 'login' ? '' : '8자 이상, 영어+숫자'} />
           {tab !== 'login' && password && !pOk && <small className="error">8자 이상, 영어와 숫자를 함께 (아이디는 넣지 말아 주세요)</small>}
-          {tab !== 'login' && password && pOk && <small className="good-msg">안전한 비밀번호예요</small>}
+          {tab !== 'login' && password && pOk && (weakPw(password) ? <small className="warn-msg">쓸 수는 있지만 흔한 비밀번호예요. 다른 사이트와 다르게, 더 길게 정하면 안전해요</small> : <small className="good-msg">쓸 수 있는 비밀번호예요</small>)}
         </label>
         {tab !== 'login' && (
           <label className={fieldCls(pwState)}>
@@ -576,7 +583,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
             ) : !cur ? (
               <span className="muted">지금 비밀번호도 적어 주세요</span>
             ) : pw === pw2 ? (
-              <span className="ok-msg">바꿀 준비가 됐어요</span>
+              weakPw(pw) ? <span className="warn-msg">바꿀 수는 있지만 흔한 비밀번호예요. 더 길게 정하면 안전해요</span> : <span className="ok-msg">바꿀 준비가 됐어요</span>
             ) : null}
           </p>
         )}

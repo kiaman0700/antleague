@@ -325,3 +325,5 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .modal[tabindex="-1"]:focus { outline: none; }
 /* 마이프로필 닉네임 바꾸기: 쓸 수 있는지 안내는 설명 위 따로 한 줄 */
 .nick-avail { margin: 6px 0 2px; font-size: 12px; }
+/* 가입 비밀번호: 쓸 수는 있지만 흔한 모양일 때 (빨강 아님, 주의) */
+.warn-msg { display: block; color: var(--gold, #f5b83d); font-size: 12px; margin-top: 4px; }
