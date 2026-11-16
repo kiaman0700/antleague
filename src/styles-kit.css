@@ -199,3 +199,7 @@
 @keyframes tk-in2 { from { opacity: 0.45; transform: translateY(3px); } }
 .tk-body { animation-name: tk-in2; }
 @media (prefers-reduced-motion: reduce) { .tk-body { animation: none; } }
+
+/* 대기실 '친구 부르기': 가운데 놓인 초대 코드와 줄을 맞춰 두 버튼이 너비를 똑같이 나눠 씀 */
+.wr-invite .wr-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.wr-invite .wr-btns > .btn { justify-content: center; white-space: nowrap; }
