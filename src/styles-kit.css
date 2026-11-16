@@ -172,3 +172,4 @@
 
 /* 휴대폰 설정: 화면 모드 버튼 3개가 줄을 똑같이 나눠 씀 (왼쪽에 몰리지 않게) */
 .m-settings .mode-toggle > button { flex: 1 1 0; }
+.mf-spec b { white-space: nowrap; }

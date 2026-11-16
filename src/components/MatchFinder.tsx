@@ -230,8 +230,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <small>초 / 하루</small>
           </div>
           <div>
-            <b>{SPEED_PRESET[pref.speed].minutes.replace('약 ', '')}</b>
-            <small>한 판</small>
+            <b>{SPEED_PRESET[pref.speed].minutes.replace('약 ', '').replace(/분$/, '')}</b>
+            <small>분 · 한 판</small>
           </div>
         </div>
       )}
