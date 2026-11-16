@@ -116,6 +116,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const solo = session.mode === 'solo' && !session.tutorial;
   const me = session.playerId;
   const mobile = useIsMobile();
+  // 세로 태블릿(넓은 휴대폰 배치): 종목 목록과 차트·주문을 나란히
+  const wide = useIsMobile('(min-width: 700px)');
+  const tablet = mobile && wide;
   const { view, market: rawMarket, offset, error, act, busy, tutorialInfo } = useGameSource(session);
   const [tutStep, setTutStep] = useState(0);
   const [cardGuide, setCardGuide] = useState(false);
@@ -459,7 +462,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     });
   const selectStock = (sym: string) => {
     setSelected(sym);
-    if (mobile) setTab('detail');
+    if (tablet) setTab(tab === 'list' || tab === 'detail' ? tab : 'list');
+    else if (mobile) setTab('detail');
     else document.querySelector('.p-detail')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const selectSector = (sec: string) => {
@@ -1097,9 +1101,18 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           </div>
         </header>
 
-        <main className={'m-page p-' + tab}>
-          {tab === 'list' && browser}
-          {tab === 'detail' && detail}
+        <main className={'m-page p-' + tab + (tablet && (tab === 'list' || tab === 'detail') ? ' split' : '')}>
+          {tablet && (tab === 'list' || tab === 'detail') ? (
+            <div className="tab-split">
+              <section className="ts-list">{browser}</section>
+              <section className="ts-detail">{detail}</section>
+            </div>
+          ) : (
+            <>
+              {tab === 'list' && browser}
+              {tab === 'detail' && detail}
+            </>
+          )}
           {tab === 'news' && (
             <>
               {effectsOnMe.map((t, i) => (
@@ -1119,7 +1132,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           {tab === 'cards' && cards}
         </main>
 
-        {tab === 'detail' && (
+        {(tab === 'detail' || (tablet && tab === 'list')) && (
           <div className="m-tradebar">
             <div className="mt-price">
               <b className={tone(q.ch)}>{q.usd !== null ? '$' + q.usd.toFixed(2) : num(q.krw) + '원'}</b>

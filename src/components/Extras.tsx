@@ -152,7 +152,15 @@ export function useIsMobile(query = '(max-width: 960px)') {
     const mq = window.matchMedia(query);
     const on = () => setM(mq.matches);
     mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
+    // 태블릿을 돌리거나 창 크기를 바꿀 때 change 가 늦거나 빠지는 경우가 있어 크기 변경·회전도 함께 확인
+    window.addEventListener('resize', on);
+    window.addEventListener('orientationchange', on);
+    on();
+    return () => {
+      mq.removeEventListener('change', on);
+      window.removeEventListener('resize', on);
+      window.removeEventListener('orientationchange', on);
+    };
   }, [query]);
   return m;
 }

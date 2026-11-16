@@ -2200,3 +2200,38 @@ button.tag:hover,
   display: block;
   font-size: 11px;
 }
+
+/* ============ 세로 태블릿(700~960px): 종목 목록 + 차트·주문 나란히 ============ */
+.m-page.split {
+  padding-left: 0;
+  padding-right: 0;
+}
+.tab-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 38%) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.tab-split > section {
+  min-width: 0;
+}
+.tab-split .ts-list {
+  position: sticky;
+  top: 8px;
+  max-height: calc(100dvh - 200px);
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  padding-right: 8px;
+}
+/* 세로 태블릿: 뉴스·카드도 두 줄로 넓게 */
+@media (min-width: 700px) and (max-width: 960px) {
+  .m-page.p-news .news-list,
+  .m-page.p-cards .card-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .m-game .bottom-nav {
+    max-width: none;
+  }
+}
