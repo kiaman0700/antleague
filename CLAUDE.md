@@ -1,7 +1,7 @@
 # 개미리그 (예전 이름 '주식 대결') — 작업 인수인계
 
 여럿(2~6명)이 같은 가상 주식시장에서 겨루는 턴제 웹 게임. 한국어 UI.
-배포: https://game-taupe-three-58.vercel.app · 저장소: github.com/kiaman0700/game
+배포: https://antleague.vercel.app · 저장소: github.com/kiaman0700/antleague
 
 ## 사용자에 대해
 - 한국어로 대화. 주식 초보도 쓸 수 있게 쉬운 말 + 깔끔한(토스 느낌) UI를 원함
@@ -15,7 +15,7 @@ npm run dev      # http://localhost:5173 (+ /api/game 서버 함수도 같이 �
 npm test         # 단위 테스트 (엔진·보안 규칙)
 npm run build    # 타입체크 + 빌드
 npm run e2e      # 실제 서버를 익명 계정 여러 개로 테스트 (dev 서버 켜져 있어야 함)
-BASE=https://game-taupe-three-58.vercel.app npm run e2e   # 배포본 테스트
+BASE=https://antleague.vercel.app npm run e2e   # 배포본 테스트
 npm run db -- check                         # Supabase 연결·마이그레이션 상태 (읽기만)
 npm run db -- balance                       # 실제로 끝난 대결의 승률·수익률 (1대1/3인+, 카드·레버리지 쓴 사람별, 읽기만, 시험용 판 제외)
 npm run db -- apply supabase/00X_이름.sql     # SQL 적용 (한 트랜잭션). 적용 전 사용자에게 내용 보여주고 확인받기
