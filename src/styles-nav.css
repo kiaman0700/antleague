@@ -657,9 +657,6 @@
   font-family: var(--mono);
   color: var(--gold);
 }
-.rc-actions .btn.danger.ghost {
-  color: var(--down);
-}
 .exit-ask > p {
   margin: 0 0 4px;
 }

@@ -5,6 +5,7 @@
  *   ErrorState   불러오기 실패 + '다시 시도'
  *   IconList     아이콘이 붙은 안내 목록 (순서가 있으면 steps 로 세로 선 연결)
  *   SectionTitle 칸 제목 (아이콘 + 글 + 오른쪽 덧붙임)
+ *   Toast        화면 아래 짧은 확인 안내 (몇 초 뒤 사라지는 건 쓰는 쪽에서)
  * 모양은 styles-kit.css
  */
 import type { ReactNode } from 'react';
@@ -107,6 +108,16 @@ export function SectionTitle({ icon, children, right }: { icon?: IconName; child
         {children}
       </h3>
       {right && <div className="ui-title-right">{right}</div>}
+    </div>
+  );
+}
+
+/** 화면 아래 짧은 확인 안내 (예: '기권했어요') — 화면 읽기 프로그램도 읽어 줌 */
+export function Toast({ text, tone }: { text: string; tone?: 'error' }) {
+  return (
+    <div className={'ui-toast' + (tone ? ' ' + tone : '')} role="status" aria-live="polite">
+      <Icon name={tone === 'error' ? 'warn' : 'check'} size={16} />
+      <span>{text}</span>
     </div>
   );
 }

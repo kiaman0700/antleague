@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { EmptyState, ErrorState, IconList, Loading, SectionTitle } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
@@ -418,7 +418,12 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     loadRooms();
     // 커스텀 메뉴에서는 열린 방 목록을 10초마다 새로
     const id = tab === 'custom' ? setInterval(() => document.visibilityState === 'visible' && loadRooms(), 10_000) : 0;
-    return () => clearInterval(id);
+    // 방에서 나왔거나 기권했으면 바로 새로 (사라진 방이 목록에 남지 않게)
+    window.addEventListener('rooms-changed', loadRooms);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('rooms-changed', loadRooms);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite]);
 
@@ -1229,12 +1234,20 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [err, setErr] = useState('');
+  // 기권·방 나가기가 끝났다는 짧은 확인 (창이 그냥 닫히면 됐는지 알 수 없어서)
+  const [done, setDone] = useState('');
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => setDone(''), 3500);
+    return () => clearTimeout(t);
+  }, [done]);
   useEffect(() => {
     if (!online) return;
     api<ResumeInfo | null>('resume').then(setMulti).catch(() => {});
   }, []);
   const close = () => setHidden(true);
   // 팝업을 닫아도 진행 중인 대결로 돌아갈 길은 남김 (작은 띠)
+  if (done && !multi && !solo) return <Toast text={done} />;
   if (hidden) {
     if (!multi && !solo) return null;
     const label = multi ? (multi.status === 'playing' ? '진행 중인 대결' : '들어가 있는 대기실') : '하던 연습 게임';
@@ -1266,7 +1279,11 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
               setBusy(true);
               setErr('');
               api('leave', { roomId: multi.roomId })
-                .then(() => setMulti(null))
+                .then(() => {
+                  setDone(playing ? '기권했어요. 이 대결은 여기서 끝났어요.' : '방에서 나왔어요.');
+                  setMulti(null);
+                  window.dispatchEvent(new Event('rooms-changed'));
+                })
                 // 실패하면 팝업을 남겨 다시 시도할 수 있게 (기권한 줄 알고 막혀 있지 않게)
                 .catch((e) => setErr(e instanceof Error ? e.message : '연결이 불안정해요. 다시 눌러 주세요.'))
                 .finally(() => setBusy(false));

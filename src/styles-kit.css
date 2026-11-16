@@ -83,3 +83,15 @@
   .friends > .fr-block { grid-area: block; }
   .friends > .panel { margin: 0; }
 }
+
+/* 위험한 행동 버튼(기권·삭제·데이터 지우기): 어디서든 같은 경고색 — 파랑(=주가 내림)과 섞이지 않게 */
+.btn.danger,
+.btn.danger.ghost { color: #ff9aa5; border-color: rgba(240, 68, 82, 0.55); }
+.btn.danger:hover:not(:disabled) { background: rgba(240, 68, 82, 0.12); color: #ffb3bb; }
+
+/* 화면 아래 짧은 확인 안내 */
+.ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #1f2433; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
+.ui-toast > svg, .ui-toast > .ico { color: #6ee7a8; flex: 0 0 auto; }
+.ui-toast.error > svg, .ui-toast.error > .ico { color: #ff9aa5; }
+@keyframes uiToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .ui-toast { animation: none; } }
