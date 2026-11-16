@@ -99,7 +99,9 @@ export function play(s: Sfx) {
         break;
     }
     const v = VIBE[s];
-    if (v && 'vibrate' in navigator) navigator.vibrate(v);
+    // 화면을 한 번도 누르지 않았으면 브라우저가 진동을 막고 오류를 남김 → 누른 뒤에만
+    const touched = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? true;
+    if (v && touched && 'vibrate' in navigator) navigator.vibrate(v);
   } catch {
     /* 소리가 안 나도 게임은 계속 */
   }
