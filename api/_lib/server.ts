@@ -982,7 +982,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
-    if (['signup', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit) };
+    if (['signup', 'checkAvailable', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };
       return { status: 200, body: await adminAct(action, b) };

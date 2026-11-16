@@ -10,6 +10,7 @@ import { loginWith, logout, refreshAccount, useAccount, USER_DOMAIN } from '../n
 import { BADGES, titleOf } from '../game/achievements';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct } from '../lib/format';
+import { josa } from '../engine/engine';
 
 function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
   return (
@@ -24,6 +25,15 @@ function PageHead({ title, onBack, right }: { title: string; onBack: () => void;
 }
 
 const copy = (t: string) => navigator.clipboard?.writeText(t).catch(() => {});
+
+function AvailMsg({ st, what, invalid }: { st: Avail; what: string; invalid: string }) {
+  if (st === 'checking') return <small className="muted">확인하는 중…</small>;
+  if (st === 'ok') return <small className="good-msg">사용할 수 있는 {josa(what, '이에요', '예요')}</small>;
+  if (st === 'taken') return <small className="error">이미 쓰는 {josa(what, '이에요', '예요')}. 다른 {josa(what, '을', '를')} 써 주세요</small>;
+  if (st === 'invalid') return <small className="error">{invalid}</small>;
+  if (st === 'error') return <small className="error">확인하지 못했어요. 잠시 후 다시 입력해 주세요</small>;
+  return null;
+}
 
 /** 가입·비밀번호 찾기 뒤에 한 번 보여 주는 복구 코드 */
 function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
@@ -47,6 +57,29 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
   );
 }
 
+type Avail = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid' | 'error';
+/** 입력이 멈추고 0.4초 뒤 서버에 중복 확인 (가입할 때만) */
+function useAvailability(field: 'username' | 'nickname', value: string, on: boolean, valid: boolean): Avail {
+  const [st, setSt] = useState<Avail>('idle');
+  useEffect(() => {
+    if (!on || !value.trim()) return setSt('idle');
+    if (!valid) return setSt('invalid');
+    setSt('checking');
+    let alive = true;
+    const t = setTimeout(() => {
+      api<Record<string, 'ok' | 'taken' | 'invalid'>>('checkAvailable', { [field]: value.trim() })
+        .then((r) => alive && setSt(r[field] ?? 'error'))
+        .catch(() => alive && setSt('error'));
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [field, value, on, valid]);
+  return st;
+}
+const fieldCls = (s: Avail | 'match' | 'mismatch') => 'field' + (s === 'ok' || s === 'match' ? ' good' : s === 'taken' || s === 'invalid' || s === 'mismatch' ? ' bad' : '');
+
 /* ================= 로그인 · 회원가입 · 비밀번호 찾기 ================= */
 export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
   const [tab, setTab] = useState<'login' | 'signup' | 'reset'>('login');
@@ -62,7 +95,12 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
   const [recovery, setRecovery] = useState<string | null>(null);
 
   const uOk = /^[a-z0-9_]{4,16}$/.test(username.trim().toLowerCase());
-  const pOk = password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password);
+  const pOk = password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password) && !(uOk && password.toLowerCase().includes(username.trim().toLowerCase()));
+  const nOk = nickname.trim().length >= 1 && nickname.trim().length <= 10 && ![...nickname].some((ch) => ch === '<' || ch === '>' || ch.charCodeAt(0) < 32);
+  const uAvail = useAvailability('username', username.trim().toLowerCase(), tab === 'signup', uOk);
+  const nAvail = useAvailability('nickname', nickname, tab === 'signup', nOk);
+  const pwState: 'idle' | 'match' | 'mismatch' = !password2 ? 'idle' : password2 === password && pOk ? 'match' : 'mismatch';
+  const signupReady = uAvail === 'ok' && nAvail === 'ok' && pwState === 'match' && agree14 && agreePrivacy;
   const run = async (fn: () => Promise<void>) => {
     setErr('');
     setBusy(true);
@@ -108,15 +146,16 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
         {tab === 'login' && <p className="muted small">로그인하면 이 기기는 그 계정으로 바뀌어요. 게스트로 하던 이 기기의 기록은 따로 남아요(로그아웃하면 다시 게스트).</p>}
         {tab === 'reset' && <p className="muted small">가입할 때 받은 복구 코드로 새 비밀번호를 정해요.</p>}
 
-        <label className="field">
+        <label className={tab === 'signup' ? fieldCls(uAvail) : 'field'}>
           <span>아이디</span>
           <input value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={16} autoComplete="username" autoCapitalize="none" placeholder="영어 소문자·숫자·_ 4~16자" />
-          {tab === 'signup' && username && !uOk && <small className="error">영어 소문자·숫자·밑줄(_)로 4~16자</small>}
+          {tab === 'signup' && <AvailMsg st={uAvail} what="아이디" invalid="영어 소문자·숫자·밑줄(_)로 4~16자로 써 주세요" />}
         </label>
         {tab === 'signup' && (
-          <label className="field">
+          <label className={fieldCls(nAvail)}>
             <span>닉네임 (게임·랭킹에 보이는 이름)</span>
             <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={10} placeholder="1~10자" />
+            <AvailMsg st={nAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
           </label>
         )}
         {tab === 'reset' && (
@@ -125,16 +164,18 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={14} placeholder="XXXX-XXXX-XXXX" autoComplete="off" />
           </label>
         )}
-        <label className="field">
+        <label className={tab !== 'login' && password ? fieldCls(pOk ? 'ok' : 'invalid') : 'field'}>
           <span>{tab === 'reset' ? '새 비밀번호' : '비밀번호'}</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={72} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder={tab === 'login' ? '' : '8자 이상, 영어+숫자'} />
-          {tab !== 'login' && password && !pOk && <small className="error">8자 이상, 영어와 숫자를 함께</small>}
+          {tab !== 'login' && password && !pOk && <small className="error">8자 이상, 영어와 숫자를 함께 (아이디는 넣지 말아 주세요)</small>}
+          {tab !== 'login' && password && pOk && <small className="good-msg">안전한 비밀번호예요</small>}
         </label>
         {tab !== 'login' && (
-          <label className="field">
+          <label className={fieldCls(pwState)}>
             <span>비밀번호 확인</span>
             <input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} maxLength={72} autoComplete="new-password" />
-            {password2 && password2 !== password && <small className="error">비밀번호가 서로 달라요</small>}
+            {pwState === 'mismatch' && <small className="error">{password2 !== password ? '비밀번호가 서로 달라요' : '먼저 위 비밀번호 조건을 맞춰 주세요'}</small>}
+            {pwState === 'match' && <small className="good-msg">비밀번호가 같아요</small>}
           </label>
         )}
         {tab === 'signup' && (
@@ -157,7 +198,7 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
         {tab === 'signup' && (
           <button
             className="btn primary full"
-            disabled={busy || !uOk || !pOk || password !== password2 || !nickname.trim() || !agree14 || !agreePrivacy}
+            disabled={busy || !signupReady}
             onClick={() =>
               run(async () => {
                 const r = await api<{ recoveryCode: string }>('signup', { username: username.trim().toLowerCase(), password, nickname: nickname.trim(), agree14, agreePrivacy });
@@ -171,6 +212,7 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
             {busy ? '가입하는 중…' : '가입하기'}
           </button>
         )}
+        {tab === 'signup' && !signupReady && <small className="muted center-text">아이디·닉네임·비밀번호 확인과 두 가지 동의를 마치면 가입할 수 있어요</small>}
         {tab === 'reset' && (
           <button
             className="btn primary full"

@@ -74,23 +74,22 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
     setPrefs({ enabled: false });
     onChange(m);
   };
+  const desc = custom
+    ? `내가 바꾼 화면으로 · 바탕 ${value === 'easy' ? '초보' : '일반'}`
+    : value === 'easy'
+      ? '쉬운 말 · 금액 버튼으로 쉽게 사기 · 용어 설명'
+      : '캔들 차트 · 수량 주문 · 시가/고가/저가';
   return (
-    <div className="mode-pick three">
-      <button aria-pressed={!custom && value === 'easy'} className={!custom && value === 'easy' ? 'on' : ''} onClick={() => pick('easy')}>
-        <span className="mp-emoji"><Icon name="book" size={22} /></span>
-        <b>초보 모드</b>
-        <small>쉬운 말 · 금액 버튼으로 쉽게 사기 · 용어 설명 · 첫 판 안내</small>
-      </button>
-      <button aria-pressed={!custom && value === 'pro'} className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
-        <span className="mp-emoji"><Icon name="bars" size={22} /></span>
-        <b>일반 모드</b>
-        <small>캔들 차트 · 수량 주문 · 시가/고가/저가 정보</small>
-      </button>
-      <div className={'mp-custom' + (custom ? ' on' : '')}>
-        <button className="mp-main" onClick={() => setPrefs({ enabled: true })}>
-          <span className="mp-emoji"><Icon name="sliders" size={22} /></span>
-          <b>커스텀 모드</b>
-          <small>{custom ? `내 화면 사용 중 · 바탕 ${value === 'easy' ? '초보' : '일반'}` : '내 화면으로 바꿔 쓰기'}</small>
+    <div className="mode-pick compact">
+      <div className="mp-row" role="radiogroup" aria-label="화면 모드">
+        <button role="radio" aria-checked={!custom && value === 'easy'} className={!custom && value === 'easy' ? 'on' : ''} onClick={() => pick('easy')}>
+          <Icon name="book" size={16} /> 초보
+        </button>
+        <button role="radio" aria-checked={!custom && value === 'pro'} className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
+          <Icon name="bars" size={16} /> 일반
+        </button>
+        <button role="radio" aria-checked={custom} className={custom ? 'on' : ''} onClick={() => setPrefs({ enabled: true })}>
+          <Icon name="sliders" size={16} /> 커스텀
         </button>
         <button
           className="mp-gear icon-btn sm"
@@ -106,6 +105,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
           <Icon name="settings" size={16} />
         </button>
       </div>
+      <small className="mp-desc muted">{desc}</small>
       {open && (
         <Sheet title={<><Icon name="sliders" size={18} /> 커스텀 모드 설정</>} onClose={() => setOpen(false)}>
           <div className="field">

@@ -91,6 +91,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (b.agree14 !== true || b.agreePrivacy !== true) throw new GameError('만 14세 이상 확인과 개인정보 안내 동의가 필요해요.');
       const username = cleanUsername(b.username);
       const password = cleanNewPassword(b.password);
+      if (password.toLowerCase().includes(username)) throw new GameError('비밀번호에 아이디를 그대로 넣지 말아 주세요.');
       const nickname = cleanNickname(b.nickname);
       if (!(await nicknameFree(sb, nickname))) throw new GameError('이미 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.', 409);
       const taken = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
@@ -102,6 +103,27 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const ins = await sb.from('profiles').insert({ user_id: uid, username, nickname, recovery_hash: hash(normRecovery(code)) });
       if (ins.error) throw new GameError(/nickname/.test(ins.error.message) ? '이미 쓰는 닉네임이에요.' : /username/.test(ins.error.message) ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.', 409);
       return { ok: true, recoveryCode: code, username, nickname };
+    }
+
+    case 'checkAvailable': {
+      // 가입 화면 실시간 중복 확인. 남의 아이디를 마구 알아보는 데 쓰이지 않게 1분에 40번까지
+      rateLimit(uid + ':avail', 40, 60_000);
+      const out: { username?: 'ok' | 'taken' | 'invalid'; nickname?: 'ok' | 'taken' | 'invalid' } = {};
+      if (b.username !== undefined) {
+        const u = typeof b.username === 'string' ? b.username.trim().toLowerCase() : '';
+        if (!USERNAME_RE.test(u)) out.username = 'invalid';
+        else out.username = (await sb.from('profiles').select('user_id').eq('username', u).maybeSingle()).data ? 'taken' : 'ok';
+      }
+      if (b.nickname !== undefined) {
+        let n = '';
+        try {
+          n = cleanNickname(b.nickname);
+        } catch {
+          out.nickname = 'invalid';
+        }
+        if (n) out.nickname = (await nicknameFree(sb, n, uid)) ? 'ok' : 'taken';
+      }
+      return out;
     }
 
     case 'profile': {

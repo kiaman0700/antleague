@@ -48,6 +48,17 @@ B = await relog(ub);
 const again = await A({ action: 'signup', username: 'x' + ua, password: pw, nickname: 'Z' + rnd, agree14: true, agreePrivacy: true });
 ok('이미 가입한 계정은 다시 가입 불가', again.s === 409, JSON.stringify(again));
 
+// ---- 실시간 중복 확인 ----
+const G0 = await guest();
+const av = (await G0({ action: 'checkAvailable', username: ua, nickname: 'A' + rnd })).b;
+ok('이미 쓰는 아이디·닉네임은 taken', av.username === 'taken' && av.nickname === 'taken', JSON.stringify(av));
+const av2 = (await G0({ action: 'checkAvailable', username: 'free' + rnd, nickname: '새' + rnd })).b;
+ok('빈 아이디·닉네임은 ok', av2.username === 'ok' && av2.nickname === 'ok', JSON.stringify(av2));
+const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
+ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
+const samePw = await G0({ action: 'signup', username: 'pwtest' + rnd, password: 'pwtest' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true });
+ok('비밀번호에 아이디가 들어가면 거절', samePw.s === 400, samePw.b?.error);
+
 // ---- 다른 기기에서 로그인 ----
 const c2 = client();
 const li = await c2.auth.signInWithPassword({ email: `${ua}@u.stockduel.invalid`, password: pw });
