@@ -100,4 +100,18 @@ describe('업적', () => {
     const aWins = res.a.includes('winner');
     expect(aWins || res.b.includes('winner')).toBe(true);
   });
+  it("'시장을 이긴 자'는 한 번이라도 거래해야 받음 (현금만 들고 시장이 내린 판에서 거저 받지 않게)", () => {
+    // 지수가 떨어진 시장을 찾음 → 현금만 든 사람(0%)이 지수보다 높은 경우
+    let seed = SEED;
+    let m = generateMarket(seed, 10);
+    for (let i = 1; i < 200 && m.index[9].close >= m.index[0].open; i++) m = generateMarket((seed = SEED + i), 10);
+    expect(m.index[9].close).toBeLessThan(m.index[0].open);
+    const res = computeAchievements({
+      market: m,
+      seed,
+      items: [],
+      players: [{ id: 'cash', trades: [], spends: [], filledOrders: 0 }],
+    });
+    expect(res.cash ?? []).not.toContain('beat_market');
+  });
 });

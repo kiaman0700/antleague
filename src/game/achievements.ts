@@ -22,7 +22,7 @@ export const BADGES: Badge[] = [
   { id: 'big_win', emoji: '🎰', name: '한 방', desc: '한 종목으로 시작 돈의 10% 넘게 수익', rarity: 2 },
   { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2 },
   { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 1위', rarity: 1 },
-  { id: 'beat_market', emoji: '📈', name: '시장을 이긴 자', desc: '종합지수보다 높은 수익률', rarity: 1 },
+  { id: 'beat_market', emoji: '📈', name: '시장을 이긴 자', desc: '거래를 하고 종합지수보다 높은 수익률', rarity: 1 },
   { id: 'dividend', emoji: '💰', name: '배당 부자', desc: '배당금을 시작 돈의 1% 넘게 받음', rarity: 1 },
   { id: 'global', emoji: '🌎', name: '글로벌 투자자', desc: '국내·미국 주식을 동시에 보유', rarity: 1 },
   { id: 'limit_order', emoji: '⏳', name: '예약의 달인', desc: '지정가 주문이 3번 이상 체결', rarity: 1 },
@@ -64,7 +64,8 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     const got = new Set<string>();
     const ret = finalEq(p.id) / startCashFor(m.version) - 1;
     if (winner === p.id) got.add('winner');
-    if (ret > indexRet) got.add('beat_market');
+    // 한 번이라도 거래해야 (현금만 들고 시장이 내린 판에서 거저 받지 않게 — 사용자 결정 2026-11-17)
+    if (ret > indexRet && p.trades.length > 0) got.add('beat_market');
     if (p.trades.length >= 20) got.add('trader');
     if (p.filledOrders >= 3) got.add('limit_order');
     if ((solo && ret > 0 && p.trades.length <= 5 && p.trades.length > 0) || (winner === p.id && p.trades.length <= 5)) got.add('zen');

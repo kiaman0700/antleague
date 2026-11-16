@@ -94,9 +94,11 @@ try {
     if (!r.ok) throw new Error(`설정 실패 (${r.status}) ${(await r.text()).slice(0, 200)}`);
     console.log(`✅ ${key} 설정 완료 — 다음 배포부터 적용돼요`);
   } else if (cmd === 'unsetserver') {
-    // 더 이상 쓰지 않는 서버 설정값 지우기 (운영자 계정 만들기용이던 값들만 — 다른 값은 지우지 못하게)
+    // 더 이상 쓰지 않는 서버 설정값 지우기 — 정해 둔 이름만 (게임이 쓰는 VITE_*·SUPABASE_SECRET_KEY·SUPABASE_URL 은 지우지 못하게)
+    // Supabase 연동(Vercel Marketplace)이 자동으로 넣는 Next.js·Prisma 용 이름들과 DB 주소(Vercel 에 두면 안 됨)
+    const ALLOWED = ['ADMIN_EMAILS', 'ADMIN_SETUP_CODE', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL_NON_POOLING', 'POSTGRES_USER', 'POSTGRES_HOST', 'POSTGRES_PASSWORD', 'POSTGRES_DATABASE', 'SUPABASE_JWT_SECRET', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_DB_URL'];
     const key = process.argv[3];
-    if (!['ADMIN_EMAILS', 'ADMIN_SETUP_CODE'].includes(key ?? '')) throw new Error('사용법: npm run vercel -- unsetserver ADMIN_EMAILS|ADMIN_SETUP_CODE');
+    if (!ALLOWED.includes(key ?? '')) throw new Error('사용법: npm run vercel -- unsetserver <이름> (지울 수 있는 이름: ' + ALLOWED.join(', ') + ')');
     const j = await api(`/v9/projects/${project.projectId}/env`);
     const hits = j.envs.filter((e) => e.key === key);
     for (const e of hits) {
