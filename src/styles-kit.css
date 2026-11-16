@@ -327,3 +327,10 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .nick-avail { margin: 6px 0 2px; font-size: 12px; }
 /* 가입 비밀번호: 쓸 수는 있지만 흔한 모양일 때 (빨강 아님, 주의) */
 .warn-msg { display: block; color: var(--gold, #f5b83d); font-size: 12px; margin-top: 4px; }
+
+/* 키가 낮은 PC·가로 태블릿(높이 820 이하): 카드 손패를 줄여 핵심인 뉴스 칸을 더 넓게 */
+@media (min-width: 861px) and (max-height: 820px) and (hover: hover) and (pointer: fine) {
+  .desk .p-cards .tray-cards.gc-row.fan { height: 124px; }
+  .desk .p-cards .tray-cards.fan .fan-slot,
+  .desk .p-cards .tray-cards.fan[data-n] .fan-slot { --w: 70px; }
+}
