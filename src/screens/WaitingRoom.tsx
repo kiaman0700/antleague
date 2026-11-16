@@ -143,95 +143,127 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     run(() => api('mode', { roomId, mode: m }));
   };
 
-  return (
-    <div className="waiting">
-      <div className="panel pad center">
-        <h2 className="room-title">
-          {room.isPrivate && <span title="비밀방"><Icon name="lock" size={16} /> </span>}
-          {room.title}
-        </h2>
-        <p className="muted">초대 코드</p>
-        <div className="big-code">{room.code}</div>
-        <button className="btn sm" onClick={copy}>
-          {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
-        </button>
-        {member && view.players.length < room.maxPlayers && (
-          <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
-            <Icon name="userPlus" /> 친구 초대
-          </button>
-        )}
-        {inviteOpen && <InviteFriends roomId={roomId} onClose={() => setInviteOpen(false)} />}
-        <p className="muted small">
-          최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 제한 시간 {turnLabel}
-          {room.isPrivate && <> · 방 목록에선 비밀번호 필요</>}
-        </p>
-      </div>
+  const leave = () => {
+    if (isHost && view.players.length > 1 && !window.confirm('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?')) return;
+    if (isHost && view.players.length <= 1 && !window.confirm('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?')) return;
+    api('leave', { roomId }).catch(() => {}).finally(onLeave);
+  };
+  const readyCount = view.players.filter((p) => p.ready || p.id === room.hostId).length;
 
-      <div className="slots">
-        {Array.from({ length: room.maxPlayers }, (_, i) => {
-          const p = view.players[i];
-          if (!p)
+  return (
+    <div className="waiting wr-client">
+      <header className="wr-top">
+        <button className="icon-btn" onClick={leave} aria-label="방에서 나가기" title="나가기">
+          <Icon name="back" size={18} />
+        </button>
+        <div className="wr-title">
+          <small>대기실</small>
+          <h2 className="room-title">
+            {room.isPrivate && (
+              <span title="비밀방">
+                <Icon name="lock" size={16} />{' '}
+              </span>
+            )}
+            {room.title}
+          </h2>
+        </div>
+        <div className="wr-info">
+          <span>
+            <b>{view.players.length}</b>/{room.maxPlayers}명
+          </span>
+          <span>
+            <b>{room.totalDays}</b>일
+          </span>
+          <span>
+            하루 <b>{turnLabel}</b>
+          </span>
+        </div>
+      </header>
+
+      <div className="wr-main">
+        <section className="wr-slots slots" aria-label="참가자">
+          {Array.from({ length: room.maxPlayers }, (_, i) => {
+            const p = view.players[i];
+            if (!p)
+              return (
+                <div key={i} className="slot empty">
+                  <div className="avatar empty">
+                    <Icon name="userPlus" size={18} />
+                  </div>
+                  <b>빈 자리</b>
+                  <small>초대를 기다리는 중</small>
+                </div>
+              );
+            const host = room.hostId === p.id;
             return (
-              <div key={i} className="slot empty">
-                <div className="avatar empty"><Icon name="userPlus" size={18} /></div>
-                <b>빈 자리</b>
-                <small>초대를 기다리는 중</small>
+              <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
+                <div className={'avatar c' + (i % 6)}>{p.nickname.slice(0, 1)}</div>
+                <b>
+                  {p.nickname}
+                  {p.id === playerId && <em> (나)</em>}
+                </b>
+                <small className="slot-state">{host ? <><Icon name="crown" size={12} /> 방장</> : p.ready ? <><Icon name="check" size={12} /> 준비 완료</> : '대기 중'}</small>
+                <small className="muted">{p.mode === 'easy' ? '초보 모드' : '일반 모드'}</small>
+                {isHost && p.id !== playerId && (
+                  <button
+                    className="slot-kick"
+                    onClick={() => window.confirm(`${p.nickname} 님을 내보낼까요?`) && run(() => api('kick', { roomId, target: p.id }))}
+                    aria-label={`${p.nickname} 내보내기`}
+                    title="내보내기"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                )}
               </div>
             );
-          const host = room.hostId === p.id;
-          return (
-            <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
-              <div className={'avatar c' + (i % 6)}>{p.nickname.slice(0, 1)}</div>
-              <b>
-                {p.nickname}
-                {p.id === playerId && <em> (나)</em>}
-              </b>
-              <small>{host ? <><Icon name="crown" size={12} /> 방장</> : p.ready ? <><Icon name="check" size={12} /> 준비 완료</> : '대기 중'}</small>
-              <small className="muted">{p.mode === 'easy' ? '초보 모드' : '일반 모드'}</small>
-              {isHost && p.id !== playerId && (
-                <button
-                  className="slot-kick"
-                  onClick={() => window.confirm(`${p.nickname} 님을 내보낼까요?`) && run(() => api('kick', { roomId, target: p.id }))}
-                  aria-label={`${p.nickname} 내보내기`}
-                  title="내보내기"
-                >
-                  <Icon name="x" size={14} />
+          })}
+        </section>
+
+        <aside className="wr-side">
+          <div className="panel pad wr-invite">
+            <h3>친구 부르기</h3>
+            <p className="muted small">초대 코드</p>
+            <div className="big-code">{room.code}</div>
+            <div className="wr-btns">
+              <button className="btn sm" onClick={copy}>
+                {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
+              </button>
+              {member && view.players.length < room.maxPlayers && (
+                <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
+                  <Icon name="userPlus" /> 친구 초대
                 </button>
               )}
             </div>
-          );
-        })}
+            {room.isPrivate && <p className="muted small">비밀방 · 방 목록에서는 비밀번호가 필요해요</p>}
+          </div>
+          <div className="panel pad">
+            <div className="field">
+              <span>내 화면 모드</span>
+              <ModePicker value={ui} onChange={changeUi} />
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <div className="panel pad">
-        <div className="field">
-          <span>내 화면 모드</span>
-          <ModePicker value={ui} onChange={changeUi} />
+      <footer className="wr-bar">
+        <div className="wr-status">
+          <b>
+            준비 {readyCount}/{view.players.length}
+          </b>
+          <small className="muted">{isHost ? (canStart ? '모두 준비됐어요. 시작하세요!' : view.players.length < 2 ? '한 명 이상 더 들어와야 해요' : `${notReady.map((p) => p.nickname).join(', ')} 님의 준비를 기다리는 중`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
+          {(err || error) && <p className="error">{err || error}</p>}
         </div>
-      </div>
-
-      <div className="stack">
         {isHost ? (
-          <button className="btn primary xl" disabled={!canStart} onClick={() => run(() => api('start', { roomId }))}>
-            {canStart ? `게임 시작! (${view.players.length}명)` : view.players.length < 2 ? '한 명 이상 더 들어와야 해요' : `${notReady.map((p) => p.nickname).join(', ')} 님의 준비를 기다리는 중…`}
+          <button className="wr-go" disabled={!canStart} onClick={() => run(() => api('start', { roomId }))}>
+            {canStart ? `게임 시작 (${view.players.length}명)` : '기다리는 중'}
           </button>
         ) : (
-          <button className={'btn xl ' + (me?.ready ? '' : 'primary')} onClick={() => run(() => api('ready', { roomId, ready: !me?.ready }))}>
+          <button className={'wr-go' + (me?.ready ? ' off' : '')} onClick={() => run(() => api('ready', { roomId, ready: !me?.ready }))}>
             {me?.ready ? '준비 취소' : '준비 완료'}
           </button>
         )}
-        <button
-          className="btn ghost full"
-          onClick={() => {
-            if (isHost && view.players.length > 1 && !window.confirm('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?')) return;
-            if (isHost && view.players.length <= 1 && !window.confirm('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?')) return;
-            api('leave', { roomId }).catch(() => {}).finally(onLeave);
-          }}
-        >
-          나가기
-        </button>
-        {(err || error) && <p className="error">{err || error}</p>}
-      </div>
+      </footer>
+      {inviteOpen && <InviteFriends roomId={roomId} onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }
