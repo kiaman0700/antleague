@@ -1821,3 +1821,7 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
     transform: translateX(calc(var(--i) * var(--gap))) translateY(-30px) rotate(0deg) scale(1.03);
   }
 }
+
+/* 장중 차트 '지금' 줄 */
+.chart .now-mark .now-stem { stroke: #f5b83d; stroke-width: 1.2; }
+.chart .now-mark line, .chart .now-mark rect, .chart .now-mark text { transition: x 0.2s linear, x1 0.2s linear, x2 0.2s linear; }

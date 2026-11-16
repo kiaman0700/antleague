@@ -62,8 +62,8 @@ interface Props {
     tip: (i: number) => string;
     ranges: [number | null, string][];
     drawKey: string;
-    /** 장중: 지금 위치(봉 번호)와 아래에 크게 보여 줄 글 (예: 지금 1:15 · 남은 1:45) */
-    now?: { i: number; label: string };
+    /** 장중: 지금 칸(5초 단위)과 봉 하나에 든 칸 수 — 아래 '지금' 줄의 표시가 시간에 맞춰 부드럽게 움직임 */
+    now?: { tick: number; perBar: number; startAt?: number; n?: number };
   };
 }
 
@@ -91,7 +91,8 @@ export function ProChart({
   const padL = 8;
   const padR = 68;
   const padT = 14;
-  const padB = 24;
+  // 장중 차트는 아래에 '지금' 줄을 하나 더 둠 (시간 눈금은 그대로 보이게)
+  const padB = unit?.now ? 50 : 24;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -661,7 +662,7 @@ export function ProChart({
             <text
               key={d}
               x={x(d)}
-              y={H - 6}
+              y={unit?.now ? H - padB + 16 : H - 6}
               className="axis"
               textAnchor="middle"
             >
@@ -669,21 +670,7 @@ export function ProChart({
             </text>
           ))}
 
-        {unit?.now && visible(unit.now.i) && (() => {
-          const nx = Math.min(W - padR - 2, Math.max(padL + 2, x(unit.now.i) + slot / 2));
-          const tw = unit.now.label.length * 7.6 + 18;
-          const lx = Math.min(W - padR - tw / 2, Math.max(padL + tw / 2, nx));
-          return (
-            <g className="now-mark" aria-hidden>
-              {/* 아래 시간 눈금을 가리지 않게 '지금' 이름표는 차트 맨 위 점선 꼭대기에 */}
-              <line x1={nx} x2={nx} y1={padT + 20} y2={H - padB} />
-              <rect x={lx - tw / 2} y={padT - 2} width={tw} height={21} rx={10.5} />
-              <text x={lx} y={padT + 13} textAnchor="middle">
-                {unit.now.label}
-              </text>
-            </g>
-          );
-        })()}
+        {unit?.now && <NowRow now={unit.now} x={x} padL={padL} right={W - padR} top={padT} plotBottom={H - padB} H={H} />}
         <g clipPath={`url(#clip-${symbol})`}>
           {/* 아직 오지 않은 날 */}
           {lastIdx < totalDays - 1 && (
@@ -1000,5 +987,37 @@ export function ProChart({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * 장중 차트 아래 '지금' 줄: 지금 시각 표시가 시간에 맞춰 계속 부드럽게 움직임.
+ * 서버가 알려 준 칸(5초)에서 시작해 화면 시계로 다음 칸까지 이어서 흘러감 (다음 칸을 넘어가지는 않음)
+ */
+function NowRow({ now, x, padL, right, top, plotBottom, H }: { now: { tick: number; perBar: number; startAt?: number; n?: number }; x: (i: number) => number; padL: number; right: number; top: number; plotBottom: number; H: number }) {
+  const [base, setBase] = useState(() => ({ tick: now.tick, at: Date.now() }));
+  const [, setT] = useState(0);
+  useEffect(() => setBase({ tick: now.tick, at: Date.now() }), [now.tick]);
+  useEffect(() => {
+    const id = setInterval(() => setT((v) => v + 1), 200);
+    return () => clearInterval(id);
+  }, []);
+  // 장 시작 시각이 있으면 시계로 바로 계산 (서버·기기 시계 차이를 감안해 받은 칸 근처로만), 없으면 받은 칸에서 이어 흘림
+  const wall = now.startAt ? (Date.now() - now.startAt) / 1000 : base.tick * 5 + (Date.now() - base.at) / 1000;
+  const sec = Math.max(0, Math.min((now.n ?? Infinity) * 5, Math.max(base.tick * 5, Math.min(base.tick * 5 + 10, wall))));
+  // 봉 i 는 [i-0.5, i+0.5] 칸을 차지 → 시각 sec 의 위치 = sec / (봉 하나 길이) - 0.5
+  const nx = Math.min(right - 1, Math.max(padL + 1, x(sec / (now.perBar * 5) - 0.5)));
+  const s = Math.floor(sec);
+  const label = `지금 ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const tw = label.length * 7.4 + 18;
+  const lx = Math.min(right - tw / 2, Math.max(padL + tw / 2, nx));
+  return (
+    <g className="now-mark" aria-hidden>
+      <line className="now-line" x1={nx} x2={nx} y1={top} y2={plotBottom} />
+      <rect x={lx - tw / 2} y={H - 23} width={tw} height={21} rx={10.5} />
+      <text x={lx} y={H - 8} textAnchor="middle">
+        {label}
+      </text>
+    </g>
   );
 }
