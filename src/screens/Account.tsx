@@ -588,7 +588,7 @@ interface RankRowT {
   wins: number;
   avatar?: string;
 }
-export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
+export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; onLogin: () => void; onPlay?: () => void }) {
   const acc = useAccount();
   const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number } | null } | null>(null);
   const [err, setErr] = useState(false);
@@ -614,8 +614,13 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
       {data?.me && (
         <section className="panel pad my-rank">
           <b>{data.me.nickname}</b>
-          <span>{data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 (랭킹전 배치 ${data.me.ranked_games ?? 0}/${PLACEMENT_GAMES}판)`}</span>
+          <span>{data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 · 랭킹전 ${Math.max(1, PLACEMENT_GAMES - (data.me.ranked_games ?? 0))}판 더 하면 올라가요`}</span>
           <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
+          {onPlay && (
+            <button className="btn sm primary" onClick={onPlay}>
+              랭킹전 하러 가기
+            </button>
+          )}
         </section>
       )}
       {err && <ErrorState what="랭킹" onRetry={() => setTryN((n) => n + 1)} />}

@@ -1420,7 +1420,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <MyProfilePage onBack={back} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
       break;
     case 'ranking':
-      body = <RankingPage onBack={back} onLogin={() => go('login')} />;
+      body = <RankingPage onBack={back} onLogin={() => go('login')} onPlay={() => go('ranked')} />;
       break;
     case 'friends':
       body = (
