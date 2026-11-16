@@ -233,8 +233,8 @@ ok('파티장이 나가면 파티 없어짐', (await B({ action: 'party' })).b.p
 await A({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
 await B({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
 let rm = [null, null];
-// 시험 회원끼리 랭킹전을 여러 번 치르면 점수가 벌어짐 → 범위가 넓어질 때까지(10초마다 +50점) 최대 약 35초 기다림
-for (let i = 0; i < 40 && (!rm[0] || !rm[1]); i++) {
+// 시험 회원끼리 랭킹전을 여러 번 치르면 점수가 벌어짐 → 범위가 넓어질 때까지(10초마다 +50점) 최대 약 60초 기다림
+for (let i = 0; i < 70 && (!rm[0] || !rm[1]); i++) {
   const x = (await A({ action: 'queueStatus' })).b;
   const y = (await B({ action: 'queueStatus' })).b;
   if (x?.status === 'matched') rm[0] = x;
@@ -243,8 +243,12 @@ for (let i = 0; i < 40 && (!rm[0] || !rm[1]); i++) {
 }
 ok('랭킹전: 친구끼리도 매칭됨', rm[0] && rm[1] && rm[0].roomId === rm[1].roomId, JSON.stringify(rm));
 if (rm[0]) {
-  await A({ action: 'leave', roomId: rm[0].roomId });
-  await B({ action: 'leave', roomId: rm[0].roomId });
+  // 먼저 나간 쪽(기권)이 져서 점수가 내려감 → 점수가 높은 쪽이 먼저 나가 둘의 점수 차이가 벌어지지 않게 (벌어지면 다음 실행에서 매칭이 안 됨)
+  const ra = (await A({ action: 'profile' })).b?.profile?.rating ?? 0;
+  const rb = (await B({ action: 'profile' })).b?.profile?.rating ?? 0;
+  const [first, second] = ra >= rb ? [A, B] : [B, A];
+  await first({ action: 'leave', roomId: rm[0].roomId });
+  await second({ action: 'leave', roomId: rm[0].roomId });
 }
 await A({ action: 'queueLeave' });
 await B({ action: 'queueLeave' });
