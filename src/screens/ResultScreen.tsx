@@ -3,7 +3,7 @@ import { balancedCols } from '../components/ui';
 import { TierBadge } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
+import { BadgeIcon, CardIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
 import { BADGE_MAP, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
@@ -86,7 +86,10 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       const worst = closed.reduce<(typeof closed)[number] | null>((a, c) => (!a || c.pnl < a.pnl ? c : a), null);
       const used = (Object.entries(items.players[p.id]?.used ?? {}) as [ItemKind, number][]).filter(([, n]) => n > 0);
       const fakesReceived = items.effects.filter((e) => e.to === p.id && e.kind === 'fake' && !e.blocked).length;
-      return { id: p.id, nickname: p.nickname, left: !!p.left, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
+      // 날마다 용돈 봉투로 받거나 잃은 돈 (하이라이트에서 그날 변화의 이유로 씀)
+      const bonusOn: Record<number, number> = {};
+      for (const r of final.items) if (r.player_id === p.id && r.action === 'use' && r.kind === 'bonus' && typeof r.payload?.amount === 'number') bonusOn[r.day] = (bonusOn[r.day] ?? 0) + r.payload.amount;
+      return { id: p.id, nickname: p.nickname, left: !!p.left, bonusOn, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
   }, [final, session.playerId, market, last, START_CASH]);
 
@@ -119,7 +122,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
   const [replayDay, setReplayDay] = useState<number | null>(null);
   const headline = (d: number) => market.news.find((n) => n.day === d && n.kind === 'macro')?.headline ?? market.news.find((n) => n.day === d)?.headline ?? '';
   const highlights = useMemo(() => {
-    const out: { icon: string; title: string; text: string; day?: number }[] = [];
+    const out: { icon: string; title: string; text: string; day?: number; note?: string }[] = [];
     const days = market.totalDays;
     if (results.length >= 2) {
       // 날마다 1위가 누구였는지
@@ -155,8 +158,13 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         if (dv > best) [best, bd] = [dv, d];
         if (dv < worst) [worst, wd] = [dv, d];
       }
-      if (best > 0) out.push({ icon: 'sparkles', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd });
-      if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd });
+      // 그날 변화의 절반 넘게가 용돈 봉투 때문이면 뉴스 대신 그 이유를 보여 줌 (뉴스 덕분처럼 보이지 않게)
+      const why = (d: number, dv: number) => {
+        const b = r.bonusOn[d] ?? 0;
+        return b !== 0 && Math.sign(b) === Math.sign(dv) && Math.abs(b) * 2 >= Math.abs(dv) ? `용돈 봉투로 ${b > 0 ? '+' : ''}${wonShort(b)}` : undefined;
+      };
+      if (best > 0) out.push({ icon: 'sparkles', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd, note: why(bd, best) });
+      if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd, note: why(wd, worst) });
     }
     return out;
   }, [results, market]);
@@ -290,7 +298,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               <span className="hl-icon"><Icon name={h.icon as IconName} size={18} /></span>
               <b>{h.title}</b>
               <span>{h.text}</span>
-              {h.day !== undefined && <small className="muted"><Icon name="news" size={12} /> {headline(h.day)}</small>}
+              {h.note ? <small className="muted"><CardIcon kind="bonus" size={12} /> {h.note}</small> : h.day !== undefined && <small className="muted"><Icon name="news" size={12} /> {headline(h.day)}</small>}
             </button>
           ))}
         </div>

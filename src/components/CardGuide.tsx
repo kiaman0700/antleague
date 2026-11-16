@@ -27,6 +27,7 @@ export function CardGuideBody() {
               <GameCard
                 key={i.kind}
                 kind={i.kind}
+                version={CURRENT_RULES_VERSION}
                 corner={<span className="gc-price">{i.shopless ? '무료' : won(itemCost(i.kind, 3, CURRENT_RULES_VERSION))}</span>}
                 footer={i.multiOnly ? <span className="gc-tag">대결에서만</span> : undefined}
               />

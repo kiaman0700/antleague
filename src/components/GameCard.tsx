@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ITEM_MAP, itemDesc, type ItemKind, type ItemType } from '../game/items';
+import { BONUS_TABLE, ITEM_MAP, itemDesc, type ItemKind, type ItemType } from '../game/items';
 import { CardIcon } from './Icon';
 
 export const CARD_TYPE: Record<ItemType, string> = { info: '정보', attack: '방해', defense: '방어', bonus: '보너스' };
@@ -64,6 +64,19 @@ export function GameCard({
   action?: { label: string; onClick: () => void; disabled?: boolean; primary?: boolean };
 }) {
   const d = { ...ITEM_MAP[kind], desc: itemDesc(kind, version) };
+  // 용돈 봉투: 확률을 한 줄 글 대신 작은 표로 (창에서만)
+  const odds = kind === 'bonus' && version >= 6;
+  const detailDesc = odds ? d.desc.replace(/ \+30만[^.]*\./, '') : d.desc;
+  const oddsEl = odds ? (
+    <div className="gc-odds" aria-label="받는 돈과 확률">
+      {BONUS_TABLE.map((b) => (
+        <span key={b.amount} className={b.amount > 0 ? 'up' : 'down'}>
+          <b>{(b.amount > 0 ? '+' : '−') + Math.abs(b.amount / 10000) + '만'}</b>
+          <small>{Math.round(b.p * 100)}%</small>
+        </span>
+      ))}
+    </div>
+  ) : null;
   const [open, setOpen] = useState(false);
   // 카드 창은 다른 창처럼 Esc 로도 닫힘
   useEffect(() => {
@@ -86,12 +99,10 @@ export function GameCard({
     const below = r.top < 190;
     setPop({ x: Math.min(window.innerWidth - 125, Math.max(125, r.left + r.width / 2)), y: below ? r.bottom + 8 : r.top - 8, below });
   };
-  // 카드를 누르면 크게 + 설명 전부 + 사용(사기) 버튼 — 잘못 눌러 바로 쓰이지 않게 이 창이 확인 역할. 쓸 게 없으면 PC 는 마우스 올림 설명으로 충분
+  // 카드를 누르면 크게 + 설명 전부 + 사용(사기) 버튼 — 잘못 눌러 바로 쓰이지 않게 이 창이 확인 역할. 쓸 게 없는 카드(도감)도 눌러서 설명 전부를 볼 수 있게
   const onFace = () => {
-    if (action || !canHover()) {
-      setPop(null);
-      setOpen(true);
-    }
+    setPop(null);
+    setOpen(true);
   };
   return (
     <div className={`gcard gc-${size} t-${d.type}${dim ? ' dim' : ''}`}>
@@ -103,7 +114,8 @@ export function GameCard({
               <div className="gc-detail-txt">
                 <b>{d.name}</b>
                 <span className="gc-type-tip">{CARD_TYPE[d.type]} 카드 · {TYPE_TIP[d.type]}</span>
-                <p>{d.desc}</p>
+                <p>{detailDesc}</p>
+                {oddsEl}
                 {why && <small className="gc-why">{why}</small>}
                 <div className="gc-detail-act">
                   {action ? (
@@ -135,7 +147,8 @@ export function GameCard({
           <div className={`gc-pop t-${d.type}${pop.below ? ' below' : ''}`} role="tooltip" style={{ left: pop.x, top: pop.y }}>
             <b>{d.name}</b>
             <span className="gc-type-tip">{CARD_TYPE[d.type]} 카드 · {TYPE_TIP[d.type]}</span>
-            <p>{d.desc}</p>
+            <p>{detailDesc}</p>
+            {oddsEl}
             {why && <small className="gc-why">{why}</small>}
           </div>,
           document.body,
@@ -148,7 +161,7 @@ export function GameCard({
         onFocus={(e) => showPop(e.currentTarget)}
         onBlur={() => setPop(null)}
         tabIndex={0}
-        role={action ? 'button' : undefined}
+        role="button"
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onFace())}
         aria-label={`${d.name}: ${d.desc}${action ? ` (누르면 ${action.label})` : ''}`}
       >

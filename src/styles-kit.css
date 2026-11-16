@@ -133,3 +133,22 @@
 @media (max-width: 860px) {
   .news-cats { position: static; }
 }
+
+/* 용돈 봉투 확률 표 */
+.gc-odds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 4px; }
+.gc-odds span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line, rgba(255,255,255,.08)); }
+.gc-odds b { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gc-odds span.up b { color: var(--up); }
+.gc-odds span.down b { color: var(--down); }
+.gc-odds small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 결과 화면 아래 버튼: 글자가 두 줄로 깨지지 않게, 좁은 화면은 위아래로 한 줄씩 */
+.result .center-actions { flex-wrap: wrap; gap: 10px; align-items: center; }
+.result .center-actions .btn { white-space: nowrap; }
+.result .center-actions .btn.primary { letter-spacing: 0; }
+.result .center-actions .rematch-note,
+.result .center-actions .error { flex-basis: 100%; text-align: center; margin: 0; }
+@media (max-width: 600px) {
+  .result .center-actions { flex-direction: column; align-items: stretch; }
+  .result .center-actions .btn { max-width: none; width: 100%; }
+}

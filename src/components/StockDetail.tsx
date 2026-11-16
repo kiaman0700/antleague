@@ -781,11 +781,11 @@ export function TradePanel({
           <div className="qty-box">
             {isUS && <span>$</span>}
             <input
-              inputMode="decimal"
-              value={limitText}
+              inputMode={isUS ? "decimal" : "numeric"}
+              value={isUS || !limitText ? limitText : Number(limitText).toLocaleString("ko-KR")}
               onChange={(e) =>
                 setLimitText(
-                  e.target.value.replace(/[^0-9.]/g, "").slice(0, 10),
+                  e.target.value.replace(isUS ? /[^0-9.]/g : /[^0-9]/g, "").slice(0, 10),
                 )
               }
               disabled={!trade.allowed}
