@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast } from '../components/ui';
+import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
@@ -1128,6 +1129,17 @@ function ForgetMe() {
   );
 }
 
+/** 게임 화면에서 넘어온 짧은 확인 한 줄 (예: 기권한 뒤 '기권했어요') — 한 번만 보여 줌 */
+function FlashNote() {
+  const [text, setText] = useState(() => peekFlash());
+  useEffect(() => {
+    if (!text) return;
+    const t = setTimeout(() => setText(peekFlash()), flashLeft() + 50);
+    return () => clearTimeout(t);
+  }, [text]);
+  return text ? <Toast text={text} /> : null;
+}
+
 function Records({ go }: Pick<Props, 'go'>) {
   const [history, setHistory] = useState<MatchResult[] | null>(null);
   const [histErr, setHistErr] = useState(false);
@@ -1541,6 +1553,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       </div>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} />
+      <FlashNote />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}

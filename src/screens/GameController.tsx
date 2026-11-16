@@ -35,6 +35,7 @@ import { isMuted, play, setMuted } from '../lib/sound';
 import { api, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
+import { setFlash } from '../lib/flash';
 
 interface Props {
   session: Session;
@@ -888,7 +889,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 if (!(await ask(players.filter((p) => p.status !== 'left').length <= 2 ? `기권하면 상대가 바로 이기고, 이 게임에 다시 들어올 수 없어요.${room?.ranked ? ' 랭킹전이라 꼴찌로 계산돼요.' : ''} 정말 나갈까요?` : `기권하면 나는 꼴찌로 계산되고, 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?`, { ok: '기권하기', danger: true }))) return;
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
-                  .then(onExit)
+                  .then(() => {
+                    setFlash('기권했어요 · 이번 대결은 끝났어요');
+                    onExit();
+                  })
                   // 기권 요청이 실패하면 나가지 않고 알려 줌 (기권한 줄 알았는데 대결이 남아 막히지 않게)
                   .catch((e) => showToast(e instanceof Error ? `기권하지 못했어요: ${e.message}` : '기권하지 못했어요. 다시 눌러 주세요', 'err'));
               }}
