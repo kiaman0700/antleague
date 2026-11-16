@@ -173,3 +173,22 @@
 /* 휴대폰 설정: 화면 모드 버튼 3개가 줄을 똑같이 나눠 씀 (왼쪽에 몰리지 않게) */
 .m-settings .mode-toggle > button { flex: 1 1 0; }
 .mf-spec b { white-space: nowrap; }
+
+/* 화면 머리줄(뒤로 · 제목 · 오른쪽 버튼): 오른쪽 버튼이 길어도 화면 밖으로 안 나가게 — 양옆 칸이 똑같이 늘어나 제목은 가운데 그대로 */
+.page-head { grid-template-columns: minmax(40px, 1fr) minmax(0, auto) minmax(40px, 1fr); }
+.page-head h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page-head .ph-right { min-width: 0; }
+
+/* 친구 화면: 칸이 내용 길이만큼 늘어나 화면 밖으로 나가지 않게 (휴대폰에서 가로로 밀리던 문제) */
+.friends > * { min-width: 0; }
+@media (max-width: 999px) { .friends { grid-template-columns: minmax(0, 1fr); } }
+.fr-list { grid-template-columns: minmax(0, 1fr); }
+
+/* 마이프로필(휴대폰): 이름 줄과 랭크 칸이 한 줄에 끼어 글자가 깨지지 않게 — 랭크 칸은 아래로 내려 가로로 넓게 */
+@media (max-width: 480px) {
+  .me-card { flex-wrap: wrap; }
+  .me-card .me-info { flex: 1 1 0; }
+  .me-card .me-rank { margin-left: 0; flex: 1 1 100%; grid-auto-flow: column; justify-content: space-between; align-items: center; text-align: left; }
+  .me-card .me-rank small { text-align: right; }
+}
+.me-info .title-tag, .me-info [class*="badge"] { white-space: nowrap; }
