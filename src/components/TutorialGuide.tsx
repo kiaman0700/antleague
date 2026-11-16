@@ -176,15 +176,24 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
   if (!s) return null;
   const pad = 6;
   // 말풍선: 비춘 곳 아래(공간 없으면 위), 없으면 가운데
-  const below = rect ? rect.bottom + 200 < window.innerHeight : true;
+  // 위아래 모두 자리가 없으면(비춘 곳이 화면을 거의 다 차지) 화면 아래쪽에 고정 — 말풍선이 화면 밖으로 나가 글이 잘리지 않게
+  const NEED = 200;
+  const H = window.innerHeight;
+  const below = rect ? H - rect.bottom >= NEED : true;
+  const above = rect ? rect.top >= NEED : false;
+  const leftPc = rect ? Math.min(Math.max(12, rect.left), window.innerWidth - 392) : 12;
   const bubbleStyle: React.CSSProperties = rect
     ? ctx.mobile
       ? below
-        ? { top: Math.min(rect.bottom + 12, window.innerHeight - 220), left: 12, right: 12 }
-        : { bottom: Math.max(window.innerHeight - rect.top + 12, 12), left: 12, right: 12 }
+        ? { top: rect.bottom + 12, left: 12, right: 12 }
+        : above
+          ? { bottom: H - rect.top + 12, left: 12, right: 12 }
+          : { bottom: 'calc(84px + env(safe-area-inset-bottom))', left: 12, right: 12 }
       : below
-        ? { top: rect.bottom + 12, left: Math.min(Math.max(12, rect.left), window.innerWidth - 392) }
-        : { bottom: Math.min(window.innerHeight - rect.top + 12, window.innerHeight - 220), left: Math.min(Math.max(12, rect.left), window.innerWidth - 392) }
+        ? { top: rect.bottom + 12, left: leftPc }
+        : above
+          ? { bottom: H - rect.top + 12, left: leftPc }
+          : { bottom: 24, left: leftPc }
     : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
 
   return (
