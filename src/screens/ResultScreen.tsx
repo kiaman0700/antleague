@@ -315,6 +315,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         </div>
       </div>
 
+      {highlights.length > 0 && (
       <div className="panel pad">
         <h3><Icon name="sparkles" /> 하이라이트</h3>
         <div className="hl-grid" style={{ ['--cols' as string]: balancedCols(highlights.length) }}>
@@ -328,6 +329,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           ))}
         </div>
       </div>
+      )}
 
       <div className="panel pad">
         <h3><Icon name="play" /> 하루별 리플레이</h3>
