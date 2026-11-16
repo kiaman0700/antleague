@@ -1557,29 +1557,33 @@ body:has(.result) {
 .chart-full svg.chart { max-height: calc(100vh - 190px); max-height: calc(100dvh - 190px); }
 
 /* ===== 설정·더보기 ===== */
-.more-h { margin: 0 0 6px; font-size: 14px; color: var(--muted, #9aa0b4); font-weight: 700; }
+.more-menus { display: grid; gap: 14px; }
+.more-page .more-links .more-h { margin: 6px 8px 4px; font-size: 15px; color: var(--text, #f1f3f7); font-weight: 800; }
 .more-row .mr-t { flex: 1; min-width: 0; display: grid; text-align: left; line-height: 1.3; }
 .more-row .mr-t small { font-size: 11.5px; color: var(--muted, #9aa0b4); font-weight: 500; }
 .more-sound .ms-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .more-sound .ms-row > span { display: grid; gap: 2px; }
-.switch { position: relative; width: 46px; height: 26px; border-radius: 99px; border: 0; background: rgba(255,255,255,.14); flex: 0 0 auto; cursor: pointer; transition: background .15s; }
-.switch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.switch.on { background: #8b7bff; }
-.switch.on i { transform: translateX(20px); }
+/* 켜기·끄기 스위치 (예전 체크박스용 .switch 와 이름이 겹치지 않게 .tgl) */
+.tgl { position: relative; width: 46px; height: 26px; padding: 0; border-radius: 99px; border: 0; background: rgba(255,255,255,.14); flex: 0 0 auto; cursor: pointer; transition: background .18s; }
+.tgl::after { content: ''; position: absolute; inset: -9px -4px; } /* 누르기 쉬운 크기 */
+.tgl i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .18s; }
+.tgl.on { background: #8b7bff; }
+.tgl.on i { transform: translateX(20px); }
+.tgl:focus-visible { outline: 2px solid #b9b0ff; outline-offset: 2px; }
 /* PC: 왼쪽 = 내 계정·화면·소리, 오른쪽 = 메뉴 타일 (게임 클라이언트 설정 화면처럼) */
 @media (min-width: 861px) {
   .more-page { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; max-width: 1100px; }
   .more-page > .panel { margin: 0; }
-  .more-page > .more-links { grid-column: 2; grid-row: 1 / span 4; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; }
-  .more-page > .more-links .more-h { grid-column: 1 / -1; }
-  .more-page > .more-links .more-row { min-height: 72px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: rgba(255,255,255,.025); padding: 12px 14px; gap: 12px; }
-  .more-page > .more-links .more-row:hover { border-color: rgba(139,123,255,.5); background: rgba(139,123,255,.08); }
-  .more-page > .more-links .more-row > .ico:first-child { width: 22px; height: 22px; color: #b9b0ff; }
-  .more-page > .more-links .more-row .mr-t b { font-size: 15px; }
+  .more-page > .more-menus { grid-column: 2; grid-row: 1 / span 4; align-content: start; }
+  .more-menus > .more-links.more-browse { display: none; } /* 위 메뉴에 이미 있음 */
+  .more-menus > .more-links { margin: 0; padding: 18px 20px 20px !important; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .more-page .more-menus .more-links .more-h { grid-column: 1 / -1; margin: 0 0 2px; font-size: 17px; }
+  .more-menus .more-row { min-height: 68px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: rgba(255,255,255,.025); padding: 12px 14px; gap: 12px; }
+  .more-menus .more-row:hover { border-color: rgba(139,123,255,.5); background: rgba(139,123,255,.08); }
+  .more-menus .more-row > .ico:first-child { width: 22px; height: 22px; color: #b9b0ff; }
+  .more-menus .more-row .mr-t b { font-size: 15px; }
 }
-@media (min-width: 1400px) {
-  .more-page > .more-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
+
 
 /* ===== PC: 사기·팔기 바(차트 칸 아래 고정) + 가운데 주문 창 ===== */
 .desk .trade-jump { position: sticky; bottom: 0; display: flex; margin-top: auto; padding: 10px 14px; background: var(--surface); border-top: 1px solid var(--line); }
@@ -1697,8 +1701,6 @@ body:has(.result) {
 /* 누르기 쉬운 크기: 아래 링크·글자 링크·스위치·체크박스 */
 .cl-foot .linkish-soft { padding: 10px 6px; }
 .ranked-guest .linkish-soft { padding: 10px 8px; }
-.switch { position: relative; }
-.switch::after { content: ''; position: absolute; inset: -9px -4px; }
 input[type='checkbox'] { width: 20px; height: 20px; }
 label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 

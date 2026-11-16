@@ -948,3 +948,23 @@ button.hr-row:hover {
 .hub-nudge > div { flex: 1; min-width: 0; }
 .hub-nudge p { margin: 2px 0 0; }
 @media (max-width: 600px) { .hub-nudge { flex-wrap: wrap; } .hub-nudge > div { flex-basis: calc(100% - 40px); } }
+
+/* PC(위 메뉴가 있는 틀): 둘러보는 화면은 넓게 써서 한쪽에 몰려 보이지 않게. 입력 화면(로그인·가입·방 만들기)은 좁게 가운데 */
+@media (min-width: 861px) {
+  .lobby-shell .lobby.page.companies,
+  .lobby-shell .lobby.page.records,
+  .lobby-shell .lobby.page.profile-page,
+  .lobby-shell .lobby.page.admin {
+    width: 100%;
+    max-width: 1080px;
+  }
+  .lobby-shell .lobby.page.ranking,
+  .lobby-shell .lobby.page.rooms {
+    width: 100%;
+    max-width: 880px;
+  }
+  .lobby-shell .lobby.page {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}

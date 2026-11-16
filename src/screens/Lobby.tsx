@@ -688,37 +688,46 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </div>
           </section>
           <SoundSetting />
-          <section className="panel pad more-links">
-            <h3 className="more-h">메뉴</h3>
-            {online && (
-              <button className="more-row" onClick={() => go('ranking')}>
-                <Icon name="crown" /> <span className="mr-t"><b>랭킹</b><small>회원 순위와 티어</small></span> <Icon name="right" size={14} />
+          <div className="more-menus">
+            {/* 둘러보기: 휴대폰은 아래 탭에 없는 화면들. PC 는 위 메뉴에 이미 있어서 숨김 */}
+            <section className="panel pad more-links more-browse">
+              <h3 className="more-h">둘러보기</h3>
+              {online && (
+                <button className="more-row" onClick={() => go('ranking')}>
+                  <Icon name="crown" /> <span className="mr-t"><b>랭킹</b><small>회원 순위와 티어</small></span> <Icon name="right" size={14} />
+                </button>
+              )}
+              {online && (
+                <button className="more-row" onClick={() => go('records')}>
+                  <Icon name="medal" /> <span className="mr-t"><b>업적</b><small>모은 업적·칭호·프로필 사진</small></span> <Icon name="right" size={14} />
+                </button>
+              )}
+              <button className="more-row" onClick={() => go('practice')}>
+                <Icon name="target" /> <span className="mr-t"><b>연습</b><small>혼자서 마음껏 연습</small></span> <Icon name="right" size={14} />
               </button>
-            )}
-            {online && (
-              <button className="more-row" onClick={() => go('records')}>
-                <Icon name="medal" /> <span className="mr-t"><b>업적</b><small>모은 업적·칭호·프로필 사진</small></span> <Icon name="right" size={14} />
+              <button className="more-row" onClick={() => go('companies')}>
+                <Icon name="book" /> <span className="mr-t"><b>공부</b><small>투자 기초 · 기업 살펴보기</small></span> <Icon name="right" size={14} />
               </button>
-            )}
-            <button className="more-row" onClick={() => go('practice')}>
-              <Icon name="target" /> <span className="mr-t"><b>연습</b><small>혼자 연습 · 튜토리얼</small></span> <Icon name="right" size={14} />
-            </button>
-            <button className="more-row" onClick={() => go('companies')}>
-              <Icon name="book" /> <span className="mr-t"><b>공부</b><small>투자 기초 · 기업 살펴보기</small></span> <Icon name="right" size={14} />
-            </button>
-            <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
-              <Icon name="play" /> <span className="mr-t"><b>튜토리얼</b><small>연습봇과 한 판 따라 하기</small></span> <Icon name="right" size={14} />
-            </button>
-            <button className="more-row" onClick={() => openModal('howto')}>
-              <Icon name="help" /> <span className="mr-t"><b>게임 방법</b><small>규칙을 한눈에</small></span> <Icon name="right" size={14} />
-            </button>
-            <button className="more-row" onClick={() => openModal('feedback')}>
-              <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
-            </button>
-            <button className="more-row" onClick={() => openModal('privacy')}>
-              <Icon name="lock" /> <span className="mr-t"><b>개인정보 처리 안내</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
-            </button>
-          </section>
+            </section>
+            <section className="panel pad more-links">
+              <h3 className="more-h">처음이라면</h3>
+              <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+                <Icon name="play" /> <span className="mr-t"><b>튜토리얼</b><small>연습봇과 한 판 따라 하기</small></span> <Icon name="right" size={14} />
+              </button>
+              <button className="more-row" onClick={() => openModal('howto')}>
+                <Icon name="help" /> <span className="mr-t"><b>게임 방법</b><small>규칙을 한눈에</small></span> <Icon name="right" size={14} />
+              </button>
+            </section>
+            <section className="panel pad more-links">
+              <h3 className="more-h">문의·안내</h3>
+              <button className="more-row" onClick={() => openModal('feedback')}>
+                <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
+              </button>
+              <button className="more-row" onClick={() => openModal('privacy')}>
+                <Icon name="lock" /> <span className="mr-t"><b>개인정보 처리 안내</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
+              </button>
+            </section>
+          </div>
         </div>
       )}
 
@@ -790,7 +799,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   };
 
   return (
-    <div className="lobby page">
+    <div className="lobby page rooms">
       <PageHead
         title="방 찾기"
         onBack={() => go('custom')}
@@ -1103,7 +1112,7 @@ function Records({ go }: Pick<Props, 'go'>) {
   const myTitle = titleOf(Object.keys(myBadges));
 
   return (
-    <div className="lobby page">
+    <div className="lobby page records">
       <PageHead title="업적" onBack={() => go('home')} />
       {history === null && <p className="muted small center">불러오는 중…</p>}
       {history !== null && list.length === 0 && (
@@ -1510,7 +1519,7 @@ function SoundSetting() {
           <b>효과음</b>
           <small className="muted">마감·체결·매칭 소리</small>
         </span>
-        <button className={'switch' + (m ? '' : ' on')} role="switch" aria-checked={!m} onClick={() => (setMuted(!m), setM(!m))}>
+        <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} onClick={() => (setMuted(!m), setM(!m))}>
           <i />
         </button>
       </div>
