@@ -2102,3 +2102,101 @@ button.tag:hover,
 .fb-kind {
   flex-wrap: wrap;
 }
+
+/* ============ 운영자 ============ */
+.admin-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  margin-bottom: 8px;
+  text-align: left;
+}
+.admin-banner.has {
+  border-color: var(--gold);
+  background: rgba(247, 197, 72, 0.1);
+}
+.admin-banner.has b {
+  color: var(--gold);
+}
+.admin-banner span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.admin-banner:hover {
+  border-color: var(--gold);
+}
+.admin-login .field {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+}
+.admin-login input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+.admin-filter {
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.inbox {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  display: grid;
+  gap: 10px;
+}
+.inbox-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.inbox-item.unread {
+  border-color: var(--gold);
+}
+.ib-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ib-head .btn {
+  margin-left: auto;
+}
+.ib-kind {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.ib-kind.k-bug {
+  color: #ff9aa5;
+}
+.ib-kind.k-idea {
+  color: var(--gold);
+}
+.ib-kind.k-privacy {
+  color: #93c5fd;
+}
+.ib-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0 4px;
+  line-height: 1.5;
+}
+.ib-page {
+  display: block;
+  font-size: 11px;
+}

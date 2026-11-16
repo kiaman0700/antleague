@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { Companies } from './Companies';
+import { Admin, AdminBanner } from './Admin';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
@@ -40,7 +41,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial';
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin';
 
 interface Props {
   page: LobbyPage;
@@ -445,6 +446,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
 
       {(resume || soloSave) && (
         <div className="resume-list">
+          {online && <AdminBanner onOpen={() => go('admin')} />}
           {resume && (
             <div className="resume-card">
               <span className="rc-text">
@@ -997,5 +999,6 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   if (page === 'create') return <Create go={go} onWaiting={onWaiting} />;
   if (page === 'records') return <Records go={go} />;
   if (page === 'companies') return <Companies onBack={() => go('home')} />;
+  if (page === 'admin') return <Admin onBack={() => go('home')} />;
   return <Home go={go} onWaiting={onWaiting} onGame={onGame} />;
 }

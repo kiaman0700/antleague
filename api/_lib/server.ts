@@ -783,9 +783,60 @@ async function createGuest(ip: string) {
   return { email, password };
 }
 
+/* ---------------- 운영자 ---------------- */
+/** 운영자 이메일 목록 (서버 환경변수 ADMIN_EMAILS, 쉼표로 구분) — 화면에는 절대 보내지 않음 */
+const adminEmails = () =>
+  (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+const isAdminUser = (u: { email?: string | null; email_confirmed_at?: string | null }) => !!u.email && !!u.email_confirmed_at && adminEmails().includes(u.email.toLowerCase());
+
+/**
+ * 운영자 계정 만들기: 운영자 이메일 + 서버만 아는 1회용 설정 코드(ADMIN_SETUP_CODE)가 있어야 함.
+ * (처리방침에 이메일이 공개돼 있어도 코드 없이는 남이 먼저 만들 수 없음)
+ */
+async function adminSignup(b: Body, ip: string) {
+  rateLimit('adminSignup:' + ip, 5, 600_000);
+  const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+  const password = typeof b.password === 'string' ? b.password : '';
+  const code = typeof b.code === 'string' ? b.code.trim() : '';
+  const want = process.env.ADMIN_SETUP_CODE ?? '';
+  const codeOk = want.length >= 16 && code.length === want.length && timingSafeEqual(Buffer.from(code), Buffer.from(want));
+  if (!codeOk || !adminEmails().includes(email)) throw new GameError('운영자 이메일이나 설정 코드가 맞지 않아요.', 403);
+  if (password.length < 10 || password.length > 72) throw new GameError('비밀번호는 10~72자로 정해 주세요.');
+  const res = await db().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { admin: true } });
+  if (res.error) {
+    if (/already|registered|exists/i.test(res.error.message)) throw new GameError('이미 만든 계정이에요. 로그인해 주세요.', 409);
+    throw new GameError('계정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+  }
+  return { ok: true };
+}
+
+async function adminAct(action: string, b: Body) {
+  const sb = db();
+  if (action === 'adminInbox') {
+    const kind = typeof b.kind === 'string' && ['bug', 'idea', 'privacy', 'etc'].includes(b.kind) ? b.kind : null;
+    let q = sb.from('feedback').select('id, kind, body, page, created_at, read_at').order('created_at', { ascending: false }).limit(200);
+    if (kind) q = q.eq('kind', kind);
+    if (b.unread === true) q = q.is('read_at', null);
+    const rows = must(await q, 'inbox');
+    const unread = await sb.from('feedback').select('id', { count: 'exact', head: true }).is('read_at', null);
+    return { rows, unread: unread.count ?? 0 };
+  }
+  if (action === 'adminMarkRead') {
+    const ids = Array.isArray(b.ids) ? (b.ids as unknown[]).filter((x): x is number => Number.isInteger(x)).slice(0, 200) : [];
+    const read = b.read !== false;
+    if (ids.length) must(await sb.from('feedback').update({ read_at: read ? new Date().toISOString() : null }).in('id', ids), 'mark');
+    return { ok: true };
+  }
+  throw new GameError('알 수 없는 요청이에요.');
+}
+
 export async function handle(body: unknown, token: string | null, ip = 'unknown'): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
+    if (body && typeof body === 'object' && (body as Body).action === 'adminSignup') return { status: 200, body: await adminSignup(body as Body, ip) };
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
     const { data, error } = await db().auth.getUser(token);
     if (error || !data.user) return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
@@ -796,6 +847,12 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     // 화면 갱신과 행동(거래·마감 등)은 따로 셈 → 붐비는 방에서도 갱신 때문에 거래가 막히지 않게
     if (action === 'state') rateLimit(uid + ':state', 60, 20_000);
     else rateLimit(uid + ':act', 40, 20_000);
+    // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
+    if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
+    if (action.startsWith('admin')) {
+      if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };
+      return { status: 200, body: await adminAct(action, b) };
+    }
     const result = await act(action, b, uid);
     return { status: 200, body: result };
   } catch (e) {
