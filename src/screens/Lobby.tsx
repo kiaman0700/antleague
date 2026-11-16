@@ -1133,6 +1133,7 @@ function FlashNote() {
 }
 
 function Records({ go }: Pick<Props, 'go'>) {
+  const acc = useAccount();
   const [history, setHistory] = useState<MatchResult[] | null>(null);
   const [histErr, setHistErr] = useState(false);
   const [histTry, setHistTry] = useState(0);
@@ -1153,14 +1154,18 @@ function Records({ go }: Pick<Props, 'go'>) {
       const meR = h.results.find((r) => r.nickname === h.me) ?? null;
       const draw = !h.winner_nickname;
       const won = !draw && h.winner_nickname === h.me;
-      if (won) wins++;
+      // 비긴 판에서 나보다 높은 사람이 없으면 공동 1위 (프로필의 1등과 같은 기준: 공동 1위 포함)
+      const tiedTop = draw && !!meR && !h.results.some((r) => r.ret > meR.ret);
+      if (won || tiedTop) wins++;
       if (draw) draws++;
       // 1위는 서버가 정한 승자(기권 규칙 포함) 기준, 나머지 순위는 수익률 순
-      const rank = won ? 1 : meR ? Math.max(2, h.results.filter((r) => r.ret > meR.ret).length + 1) : null;
+      const rank = won || tiedTop ? 1 : meR ? Math.max(2, h.results.filter((r) => r.ret > meR.ret).length + 1) : null;
       return { h, meR, draw, won, rank };
     });
     return { wins, draws, games: list.length, rows };
   }, [list]);
+  // 회원은 프로필과 같은 숫자(서버 기록)로 — 화면마다 1위 수·승률이 달라 보이지 않게. 손님은 이 기기 기록으로
+  const sum = acc.status === 'member' && acc.profile ? { games: acc.profile.games, wins: acc.profile.wins } : { games: record.games, wins: record.wins };
   const myBadges = useMemo(() => {
     const count: Record<string, number> = {};
     for (const h of list) for (const r of h.results) if (r.nickname === h.me) for (const b of r.badges ?? []) count[b] = (count[b] ?? 0) + 1;
@@ -1182,15 +1187,15 @@ function Records({ go }: Pick<Props, 'go'>) {
         <section className="panel pad">
           <h3>최근 전적</h3>
           <div className="rec-sum">
-            <div><b>{record.games}</b><small>판</small></div>
-            <div><b className="rec-gold">{record.wins}</b><small>1위</small></div>
-            <div><b>{record.games - record.draws > 0 ? Math.round((record.wins / (record.games - record.draws)) * 100) : 0}%</b><small>승률{record.draws ? ` · 무승부 ${record.draws}` : ''}</small></div>
+            <div><b>{sum.games}</b><small>판</small></div>
+            <div><b className="rec-gold">{sum.wins}</b><small>1위</small></div>
+            <div><b>{sum.games > 0 ? Math.round((sum.wins / sum.games) * 100) : 0}%</b><small>승률{record.draws ? ` · 비김 ${record.draws}` : ''}</small></div>
           </div>
           <ul className="rec-list">
             {record.rows.slice(0, 10).map(({ h, meR, draw, won, rank }) => (
               <li key={h.id} className={won ? 'won' : ''}>
                 <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
-                <span className={'rec-rank' + (won ? ' r1' : draw ? ' draw' : '')}>{draw ? '무승부' : rank ? `${rank}위` : '-'}</span>
+                <span className={'rec-rank' + (won || (draw && rank === 1) ? ' r1' : draw ? ' draw' : '')}>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</span>
                 <span className="rec-who muted">{h.results.length}명 대결{!won && h.winner_nickname ? ` · 승자 ${h.winner_nickname}` : ''}</span>
                 <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>
               </li>
@@ -1198,7 +1203,8 @@ function Records({ go }: Pick<Props, 'go'>) {
           </ul>
         </section>
       )}
-      {history !== null && (
+      {/* 기록을 못 받았으면 업적도 숨김 (딴 업적이 모두 잠긴 것처럼 보이지 않게) */}
+      {history !== null && !histErr && (
         <section className="panel pad">
           <h3>
             <Icon name="medal" /> 업적 {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}

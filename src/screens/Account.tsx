@@ -450,7 +450,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <b>{p.games}판</b>
         </div>
         <div>
-          <small>1등</small>
+          <small>1위</small>
           <b>{p.wins}번</b>
         </div>
         <div>
