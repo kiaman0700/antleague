@@ -90,7 +90,7 @@ await C({ action: 'friendRemove', id: cOut.find((x) => x.nickname === nA).id });
 const r1 = await A({ action: 'friendRequest', nickname: nB.toLowerCase() });
 ok('A → B 신청 (대소문자 무시)', r1.s === 200 && r1.b.status === 'pending', JSON.stringify(r1.b));
 const r1b = await A({ action: 'friendRequest', nickname: nB });
-ok('같은 신청 두 번은 그대로 대기', r1b.s === 200 && r1b.b.status === 'pending');
+ok('같은 신청 두 번은 그대로 대기', r1b.s === 200 && r1b.b.status === 'pending', JSON.stringify([r1b.s, r1b.b]));
 
 const fb = (await B({ action: 'friends' })).b;
 ok('B 에게 받은 신청 1개', fb.incoming.length === 1 && fb.incoming[0].nickname === nA, JSON.stringify(fb.incoming));
@@ -221,7 +221,8 @@ ok('파티장이 나가면 파티 없어짐', (await B({ action: 'party' })).b.p
 await A({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
 await B({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
 let rm = [null, null];
-for (let i = 0; i < 10 && (!rm[0] || !rm[1]); i++) {
+// 시험 회원끼리 랭킹전을 여러 번 치르면 점수가 벌어짐 → 범위가 넓어질 때까지(10초마다 +50점) 최대 약 35초 기다림
+for (let i = 0; i < 40 && (!rm[0] || !rm[1]); i++) {
   const x = (await A({ action: 'queueStatus' })).b;
   const y = (await B({ action: 'queueStatus' })).b;
   if (x?.status === 'matched') rm[0] = x;

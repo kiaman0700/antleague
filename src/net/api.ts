@@ -13,7 +13,23 @@ export class ApiError extends Error {
 }
 
 /** 게임 서버(/api/game) 호출 — 로그인 토큰을 함께 보낸다 */
-export async function api<T = unknown>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
+export async function api<T = unknown>(action: string, payload: Record<string, unknown> = {}, retried = false): Promise<T> {
+  try {
+    return await apiOnce<T>(action, payload);
+  } catch (e) {
+    // 서버가 이 로그인을 모른다고 함(계정이 지워졌거나 서버를 옮김) → 이 기기의 로그인을 지우고
+    //   손님이면 새 손님으로 한 번만 다시 시도. 회원이면 다시 로그인하라고 안내
+    if (!retried && e instanceof ApiError && e.status === 401 && supabase) {
+      const anon = (await supabase.auth.getSession()).data.session?.user?.is_anonymous ?? true;
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      if (anon) return api<T>(action, payload, true);
+      throw new ApiError('로그인이 풀렸어요. 다시 로그인해 주세요.', 401);
+    }
+    throw e;
+  }
+}
+
+async function apiOnce<T>(action: string, payload: Record<string, unknown>): Promise<T> {
   const token = await accessToken();
   lastToken = token ?? null;
   let res: Response;
