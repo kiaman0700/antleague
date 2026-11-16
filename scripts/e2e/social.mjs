@@ -186,11 +186,19 @@ for (let i = 0; i < 40; i++) {
 }
 await G2({ action: 'queueLeave' });
 const cj = await C({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+await C({ action: 'queueStatus' }); // 실제 화면처럼 바로바로 확인 (10초 응답 없으면 대기표가 지워짐)
 const gj = await G2({ action: 'queueJoin', queue: 'casual_multi_quick', nickname: '혼자' + rnd.slice(0, 3), mode: 'easy' });
+await G2({ action: 'queueStatus' });
+await C({ action: 'queueStatus' });
 ok('혼자 두 명도 같은 대기열에', cj.s === 200 && gj.s === 200, JSON.stringify([cj.b, gj.b]));
 const pq = await A({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+await B({ action: 'queueStatus' });
+await C({ action: 'queueStatus' });
+await G2({ action: 'queueStatus' });
 ok('파티장이 일반전 다인전 찾기 → 파티원도 같이 대기', pq.s === 200 && pq.b.party === true, JSON.stringify(pq.b));
-ok('파티원 화면에도 찾는 중', (await B({ action: 'party' })).b.party?.searching === true);
+const bp = (await B({ action: 'party' })).b.party;
+const bs = (await B({ action: 'queueStatus' })).b;
+ok('파티원 화면에도 찾는 중 (또는 벌써 매칭됨)', bp?.searching === true || bs?.status === 'matched', JSON.stringify([bp?.searching, bs?.status]));
 const four = [A, B, C, G2];
 const got = new Array(4).fill(null);
 for (let i = 0; i < 20 && got.some((x) => !x); i++) {
