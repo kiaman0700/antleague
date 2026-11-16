@@ -1132,13 +1132,14 @@ function ForgetMe() {
 function Records({ go }: Pick<Props, 'go'>) {
   const [history, setHistory] = useState<MatchResult[] | null>(null);
   const [histErr, setHistErr] = useState(false);
+  const [histTry, setHistTry] = useState(0);
   useEffect(() => {
     if (!online) return setHistory([]);
     setHistErr(false);
     api<MatchResult[]>('history')
       .then(setHistory)
       .catch(() => (setHistory([]), setHistErr(true)));
-  }, []);
+  }, [histTry]);
 
   const list = history ?? [];
   const record = useMemo(() => {
@@ -1165,7 +1166,16 @@ function Records({ go }: Pick<Props, 'go'>) {
         <div className="empty-state">
           <i><Icon name="trophy" size={32} /></i>
           <b>{histErr ? '기록을 불러오지 못했어요' : '아직 끝낸 게임이 없어요'}</b>
-          <small>친구와 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
+          {histErr ? (
+            <>
+              <small>인터넷 연결을 확인하고 다시 시도해 주세요.</small>
+              <button className="btn sm" onClick={() => (setHistory(null), setHistTry((n) => n + 1))}>
+                <Icon name="refresh" size={14} /> 다시 시도
+              </button>
+            </>
+          ) : (
+            <small>대결을 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
+          )}
         </div>
       )}
       {list.length > 0 && (
@@ -1199,7 +1209,6 @@ function Records({ go }: Pick<Props, 'go'>) {
           </ul>
         </section>
       )}
-      <ForgetMe />
       {history !== null && (
         <section className="panel pad">
           <h3>
@@ -1216,6 +1225,8 @@ function Records({ go }: Pick<Props, 'go'>) {
           </div>
         </section>
       )}
+      {/* 되돌릴 수 없는 '모두 지우기'는 맨 아래 (실수로 누르기 쉬운 가운데 자리에서 옮김) */}
+      <ForgetMe />
     </div>
   );
 }
