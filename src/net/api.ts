@@ -83,6 +83,8 @@ export function useLiveView(roomId: string | null): LiveView {
   const again = useRef(false);
   /** 1초 가격 방에서 장이 열려 있는지 (빠르게 새로 받기) */
   const fastRef = useRef(false);
+  /** 끝난 판: 결과 화면에선 '다시 하기 방' 소식만 기다리므로 천천히 */
+  const doneRef = useRef(false);
   /** 지금까지 받은 오늘 장중 가격 — 다음엔 새로 생긴 칸만 받아 이어 붙임 */
   const liveRef = useRef<View['live']>(null);
   /** 서버가 '너무 많은 요청'(429)을 주면 잠깐 천천히 */
@@ -122,6 +124,7 @@ export function useLiveView(roomId: string | null): LiveView {
       }
       setView(v);
       fastRef.current = !!v.live && (v.live.tickMs ?? 5000) <= 1000;
+      doneRef.current = v.room.status === 'finished';
       setError(null);
     } catch (e) {
       // 요청이 많다고 하면 화면은 그대로 두고 10초 동안 천천히 받음 (오류 문구로 놀라게 하지 않음)
@@ -145,7 +148,7 @@ export function useLiveView(roomId: string | null): LiveView {
     const loop = () => {
       // 창이 뒤에 있으면 10초마다(자리 비움 판정 90초보다 짧게), 요청 제한에 걸렸으면 5초마다
       const hidden = document.visibilityState === 'hidden';
-      const ms = hidden ? 10_000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
+      const ms = hidden ? 10_000 : doneRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
       poll = window.setTimeout(() => {
         refresh();
         loop();
