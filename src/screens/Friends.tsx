@@ -3,7 +3,7 @@
  * 서버는 user id 를 보내지 않음 — 화면의 id 는 '친구 관계 줄'의 id
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { EmptyState, Loading } from '../components/ui';
+import { EmptyState, ErrorState, Loading } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { api } from '../net/api';
 import { refreshAccount, useAccount } from '../net/account';
@@ -38,17 +38,24 @@ let data: FriendsData | null = null;
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 let inflight: Promise<void> | null = null;
+/** 마지막으로 받기에 실패했는지 (처음부터 못 받으면 끝없이 '불러오는 중'이 아니라 안내 + 다시 시도) */
+let failed = false;
 /** fresh: 행동(수락·삭제 등) 직후 — 이미 가고 있던 요청은 행동 전 값이라, 끝난 뒤 한 번 더 받음 */
 export function refreshFriends(fresh = false): Promise<void> {
   if (inflight) return fresh ? inflight.then(() => refreshFriends()) : inflight;
   inflight = api<FriendsData>('friends')
     .then((d) => {
       data = d;
+      failed = false;
       emit();
     })
     // 로그인이 풀렸으면(403) 계정 상태를 다시 확인 → 게스트 화면으로 (헛된 요청 반복 방지)
     .catch((e) => {
       if ((e as { status?: number })?.status === 403) void refreshAccount();
+      else if (!failed) {
+        failed = true;
+        emit();
+      }
     })
     .finally(() => (inflight = null));
   return inflight;
@@ -56,6 +63,15 @@ export function refreshFriends(fresh = false): Promise<void> {
 export function clearFriends() {
   data = null;
   emit();
+}
+export function useFriendsFailed() {
+  return useSyncExternalStore(
+    (cb) => {
+      subs.add(cb);
+      return () => subs.delete(cb);
+    },
+    () => failed,
+  );
 }
 export function useFriends() {
   return useSyncExternalStore(
@@ -94,6 +110,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
   const acc = useAccount();
   const member = acc.status === 'member';
   const d = useFriends();
+  const loadFailed = useFriendsFailed();
   const [nick, setNick] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -215,7 +232,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
         <h3 className="fr-h">
           친구 <span className="fr-count">{d ? `${d.friends.length}/${d.max}` : ''}</span>
         </h3>
-        {!d && <Loading inline />}
+        {!d && (loadFailed ? <ErrorState compact what="친구 목록" onRetry={() => void refreshFriends()} /> : <Loading inline />)}
         {d && d.friends.length === 0 && <EmptyState compact icon="users" title="아직 친구가 없어요" desc="위에서 친구 닉네임을 입력해 신청해 보세요." />}
         {d && d.friends.length > 0 && (
           <ul className="fr-list">

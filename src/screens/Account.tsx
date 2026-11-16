@@ -602,7 +602,7 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
   return (
     <div className="lobby page ranking">
       <PageHead title="랭킹" onBack={onBack} />
-      <p className="muted small">회원끼리 붙은 멀티 대결 결과로 점수가 바뀌어요 (시작 1000점). 이기면 오르고 지면 내려가요. 상대가 강할수록 더 많이 올라요.</p>
+      <p className="muted small">랭킹전(회원끼리, 1대1·다인전) 결과로 점수가 바뀌어요. 처음엔 1000점, 2판 배치 뒤 티어가 보여요. 이기면 오르고 지면 내려가요. 상대가 강할수록 더 많이 올라요.</p>
       {acc.status === 'guest' && (
         <section className="panel pad guest-cta">
           <span>게스트는 랭킹에 올라가지 않아요.</span>
