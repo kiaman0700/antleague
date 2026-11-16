@@ -317,11 +317,6 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
  * 끝난 대결의 결과를 회원 기록·랭킹에 반영 (한 판에 한 번 — match_players 기본키로 중복 막음).
  * results 는 1등부터, nickname 은 그 방 안에서 유일
  */
-/** 같은 두 사람이 하루(24시간)에 점수를 주고받는 판 수 상한 — 짜고 치기(점수 몰아주기) 방지 */
-export const PAIR_DAILY_LIMIT = 3;
-/** 같은 두 사람이 24시간 안에 이미 n판 점수를 주고받았으면 이번 판 점수 비중: 3판까지 그대로, 6판까지 절반, 그 뒤로 없음
- *  (사람이 적어 같은 상대와 자주 만나도 게임은 얼마든지 — 점수 몰아주기만 막음) */
-export const pairWeight = (n: number) => (n < PAIR_DAILY_LIMIT ? 1 : n < PAIR_DAILY_LIMIT * 2 ? 0.5 : 0);
 
 /**
  * 순위 → Elo 점수 변화. 기권한 사람은 랭킹전에서 꼴찌로 침 (지는 중에 나가서 점수를 지키지 못하게).
@@ -374,15 +369,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const eloRank = new Map<string, number>();
     const order = [...members].sort((x, y) => (quit.has(x.user_id) ? 1 : 0) - (quit.has(y.user_id) ? 1 : 0) || rankOf.get(x.user_id)! - rankOf.get(y.user_id)!);
     order.forEach((m, i) => eloRank.set(m.user_id, quit.has(m.user_id) ? members.length : i + 1));
-    // 같은 두 사람이 24시간 안에 점수를 주고받은 판 수 → 많을수록 이번 판 점수 비중을 줄임
-    const since = new Date(Date.now() - 86_400_000).toISOString();
-    const past = ((await sb.from('match_players').select('room_id, user_id').in('user_id', members.map((m) => m.user_id)).eq('rated', true).gte('created_at', since)).data ?? []) as { room_id: string; user_id: string }[];
-    const byRoom = new Map<string, string[]>();
-    for (const r of past) if (r.room_id !== roomId) byRoom.set(r.room_id, [...(byRoom.get(r.room_id) ?? []), r.user_id]);
-    const pairKey = (a: string, b: string) => (a < b ? a + b : b + a);
-    const pairCount = new Map<string, number>();
-    for (const us of byRoom.values()) for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) pairCount.set(pairKey(us[i], us[j]), (pairCount.get(pairKey(us[i], us[j])) ?? 0) + 1);
-    delta = eloDeltas(members, eloRank, (a, b) => pairWeight(pairCount.get(pairKey(a, b)) ?? 0));
+    // 같은 상대와 몇 번을 만나도 점수는 똑같이 (사람이 적어 같은 상대를 자주 만나는 경우 — 사용자 결정)
+    delta = eloDeltas(members, eloRank);
     // 배치(랭킹전 2판) 중인 사람은 점수가 크게 움직여 빨리 제 실력 자리로 (상대 점수 차에 따라 오르내리는 건 Elo 가 이미 반영)
     for (const m of members) if (!isPlaced(m.ranked_games)) delta.set(m.user_id, Math.round((delta.get(m.user_id) ?? 0) * PLACEMENT_MULT));
   }

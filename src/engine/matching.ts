@@ -39,7 +39,7 @@ export interface Ticket {
 }
 
 /** 랭킹전은 처음 2분 동안 점수 차 400까지만. 사람이 적어 2분 넘게 못 만나면 범위 제한을 풀어 줌
- *  (점수 차가 크면 Elo 가 알아서 이긴 쪽 점수를 조금만 올려 줌 + 같은 상대 하루 3판 제한) */
+ *  (점수 차가 크면 Elo 가 알아서 이긴 쪽 점수를 조금만 올려 줌) */
 export const RANKED_MAX_WINDOW = 400;
 export const CASUAL_MAX_WINDOW = 1000;
 export const RANKED_RELAX_MS = 120_000;

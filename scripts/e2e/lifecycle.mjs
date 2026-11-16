@@ -113,10 +113,14 @@ async function room(players, opts = {}) {
   const r2 = (await A({ action: 'create', nickname: 'P0', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '둘째 방' })).b;
   const res = (await A({ action: 'resume' })).b;
   ok('새 방을 만들면 예전 대기실에서는 자동으로 나옴', res?.roomId === r2.roomId && (await A({ action: 'state', roomId: r1.roomId })).s !== 200, JSON.stringify(res));
+  const q = await A({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: 'P0', mode: 'easy' });
+  ok('대기실에 있으면 매칭 대기 불가 (대기는 한 곳만)', q.s === 409, q.b?.error);
   await B({ action: 'join', code: r2.code, nickname: 'P1', mode: 'easy' });
   await B({ action: 'ready', roomId: r2.roomId, ready: true });
   await A({ action: 'start', roomId: r2.roomId });
   const other = (await X2({ action: 'create', nickname: 'X', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '다른 방' })).b;
+  const busyQ = await A({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: 'P0', mode: 'easy' });
+  ok('대결 중에는 매칭 대기 불가 (게임은 하나만)', busyQ.s === 409, busyQ.b?.error);
   const busy = await A({ action: 'join', code: other.code, nickname: 'P0', mode: 'easy' });
   ok('대결 중에는 다른 방에 못 들어감', busy.s === 409, busy.b?.error);
   await A({ action: 'leave', roomId: r2.roomId });

@@ -469,7 +469,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <li>이기면 점수가 오르고 지면 내려가요. 나보다 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
                 <li>점수가 비슷한 사람끼리 만나요. 처음 2분은 ±400 안에서, 사람이 적으면 그 뒤로 더 넓혀 찾아요</li>
                 <li>중간에 기권하면 꼴찌로 계산돼요</li>
-                <li>같은 상대와 몇 번이든 만날 수 있어요. 점수는 하루 3판까지 그대로, 6판까지 절반만 바뀌어요</li>
+                <li>같은 상대와 몇 번이든 만날 수 있고, 점수도 매번 똑같이 계산돼요</li>
               </ul>
               <button className="btn sm ghost" onClick={() => go('ranking')}>
                 <Icon name="trophy" /> 전체 랭킹 보기
