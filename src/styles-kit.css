@@ -305,3 +305,6 @@
   .m-tradebar .btn { min-height: 40px; font-size: 15px; }
   .mt-price b { font-size: 15px; }
 }
+
+/* 오른쪽 소셜 패널: small 이 저절로 작아져 10px 아래로 내려가던 글자 → 11px */
+.cs-sub small, .cs-slot small, .cs-glabel small { font-size: 11px; }
