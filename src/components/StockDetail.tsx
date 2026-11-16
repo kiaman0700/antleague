@@ -635,7 +635,13 @@ export function TradePanel({
   const native = usd ?? price;
   const [side, setSide] = useState<"buy" | "sell">(initialSide);
   const [kind, setKind] = useState<"now" | "limit">(trade.limitOnly ? "limit" : "now");
-  const [qtyText, setQtyText] = useState("");
+  const [qtyText, setQtyRaw] = useState("");
+  // 금액 버튼(+1만원 등)으로 모은 돈. 직접 수량을 바꾸면 지움
+  const [budget, setBudget] = useState<number | null>(null);
+  const setQtyText = (v: string) => {
+    setBudget(null);
+    setQtyRaw(v);
+  };
   const [limitText, setLimitText] = useState("");
   const fee = trade.fee;
 
@@ -690,15 +696,12 @@ export function TradePanel({
     if (kind === "limit") setLimitPct(sd === "buy" ? -0.03 : 0.03);
   };
   // 1주가 버튼 금액보다 비싸도 최소 1주는 더해지게
-  const addMoney = (w: number) =>
-    setQtyText(
-      String(
-        Math.min(
-          maxQty,
-          Math.max(qty + 1, Math.floor((qty * unitKrw + w) / unitKrw)),
-        ),
-      ),
-    );
+  // 누른 금액을 모아서 그 돈으로 살 수 있는 만큼만 (한 번 누를 때마다 1주씩 늘던 문제 — 10만원을 눌러도 12만원짜리 1주가 담겼음)
+  const addMoney = (w: number) => {
+    const nb = (budget ?? qty * unitKrw) + w;
+    setBudget(nb);
+    setQtyRaw(String(Math.min(maxQty, Math.floor(nb / unitKrw))));
+  };
   const setFrac = (f: number) =>
     setQtyText(String(Math.max(0, Math.floor(maxQty * f))));
   const submit = () => {
@@ -912,6 +915,16 @@ export function TradePanel({
           {easy ? (side === "buy" ? "살 수 있는 만큼" : "전부") : "최대"}
         </button>
       </div>
+      {/* 자리는 늘 잡아 둠 (안내가 생길 때 창 높이가 바뀌어 버튼이 움직이지 않게) */}
+      {easy && side === "buy" && (
+        <p className="muted small quick-note">
+          {budget === null
+            ? " "
+            : qty === 0
+            ? `모은 돈 ${won(budget)} · 1주에 ${won(unitKrw)}이라 아직 1주도 못 사요`
+            : `모은 돈 ${won(budget)} → ${qty}주 (남는 돈은 쓰지 않아요)`}
+        </p>
+      )}
 
       <div className="sum">
         <div>

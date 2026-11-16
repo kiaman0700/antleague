@@ -11,3 +11,4 @@ scripts/e2e/.members.json
 scripts/e2e/.ui-friend.json
 scripts/e2e/.join-tmp.mjs
 scripts/e2e/.stay-tmp.mjs
+scripts/e2e/.timing-tmp.mjs

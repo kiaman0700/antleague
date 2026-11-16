@@ -40,6 +40,8 @@ interface Props {
   onExit: () => void;
   /** 한 판 더: 새 방 대기실로 */
   onWaiting?: (roomId: string, playerId: string, nickname: string, code: string) => void;
+  /** (연습) 같은 설정으로 한 판 더 */
+  onReplay?: (days: number, daySec: number) => void;
 }
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
@@ -120,7 +122,7 @@ function useMobileTab(mobile: boolean, start: Tab = 'news') {
   return [tab, setTab] as const;
 }
 
-export function GameController({ session, onExit, onWaiting }: Props) {
+export function GameController({ session, onExit, onWaiting, onReplay }: Props) {
   // 튜토리얼은 브라우저 엔진이지만 봇과 대결하는 화면으로 보여 줌
   const solo = session.mode === 'solo' && !session.tutorial;
   const me = session.playerId;
@@ -486,6 +488,15 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       if (d.type === 'info') {
         setTab('news');
         setDrawer(null);
+        // 결과 상자가 찌라시 아래에 숨지 않게 그 자리로 내려 보여 줌 (화면이 다시 그려진 뒤)
+        const cls = ({ paper: 'paper', analyst: 'analyst', scout: 'scout', spy: 'spy' } as Record<string, string>)[kind];
+        if (cls)
+          window.setTimeout(() => {
+            const el = document.querySelector(`.reveal.${cls}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            el?.classList.add('flash');
+            window.setTimeout(() => el?.classList.remove('flash'), 1600);
+          }, 250);
       }
     });
   };
@@ -653,6 +664,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         market={market}
         final={view.final}
         onExit={onExit}
+        onReplay={solo && !session.tutorial && !session.demo && onReplay ? () => onReplay(view.room.totalDays, view.room.turnSeconds) : undefined}
         nextCode={view.room.nextCode ?? null}
         matchKind={view.room.kind}
         ranked={!!view.room.ranked}
@@ -1364,7 +1376,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             <b>{day + 1}일차</b>
             <span>/ {total}</span>
           </div>
-          {timerText && <div className={'timer' + (remaining! <= 10 ? ' hurry' : '')}><Icon name="timer" size={14} /> {timerText}</div>}
         </div>
         <div className="hud-macro">{macroChips}</div>
         <div className="hud-right">{settings}</div>
@@ -1443,7 +1454,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
               ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}명` : ''}`
               : endedToday
                 ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}명${timerText ? ' · ' + timerText : ''}`
-                : `${day + 1}일차${timerText ? ' · ' + timerText + ' 남음' : ''}`}
+                : timerText
+                  ? `${timerText} 남음`
+                  : `${day + 1}일차`}
           </small>
         </button>
       </section>

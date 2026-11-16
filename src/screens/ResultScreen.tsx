@@ -27,12 +27,14 @@ interface Props {
   matchKind?: 'custom' | 'match';
   ranked?: boolean;
   onFindAgain?: () => void;
+  /** (연습) 같은 설정으로 한 판 더 */
+  onReplay?: () => void;
 }
 
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain }: Props) {
+export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay }: Props) {
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);
@@ -426,9 +428,16 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             {rematchErr && <p className="error">{rematchErr}</p>}
           </>
         ) : (
-          <button className="btn primary xl" onClick={onExit}>
-            로비로 (새 게임 시작)
-          </button>
+          <>
+            {onReplay && (
+              <button className="btn primary xl" onClick={onReplay}>
+                같은 설정으로 한 판 더
+              </button>
+            )}
+            <button className={'btn xl' + (onReplay ? ' ghost' : ' primary')} onClick={onExit}>
+              로비로
+            </button>
+          </>
         )}
       </div>
     </div>
