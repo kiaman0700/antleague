@@ -2749,3 +2749,45 @@ button.tag:hover,
   border-color: var(--gold);
   color: var(--gold);
 }
+.check input {
+  flex: 0 0 auto;
+}
+.check {
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+/* ============ 홈 묶음: 휴대폰은 위아래, 넓은 PC(1100px 이상)는 왼쪽(내 정보·대결 찾기) / 오른쪽(친구와·혼자·바로가기) ============ */
+.home-left,
+.home-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.home-right .home-sub {
+  margin: 4px 4px 0;
+}
+@media (min-width: 1100px) and (min-height: 600px) {
+  .lobby.home {
+    max-width: 1120px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 18px;
+    row-gap: 12px;
+    align-content: start;
+    justify-content: stretch;
+  }
+  .lobby.home > * {
+    grid-column: 1 / -1;
+  }
+  .lobby.home > .home-left {
+    grid-column: 1;
+  }
+  .lobby.home > .home-right {
+    grid-column: 2;
+  }
+  .home-right .home-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}

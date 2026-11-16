@@ -514,6 +514,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         </div>
       )}
 
+      <div className="home-left">
       <section className="panel pad profile">
         {account.status === 'member' && account.profile ? (
           <div className="field">
@@ -560,6 +561,9 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         />
       )}
 
+      </div>
+
+      <div className="home-right">
       <h3 className="home-sub">친구와 · 혼자</h3>
       <nav className="home-actions">
         <button className="tile" disabled={!online} onClick={need(() => go('rooms'))}>
@@ -602,6 +606,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
             <Icon name="trophy" /> 기록·업적
           </button>
         )}
+      </div>
       </div>
       <p className="home-foot">
         <button className="linkish-soft" onClick={() => setModal('feedback')}>
