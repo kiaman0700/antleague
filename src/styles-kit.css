@@ -338,3 +338,11 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 /* 마이프로필: 대표 칭호 꼬리표가 칸 끝까지 늘어나지 않게 (글자 폭만큼) */
 .me-info .title-tag { justify-self: start; width: max-content; max-width: 100%; }
+
+/* 글자 대비(읽기 쉬움) 맞추기 — 같은 색 계열에서 밝기만 조정
+   상승·하락 글자: 밝은 칸 위에서도 4.5:1 이상 / 흰 글자 작은 배지: 배경을 조금 진하게 */
+/* (색 토큰 자체는 그대로 — 버튼 배경으로도 써서 흰 글자 대비가 떨어짐. 글자로 쓰는 .up/.down 만 밝게) */
+.up { color: #ff5a6e; }
+.down { color: #5b9bff; }
+.breaking-badge, .news-cats .nc-unread { background: #d42f48; }
+.news-cats .chip.on { background: #6b58ee; border-color: #6b58ee; }
