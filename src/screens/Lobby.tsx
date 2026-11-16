@@ -1232,7 +1232,8 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
     return s && s.data.room.status !== 'finished' ? s : null;
   });
   const [busy, setBusy] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  // 초대 링크(?room=)로 왔으면 '코드로 입장' 창이 먼저 — 이 팝업은 작은 띠로만 (두 창이 겹치지 않게)
+  const [hidden, setHidden] = useState(() => new URLSearchParams(location.search).has('room'));
   const [err, setErr] = useState('');
   // 기권·방 나가기가 끝났다는 짧은 확인 (창이 그냥 닫히면 됐는지 알 수 없어서)
   const [done, setDone] = useState('');
