@@ -21,7 +21,7 @@ describe('튜토리얼 게임', () => {
     const t = soloAct(t0, 'endTurn', {});
     expect(t.data.room.day).toBe(1);
     const v = soloView(t);
-    expect(v.notices.some((n) => n.text.includes('방패') && n.text.includes(TUTORIAL_BOT.nickname))).toBe(true);
+    expect(v.notices.some((n) => n.text.includes('방패가') && n.text.includes('수수료 폭탄'))).toBe(true);
     expect(v.effectsToday).not.toContain('fee');
     expect(v.myItems.inventory.shield ?? 0).toBe(shields - 1);
   });

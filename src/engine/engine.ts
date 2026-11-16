@@ -456,8 +456,9 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     const key = `${e.from}-${e.kind}-${e.usedDay}-${i}`;
     const name = ITEM_MAP[e.kind].name;
     if (e.reflected) {
-      if (e.by === meId) base.notices.push({ key, text: `반사 거울이 ${nick(e.from)}의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
-      else if (e.from === meId) base.notices.push({ key, text: `${nick(e.by ?? '')}의 반사 거울에 튕겨서 내 ${josa(name, '이', '가')} 나에게 돌아왔어요!`, kind: 'warn' });
+      // 누가 썼는지·상대가 무슨 카드를 가졌는지는 알리지 않음
+      if (e.by === meId) base.notices.push({ key, text: `반사 거울이 누군가의 ${josa(name, '을', '를')} 되돌려 보냈어요!`, kind: 'ok' });
+      else if (e.from === meId) base.notices.push({ key, text: `${nick(e.by ?? '')}에게 쓴 ${josa(name, '이', '가')} 방어에 막혀 나에게 돌아왔어요!`, kind: 'warn' });
       return;
     }
     if (e.crowded) {
@@ -466,9 +467,9 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       return;
     }
     if (e.to === meId) {
-      if (e.blocked) base.notices.push({ key, text: `방패가 ${nick(e.from)}의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
-      else if (e.kind !== 'fake') base.notices.push({ key, text: `${josa(nick(e.from), '이', '가')} 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
-    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}의 방패에 ${josa(name, '이', '가')} 막혔어요`, kind: 'warn' });
+      if (e.blocked) base.notices.push({ key, text: `방패가 누군가의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
+      else if (e.kind !== 'fake') base.notices.push({ key, text: `누군가 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
+    } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}에게 쓴 ${josa(name, '은', '는')} 방어에 막혔어요`, kind: 'warn' });
   });
 
   const todayInfo = finished ? [] : mine.infoUses.filter((u) => u.day === r.day).map((u) => u.kind);
@@ -623,6 +624,10 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     const t = (input.payload as { target?: unknown } | undefined)?.target;
     const target = typeof t === 'string' ? others.find((p) => p.id === t) : others.length === 1 ? others[0] : undefined;
     if (!target) throw new GameError('카드를 쓸 상대를 골라 주세요.');
+    // 한 사람에게 방해는 하루 한 번: 이미 누군가(나 포함) 방해했으면 거절하고 카드는 그대로 둠.
+    // 막혔든(방패) 되돌아갔든(반사) 그날 그 사람은 방해받은 것으로 침 — 누가 썼는지는 말하지 않음
+    if (ITEM_MAP[kind].type === 'attack' && attackedToday(itemsOf(d), target.id, d.room.day))
+      throw new GameError(`오늘은 이미 누군가 ${josa(target.nickname, '에게', '에게')} 방해 카드를 썼어요. 내 카드는 쓰이지 않고 그대로 있어요`, 409);
     payload = { target: target.id };
   }
   if (kind === 'scout') {
@@ -637,6 +642,11 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     payload = { ...payload, symbol, tone: p.tone };
   }
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
+}
+
+/** 오늘 이 사람이 이미 방해를 받았는지 (적용·방패로 막힘·반사로 되돌림 모두, 반사로 되돌려 맞은 사람도 포함) */
+export function attackedToday(items: ReturnType<typeof deriveItems>, playerId: string, day: number): boolean {
+  return items.effects.some((e) => e.usedDay === day && (e.to === playerId || (e.reflected && e.by === playerId)));
 }
 
 export function validateEndTurn(d: GameData, meId: string, now: number) {
