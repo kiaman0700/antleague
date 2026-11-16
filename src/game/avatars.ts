@@ -38,11 +38,11 @@ export const AVATARS: AvatarDef[] = [
   { id: 'jackpot', name: '한 방', icon: 'sparkles', bg: '#6b2f8a', need: 'big_win' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));
-export const avatarOf = (id: string | null | undefined) => AVATAR_MAP[id ?? 'default'] ?? AVATAR_MAP.default;
+export const avatarOf = (id: string | null | undefined) => (id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default);
 /** 이 사람이 고를 수 있는 사진인지 (badges = 얻은 업적 id 목록) */
 export const canUseAvatar = (id: string, badges: Iterable<string>) => {
+  if (!Object.prototype.hasOwnProperty.call(AVATAR_MAP, id)) return false;
   const a = AVATAR_MAP[id];
-  if (!a) return false;
   if (!a.need) return true;
   return new Set(badges).has(a.need);
 };

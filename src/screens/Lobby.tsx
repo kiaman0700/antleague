@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
-import { cancelMatch, consumeMatched, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
+import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { TierBadge } from '../components/TierBadge';
-import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
+import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 import { Companies } from './Companies';
@@ -463,14 +463,17 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <p className="muted small">
                 {isPlaced(account.profile!.ranked_games)
                   ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승`
-                  : `배치 ${account.profile!.ranked_games ?? 0}/${PLACEMENT_GAMES}판 — 배치를 마치면 결과에 따라 티어가 정해져요. 배치 중에는 점수가 크게 움직여요`}
+                  : `배치 ${account.profile!.ranked_games ?? 0}/${PLACEMENT_GAMES}판 · 끝나면 티어가 정해져요`}
               </p>
-              <ul className="rk-rules muted small">
-                <li>이기면 점수가 오르고 지면 내려가요. 나보다 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
-                <li>점수가 비슷한 사람끼리 만나요. 처음 2분은 ±400 안에서, 사람이 적으면 그 뒤로 더 넓혀 찾아요</li>
-                <li>중간에 기권하면 꼴찌로 계산돼요</li>
-                <li>같은 상대와 몇 번이든 만날 수 있고, 점수도 매번 똑같이 계산돼요</li>
-              </ul>
+{isPlaced(account.profile!.ranked_games) && <TierProgress rating={account.profile!.rating} />}
+              <details className="rk-help">
+                <summary>점수는 어떻게 바뀌나요?</summary>
+                <ul className="rk-rules muted small">
+                  <li>이기면 오르고 지면 내려가요. 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
+                  <li>점수가 비슷한 사람끼리 만나요. 사람이 적으면 2분 뒤부터 더 넓게 찾아요</li>
+                  <li>중간에 기권하면 꼴찌로 계산돼요</li>
+                </ul>
+              </details>
               <button className="btn sm ghost" onClick={() => go('ranking')}>
                 <Icon name="trophy" /> 전체 랭킹 보기
               </button>
@@ -499,29 +502,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'casual' &&
         (online ? (
-          <div className="hub-grid">
-            <div className="hub-col">
-              {finder('casual')}
-              {member && <PartyPanel party={party} reload={reloadParty} />}
-            </div>
-            <section className="panel pad rank-card">
-              <h3>
-                <Icon name="info" size={18} /> 일반전은 이렇게
-              </h3>
-              <ul className="rk-rules muted small">
-                <li>
-                  <b>1대1</b>은 두 명, <b>다인전</b>은 3~4명이 같은 시장에서 겨뤄요
-                </li>
-                <li>
-                  <b>신속</b>은 10일 · 하루 1분 (약 10분), <b>일반</b>은 20일 · 하루 1분 30초 (약 20~30분)
-                </li>
-                <li>매칭되면 바로 시작해요. 랭킹 점수는 바뀌지 않아요</li>
-                <li>친구와 규칙을 정해서 하려면 '커스텀'에서 방을 만드세요</li>
-              </ul>
-              <button className="btn sm ghost" onClick={() => go('custom')}>
-                <Icon name="door" /> 커스텀 방으로
-              </button>
-            </section>
+          <div className={'hub-grid' + (member ? '' : ' one')}>
+            {finder('casual')}
+            {member && <PartyPanel party={party} reload={reloadParty} />}
           </div>
         ) : (
           <OfflineNote />
@@ -1286,10 +1269,6 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   useEffect(() => {
     if (active) rememberTab(active);
   }, [active]);
-  useEffect(() => {
-    if (party?.searching && !party.isLeader && resolved !== 'casual' && party.members.length > 1) go('casual');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [party?.searching]);
   const goTab = (t: NavTab) => go(t as LobbyPage);
   const back = () => go('home');
 
@@ -1349,13 +1328,11 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const inParty = !!party && party.members.length > 1;
   const match = useMatch();
   const matching = match.phase !== 'idle';
-  // 상대가 잡히면 (어느 메뉴에 있든) 바로 게임으로
+  // 파티원: 파티장이 찾기 시작하면 (파티 확인 때마다 다시 보고) 내 쪽도 '찾는 중' — 메뉴는 억지로 옮기지 않음
   useEffect(() => {
-    if (!match.matched) return;
-    const m = consumeMatched();
-    if (m) onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: loadUi() });
+    if (party && party.members.length > 1 && party.searching && !party.isLeader && match.phase === 'idle') followMatch(party.queue ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match.matched]);
+  }, [party]);
   const [, setClock] = useState(0);
   useEffect(() => {
     if (!matching) return;
@@ -1366,6 +1343,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const goMatchTab = () => go(match.queue?.startsWith('ranked') ? 'ranked' : 'casual');
   const play = () => {
     if (matching) return goMatchTab();
+    if (inParty && !party!.isLeader) return go('casual'); // 파티원은 파티장이 찾기를 시작 (일반전 화면에 안내가 있음)
     const pref = loadMatchPref();
     const t: LobbyPage = pref.kind === 'ranked' && member && !inParty ? 'ranked' : 'casual';
     try {
@@ -1456,6 +1434,20 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+/** 다음 단계까지 막대 (예: 골드 II 32/50) */
+function TierProgress({ rating }: { rating: number }) {
+  const t = tierOf(rating);
+  const pct = t.division ? Math.round((t.points / 50) * 100) : 100;
+  return (
+    <div className="rk-prog" aria-label={`${t.label} ${t.points}점`}>
+      <div className="rk-prog-bar">
+        <i style={{ width: pct + '%', background: t.color }} />
+      </div>
+      <small className="muted">{t.division ? `다음 단계까지 ${50 - t.points}점` : `마스터 +${t.points}점`}</small>
     </div>
   );
 }

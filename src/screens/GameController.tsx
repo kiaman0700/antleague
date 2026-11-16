@@ -5,7 +5,7 @@ import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, set
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, dDay, nextEvent, OrdersAndDividends, useIsMobile } from '../components/Extras';
-import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, NewsPanel, Tutorial } from '../components/Panels';
+import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
@@ -134,6 +134,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
 
   const [viewDay, setViewDay] = useState<number | null>(null);
   const [closing, setClosing] = useState<number | null>(null);
+  // 대결 첫날 처음 들어왔을 때만 잠깐 'VS' 화면 (다시 들어오면 안 보임)
+  const [intro, setIntro] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [ui, setUiState] = useState<UiMode>(session.ui);
   const prefs = usePrefs();
@@ -250,6 +252,18 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     .reduce((a, o) => a + buyCost(o.qty, STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fxNow) : o.limit_price, o.fee), 0);
 
   const players = view?.players ?? [];
+  useEffect(() => {
+    if (session.mode !== 'multi' || !room || room.status !== 'playing' || room.day !== 0 || players.length < 2) return;
+    const k = 'stockduel.vs.' + room.id;
+    try {
+      if (sessionStorage.getItem(k)) return;
+      sessionStorage.setItem(k, '1');
+    } catch {
+      return;
+    }
+    setIntro(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.id, room?.status, players.length]);
   const opponent = players.find((p) => p.id !== me) ?? null;
   const meRow = players.find((p) => p.id === me);
   const endedToday = !solo && (meRow?.endedDay ?? -1) >= day;
@@ -781,6 +795,15 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         xy={mobile ? layout.mToastXY : layout.toastXY}
         onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
       />
+      {intro && room && (
+        <MatchIntro
+          title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : '대결 시작'}
+          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds}초 · 장이 열렸어요`}
+          players={players.filter((p) => p.status !== 'left')}
+          meId={me}
+          onClose={() => setIntro(false)}
+        />
+      )}
       {closing !== null && (
         <DayCloseOverlay
           market={m}
@@ -791,6 +814,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           filledToday={myOrders.filter((o) => o.day === closing && o.status === 'filled').length}
           last={closing + 1 >= total}
           onNext={nextDay}
+          autoSec={session.mode === 'multi' && closing + 1 < total ? 6 : undefined}
         />
       )}
       {targetPick && (

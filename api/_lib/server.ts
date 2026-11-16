@@ -86,10 +86,11 @@ async function addToRoom(room: { id: string; code: string; status: string; max_p
   const players = must(await sb.from('players').select('id, user_id, nickname').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string }[];
   const already = players.find((p) => p.user_id === uid);
   if (already) return { roomId: room.id, playerId: already.id, code: room.code };
-  await ensureFree(uid, room.id);
   if (room.status !== 'waiting') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
   if (players.length >= room.max_players) throw new GameError(`방이 가득 찼어요 (최대 ${room.max_players}명).`, 409);
   if (players.some((p) => p.nickname === nickname)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
+  // 들어갈 수 있는 방인지 다 확인한 뒤에야: 다른 대기실에서 나오기 / 대결 중이면 막기
+  await ensureFree(uid, room.id);
   const ins = await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single();
   if (ins.error && /players_room_nick_uq/i.test(ins.error.message)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
   const p = must(ins, 'join') as { id: string };
@@ -408,7 +409,6 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const title = cleanTitle(b.title, `${nickname}의 방`);
       const isPrivate = b.isPrivate === true;
       const passwordHash = isPrivate ? hashPassword(cleanPassword(b.password)) : null;
-      await ensureFree(uid); // 한 사람은 한 방에만 (다른 대기실은 자동으로 나옴)
       // 방 만들기 남용 방지: 1시간에 10개까지
       const since = new Date(Date.now() - 3600_000).toISOString();
       rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
@@ -1195,10 +1195,8 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         await sb.from('invites').update({ status: 'declined' }).eq('id', id).eq('status', 'pending');
         return { ok: true };
       }
-      if (inv.kind !== 'party') {
-        await sb.from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
-        await sb.from('match_tickets').delete().eq('user_id', uid).not('room_id', 'is', null);
-      }
+      // 아직 아무도 안 잡은 매칭 대기만 정리 (이미 잡혀 시작한 게임 결과는 건드리지 않음 — 그 판은 busySeat 가 막음)
+      if (inv.kind !== 'party') await sb.from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
       if (!(await areFriends(uid, inv.from_user))) {
         await sb.from('invites').update({ status: 'cancelled' }).eq('id', id);
         throw new GameError('초대를 찾을 수 없어요.', 404);
@@ -1237,8 +1235,9 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         const r = await addToRoom(room, uid, me.nickname, mode);
         return { kind: 'room', ...r, nickname: me.nickname };
       }
-      // 1대1: 둘 다 다른 게임이 없어야
+      // 1대1: 둘 다 다른 게임이 없어야 (게임이 없으면 지난 매칭 결과 표는 정리)
       if (await busySeat(uid)) throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 수락해 주세요.', 409);
+      await sb.from('match_tickets').delete().eq('user_id', uid).not('room_id', 'is', null);
       const fromT = (await sb.from('match_tickets').select('claim, room_id').eq('user_id', inv.from_user).maybeSingle()).data as { claim: string | null; room_id: string | null } | null;
       if ((await busySeat(inv.from_user)) || (fromT && fromT.claim && !fromT.room_id)) {
         await sb.from('invites').update({ status: 'cancelled' }).eq('id', id);

@@ -2,9 +2,9 @@
  * 대결 찾기 (매칭): 랭킹전/일반전 × 1대1/다인전 × 신속/일반 → 실력이 비슷한 사람끼리 자동으로 방이 만들어지고 바로 시작
  * 대기는 로비 전체에서 하나(matchStore): 찾는 동안 다른 메뉴를 둘러봐도 되고, 위 '플레이' 버튼에 대기 시간이 흐름
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
-import { cancelMatch, clearMatchErr, followMatch, getMatch, mmss, queueText, startMatch, useMatch, type Matched } from '../net/matchStore';
+import { cancelMatch, clearMatchErr, getMatch, mmss, queueText, startMatch, useMatch, type Matched } from '../net/matchStore';
 import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { loadNick } from '../session';
@@ -141,20 +141,16 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     await begin(o);
   };
 
-  // 파티원: 파티장이 찾기 시작하면 내 쪽도 '찾는 중' (내 대기표는 서버가 이미 만들어 둠)
-  useEffect(() => {
-    if (inParty && party!.searching && !party!.isLeader && getMatch().phase === 'idle') followMatch(party!.queue ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inParty, party?.searching]);
-
-  // 위 메뉴 '플레이' (이미 이 화면이면 신호로 바로 시작)
+  // 위 메뉴 '플레이' (이미 이 화면이면 신호로 바로 시작) — 늘 지금 화면의 설정으로
+  const startRef = useRef(start);
+  startRef.current = start;
   useEffect(() => {
     const onPlay = () => {
       try {
         const again = localStorage.getItem(FIND_AGAIN);
         if (again && (!fixedKind || again === fixedKind)) {
           localStorage.removeItem(FIND_AGAIN);
-          if (getMatch().phase === 'idle') start();
+          if (getMatch().phase === 'idle') void startRef.current();
         }
       } catch {
         /* 무시 */
@@ -162,22 +158,21 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     };
     window.addEventListener('stockduel:play', onPlay);
     return () => window.removeEventListener('stockduel:play', onPlay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fixedKind, member, nickOk]);
+  }, [fixedKind]);
 
-  // 결과 화면 '다시 찾기'·플레이로 왔으면 바로 시작
+  // 결과 화면 '다시 찾기'·플레이로 왔으면 바로 시작 (회원인지 확인이 끝난 뒤에 — 회원에게 게스트 안내가 뜨지 않게)
   useEffect(() => {
+    if (loading) return;
     try {
       const again = localStorage.getItem(FIND_AGAIN);
       if (again && (!fixedKind || again === fixedKind || again === '1')) {
         localStorage.removeItem(FIND_AGAIN);
-        if (getMatch().phase === 'idle') start();
+        if (getMatch().phase === 'idle') void startRef.current();
       }
     } catch {
       /* 무시 */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loading, fixedKind]);
 
   const seg = <T extends string>(value: T, items: [T, string, string?][], on: (v: T) => void) => (
     <div className="seg mf-seg" role="radiogroup">
@@ -220,6 +215,26 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
       )}
       {inParty && kind === 'ranked' && <p className="muted small mf-note">랭킹전은 파티 없이 혼자 찾아요 (친구도 각자 찾으면 같은 판에서 만날 수 있어요). 파티에서 나오면 찾을 수 있어요.</p>}
 
+      {!searching && (
+        <div className="mf-spec" aria-label="이 대결의 규칙">
+          <div>
+            <b>{sizeEff === 'duel' ? '2' : '3~4'}</b>
+            <small>명</small>
+          </div>
+          <div>
+            <b>{SPEED_PRESET[pref.speed].days}</b>
+            <small>일</small>
+          </div>
+          <div>
+            <b>{SPEED_PRESET[pref.speed].turnSeconds}</b>
+            <small>초 / 하루</small>
+          </div>
+          <div>
+            <b>{SPEED_PRESET[pref.speed].minutes.replace('약 ', '')}</b>
+            <small>한 판</small>
+          </div>
+        </div>
+      )}
       {searching ? (
         <div className="mf-live" role="status" aria-live="polite">
           <div className="mf-live-top">
@@ -228,11 +243,9 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <span className="mf-clock">{mmss(waited)}</span>
           </div>
           <small className="muted">
-            {queueText(m.queue)} · 예상 대기 {waitLabel(info?.etaSec ?? null)}
-            {info ? ` · 나 포함 ${Math.max(1, info.inQueue)}명 대기` : ''}
-            {curQ?.kind === 'ranked' && info ? (waited >= 120 ? ' · 사람이 적어 범위를 넓혀 찾는 중' : ` · 점수 ±${info.window} 안에서`) : ''}
+            예상 대기 {waitLabel(info?.etaSec ?? null)}
+            {info ? ` · ${Math.max(1, info.inQueue)}명 대기 중` : ''}
           </small>
-          <small className="muted">기다리는 동안 다른 메뉴를 둘러봐도 돼요. 상대가 잡히면 바로 게임으로 들어가요.</small>
           <div className="mf-live-act">
             {alt && (
               <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>

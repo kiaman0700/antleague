@@ -1,5 +1,5 @@
 import { josa } from '../engine/engine';
-import { useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
 import { ITEM_MAP, ITEMS, canBuy, canUse, itemCost, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
@@ -391,6 +391,35 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
 
 /* ------------------------------ 하루 결산 ------------------------------ */
 
+/** 대결이 시작될 때 잠깐: 누구와 겨루는지 (게임 클라이언트의 로딩 화면처럼) */
+export function MatchIntro({ title, sub, players, meId, onClose }: { title: string; sub: string; players: { id: string; nickname: string; verified?: boolean }[]; meId: string; onClose: () => void }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const id = setTimeout(() => closeRef.current(), 3200);
+    return () => clearTimeout(id);
+  }, []);
+  const duel = players.length === 2;
+  return (
+    <div className="vs-intro" role="dialog" aria-label="대결 시작" onClick={onClose}>
+      <div className="vs-kind">{title}</div>
+      <div className={'vs-row' + (duel ? ' duel' : '')}>
+        {players.map((p, i) => (
+          <Fragment key={p.id}>
+            {duel && i === 1 && <span className="vs-x">VS</span>}
+            <div className={'vs-card' + (p.id === meId ? ' me' : '')} style={{ animationDelay: i * 90 + 'ms' }}>
+              <span className="vs-ini">{[...p.nickname][0] ?? '?'}</span>
+              <b>{p.nickname}</b>
+              <small>{p.id === meId ? '나' : p.verified ? '회원' : '게스트'}</small>
+            </div>
+          </Fragment>
+        ))}
+      </div>
+      <div className="vs-sub">{sub}</div>
+    </div>
+  );
+}
+
 interface DayCloseProps {
   market: Market;
   day: number;
@@ -400,9 +429,28 @@ interface DayCloseProps {
   filledToday?: number;
   last: boolean;
   onNext: () => void;
+  /** 대결: 이 초가 지나면 저절로 다음 날로 (장은 서버 시계대로 흐르므로 팝업이 막고 있으면 안 됨) */
+  autoSec?: number;
 }
 
-export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext }: DayCloseProps) {
+export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec }: DayCloseProps) {
+  const [left, setLeft] = useState(autoSec ?? 0);
+  const nextRef = useRef(onNext);
+  nextRef.current = onNext;
+  useEffect(() => {
+    if (!autoSec) return;
+    const end = Date.now() + autoSec * 1000;
+    setLeft(autoSec);
+    const id = setInterval(() => {
+      const l = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      setLeft(l);
+      if (l <= 0) {
+        clearInterval(id);
+        nextRef.current();
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [autoSec, day]);
   const movers = STOCKS.map((s) => {
     const prev = day === 0 ? market.base[s.symbol] : market.bars[s.symbol][day - 1].close;
     return { s, r: market.bars[s.symbol][day].close / prev - 1 };
@@ -458,6 +506,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
         <button className="btn primary xl" onClick={onNext} autoFocus>
           {last ? '최종 결과 보기' : `${day + 2}일차 시작 →`}
         </button>
+        {autoSec ? <div className="muted close-auto-note">다음 날 장이 이미 열렸어요 · {left}초 뒤 자동으로 넘어가요</div> : null}
       </div>
     </div>
   );

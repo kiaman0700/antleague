@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
 import { tierShort } from './TierBadge';
+import { okWhileMatching } from '../net/matchStore';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { refreshFriends, useFriends } from '../screens/Friends';
@@ -53,6 +54,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
 
   const invite = async (id: string) => {
     setErr('');
+    if (!okWhileMatching('파티 부르기는')) return;
     try {
       await api('partyInvite', { friendId: id });
       setSent((x) => ({ ...x, [id]: 'ok' }));

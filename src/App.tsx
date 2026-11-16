@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { consumeMatched, useMatch } from './net/matchStore';
 import { loadSolo } from './engine/local';
 import { api } from './net/api';
 import { supabase } from './lib/supabase';
@@ -32,6 +33,13 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
 
 export default function App() {
   const { route, navigate } = useRouter();
+  // 매칭이 잡히면 어느 화면(로비·튜토리얼·화면 편집·연습)에 있든 바로 그 게임으로
+  const match = useMatch();
+  useEffect(() => {
+    if (!match.matched) return;
+    const m = consumeMatched();
+    if (m) navigate({ kind: 'game', session: { mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: loadUi() } });
+  }, [match.matched, navigate]);
 
   useEffect(() => {
     if (route.kind !== 'resolve') return;

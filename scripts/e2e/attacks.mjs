@@ -39,9 +39,10 @@ async function room3() {
   ok('B 수수료 폭탄 준비', await buy(B, 'fee'));
   const a = await A({ action: 'useItem', roomId, kind: 'freeze', payload: { target: ids.C } });
   ok('A → C 방해', a.s === 200, a.b?.error ?? '');
+  const feeBefore = (await st(B)).myItems.inventory.fee ?? 0;
   const b = await B({ action: 'useItem', roomId, kind: 'fee', payload: { target: ids.C } });
   ok('B → C 두 번째 방해는 거절 (누가 썼는지는 안 알려 줌)', b.s === 409 && /이미 누군가/.test(b.b?.error ?? '') && !/A/.test(b.b?.error ?? ''), b.b?.error ?? '');
-  ok('B 의 카드는 그대로 남음', ((await st(B)).myItems.inventory.fee ?? 0) === 1);
+  ok('B 의 카드는 그대로 남음', ((await st(B)).myItems.inventory.fee ?? 0) === feeBefore && feeBefore > 0);
   const bOther = await B({ action: 'useItem', roomId, kind: 'fee', payload: { target: ids.A } });
   ok('B 는 다른 사람(A)에게는 쓸 수 있음', bOther.s === 200, bOther.b?.error ?? '');
   await nextDay();

@@ -6,6 +6,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../lib/supabase';
 import { saveNick } from '../session';
 import { api } from './api';
+import { resetMatch } from './matchStore';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 
@@ -95,6 +96,7 @@ export async function loginWith(username: string, password: string): Promise<Gue
   const u = username.trim().toLowerCase();
   // 무엇이 틀렸는지(아이디·비밀번호·형식) 구별해서 알려 주지 않음
   if (!/^[a-z0-9_]{4,16}$/.test(u) || password.length < 1 || password.length > 72) throw new Error('아이디 또는 비밀번호가 맞지 않아요.');
+  await resetMatch(); // 로그인하면 계정이 바뀌므로 지금 계정의 매칭 대기는 멈춤
   const before = (await supabase.auth.getSession()).data.session;
   const wasGuest = before && !before.user.email?.endsWith('@' + USER_DOMAIN) ? before.access_token : null;
   // 로그인 주소는 아이디와 상관없는 무작위 값이라 서버에 물어봄 (없는 아이디도 가짜 주소가 와서 구별 안 됨)
@@ -132,6 +134,7 @@ export async function resolveGuest(guestToken: string, mode: 'merge' | 'discard'
 
 /** 로그아웃 → 다음에 게임하면 새 게스트로 */
 export async function logout() {
+  await resetMatch(); // 다른 계정으로 바뀌기 전에 이 계정의 매칭 대기를 멈춤
   await supabase?.auth.signOut();
   set({ status: 'guest', profile: null, recent: [], badges: {} });
 }

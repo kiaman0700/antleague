@@ -89,6 +89,10 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 상대 재산은 화면 데이터에서 10만원 단위·오늘 거래 횟수 숨김(보유 역산 방지). 자리 비움 = 90초 응답 없음(AWAY_MS), 나감(기권) = left_game. 남은 사람 기준으로 마감·카운트다운
 
 ## 알아둘 것
+- 매칭 대기는 앱 전체 하나(`src/net/matchStore.ts`, useSyncExternalStore): 매칭 결과는 App 이 받아 어디서든 게임으로, 대기 중엔 `okWhileMatching` 으로 방·연습·1대1·파티 막음, 다른 탭이면 제목 깜빡임. 같은 상대 점수 감소 규칙(pairWeight)은 없앰
+- 하루 마감 결산 팝업: 대결은 6초 뒤 자동으로 다음 날(장은 서버 시계대로 흐름), 연습은 버튼을 눌러야 다음 날 장이 열림. 대결 첫날 처음 들어오면 3초 'VS' 화면(`MatchIntro`, sessionStorage 로 한 번만)
+- 로비 글은 줄이기(사용자: '너무 AI 같다'): 설명 글머리표 상자 대신 큰 숫자(`mf-spec`), 규칙은 접어 둠(`rk-help`)
+- 글꼴: 한글 자간 −0.01em, 굵기 700/800, 시간 숫자는 mono 대신 tabular-nums
 - 실시간 장: `src/game/intraday.ts` (5초 칸, 일별 가격과 다른 난수) · 엔진 `dayClock`(장 시작 = day_deadline − 제한 시간) · 화면 데이터 `View.live` 는 지금 칸까지만 · 화면은 `src/game/live.ts` 의 `withLive` 로 오늘 막대에 합침 · 장중 속보 `NewsEvent.at` 는 공개 칸 전엔 화면 데이터에 없음 · 예약 주문은 상태 요청 때마다 지금 칸까지 체결(`resolveOrders(d, day, 칸, final)`)
 - 화면 모드: 초보/일반/커스텀. 커스텀 설정은 `src/prefs.ts`(이 기기 localStorage, `effective()` 로 적용값). 화면 편집 = `/customize`(저장 안 되는 가상 게임 `makeDemo`) 또는 게임 중 조절 버튼 → `EditSlot` 으로 순서·보이기
 - 금액 표시는 `won()`(=`wonShort`) 하나로: 초보 만원(끝자리까지) · 일반 원, 커스텀에서 변경

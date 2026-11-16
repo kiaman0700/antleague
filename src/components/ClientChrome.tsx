@@ -288,6 +288,7 @@ export function SocialPanel({
                               disabled={!!busy}
                               title="파티에 부르기 (일반전 다인전 같이 찾기)"
                               onClick={() =>
+                                okWhileMatching('파티 부르기는') &&
                                 act('p' + f.id, async () => {
                                   await api('partyInvite', { friendId: f.id });
                                   await reloadParty();

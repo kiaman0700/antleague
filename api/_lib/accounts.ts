@@ -193,7 +193,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (b.avatar !== undefined) {
         // 프로필 사진: 프리셋만, 업적으로 여는 사진은 그 업적을 깼을 때만 (서버가 다시 확인)
         const id = typeof b.avatar === 'string' ? b.avatar : '';
-        if (!AVATAR_MAP[id]) throw new GameError('없는 사진이에요.');
+        if (!Object.prototype.hasOwnProperty.call(AVATAR_MAP, id)) throw new GameError('없는 사진이에요.');
         if (!canUseAvatar(id, Object.keys(await earnedBadges(sb, uid)))) throw new GameError('아직 열리지 않은 사진이에요. 업적을 깨면 열려요.', 403);
         patch.avatar = id;
       }

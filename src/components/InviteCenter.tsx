@@ -134,7 +134,10 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
     setBusy(true);
     try {
       // 매칭 대기 중이었으면 (방·1대1 을 받을 때) 그 대기는 먼저 취소
-      if (accept && inv.kind !== 'party' && getMatch().phase !== 'idle') await cancelMatch();
+      if (accept && inv.kind !== 'party' && getMatch().phase !== 'idle' && !(await cancelMatch())) {
+        setNote('매칭 상대가 이미 잡혀서 방을 만드는 중이에요. 그 게임이 끝난 뒤에 받아 주세요.');
+        return;
+      }
       const r = await api<{ kind: string; roomId: string; playerId: string; code: string; nickname: string }>('inviteRespond', { id: inv.id, accept, mode: loadUi() });
       setIncoming((xs) => xs.filter((x) => x.id !== inv.id));
       if (!accept) return;
