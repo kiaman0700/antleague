@@ -680,7 +680,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} />
               </div>
             ) : account.status === 'loading' ? (
-              <p className="muted small">내 계정을 확인하는 중…</p>
+              <Loading inline label="내 계정을 확인하는 중…" />
             ) : (
               <>
                 <label className={'field' + (profile.nick && !profile.ok ? ' invalid' : '')}>
