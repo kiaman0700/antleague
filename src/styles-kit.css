@@ -203,3 +203,6 @@
 /* 대기실 '친구 부르기': 가운데 놓인 초대 코드와 줄을 맞춰 두 버튼이 너비를 똑같이 나눠 씀 */
 .wr-invite .wr-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
 .wr-invite .wr-btns > .btn { justify-content: center; white-space: nowrap; }
+
+/* 방 만들기 아래 고정 줄: 요약 글이 뒤 내용과 겹쳐 보이지 않게 — 흐려지는 부분은 글 위쪽 여백에만 */
+.create-bar { padding-top: 22px; background: linear-gradient(to top, var(--bg) calc(100% - 22px), transparent); }
