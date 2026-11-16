@@ -188,7 +188,10 @@ export function SocialPanel({
         )}
       </div>
 
-      {!member ? (
+      {account.status === 'loading' ? (
+        // 계정을 불러오는 동안은 비워 둠 (회원인데 손님 안내가 잠깐 보였다 바뀌지 않게)
+        <div className="cs-guest" aria-busy="true" />
+      ) : !member ? (
         <div className="cs-guest">
           <Icon name="users" size={28} />
           <p>로그인하면 친구를 추가하고, 파티로 같이 찾고, 1대1을 신청할 수 있어요.</p>
