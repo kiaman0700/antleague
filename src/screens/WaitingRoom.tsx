@@ -242,22 +242,30 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
         </div>
 
         <aside className="wr-side">
-          <div className="panel pad wr-invite">
-            <h3>친구 부르기</h3>
-            <p className="muted small">초대 코드</p>
-            <div className="big-code">{room.code}</div>
-            <div className="wr-btns">
-              <button className="btn sm" onClick={copy}>
-                {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
-              </button>
-              {member && view.players.length < room.maxPlayers && (
-                <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
-                  <Icon name="userPlus" /> 친구 초대
-                </button>
-              )}
+          {view.players.length >= room.maxPlayers ? (
+            // 자리가 다 차면 초대 코드·버튼 대신 안내 (들어올 수 없는 코드를 보내지 않게)
+            <div className="panel pad wr-invite">
+              <h3>자리가 다 찼어요</h3>
+              <p className="muted small">{room.maxPlayers}명이 모두 모였어요. 누가 나가면 다시 초대할 수 있어요.</p>
             </div>
-            {room.isPrivate && <p className="muted small">비밀방 · 방 목록에서는 비밀번호가 필요해요</p>}
-          </div>
+          ) : (
+            <div className="panel pad wr-invite">
+              <h3>친구 부르기</h3>
+              <p className="muted small">초대 코드</p>
+              <div className="big-code">{room.code}</div>
+              <div className="wr-btns">
+                <button className="btn sm" onClick={copy}>
+                  {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
+                </button>
+                {member && view.players.length < room.maxPlayers && (
+                  <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
+                    <Icon name="userPlus" /> 친구 초대
+                  </button>
+                )}
+              </div>
+              {room.isPrivate && <p className="muted small">비밀방 · 방 목록에서는 비밀번호가 필요해요</p>}
+            </div>
+          )}
           <div className="panel pad">
             <div className="field">
               <span>내 화면 모드</span>

@@ -198,7 +198,11 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             </p>
           </>
         ) : (
-          <h1>무승부!</h1>
+          <>
+            <div className="crown"><Icon name="users" size={40} /></div>
+            <h1>무승부!</h1>
+            <p>{results.length > 2 ? '1위가 여러 명이에요 · 재산이 똑같아요' : '두 사람 재산이 똑같아요'} · 다음 판에서 승부를 가려 봐요</p>
+          </>
         )}
       </div>
 
