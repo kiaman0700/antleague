@@ -541,7 +541,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
-      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await verifiedPlayers(roomId));
+      // 화면이 이미 가진 장중 칸 수 (숫자만 받음)
+      const lf = typeof b.liveDay === 'number' && typeof b.liveFrom === 'number' ? { day: Math.floor(b.liveDay), from: Math.floor(b.liveFrom) } : undefined;
+      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await verifiedPlayers(roomId), lf);
     }
 
     case 'ready':
@@ -566,6 +568,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 다른 기기에서 이어하기: 방 코드 + 비밀값. 비밀값은 해시만 저장, 새로 받으면 예전 코드는 못 씀
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
       rateLimit(uid + ':rejoinCode', 5, 600_000);
+      // 회원 자리는 옮길 수 없음 (다른 기기에서 같은 아이디로 로그인하면 이어짐) — 랭킹전에서 지는 판을 다른 계정으로 넘겨 점수를 피하지 못하게
+      if ((await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data)
+        throw new GameError('회원은 다른 기기에서 같은 아이디로 로그인하면 바로 이어할 수 있어요.', 409);
       const room = must(await sb.from('rooms').select('code, status').eq('id', roomId).single(), 'room') as { code: string; status: string };
       if (room.status === 'finished') throw new GameError('끝난 게임이에요.', 409);
       let secret = '';
@@ -605,6 +610,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         await roomPwFail(room.id);
         throw fail();
       }
+      // 회원 자리는 옮기지 않음 (코드가 회원이 되기 전에 만들어졌어도)
+      if (hit.user_id && (await sb.from('profiles').select('user_id').eq('user_id', hit.user_id).maybeSingle()).data) throw fail();
       const mine = ps.find((p) => p.user_id === uid);
       if (mine && mine.id !== hit.id) throw new GameError('이 기기는 이미 이 방에 다른 자리로 들어와 있어요.', 409);
       await ensureFree(uid, room.id); // 다른 대결 중이면 옮겨 오지 못함 (한 사람은 한 방에만)

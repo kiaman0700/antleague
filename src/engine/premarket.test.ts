@@ -87,7 +87,7 @@ describe('v7 장 전 시간', () => {
       for (let day = 1; day < 10; day++) {
         const rs = preRumors(m, day, 'k');
         expect(rs.length).toBeGreaterThanOrEqual(3);
-        expect(rs.length).toBeLessThanOrEqual(5);
+        expect(rs.length).toBeLessThanOrEqual(6);
         for (const r of rs.filter((x) => x.real)) expect(m.news.some((n) => n.day === day && n.at != null && n.sector === r.sector && n.tone === r.tone)).toBe(true);
       }
     }

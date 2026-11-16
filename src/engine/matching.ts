@@ -22,8 +22,8 @@ export function parseQueue(v: unknown): QueueId | null {
 
 /** 속도별 게임 길이: 신속 ≈ 10분, 일반 ≈ 20~30분 */
 export const SPEED_PRESET: Record<QueueSpeed, { days: number; turnSeconds: number; label: string; minutes: string }> = {
-  quick: { days: 10, turnSeconds: 60, label: '신속', minutes: '약 10분' },
-  normal: { days: 20, turnSeconds: 90, label: '일반', minutes: '약 20~30분' },
+  quick: { days: 10, turnSeconds: 60, label: '신속', minutes: '약 10~14분' },
+  normal: { days: 20, turnSeconds: 90, label: '일반', minutes: '약 25~40분' },
 };
 
 export const MULTI_FULL = 4;

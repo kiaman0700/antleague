@@ -48,12 +48,21 @@ export function preRumors(m: Market, day: number, key: string): Rumor[] {
   const shuffledSrc = shuffle([...sources], rng);
   for (const n of shuffledSrc.slice(0, nReal)) {
     used.add(n.sector!);
-    out.push({ text: '', sector: n.sector!, tone: n.tone, real: true });
+    // 단서도 소문이라 25%는 방향이 틀림 (real = 방향이 맞는지 — 감별기 판정 기준)
+    const right = rng() < 0.75;
+    const tone = right ? n.tone : n.tone === 'good' ? 'bad' : 'good';
+    out.push({ text: '', sector: n.sector!, tone, real: right });
+    // 60%는 같은 업종에 반대 방향 헛소문도 함께 돎 → 감별기 없이는 어느 쪽이 맞는지 모름
+    if (rng() < 0.6) out.push({ text: '', sector: n.sector!, tone: tone === 'good' ? 'bad' : 'good', real: !right });
   }
-  const pool = STOCK_SECTORS.filter((s) => !used.has(s.id));
+  // 나머지는 다른 업종의 헛소문 — 진짜 단서와 똑같이 60%는 반대 방향 소문과 짝으로 돎
+  // (짝이 단서 업종에만 생기면 '두 번 나온 업종 = 오늘 속보'가 보여 버림)
+  const pool = STOCK_SECTORS.filter((x) => !used.has(x.id));
   while (out.length < total && pool.length) {
     const s = pool.splice(Math.floor(rng() * pool.length), 1)[0];
-    out.push({ text: '', sector: s.id, tone: rng() < 0.5 ? 'good' : 'bad', real: false });
+    const tone = rng() < 0.5 ? 'good' : 'bad';
+    out.push({ text: '', sector: s.id, tone, real: false });
+    if (rng() < 0.6 && out.length < 6) out.push({ text: '', sector: s.id, tone: tone === 'good' ? 'bad' : 'good', real: false });
   }
   // 같은 문구 틀에서 고르고 순서를 섞음 → 겉모습으로 진위를 알 수 없음
   for (const r of out) {

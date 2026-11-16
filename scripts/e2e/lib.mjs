@@ -13,7 +13,7 @@ if (!fs.existsSync(envFile)) {
   console.error('.env.local 이 없어요. README 의 "로컬 실행"을 먼저 해 주세요.');
   process.exit(1);
 }
-const env = Object.fromEntries(
+export const env = Object.fromEntries(
   fs
     .readFileSync(envFile, 'utf8')
     .split(/\r?\n/)
@@ -118,6 +118,7 @@ export async function user() {
     await U({ action: 'leave', roomId: r.roomId });
   }
   await U({ action: 'queueLeave' });
+  U.token = tok; // 실시간 채널 시험용
   return U;
 }
 

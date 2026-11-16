@@ -35,6 +35,8 @@ export interface NewsEvent {
   verdict?: 'true' | 'false';
   /** 장중 속보면 하루 중 공개 위치(0~1). 없으면 아침 뉴스. 공개 전에는 화면 데이터에 없음 */
   at?: number;
+  /** (v12 사건 찌라시) 이 날부터 진위를 밝힘 — 결과 발표 전에 '사실로 확인'이 붙어 결과가 새지 않게. 서버 전용 */
+  revealDay?: number;
 }
 export type NewsLabel = '속보' | '단독' | '시황' | '특징주' | '해외';
 
@@ -403,8 +405,9 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         // 중간 찌라시: 70%는 실제 결과 쪽, 30%는 반대 (감별기로 진짜를 가릴 수 있음). 미리 아는 사람이 조금씩 움직여 주가도 살짝
         if (rngS() < 0.75) {
           const rumorGood = rngS() < 0.7 ? st.good : !st.good;
-          push(pick(rngS, rumorGood ? st.kind.rumorGood : st.kind.rumorBad), rumorGood ? 'good' : 'bad', st.good ? 'good' : 'bad', true);
-          addStock(st.symbol, (st.good ? 1 : -1) * st.setupMag * 0.35);
+          push(pick(rngS, rumorGood ? st.kind.rumorGood : st.kind.rumorBad), rumorGood ? 'good' : 'bad', st.good ? 'good' : 'bad', true, { revealDay: st.resolve + 1 });
+          // 소문 쪽으로 조금 움직임 (결과가 아니라 소문을 따라 — 주가로 결과가 새지 않게)
+          addStock(st.symbol, ((version >= 13 ? rumorGood : st.good) ? 1 : -1) * st.setupMag * 0.35);
         }
       } else if (day === st.resolve) {
         // 결과 발표: 장중 속보로 크게 (상·하한가 근처)

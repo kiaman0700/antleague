@@ -74,7 +74,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
           <div className="rb-head">
             <b>장 전 찌라시</b>
-            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜일 수도, 헛소문일 수도 있어요'}</small>
+            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜 단서일 수도, 헛소문일 수도 있어요 · 루머 감별기를 쓰면 가려 줘요'}</small>
           </div>
           {rumors.map((r, i) => (
             <div key={i} className={'rb-item ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>
@@ -320,7 +320,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
       </div>
       {guide && <CardGuide onClose={() => setGuide(false)} />}
       <p className="muted small">
-        시작할 때 2장, {GRANT_EVERY}일마다 1장을 무료로 받아요{nextGrant < totalDays ? ` (다음: ${nextGrant + 1}일차)` : ''}. 같은 카드는 한 판에 {USE_LIMIT}번까지.
+        카드를 누르면 '사용하기'가 나와요. 최대 {holdLimit(version)}장까지 가질 수 있고(꽉 차면 무료 카드를 못 받아요), 시작할 때 2장, {GRANT_EVERY}일마다 1장 무료{nextGrant < totalDays ? ` (다음: ${nextGrant + 1}일차)` : ''}. 같은 카드는 한 판에 {USE_LIMIT}번까지.
       </p>
 
       {!shop && owned.length === 0 && <p className="empty">카드가 없어요. 상점에서 살 수 있어요.</p>}
@@ -548,9 +548,10 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
 const STEPS = [
   { t: '개미리그에 온 걸 환영해요', d: '100만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
   { t: '① 아침 뉴스를 읽어요', d: '매일 아침 뉴스가 나와요. 좋은 뉴스(▲)가 난 회사·업종은 오르는 경우가 많고, 같은 업종이나 연관 업종도 함께 움직여요. [루머]는 틀릴 수도 있어요!' },
-  { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 금액 버튼(+10만원 등)으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 5초마다 움직여요.' },
+  { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 사기·팔기를 누르고 금액 버튼으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 1초마다 움직여요.' },
   { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 모두 누르면(또는 시간이 다 되면) 하루가 끝나요.' },
-  { t: '④ 찬스 카드로 승부를 뒤집어요', d: '카드로 내일 뉴스를 미리 보거나, 상대를 방해할 수 있어요. 상점에서 돈으로 살 수도 있어요. 점선 밑줄 단어를 누르면 뜻이 나와요.' },
+  { t: '④ 찬스 카드로 승부를 뒤집어요', d: '카드를 누르면 크게 보이고 \'사용하기\'가 나와요. 내일 뉴스를 미리 보거나 상대를 방해할 수 있고, 최대 5장까지 가질 수 있어요. 점선 밑줄 단어를 누르면 뜻이 나와요.' },
+  { t: '⑤ 장 전 시간', d: '둘째 날부터 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어 둘 수 있어요. 다 했으면 \'준비 완료\' — 모두 누르면 장이 바로 열려요.' },
 ];
 
 export function Tutorial({ onDone }: { onDone: () => void }) {

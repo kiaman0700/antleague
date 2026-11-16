@@ -19,7 +19,7 @@ export interface ItemDef {
 }
 
 /**
- * 밸런스 기준 (시작 자금 1,000만원)
+ * 밸런스 기준 (값은 예전 1,000만원 시작 기준 — v6 부터는 itemCost 로 1/10, v8·v9 는 PRICE_V8·V9)
  * - 정보 카드: 기대 이익보다 조금 싸게. 확실한 정보일수록 비싸게
  * - 방해 카드: 상대가 잃는 기대 손해 ≈ 가격. 너무 싸면 서로 괴롭히기만 하는 게임이 됨
  * - 방어 카드: 막는 공격 평균 가격보다 싸게, 반사는 공격 효과까지 주니 더 비싸게
@@ -28,7 +28,7 @@ export const ITEMS: ItemDef[] = [
   { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 600_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보라 가장 비싸요)' },
   { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 300_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
   { kind: 'scout', name: '차트 분석', emoji: '📊', type: 'info', cost: 200_000, desc: '지금 보고 있는 종목이 오늘 오를지 내릴지 알려줘요. (정확도 약 70%)' },
-  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 아침 뉴스가 하나하나 사실인지 가짜인지 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요.' },
+  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 아침 뉴스와 장 전 찌라시가 진짜인지 가짜인지 하나하나 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요.' },
   { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 150_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
   { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 200_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
   { kind: 'blackout', name: '정보 차단', emoji: '📵', type: 'attack', cost: 150_000, desc: '고른 상대는 내일 아침 뉴스를 볼 수 없어요.', multiOnly: true },
@@ -36,7 +36,7 @@ export const ITEMS: ItemDef[] = [
   { kind: 'fee', name: '수수료 폭탄', emoji: '💸', type: 'attack', cost: 200_000, desc: '고른 상대의 거래 수수료가 사흘간 10배(1%)가 돼요.', multiOnly: true },
   { kind: 'shield', name: '방패', emoji: '🛡️', type: 'defense', cost: 200_000, desc: '갖고만 있으면 나를 노린 방해 카드를 1번 자동으로 막아요.', multiOnly: true, passive: true },
   { kind: 'mirror', name: '반사 거울', emoji: '🪞', type: 'defense', cost: 400_000, desc: '갖고만 있으면 나를 노린 방해 카드를 1번 쓴 사람에게 되돌려요.', multiOnly: true, passive: true },
-  { kind: 'bonus', name: '용돈 봉투', emoji: '🎁', type: 'bonus', cost: 0, desc: '쓰면 현금 50만원이 들어와요. 상점에서는 살 수 없고 무료 카드로만 나와요.', shopless: true },
+  { kind: 'bonus', name: '용돈 봉투', emoji: '🎁', type: 'bonus', cost: 0, desc: '쓰면 확률에 따라 현금을 받거나 잃어요. 상점에서는 살 수 없고 무료 카드로만 나와요.', shopless: true },
 ];
 export const ITEM_MAP = Object.fromEntries(ITEMS.map((i) => [i.kind, i])) as Record<ItemKind, ItemDef>;
 export const ITEM_KINDS = ITEMS.map((i) => i.kind);
@@ -73,8 +73,12 @@ export function drawBonus(u: number): number {
 }
 /** 카드 설명 (규칙 버전에 따라 용돈 봉투 문구가 다름) */
 export function itemDesc(kind: ItemKind, version = 6): string {
-  if (kind === 'bonus' && version >= 6)
-    return '쓰면 확률에 따라 현금을 받거나 잃어요. +30만 5% · +15만 15% · +8만 30% · +3만 25% · −5만 15% · −10만 10%. 무료 카드로만 나와요.';
+  if (kind === 'bonus')
+    return version >= 13
+      ? '쓰면 확률에 따라 현금을 받거나 잃어요. +30만 5% · +15만 15% · +8만 30% · +3만 25% · −5만 15% · −10만 10%. 현금이 10만원 이상 있어야 쓸 수 있어요. 무료 카드로만 나와요.'
+      : version >= 6
+      ? '쓰면 확률에 따라 현금을 받거나 잃어요. +30만 5% · +15만 15% · +8만 30% · +3만 25% · −5만 15% · −10만 10%. 무료 카드로만 나와요.'
+      : '쓰면 현금 50만원이 들어와요. 상점에서는 살 수 없고 무료 카드로만 나와요.';
   return ITEM_MAP[kind].desc;
 }
 export const SCOUT_ACCURACY = 0.7;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
@@ -166,6 +167,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
   const [exitAsk, setExitAsk] = useState(false);
   const [rejoinCode, setRejoinCode] = useState<string | null>(null);
+  // 회원은 이어하기 코드 대신 같은 아이디로 로그인
+  const memberAcc = useAccount().status === 'member';
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
@@ -205,7 +208,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const showToast = useCallback((text: string, kind: 'ok' | 'err' | 'warn' = 'ok') => {
     setToast({ text, kind });
     window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+    // 긴 안내는 읽을 시간만큼 더 오래
+    toastTimer.current = window.setTimeout(() => setToast(null), Math.max(2600, text.length * 90));
   }, []);
 
   useEffect(() => {
@@ -500,6 +504,17 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       // 시간이 막 끝난 순간이면(장이 이미 열림) 조용히 넘어감
       .catch((e) => !/장 전 시간이 아니에요/.test(e instanceof Error ? e.message : '') && showToast(e instanceof Error ? e.message : '실패했어요', 'err'));
   };
+  // 처음 맞는 장 전 시간이면 한 번만 무엇을 하는 시간인지 알려 줌 (이 기기에서 한 번)
+  useEffect(() => {
+    if (!inPre) return;
+    try {
+      if (localStorage.getItem('stockduel.preSeen') === '1') return;
+      localStorage.setItem('stockduel.preSeen', '1');
+    } catch {
+      return;
+    }
+    showToast("장 전 시간이에요. 찌라시(소문)를 보고 예약 주문을 걸어 두세요. 다 했으면 '준비 완료'!", 'warn');
+  }, [inPre, showToast]);
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
   const cancelEnd = () => {
     if (!canCancelEnd) return;
@@ -830,7 +845,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             <button
               className="btn full danger"
               onClick={async () => {
-                if (!(await ask('기권하면 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?', { ok: '기권하기', danger: true }))) return;
+                if (!(await ask(players.filter((p) => p.status !== 'left').length <= 2 ? `기권하면 상대가 바로 이기고, 이 게임에 다시 들어올 수 없어요.${room?.ranked ? ' 랭킹전이라 꼴찌로 계산돼요.' : ''} 정말 나갈까요?` : `기권하면 나는 꼴찌로 계산되고, 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?`, { ok: '기권하기', danger: true }))) return;
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .then(onExit)
@@ -845,8 +860,12 @@ export function GameController({ session, onExit, onWaiting }: Props) {
               <b>
                 <Icon name="share" size={14} /> 다른 기기로 옮기기 (기권 아님)
               </b>
+              {memberAcc ? (
+                <small className="muted">회원은 코드가 필요 없어요. 다른 기기에서 같은 아이디로 로그인하면 이 대결로 바로 이어져요.</small>
+              ) : (
               <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 10분 안에 한 번만 쓸 수 있고, 다른 사람에게 보여 주면 자리를 뺏길 수 있어요.</small>
-              {rejoinCode ? (
+              )}
+              {memberAcc ? null : rejoinCode ? (
                 <button
                   className="code-big"
                   onClick={() => navigator.clipboard?.writeText(rejoinCode).then(() => showToast('이어하기 코드를 복사했어요'), () => {})}

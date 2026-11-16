@@ -67,6 +67,10 @@ export function useLiveView(roomId: string | null): LiveView {
   const again = useRef(false);
   /** 1초 가격 방에서 장이 열려 있는지 (빠르게 새로 받기) */
   const fastRef = useRef(false);
+  /** 지금까지 받은 오늘 장중 가격 — 다음엔 새로 생긴 칸만 받아 이어 붙임 */
+  const liveRef = useRef<View['live']>(null);
+  /** 서버가 '너무 많은 요청'(429)을 주면 잠깐 천천히 */
+  const slowUntil = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!roomId) return;
@@ -77,7 +81,23 @@ export function useLiveView(roomId: string | null): LiveView {
     busy.current = true;
     try {
       const t0 = Date.now();
-      const v = await api<View>('state', { roomId, marketKey: keyRef.current });
+      const have = liveRef.current;
+      const v = await api<View>('state', { roomId, marketKey: keyRef.current, ...(have ? { liveDay: have.day, liveFrom: have.tick + 1 } : {}) });
+      // 새로 생긴 칸만 왔으면 가진 것에 이어 붙임 (안 맞으면 다음에 처음부터 다시 받음)
+      if (v.live) {
+        const from = v.live.from ?? 0;
+        if (from > 0) {
+          if (have && have.day === v.live.day && have.tick + 1 === from) {
+            const join = (a: Record<string, number[]>, b: Record<string, number[]>) => Object.fromEntries(Object.entries(b).map(([k, arr]) => [k, [...(a[k] ?? []), ...arr]]));
+            v.live = { ...v.live, from: 0, krw: join(have.krw, v.live.krw), usd: join(have.usd, v.live.usd), index: [...have.index, ...v.live.index], usIndex: [...have.usIndex, ...v.live.usIndex] };
+          } else {
+            liveRef.current = null;
+            again.current = true;
+            return;
+          }
+        }
+        liveRef.current = v.live;
+      } else liveRef.current = null;
       const t1 = Date.now();
       setOffset(v.serverNow - (t0 + t1) / 2);
       if (v.market) {
@@ -88,7 +108,9 @@ export function useLiveView(roomId: string | null): LiveView {
       fastRef.current = !!v.live && (v.live.tickMs ?? 5000) <= 1000;
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // 요청이 많다고 하면 화면은 그대로 두고 10초 동안 천천히 받음 (오류 문구로 놀라게 하지 않음)
+      if (e instanceof ApiError && e.status === 429) slowUntil.current = Date.now() + 10_000;
+      else setError(e instanceof Error ? e.message : String(e));
     } finally {
       busy.current = false;
       if (again.current) {
@@ -105,7 +127,9 @@ export function useLiveView(roomId: string | null): LiveView {
     // 1초 가격 방(v11)에서 장이 열려 있으면 1초마다, 아니면 2.5초마다 새로 받음
     let poll = 0;
     const loop = () => {
-      const ms = fastRef.current ? 1000 : 2500;
+      // 창이 뒤에 있으면 10초마다(자리 비움 판정 90초보다 짧게), 요청 제한에 걸렸으면 5초마다
+      const hidden = document.visibilityState === 'hidden';
+      const ms = hidden ? 10_000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
       poll = window.setTimeout(() => {
         refresh();
         loop();
@@ -163,7 +187,7 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
 
   useEffect(() => {
     if (!roomId || !supabase) return;
-    const ch = supabase.channel('react-' + roomId, { config: { broadcast: { self: false } } });
+    const ch = supabase.channel('react-' + roomId, { config: { private: true, broadcast: { self: false } } }); // 비공개 채널: 그 방 사람만 듣고 보냄 (029 정책)
     ch.on('broadcast', { event: 'react' }, ({ payload }) => {
       const p = payload as Partial<Reaction>;
       const emoji = typeof p.emoji === 'string' && EMOJIS.includes(p.emoji) ? p.emoji : undefined;

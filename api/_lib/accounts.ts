@@ -44,6 +44,15 @@ const check = (v: string, stored: string | null) => {
   const want = Buffer.from(h, 'hex');
   return got.length === want.length && timingSafeEqual(got, want);
 };
+// 아이디가 없을 때도 같은 시간이 걸리게 비교할 가짜 해시
+const DUMMY_HASH = hash('dummy-recovery-code');
+/** 이 계정의 모든 로그인(다른 기기 포함)을 끊음 — 028 함수가 없으면 조용히 넘어감 */
+const revokeSessions = async (sb: SupabaseClient, uid: string) => {
+  await sb.rpc('revoke_user_sessions', { target: uid }).then(
+    () => {},
+    () => {},
+  );
+};
 const newRecovery = () => {
   let c = '';
   for (let i = 0; i < 12; i++) c += CODE_CHARS[randomInt(CODE_CHARS.length)];
@@ -150,7 +159,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
 
     case 'checkAvailable': {
       // 가입 화면 실시간 중복 확인. 남의 아이디를 마구 알아보는 데 쓰이지 않게 1분에 40번까지
-      rateLimit(uid + ':avail', 40, 60_000);
+      rateLimit(uid + ':avail', 20, 60_000);
       const out: { username?: 'ok' | 'taken' | 'invalid'; nickname?: 'ok' | 'taken' | 'invalid' } = {};
       if (b.username !== undefined) {
         const u = typeof b.username === 'string' ? b.username.trim().toLowerCase() : '';
@@ -219,6 +228,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const password = cleanNewPassword(b.password);
       const r = await sb.auth.admin.updateUserById(uid, { password });
       if (r.error) throw new GameError('바꾸지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+      await revokeSessions(sb, uid); // 다른 기기에 남은 로그인도 끊음
       return { ok: true };
     }
 
@@ -305,9 +315,12 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
   const password = cleanNewPassword(b.password);
   const code = normRecovery(b.code);
   const p = (await sb.from('profiles').select('user_id, recovery_hash').eq('username', username).maybeSingle()).data as { user_id: string; recovery_hash: string | null } | null;
-  if (!p || code.length !== 12 || !check(code, p.recovery_hash)) throw new GameError('아이디나 복구 코드가 맞지 않아요.', 403);
+  // 없는 아이디여도 같은 계산을 해서 걸리는 시간으로 아이디가 있는지 알 수 없게
+  const ok = check(code.length === 12 ? code : 'x'.repeat(12), p?.recovery_hash ?? DUMMY_HASH);
+  if (!p || code.length !== 12 || !ok) throw new GameError('아이디나 복구 코드가 맞지 않아요.', 403);
   const r = await sb.auth.admin.updateUserById(p.user_id, { password });
   if (r.error) throw new GameError('바꾸지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+  await revokeSessions(sb, p.user_id); // 비밀번호를 찾았으면 남이 쓰던 로그인도 모두 끊음
   const next = newRecovery();
   await sb.from('profiles').update({ recovery_hash: hash(normRecovery(next)) }).eq('user_id', p.user_id);
   return { ok: true, recoveryCode: next };

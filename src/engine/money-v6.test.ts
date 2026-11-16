@@ -150,3 +150,16 @@ describe('v10: 카드 5장까지', () => {
     expect(canBuy(p, 'paper', 1e9, 1, holdLimit(10))).toBeNull();
   });
 });
+
+describe('(v13) 용돈 봉투는 현금이 10만원 이상일 때만', () => {
+  it('현금을 다 주식에 넣으면 못 씀, 현금이 있으면 씀', () => {
+    const d = game(13);
+    d.trades.push({ player_id: 'a', day: 0, symbol: 'CORE', side: 'buy', qty: 11, price: 88_000, fee: 0.0015 });
+    giveBonus(d, 'a');
+    const cash = portfolioOf(d, 'a').cash;
+    if (cash < 100_000) expect(() => validateUseItem(d, 'a', now, { kind: 'bonus' })).toThrow(/10만원/);
+    const d2 = game(13);
+    giveBonus(d2, 'a');
+    expect(() => validateUseItem(d2, 'a', now, { kind: 'bonus' })).not.toThrow();
+  });
+});

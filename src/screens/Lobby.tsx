@@ -24,7 +24,7 @@ import { api } from '../net/api';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { isCustom, setPrefs, usePrefs } from '../prefs';
-import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
+import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, markTutorialSeen, tutorialSeen, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
 
 export interface ResumeInfo {
   roomId: string;
@@ -354,7 +354,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
     <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
       <ol className="howto">
         <li>
-          <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 좋은 뉴스는 <b>아침 시가에 이미 많이 반영</b>돼서 시작부터 올라 있을 수 있어요. 장이 열려 있는 동안 <b>가격이 5초마다 움직이고</b>, <b>장중 속보</b>가 뜨면 그 순간 크게 움직여요 — 빨리 알아채는 사람이 유리!
+          <b>100만원</b>으로 시작해요. <b>아침 뉴스</b>를 보고 오를 것 같은 회사를 골라요. 좋은 뉴스는 <b>아침 시가에 이미 많이 반영</b>돼서 시작부터 올라 있을 수 있어요. 장이 열려 있는 동안 <b>가격이 1초마다 움직이고</b>, <b>장중 속보</b>가 뜨면 그 순간 크게 움직여요 — 빨리 알아채는 사람이 유리!
         </li>
         <li>
           국내·미국 주식과 <b>ETF</b>까지. 금리·환율·유가가 업종마다 다르게 영향을 줘요. 레버리지·인버스 ETF는 위험해서 <b>총재산의 30%까지만</b> 살 수 있어요.
@@ -363,9 +363,15 @@ function HowTo({ onClose }: { onClose: () => void }) {
           다 정했으면 <b>장 마감</b>. 모두 누르거나 <b>제한 시간</b>이 끝나면 하루가 흘러요.
         </li>
         <li>
-          <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요. 무료 카드는 모두에게 똑같이 나눠 줘요. 한 사람에게 같은 날 방해가 몰리면 두 번째부터는 효과가 없어요.
+          <b>장 전 시간</b>: 둘째 날부터 장이 열리기 전 20~30초 동안 <b>찌라시</b>(소문)를 보고 <b>예약 주문</b>을 걸 수 있어요. 모두 <b>준비 완료</b>를 누르면 장이 바로 열려요.
         </li>
-        <li>마지막 날 재산이 가장 많은 사람이 승리!</li>
+        <li>
+          어떤 회사는 며칠에 걸친 <b>사건</b>(임상·신작·수주…)이 있어요. '○일 뒤 발표 예정' 뉴스를 기억해 두세요 — 발표 날 크게 움직여요.
+        </li>
+        <li>
+          <b>찬스 카드</b>로 내일 뉴스를 미리 보거나, 상대를 방해하세요. 카드를 누르면 '사용하기'가 나와요. 무료 카드는 모두에게 똑같이 나눠 줘요. 방해 카드는 한 사람에게 하루 한 번만 — 이미 누가 썼으면 내 카드는 쓰이지 않고 그대로 남아요.
+        </li>
+        <li>마지막 날 재산이 가장 많은 사람이 승리! 상대가 기권하면 바로 이겨요.</li>
       </ol>
       <div className="modal-actions">
         <button className="btn primary" onClick={onClose}>
@@ -420,6 +426,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   const head = TAB_HEAD[tab];
+  // 처음 온 사람에게 튜토리얼 권하기 (한 번 닫거나 해 보면 다시 안 나옴)
+  const [nudge, setNudge] = useState(() => !tutorialSeen());
 
   const finder = (kind: 'ranked' | 'casual') => (
     <MatchFinder
@@ -444,6 +452,28 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <p className="muted small">{head.desc}</p>
         </div>
       </header>
+
+      {nudge && (tab === 'casual' || tab === 'ranked') && (
+        <section className="panel pad hub-nudge" aria-label="처음이라면">
+          <Icon name="book" size={22} />
+          <div>
+            <b>처음이세요? 3분 튜토리얼부터 해 보세요</b>
+            <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 진짜 대결이 훨씬 쉬워져요.</p>
+          </div>
+          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+            튜토리얼 하기
+          </button>
+          <button
+            className="linkish-soft"
+            onClick={() => {
+              markTutorialSeen();
+              setNudge(false);
+            }}
+          >
+            괜찮아요
+          </button>
+        </section>
+      )}
 
       {tab === 'ranked' &&
         (!online ? (

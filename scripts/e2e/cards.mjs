@@ -100,7 +100,11 @@ for (const [name, P] of [
     const before = v.players.find((p) => p.nickname === name).equity;
     const r = await P({ action: 'useItem', roomId, kind: 'bonus' });
     const after = (await st(P)).players.find((p) => p.nickname === name).equity;
-    ok(`${name}: 용돈 봉투 사용 → +50만`, r.s === 200 && after - before === 500000, `${before} → ${after}`);
+    // (v6+) 공개 확률표 중 하나만큼 (가격이 1초마다 움직여 재산이 조금 흔들림 → 가장 가까운 값과 2만원 이내)
+    const TABLE = [300000, 150000, 80000, 30000, -50000, -100000];
+    const diff = after - before;
+    const near = Math.min(...TABLE.map((a) => Math.abs(diff - a)));
+    ok(`${name}: 용돈 봉투 사용 → 확률표 금액`, r.s === 200 && near <= 20000, `${before} → ${after}`);
     break;
   }
 }

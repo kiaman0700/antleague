@@ -48,8 +48,10 @@ function hash(s: string) {
  * 속보 시점(at) 전에는 하루 흐름의 15%만 진행, 속보 뒤에 나머지가 몰림.
  * jump(v3): 속보가 뜨는 칸에서 바로 그만큼 뛰고(실제 시장처럼) 나머지만 천천히 → 보고 따라 사도 이미 많이 오른 뒤
  */
-function warp(f: number, at: number | null, jump = 0) {
+function warp(f: number, at: number | null, jump = 0, quiet = false) {
   if (at === null) return f;
+  // v13: 속보 전에는 그날 방향으로 미리 움직이지 않음 (1초 가격에서 미리 방향이 보이던 문제) — 속보 순간 크게, 나머지는 천천히
+  if (quiet) return f < at ? 0 : jump + ((1 - jump) * (f - at)) / (1 - at);
   return f < at ? (0.15 * f) / at : 0.15 + jump + ((0.85 - jump) * (f - at)) / (1 - at);
 }
 
@@ -126,7 +128,7 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
             beta: sec.beta * def.sectorBeta,
             sb: def.sectorBeta,
           };
-    return fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0);
+    return fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0, (m.version ?? 1) >= 13);
   });
 }
 
@@ -172,23 +174,28 @@ function fineTicks(
   round: (v: number) => number,
   flow: { mk: number[]; sf: number[]; beta: number; sb: number } | null,
   jump = 0,
+  quiet = false,
 ): number[] {
   const lo = Math.log(bar.open);
   const lc = Math.log(bar.close);
   // 종목 고유 흔들림 (양 끝 0)
   const w = [0];
   for (let j = 1; j <= n; j++) w.push(w[j - 1] + gaussian(rng));
-  const idioAmp = (Math.log(bar.high / bar.low) * (flow ? 0.35 : 0.6)) / Math.sqrt(n);
+  // (v13) 속보 종목은 그날 범위에 속보 급등락이 들어 있어서, 범위로 흔들림을 정하면 속보 전 모양이 다른 종목과 달라짐
+  //   → 급등락(시가→종가 차이)을 뺀 범위로 흔들림을 정하고, 속보 전에도 시가 아래위로 그만큼 움직일 자리를 줌
+  const calm = quiet && at !== null;
+  const span = calm ? Math.max(0.008, Math.log(bar.high / bar.low) - Math.abs(lc - lo)) : Math.log(bar.high / bar.low);
+  const idioAmp = (span * (flow ? 0.35 : 0.6)) / Math.sqrt(n);
   const trend: number[] = [];
   const dev: number[] = [];
   for (let j = 0; j <= n; j++) {
-    trend.push(lo + warp(j / n, at, jump) * (lc - lo));
+    trend.push(lo + warp(j / n, at, jump, quiet) * (lc - lo));
     const common = flow ? flow.beta * flow.mk[j] + flow.sb * flow.sf[j] : 0;
     dev.push(common + (w[j] - (j / n) * w[n]) * idioAmp);
   }
   // 그날 고가·저가 안에 들어오도록 흔들림 크기만 줄임 (모양·상관은 그대로)
-  const hi = Math.log(bar.high);
-  const lw = Math.log(bar.low);
+  const hi = calm ? Math.max(Math.log(bar.high), lo + span / 2) : Math.log(bar.high);
+  const lw = calm ? Math.min(Math.log(bar.low), lo - span / 2) : Math.log(bar.low);
   let scale = 1;
   for (let j = 1; j < n; j++) {
     if (dev[j] > 0 && trend[j] + dev[j] > hi) scale = Math.min(scale, Math.max(0, (hi - trend[j]) / dev[j]));
@@ -198,7 +205,7 @@ function fineTicks(
   for (let j = 0; j <= n; j++) {
     if (j === 0) out.push(bar.open);
     else if (j === n) out.push(bar.close);
-    else out.push(Math.min(bar.high, Math.max(bar.low, round(Math.exp(trend[j] + scale * dev[j])))));
+    else out.push(Math.min(calm ? Math.exp(hi) : bar.high, Math.max(calm ? Math.exp(lw) : bar.low, round(Math.exp(trend[j] + scale * dev[j])))));
   }
   return out;
 }

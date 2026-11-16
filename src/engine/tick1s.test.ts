@@ -51,3 +51,20 @@ describe('v11: 1초 가격', () => {
     expect(dayClock(d.room, T0 + 12_400).tick).toBe(2);
   });
 });
+
+describe('장중 가격은 새로 생긴 칸만 (이어 받기)', () => {
+  it('가진 칸 다음부터만 보내고, 이어 붙이면 처음부터 받은 것과 같음', () => {
+    const d = game(12);
+    const full = buildView(d, 'a', T0 + 37_500);
+    const part = buildView(d, 'a', T0 + 37_500, undefined, undefined, undefined, { day: 0, from: 30 });
+    expect(part.live!.from).toBe(30);
+    expect(part.live!.krw.CORE.length).toBe(8);
+    expect([...full.live!.krw.CORE.slice(0, 30), ...part.live!.krw.CORE]).toEqual(full.live!.krw.CORE);
+    // 지금 칸보다 앞선(미래) 칸을 달라고 해도 처음부터 보냄 (미래 없음)
+    const bad = buildView(d, 'a', T0 + 37_500, undefined, undefined, undefined, { day: 0, from: 50 });
+    expect(bad.live!.from).toBe(0);
+    expect(bad.live!.krw.CORE.length).toBe(38);
+    // 다른 날 기준이면 처음부터
+    expect(buildView(d, 'a', T0 + 37_500, undefined, undefined, undefined, { day: 3, from: 10 }).live!.from).toBe(0);
+  });
+});

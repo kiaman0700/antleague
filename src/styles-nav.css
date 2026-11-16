@@ -942,3 +942,9 @@ button.hr-row:hover {
 .m-top-more.m-top-flow.hidden-row {
   display: none;
 }
+
+/* 처음 온 사람에게 튜토리얼 권하기 */
+.hub-nudge { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; border: 1px solid color-mix(in srgb, var(--gold, #c8aa6e) 45%, transparent); }
+.hub-nudge > div { flex: 1; min-width: 0; }
+.hub-nudge p { margin: 2px 0 0; }
+@media (max-width: 600px) { .hub-nudge { flex-wrap: wrap; } .hub-nudge > div { flex-basis: calc(100% - 40px); } }

@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, BONUS_TABLE, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
@@ -162,6 +162,8 @@ export interface LiveView {
   startAt: number;
   endAt: number;
   tickMs: number;
+  /** 이 칸부터 보냄 (화면이 이미 가진 앞부분은 빼고). 0 이면 처음부터 */
+  from?: number;
   /** 종목별 원화 가격, 0~tick 칸 */
   krw: Record<string, number[]>;
   /** 미국 주식 달러 가격, 0~tick 칸 */
@@ -274,7 +276,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 12;
+export const CURRENT_RULES_VERSION = 13;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -353,8 +355,10 @@ export function isFakeNews(n: NewsEvent) {
  * - 지난 뉴스: 장이 끝나 밝혀졌으므로 가짜·루머에 판정을 붙임
  */
 function publicNews(n: NewsEvent, today: number, rumorCheck: boolean): NewsEvent {
-  const { fake: _f, verdict: _v, ...rest } = n;
+  const { fake: _f, verdict: _v, revealDay, ...rest } = n;
   const fake = isFakeNews(n);
+  // 사건 찌라시는 결과 발표가 지나야 진위를 밝힘 (그 전엔 오늘 뉴스처럼: 감별기를 쓴 그날만 판정)
+  if (revealDay != null && today < revealDay && n.day < today) return { ...rest, realTone: rest.tone };
   if (n.day >= today) return rumorCheck && n.day === today ? { ...rest, realTone: rest.tone, verdict: fake ? 'false' : 'true' } : { ...rest, realTone: rest.tone };
   return fake || n.rumor ? { ...rest, verdict: fake ? 'false' : 'true' } : rest;
 }
@@ -446,7 +450,7 @@ export function portfolioOf(d: GameData, pid: string) {
  * keySalt: 시장 키를 섞을 서버 비밀값(방마다). 시드처럼 화면이 알면 안 되는 값은 절대 키에 넣지 않음.
  * 없으면(혼자 연습 — 어차피 브라우저에서 도는 게임) 방 ID 를 씀
  */
-export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, verified?: Set<string>): View {
+export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, verified?: Set<string>, liveFrom?: { day: number; from: number }): View {
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
@@ -535,7 +539,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const rumorCheck = todayInfo.includes('detector');
   if (!finished) {
     if (todayInfo.includes('paper') && r.day + 1 < r.total_days) {
-      base.reveals.tomorrow = m.news.filter((n) => n.day === r.day + 1).map((n) => publicNews(n, r.day + 1, false)).sort(newsOrder);
+      // 내일 신문은 무엇이 나오는지만 — 장중 속보가 몇 시에 뜨는지(at)는 빼서 순간을 노리지 못하게
+      base.reveals.tomorrow = m.news.filter((n) => n.day === r.day + 1).map((n) => { const { at: _at, ...x } = publicNews(n, r.day + 1, false); return x; }).sort(newsOrder);
     }
     if (todayInfo.includes('analyst')) {
       let best = STOCK_SECTORS[0].id;
@@ -581,20 +586,23 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   if ((r.version ?? 1) >= PREMARKET_VERSION && open && r.day > 0 && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck);
   base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
-  const releasedNow = open ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
+  // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
+  const releasedNow = open && !blackout ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
   const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
   if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n });
   if (open) {
-    const upto = (arr: number[]) => arr.slice(0, clock.tick + 1);
+    // 화면이 이미 가진 칸은 다시 보내지 않음 (1초 가격이면 매초 64KB → 1KB 안팎). 그래도 지금 칸까지만
+    const from = liveFrom && liveFrom.day === day && Number.isInteger(liveFrom.from) && liveFrom.from > 0 && liveFrom.from <= clock.tick + 1 ? liveFrom.from : 0;
+    const upto = (arr: number[]) => arr.slice(from, clock.tick + 1);
     const krw: Record<string, number[]> = {};
     const usd: Record<string, number[]> = {};
     for (const s of STOCKS) {
       krw[s.symbol] = upto(dayTicks(m, s.symbol, day, clock.n));
       if (m.usd[s.symbol]) usd[s.symbol] = upto(dayTicks(m, s.symbol, day, clock.n, 'usd'));
     }
-    base.live = { day, tick: clock.tick, n: clock.n, startAt: clock.startAt, endAt: clock.endAt, tickMs: clock.tickMs, krw, usd, index: upto(indexTicks(m, 'kr', day, clock.n)), usIndex: upto(indexTicks(m, 'us', day, clock.n)) };
+    base.live = { day, tick: clock.tick, n: clock.n, startAt: clock.startAt, endAt: clock.endAt, tickMs: clock.tickMs, from, krw, usd, index: upto(indexTicks(m, 'kr', day, clock.n)), usIndex: upto(indexTicks(m, 'us', day, clock.n)) };
   }
 
   if (finished) {
@@ -712,6 +720,9 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     const nth = d.items.filter((r) => r.player_id === meId && r.action === 'use' && r.kind === 'bonus').length;
     const u = seeded(`${d.room.salt ?? d.room.seed}:bonus:${meId}:${nth}`)();
     const cash = portfolioOf(d, meId).cash;
+    // (v13) 현금을 다 주식에 넣어 두고 써서 잃는 쪽을 피하지 못하게: 가장 크게 잃는 만큼 현금이 있어야 쓸 수 있음
+    const worst = -Math.min(...BONUS_TABLE.map((b) => b.amount));
+    if ((d.room.version ?? 1) >= 13 && cash < worst) throw new GameError(`용돈 봉투는 현금이 ${worst / 10_000}만원 이상 있을 때 쓸 수 있어요 (잃을 수도 있어서).`);
     payload = { amount: Math.max(drawBonus(u), -Math.max(0, cash)) };
   }
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
@@ -887,6 +898,13 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
   if (side === 'buy') {
     const reserved = mine.filter((o) => o.side === 'buy').reduce((a, o) => a + buyCost(o.qty, krw(o), o.fee), 0);
     if (reserved + buyCost(qty, krw({ limit_price: lim, symbol }), fee) > pf.cash) throw new GameError('예약해 둔 주문까지 합치면 현금이 부족해요.');
+    // 레버리지 30% 제한은 예약 주문에도 (이미 걸어 둔 레버리지 예약까지 합쳐서) — 예약으로 제한을 피해 몰빵하지 못하게
+    const cap = leveragedCap(d, m, pf, symbol, krw({ limit_price: lim, symbol }), now);
+    if (cap !== null) {
+      const pending = mine.filter((o) => o.side === 'buy' && isLeveraged(o.symbol)).reduce((a, o) => a + o.qty * krw(o), 0);
+      const left = Math.max(0, Math.floor((cap * krw({ limit_price: lim, symbol }) - pending) / krw({ limit_price: lim, symbol })));
+      if (qty > left) throw new GameError(`레버리지·인버스 ETF는 예약 주문까지 합쳐서 총재산의 ${Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요` + (left > 0 ? ` (지금 최대 ${left}주)` : ''));
+    }
   } else {
     const reserved = mine.filter((o) => o.side === 'sell' && o.symbol === symbol).reduce((a, o) => a + o.qty, 0);
     if (reserved + qty > (pf.holdings[symbol]?.qty ?? 0)) throw new GameError('예약해 둔 주문까지 합치면 가진 수량이 부족해요.');
@@ -934,7 +952,12 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
     }
     const price = isUS ? Math.round(o.limit_price * fx) : o.limit_price;
     const pf = computePortfolio([...d.trades.filter((t) => t.player_id === o.player_id), ...extra.filter((t) => t.player_id === o.player_id)], spendsOf(d, o.player_id), Infinity, paidDividends(d), startCashFor(d.room.version));
-    const ok = o.side === 'buy' ? buyCost(o.qty, price, o.fee) <= pf.cash : (pf.holdings[o.symbol]?.qty ?? 0) >= o.qty;
+    let ok = o.side === 'buy' ? buyCost(o.qty, price, o.fee) <= pf.cash : (pf.holdings[o.symbol]?.qty ?? 0) >= o.qty;
+    // 체결 순간에도 레버리지 30% 제한을 다시 확인 (넘으면 취소)
+    if (ok && o.side === 'buy' && day === d.room.day) {
+      const cap = leveragedCap(d, m, pf, o.symbol, price, clock.startAt + hitAt * clock.tickMs);
+      if (cap !== null && o.qty > cap) ok = false;
+    }
     if (!ok) {
       out.push({ id: o.id!, status: 'cancelled' });
       continue;
