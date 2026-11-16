@@ -184,6 +184,14 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
   const speedText = preset ? `${preset.label} · ${preset.minutes}` : setText;
   const me = results.find((r) => r.id === session.playerId)!;
   const iWon = winner?.id === session.playerId;
+  // 이번 시장 성적: 처음엔 많이 오른 5개·많이 내린 5개만 (47종목을 다 펼치면 화면이 너무 길어짐)
+  const [allStocks, setAllStocks] = useState(false);
+  const shortRank = stockRank.length > 12 && !allStocks;
+  const shownRank = shortRank ? [...stockRank.slice(0, 5), ...stockRank.slice(-5)] : stockRank;
+  // 창(탭) 제목: 라우터는 '게임 중'으로 두므로 결과 화면에선 '결과'
+  useEffect(() => {
+    document.title = '결과 · 개미리그';
+  }, []);
 
   return (
     <div className="result">
@@ -191,7 +199,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         {solo ? (
           <>
             <div className="crown"><Icon name={me.ret > indexRet ? 'trophy' : 'activity'} size={40} /></div>
-            <h1>장 마감!</h1>
+            <h1>연습 끝!</h1>
             <p>
               내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
             </p>
@@ -387,7 +395,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           이번 시장 성적 <span className="muted small">종합지수 {pct(indexRet)}</span>
         </h3>
         <div className="stock-rank">
-          {stockRank.map(({ s, r }) => (
+          {shownRank.map(({ s, r }) => (
             <div key={s.symbol}>
               <span>
                 <SectorIcon id={s.sector} /> {s.name}
@@ -396,6 +404,11 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             </div>
           ))}
         </div>
+        {stockRank.length > 12 && (
+          <button className="btn ghost sm stock-rank-more" onClick={() => setAllStocks((v) => !v)} aria-expanded={allStocks}>
+            {allStocks ? '많이 오르고 내린 5개씩만 보기' : `전체 ${stockRank.length}개 종목 보기`}
+          </button>
+        )}
       </div>
 
       {rankedGame && (
