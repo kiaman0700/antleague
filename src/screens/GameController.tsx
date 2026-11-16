@@ -1224,7 +1224,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}` : ''}`
                   : endedToday
                     ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ' + timerText : ''}`
-                    : `${day + 1}일차${timerText ? ' · ' + timerText : ''}`}
+                    : timerText
+                      ? `${timerText} 남음`
+                      : `${day + 1}일차`}
               </small>
             </button>
           </div>

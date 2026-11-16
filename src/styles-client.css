@@ -1847,3 +1847,10 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 .reveal.flash { animation: revealFlash 1.5s ease-out; }
 @keyframes revealFlash { 0%, 40% { box-shadow: 0 0 0 2px #b9b0ff, 0 0 24px rgba(139,123,255,.45); } 100% { box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .reveal.flash { animation: none; outline: 2px solid #b9b0ff; } }
+/* 찌라시 칸이 좁으면(태블릿 가로·작은 노트북 옆 칸) 업종 칩을 글 아래로 — 글이 서너 글자마다 줄바꿈되지 않게 */
+.rumor-board { container-type: inline-size; }
+@container (max-width: 340px) {
+  .rb-item { grid-template-columns: auto minmax(0, 1fr); }
+  .rb-item .rb-sec, .rb-item .rb-verdict { grid-column: 2; justify-self: start; }
+  .rb-head small { display: none; }
+}

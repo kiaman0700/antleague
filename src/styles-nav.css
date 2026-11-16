@@ -968,3 +968,13 @@ button.hr-row:hover {
     padding-right: 28px;
   }
 }
+
+/* 낮은 화면(가로로 눕힌 휴대폰): 결산 창을 촘촘하게 — '다음 날 시작' 버튼이 잘리지 않게 */
+@media (max-height: 480px) {
+  .close-modal { padding: 12px 18px !important; gap: 6px !important; max-height: calc(100dvh - 16px); }
+  .close-modal .close-pnl { font-size: 30px !important; margin: 0 !important; }
+  .close-modal .close-index { margin: 2px 0 !important; }
+  .close-modal .movers, .close-modal .close-movers { gap: 6px !important; }
+  .close-modal .movers > *, .close-modal .close-movers > * { padding: 6px 10px !important; }
+  .close-modal .btn { min-height: 42px; }
+}
