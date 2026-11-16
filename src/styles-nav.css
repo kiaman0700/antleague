@@ -979,3 +979,28 @@ button.hr-row:hover {
 /* 의견 보내기: 분류 4개를 한 줄에 (좁으면 2개씩) — 3+1 로 갈라지던 문제 */
 .seg.fb-kind { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 420px) { .seg.fb-kind { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 모바일 게임: 시장·일정·재산 줄은 위 막대(내 재산·장 마감) 바로 아래에 고정 — 어느 탭에서 스크롤해도 늘 보임 */
+.m-top-more.m-top-flow {
+  position: sticky;
+  top: var(--m-top-h, 0px);
+  z-index: 29;
+  background: rgba(11, 13, 18, 0.94);
+  backdrop-filter: blur(14px);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+/* 가로로 눕힌 휴대폰은 높이가 낮아 고정하면 내용이 안 보임 → 내용과 함께 스크롤 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .m-top-more.m-top-flow {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+.m-game .tab-split .ts-list {
+  top: calc(var(--m-stick-h, 0px) + 8px);
+  max-height: calc(100dvh - var(--m-stick-h, 0px) - 200px);
+}

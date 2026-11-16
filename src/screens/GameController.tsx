@@ -148,6 +148,28 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [editing, setEditing] = useState(!!session.demo);
   const editingRef = useRef(editing);
   editingRef.current = editing;
+  // 휴대폰: 위 고정 막대 높이를 재서 그 바로 아래에 시장·일정·재산 줄을 붙여 둠
+  const [mTopH, setMTopH] = useState(0);
+  const mTopRo = useRef<ResizeObserver | null>(null);
+  const mTopRef = useCallback((el: HTMLElement | null) => {
+    mTopRo.current?.disconnect();
+    mTopRo.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setMTopH(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    mTopRo.current = ro;
+  }, []);
+  // 그 아래 줄 높이도 재서, 태블릿 왼쪽 목록처럼 붙어 있는 요소가 그 밑으로 숨지 않게
+  const [mFlowH, setMFlowH] = useState(0);
+  const mFlowRo = useRef<ResizeObserver | null>(null);
+  const mFlowRef = useCallback((el: HTMLElement | null) => {
+    mFlowRo.current?.disconnect();
+    mFlowRo.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setMFlowH(getComputedStyle(el).position === 'sticky' ? Math.round(el.getBoundingClientRect().height) : 0));
+    ro.observe(el);
+    mFlowRo.current = ro;
+  }, []);
   const layout = effective(prefs).layout;
   const startEdit = () => {
     setPrefs({ enabled: true });
@@ -1170,10 +1192,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       ),
     };
     return (
-      <div className={'m-game ui-' + ui + (editing ? ' editing' : '')}>
+      <div className={'m-game ui-' + ui + (editing ? ' editing' : '')} style={{ ['--m-top-h' as string]: mTopH + 'px', ['--m-stick-h' as string]: mTopH + mFlowH + 'px' }}>
         {editBar}
         {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 (편집 중에는 펼쳐 둠) */}
-        <header className="m-top">
+        <header className="m-top" ref={mTopRef}>
           {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
           <div className="m-hero">
             <div className="mh-left">
@@ -1239,8 +1261,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             <span className="mp-left">{total - day - 1 > 0 ? `${total - day - 1}일 남음` : '마지막 날'}</span>
           </div>
         </header>
-        {/* 시장·일정·재산 줄: 위에 고정하지 않고 화면과 함께 자연스럽게 스크롤 (스크롤할 때 접혔다 펴지며 움직이지 않게) */}
-          <div className={'m-top-more m-top-flow' + (!editing && tab === 'detail' && !tablet ? ' hidden-row' : '')}>
+        {/* 시장·일정·재산 줄: 위 막대 바로 아래에 고정 (접혔다 펴지는 움직임 없음). 가로로 눕힌 휴대폰은 높이가 낮아 내용과 함께 스크롤 */}
+          <div ref={mFlowRef} className={'m-top-more m-top-flow' + (!editing && tab === 'detail' && !tablet ? ' hidden-row' : '')}>
           {layout.mHeader.map((row, i) => (
             <EditSlot
               key={row.id}
