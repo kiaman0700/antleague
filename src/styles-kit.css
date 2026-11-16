@@ -250,3 +250,9 @@
   outline: 2px solid #fff;
   outline-offset: -4px;
 }
+
+/* 휴대폰: 종목 화면 업종 태그(누르면 그 업종 목록)도 누르는 영역만 넓힘 */
+@media (pointer: coarse), (max-width: 700px) {
+  button.tag { position: relative; }
+  button.tag::after { content: ''; position: absolute; inset: -8px -4px; }
+}
