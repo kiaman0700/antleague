@@ -57,6 +57,10 @@ interface MatchResult {
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
 export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking';
+const PAGE_TITLE: Partial<Record<LobbyPage, string>> = {
+  ranked: '랭킹전', casual: '일반전', custom: '커스텀', friends: '친구', practice: '연습', more: '설정·더보기', rooms: '방 찾기', create: '방 만들기',
+  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '의견함', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹',
+};
 
 interface Props {
   page: LobbyPage;
@@ -1392,6 +1396,11 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   useEffect(() => {
     if (active) rememberTab(active);
   }, [active]);
+  // 창(탭) 제목을 화면마다 — 브라우저 기록·탭·화면 읽기 프로그램에서 어느 화면인지 알 수 있게
+  useEffect(() => {
+    const name = PAGE_TITLE[resolved];
+    document.title = name ? `${name} · 개미리그` : '개미리그';
+  }, [resolved]);
   const goTab = (t: NavTab) => go(t as LobbyPage);
   const back = () => go('home');
 

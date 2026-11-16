@@ -57,7 +57,8 @@ export function useRouter() {
   }, []);
 
   useEffect(() => {
-    document.title = TITLES[route.kind];
+    // 로비는 화면(랭킹·친구 등)마다 Lobby 가 제목을 정함 — 여기서 덮어쓰지 않음
+    if (route.kind !== 'lobby') document.title = TITLES[route.kind];
   }, [route.kind]);
 
   const navigate = useCallback((r: Route, opts: { replace?: boolean } = {}) => {

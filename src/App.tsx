@@ -43,6 +43,11 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
 
 export default function App() {
   const { route, navigate } = useRouter();
+  // 튜토리얼·화면 편집은 로비 주소지만 게임 화면이라 Lobby 가 제목을 못 정함 → 여기서
+  const lobbyGame = route.kind === 'lobby' && (route.page === 'tutorial' || route.page === 'customize') ? route.page : null;
+  useEffect(() => {
+    if (lobbyGame) document.title = `${lobbyGame === 'tutorial' ? '튜토리얼' : '화면 편집'} · 개미리그`;
+  }, [lobbyGame]);
   // 연습 '같은 설정으로 한 판 더' 때 게임 화면을 새로 그리기 위한 번호
   const [replay, setReplay] = useState(0);
   // 로비가 뜨고 잠시 뒤 게임 화면 코드를 미리 받아 둠 (한가할 때)
