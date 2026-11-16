@@ -9,7 +9,7 @@ import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, set
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile } from '../components/Extras';
-import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial } from '../components/Panels';
+import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
@@ -692,6 +692,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         onReplay={solo && !session.tutorial && !session.demo && onReplay ? () => onReplay(view.room.totalDays, view.room.turnSeconds) : undefined}
         nextCode={view.room.nextCode ?? null}
         matchKind={view.room.kind}
+        dayInfo={{ days: view.room.totalDays, daySec: view.room.turnSeconds }}
         ranked={!!view.room.ranked}
         onFindAgain={() => {
           try {
@@ -1343,7 +1344,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 <Icon name={TAB_ICON[t]} size={22} />
               </span>
               {t === 'assets' ? (easy ? '내 재산' : '자산') : TAB_LABEL[t]}
-              {t === 'news' && newsSymbols.size > 0 && tab !== 'news' && <i className="nav-dot" />}
+              {t === 'news' && tab !== 'news' && unreadToday(news, day) > 0 && <i className="nav-count hot">{unreadToday(news, day)}</i>}
               {t === 'cards' && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
               {t === 'assets' && myOrders.some((o) => o.status === 'open' && o.day === day) && <i className="nav-dot gold" />}
               {editing && (

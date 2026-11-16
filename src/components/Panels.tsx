@@ -61,6 +61,10 @@ function markSeen(keys: string[]) {
   return true;
 }
 const newsKey = (n: NewsEvent) => 'n:' + n.day + ':' + n.headline;
+/** 오늘 뉴스 중 아직 안 본 수 (휴대폰 아래 뉴스 탭 숫자) */
+export function unreadToday(news: NewsEvent[], day: number): number {
+  return news.filter((n) => n.day === day && !seenNews.has(newsKey(n))).length;
+}
 const rumorKey = (day: number, text: string) => 'r:' + day + ':' + text;
 
 function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change: (s: string) => number; onSelect: (s: string) => void }) {

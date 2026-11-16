@@ -13,6 +13,7 @@ import { KR_INDEX_BASE, type Market } from '../game/market';
 import { computePortfolio, equityHistory, startCashFor } from '../game/portfolio';
 import { STOCK_MAP, STOCKS } from '../game/stocks';
 import { pct, tone, won, wonShort } from '../lib/format';
+import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
 
@@ -28,6 +29,8 @@ interface Props {
   matchKind?: 'custom' | 'match';
   ranked?: boolean;
   onFindAgain?: () => void;
+  /** 판 정보 (한 판 더 버튼에 모드·설정을 보여 주려고) */
+  dayInfo?: { days: number; daySec: number };
   /** (연습) 같은 설정으로 한 판 더 */
   onReplay?: () => void;
 }
@@ -35,7 +38,7 @@ interface Props {
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay }: Props) {
+export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo }: Props) {
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);
@@ -169,6 +172,13 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
     return out;
   }, [results, market]);
 
+  // 한 판 더 버튼 아래 작은 글: 판 설정 (예: 10일 · 하루 1분 / 신속 · 약 10~14분)
+  const days = dayInfo?.days ?? market.totalDays;
+  const sec = dayInfo?.daySec ?? 0;
+  const secText = sec >= 60 ? `${Math.round(sec / 60)}분` : `${sec}초`;
+  const setText = sec ? `${days}일 · 하루 ${secText}` : `${days}일`;
+  const preset = Object.values(SPEED_PRESET).find((x) => x.days === days && x.turnSeconds === sec);
+  const speedText = preset ? `${preset.label} · ${preset.minutes}` : setText;
   const me = results.find((r) => r.id === session.playerId)!;
   const iWon = winner?.id === session.playerId;
 
@@ -422,8 +432,9 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       <div className="center-actions">
         {matchKind === 'match' && onFindAgain ? (
           <>
-            <button className="btn primary xl" onClick={onFindAgain}>
-              같은 조건으로 다시 찾기
+            <button className="btn primary xl again-btn" onClick={onFindAgain}>
+              <b>{(rankedGame ? '랭킹전' : '일반전') + ' ' + (final.players.length > 2 ? '다인전' : '1대1')} 다시 찾기</b>
+              <small>{speedText}</small>
             </button>
             <button className="btn ghost" onClick={onExit}>
               로비로
@@ -432,8 +443,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         ) : onRematch ? (
           <>
             {nextCode && <p className="rematch-note">다시 하기 방이 열렸어요! 같은 설정으로 바로 붙어요</p>}
-            <button className="btn primary xl" onClick={rematch} disabled={rematching}>
-              {rematching ? '방으로 가는 중…' : nextCode ? '다시 하기 방 입장' : '같은 사람들과 한 판 더!'}
+            <button className="btn primary xl again-btn" onClick={rematch} disabled={rematching}>
+              {rematching ? '방으로 가는 중…' : <><b>{nextCode ? '다시 하기 방 입장' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
             </button>
             <button className="btn ghost" onClick={onExit}>
               로비로
@@ -443,8 +454,9 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         ) : (
           <>
             {onReplay && (
-              <button className="btn primary xl" onClick={onReplay}>
-                같은 설정으로 한 판 더
+              <button className="btn primary xl again-btn" onClick={onReplay}>
+                <b>연습 한 판 더</b>
+                <small>{setText}</small>
               </button>
             )}
             <button className={'btn xl' + (onReplay ? ' ghost' : ' primary')} onClick={onExit}>

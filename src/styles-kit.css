@@ -251,3 +251,18 @@
   outline-offset: -4px;
 }
 
+
+/* 결과 화면 '한 판 더': 큰 글(무슨 모드) + 작은 글(판 설정) 두 줄 */
+.result .center-actions .again-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.2; padding-top: 10px; padding-bottom: 10px; }
+.result .center-actions .again-btn b { font-size: 16px; font-weight: 800; }
+.result .center-actions .again-btn small { font-size: 12px; font-weight: 700; opacity: .85; letter-spacing: 0; }
+
+/* 뉴스가 게임의 핵심 → 더 눈에 띄고 읽기 쉽게: 제목 크게, 호재/악재 색 띠 굵게 + 왼쪽에 아주 옅은 색 */
+.news-headline { font-size: 17px; font-weight: 800; line-height: 1.4; letter-spacing: -0.01em; }
+.desk .news-headline { font-size: 16px; }
+.news-card::before { width: 4px; }
+.news-card.good { background: linear-gradient(90deg, var(--up-soft) 0, transparent 42%), var(--surface-2); }
+.news-card.bad { background: linear-gradient(90deg, var(--down-soft) 0, transparent 42%), var(--surface-2); }
+.news-headline .arrow { font-size: 13px; }
+/* 휴대폰 아래 뉴스 탭: 안 읽은 오늘 뉴스 수 (빨간 숫자) */
+.m-game .nav-count.hot { background: var(--danger); color: #fff; }
