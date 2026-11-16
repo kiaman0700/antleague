@@ -678,7 +678,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <p>이 기기에서는 더 이상 이 대결을 할 수 없어요</p>
         <p className="muted small">다른 기기로 자리를 옮겼거나, 방이 사라졌거나, 다른 계정으로 로그인했어요.</p>
         <button className="btn primary" onClick={onExit}>
-          로비로
+          홈으로
         </button>
       </div>
     );
@@ -690,7 +690,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           <>
             <p className="error">{error}</p>
             <button className="btn" onClick={onExit}>
-              로비로
+              홈으로
             </button>
           </>
         ) : (
@@ -1140,9 +1140,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               onExit();
             });
           } else onExit();
-        }} aria-label="로비로" title="로비로">
+        }} aria-label="홈으로" title="홈으로">
         <Icon name="exit" size={18} />
-        <span className="ib-label">{session.mode === 'multi' && room?.status === 'playing' ? '나가기' : '로비로'}</span>
+        <span className="ib-label">{session.mode === 'multi' && room?.status === 'playing' ? '나가기' : '홈으로'}</span>
       </button>
     </>
   );
@@ -1620,7 +1620,7 @@ function ResultWaitExit({ onExit }: { onExit: () => void }) {
     <>
       <p className="muted small">연결이 느려요. 결과는 '업적'과 내 기록에 남아요.</p>
       <button className="btn" onClick={onExit}>
-        로비로
+        홈으로
       </button>
     </>
   );

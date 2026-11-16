@@ -455,7 +455,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               <small>{party.isLeader ? '모두 돌아오면 다시 찾을 수 있어요' : '파티장이 다시 찾기를 눌러요'}</small>
             </button>
             <button className="btn ghost" onClick={onExit}>
-              로비로
+              홈으로
             </button>
           </>
         ) : matchKind === 'match' && onFindAgain ? (
@@ -465,7 +465,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               <small>{speedText}</small>
             </button>
             <button className="btn ghost" onClick={onExit}>
-              로비로
+              홈으로
             </button>
           </>
         ) : onRematch ? (
@@ -475,7 +475,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               {rematching ? '방으로 가는 중…' : <><b>{nextCode ? '다시 하기 방 입장' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
             </button>
             <button className="btn ghost" onClick={onExit}>
-              로비로
+              홈으로
             </button>
             {rematchErr && <p className="error">{rematchErr}</p>}
           </>
@@ -488,7 +488,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               </button>
             )}
             <button className={'btn xl' + (onReplay ? ' ghost' : ' primary')} onClick={onExit}>
-              로비로
+              홈으로
             </button>
           </>
         )}

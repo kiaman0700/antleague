@@ -265,7 +265,7 @@ export function SocialPanel({
                       </span>
                       <span className="cs-name">
                         <b>{f.nickname}</b>
-                        <small>{f.status === 'playing' ? '게임 중' : f.status === 'online' ? '로비' : '오프라인'} · {tierShort(f.rating, f.ranked)}</small>
+                        <small>{f.status === 'playing' ? '게임 중' : f.status === 'online' ? '접속 중' : '오프라인'} · {tierShort(f.rating, f.ranked)}</small>
                       </span>
                       {f.status === 'online' && (
                         <span className="cs-act">

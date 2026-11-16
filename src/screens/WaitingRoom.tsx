@@ -34,7 +34,7 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
   return (
     <Sheet title={<><Icon name="userPlus" size={18} /> 친구 초대</>} onClose={onClose}>
       {!d && <Loading inline />}
-      {d && list.length === 0 && <p className="muted small">아직 친구가 없어요. 로비의 '친구'에서 닉네임으로 추가할 수 있어요.</p>}
+      {d && list.length === 0 && <p className="muted small">아직 친구가 없어요. 홈의 '친구' 메뉴에서 닉네임으로 추가할 수 있어요.</p>}
       <ul className="fr-list">
         {list.map((f) => (
           <li key={f.id} className="fr-row">
@@ -52,7 +52,7 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
           </li>
         ))}
       </ul>
-      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 로비에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이). 친구가 실수로 거절했으면 다시 초대하면 돼요.</p>
+      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 홈 화면에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이). 친구가 실수로 거절했으면 다시 초대하면 돼요.</p>
     </Sheet>
   );
 }
@@ -93,7 +93,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           desc="방장이 방을 닫았거나 나를 내보냈어요. 다른 방을 찾아보세요."
           action={
             <button className="btn primary" onClick={onLeave}>
-              로비로
+              홈으로
             </button>
           }
         />
@@ -106,7 +106,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
         {error ? <EmptyState icon="warn" tone="error" title={error} /> : <Loading label="대기실에 들어가는 중…" />}
         {error && (
           <button className="btn" onClick={onLeave}>
-            로비로
+            홈으로
           </button>
         )}
       </div>
