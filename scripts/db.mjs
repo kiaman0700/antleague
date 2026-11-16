@@ -73,8 +73,35 @@ try {
     for (const f of r.rows) console.log(`#${f.id} [${f.kind}] ${new Date(f.created_at).toLocaleString('ko-KR')} ${f.page ?? ''}\n  ${f.body.split('\n').join('\n  ')}`);
     if (!r.rows.length) console.log('아직 받은 의견이 없어요.');
     await c.end();
+  } else if (cmd === 'admins') {
+    // 운영자 계정 목록 (읽기만). 이메일은 앞 2글자만
+    const c = await connect();
+    const r = await c.query("select u.id, u.email, u.created_at, p.username, p.nickname from auth.users u left join public.profiles p on p.user_id = u.id where u.raw_app_meta_data->>'role' = 'admin' order by u.created_at");
+    for (const a of r.rows) console.log(`- ${a.username ? '아이디 ' + a.username + ' · 닉네임 ' + a.nickname : '(회원 프로필 없음) ' + String(a.email ?? '').slice(0, 2) + '…'} · 만든 날 ${new Date(a.created_at).toLocaleString('ko-KR')}`);
+    if (!r.rows.length) console.log('운영자 계정이 없어요.');
+    await c.end();
+  } else if (cmd === 'set-admin' || cmd === 'unset-admin') {
+    // 운영자 지정/해제 — 이 컴퓨터(DB 비밀 주소)에서만 가능. 화면·API 로는 운영자를 만들 수 없음
+    const username = String(file ?? '').trim().toLowerCase();
+    if (!/^[a-z0-9_]{4,16}$/.test(username)) throw new Error('사용법: npm run db -- set-admin <아이디>');
+    const c = await connect();
+    try {
+      await c.query('begin');
+      const p = await c.query('select user_id, nickname from public.profiles where username = $1', [username]);
+      if (p.rows.length !== 1) throw new Error('그 아이디의 회원이 없어요.');
+      const uid = p.rows[0].user_id;
+      if (cmd === 'set-admin') await c.query(`update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb where id = $1`, [uid]);
+      else await c.query(`update auth.users set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) - 'role' where id = $1`, [uid]);
+      await c.query('commit');
+      console.log(`✅ ${username} (${p.rows[0].nickname}) ${cmd === 'set-admin' ? '운영자로 지정' : '운영자 해제'}`);
+    } catch (e) {
+      await c.query('rollback').catch(() => {});
+      throw e;
+    } finally {
+      await c.end();
+    }
   } else {
-    console.log('사용법: npm run db -- check | show <파일> | apply <파일> | feedback');
+    console.log('사용법: npm run db -- check | show <파일> | apply <파일> | feedback | admins | set-admin <아이디> | unset-admin <아이디>');
   }
 } catch (e) {
   // 연결 주소(비밀번호 포함)가 오류 메시지에 섞이지 않게 메시지만

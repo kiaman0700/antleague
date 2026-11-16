@@ -181,7 +181,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const [rankSheet, setRankSheet] = useState(false);
   const [marketSheet, setMarketSheet] = useState(false);
   const [schedSheet, setSchedSheet] = useState(false);
-  const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [pins, setPins] = useState<string[]>(loadPins);
   const togglePin = (k: string) =>
     setPins((p) => {
@@ -484,34 +483,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     saveUi(m);
     if (session.mode === 'multi') api('mode', { roomId: session.roomId, mode: m }).catch(() => {});
   };
-
-  // ---------- 모바일: 아래로 스크롤하면 상단을 접고, 위로 올리면 다시 펼침 ----------
-  useEffect(() => {
-    if (!mobile) return;
-    let last = window.scrollY;
-    let lockUntil = 0;
-    let collapsed = false;
-    const set = (v: boolean) => {
-      if (v === collapsed) return;
-      collapsed = v;
-      setHeaderCollapsed(v);
-      // 접히고 펴지면서 페이지 높이가 바뀌어 생기는 가짜 스크롤은 잠깐 무시
-      lockUntil = Date.now() + 400;
-    };
-    const on = () => {
-      const yy = window.scrollY;
-      if (Date.now() < lockUntil) {
-        last = yy;
-        return;
-      }
-      if (yy < 40) set(false);
-      else if (yy > last + 6) set(true);
-      else if (yy < last - 30) set(false);
-      if (Math.abs(yy - last) > 6 || yy < 40) last = yy;
-    };
-    window.addEventListener('scroll', on, { passive: true });
-    return () => window.removeEventListener('scroll', on);
-  }, [mobile]);
 
   // ---------- PC 단축키 ----------
   useEffect(() => {
@@ -1046,7 +1017,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       <div className={'m-game ui-' + ui + (editing ? ' editing' : '')}>
         {editBar}
         {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 (편집 중에는 펼쳐 둠) */}
-        <header className={'m-top' + (!editing && (headerCollapsed || (tab === 'detail' && !tablet)) ? ' collapsed' : '')}>
+        <header className="m-top">
           {/* ② 내 재산 · 비교 · 장 마감 (+ 아래 얇은 진행 막대) */}
           <div className="m-hero">
             <div className="mh-left">
@@ -1103,7 +1074,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </div>
             <span className="mp-left">{total - day - 1 > 0 ? `${total - day - 1}일 남음` : '마지막 날'}</span>
           </div>
-          <div className="m-top-more">
+        </header>
+        {/* 시장·일정·재산 줄: 위에 고정하지 않고 화면과 함께 자연스럽게 스크롤 (스크롤할 때 접혔다 펴지며 움직이지 않게) */}
+          <div className={'m-top-more m-top-flow' + (!editing && tab === 'detail' && !tablet ? ' hidden-row' : '')}>
           {layout.mHeader.map((row, i) => (
             <EditSlot
               key={row.id}
@@ -1129,7 +1102,6 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </div>
           )}
           </div>
-        </header>
 
         <main className={'m-page p-' + tab + (tablet && (tab === 'list' || tab === 'detail') ? ' split' : '')}>
           {tablet && (tab === 'list' || tab === 'detail') ? (

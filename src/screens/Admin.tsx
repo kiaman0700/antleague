@@ -1,5 +1,6 @@
 /**
- * 운영자 화면 (/admin): 운영자 계정 로그인·처음 만들기 + 의견함.
+ * 운영자 화면 (/admin): 의견함. 운영자는 일반 회원 로그인으로 들어온 '운영자로 지정된' 계정만.
+ * 운영자 계정을 만들거나 지정하는 방법은 화면·API 에 없음 (운영자 컴퓨터에서 `npm run db -- set-admin <아이디>` 만).
  * 의견 내용은 서버가 운영자 계정인지 확인한 뒤에만 보내 줌 — 화면을 열어도 다른 사람은 아무것도 볼 수 없음
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -17,13 +18,8 @@ interface Row {
 }
 const KIND: Record<Row['kind'], string> = { bug: '버그·오류', idea: '아이디어', privacy: '개인정보', etc: '무엇이든' };
 
-export function Admin({ onBack }: { onBack: () => void }) {
+export function Admin({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
   const [state, setState] = useState<'checking' | 'login' | 'inbox'>('checking');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
-  const [signup, setSignup] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
   const [unread, setUnread] = useState(0);
@@ -50,24 +46,6 @@ export function Admin({ onBack }: { onBack: () => void }) {
     if (state === 'inbox') load().catch((e) => setMsg(e instanceof Error ? e.message : String(e)));
   }, [state, load]);
 
-  const login = async () => {
-    setMsg('');
-    setBusy(true);
-    try {
-      if (signup) {
-        await api('adminSignup', { email, password, code });
-      }
-      const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) throw new Error('이메일 또는 비밀번호가 맞지 않아요.');
-      setPassword('');
-      setCode('');
-      await check();
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
   const logout = async () => {
     await supabase?.auth.signOut();
     location.assign('/');
@@ -97,31 +75,14 @@ export function Admin({ onBack }: { onBack: () => void }) {
 
       {state === 'login' && (
         <section className="panel pad admin-login">
-          <h3>{signup ? '운영자 계정 처음 만들기' : '운영자 로그인'}</h3>
-          <p className="muted small">
-            운영자만 쓰는 화면이에요. 로그인하면 이 기기의 게임 계정 대신 운영자 계정으로 바뀌어요. (게임은 로그아웃 후 새 계정으로 할 수 있어요)
-          </p>
-          <label className="field">
-            <span>이메일</span>
-            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} />
-          </label>
-          <label className="field">
-            <span>비밀번호 {signup && <small className="muted">(10자 이상)</small>}</span>
-            <input type="password" autoComplete={signup ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} maxLength={72} />
-          </label>
-          {signup && (
-            <label className="field">
-              <span>설정 코드 (한 번만 필요)</span>
-              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={40} autoComplete="off" />
-            </label>
-          )}
-          {msg && <p className="error">{msg}</p>}
+          <h3>운영자만 볼 수 있어요</h3>
+          <p className="muted small">운영자로 지정된 회원 계정으로 로그인하면 이 화면에서 의견함을 볼 수 있어요.</p>
           <div className="modal-actions">
-            <button className="btn ghost" onClick={() => (setSignup(!signup), setMsg(''))}>
-              {signup ? '이미 계정이 있어요' : '처음이에요 (계정 만들기)'}
+            <button className="btn ghost" onClick={onBack}>
+              홈으로
             </button>
-            <button className="btn primary" onClick={login} disabled={busy || !email || password.length < (signup ? 10 : 1) || (signup && !code)}>
-              {busy ? '확인 중…' : signup ? '만들고 로그인' : '로그인'}
+            <button className="btn primary" onClick={onLogin}>
+              로그인하러 가기
             </button>
           </div>
         </section>

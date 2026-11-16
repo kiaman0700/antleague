@@ -10,8 +10,6 @@ function devApi(): Plugin {
       const env = loadEnv('development', process.cwd(), '');
       process.env.SUPABASE_URL ??= env.VITE_SUPABASE_URL;
       process.env.SUPABASE_SECRET_KEY ??= env.SUPABASE_SECRET_KEY;
-      process.env.ADMIN_EMAILS ??= env.ADMIN_EMAILS;
-      process.env.ADMIN_SETUP_CODE ??= env.ADMIN_SETUP_CODE;
       server.middlewares.use('/api/game', async (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;

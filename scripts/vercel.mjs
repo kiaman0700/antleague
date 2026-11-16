@@ -93,18 +93,17 @@ try {
     });
     if (!r.ok) throw new Error(`설정 실패 (${r.status}) ${(await r.text()).slice(0, 200)}`);
     console.log(`✅ ${key} 설정 완료 — 다음 배포부터 적용돼요`);
-  } else if (cmd === 'setserver') {
-    // 서버 전용 설정값(운영자 이메일·설정 코드) — 값은 출력하지 않음
-    const [key, ...rest] = process.argv.slice(3);
-    const value = rest.join(' ');
-    if (!['ADMIN_EMAILS', 'ADMIN_SETUP_CODE'].includes(key ?? '') || !value) throw new Error('사용법: npm run vercel -- setserver ADMIN_EMAILS|ADMIN_SETUP_CODE 값');
-    const r = await fetch(`https://api.vercel.com/v10/projects/${project.projectId}/env?upsert=true&teamId=${project.orgId}`, {
-      method: 'POST',
-      headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
-      body: JSON.stringify({ key, value, type: key === 'ADMIN_SETUP_CODE' ? 'encrypted' : 'plain', target: ['production', 'preview', 'development'] }),
-    });
-    if (!r.ok) throw new Error(`설정 실패 (${r.status}) ${(await r.text()).slice(0, 200)}`);
-    console.log(`✅ ${key} 설정 완료 — 다음 배포부터 적용돼요`);
+  } else if (cmd === 'unsetserver') {
+    // 더 이상 쓰지 않는 서버 설정값 지우기 (운영자 계정 만들기용이던 값들만 — 다른 값은 지우지 못하게)
+    const key = process.argv[3];
+    if (!['ADMIN_EMAILS', 'ADMIN_SETUP_CODE'].includes(key ?? '')) throw new Error('사용법: npm run vercel -- unsetserver ADMIN_EMAILS|ADMIN_SETUP_CODE');
+    const j = await api(`/v9/projects/${project.projectId}/env`);
+    const hits = j.envs.filter((e) => e.key === key);
+    for (const e of hits) {
+      const r = await fetch(`https://api.vercel.com/v9/projects/${project.projectId}/env/${e.id}?teamId=${project.orgId}`, { method: 'DELETE', headers: { authorization: 'Bearer ' + token } });
+      if (!r.ok) throw new Error(`삭제 실패 (${r.status})`);
+    }
+    console.log(hits.length ? `✅ ${key} 삭제됨` : `${key} 없음`);
   } else if (cmd === 'runtime') {
     const id = arg ?? (await latestId());
     const since = Date.now() - 24 * 3600_000;

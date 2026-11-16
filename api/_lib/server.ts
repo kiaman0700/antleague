@@ -1012,39 +1012,15 @@ async function createGuest(ip: string) {
 }
 
 /* ---------------- 운영자 ---------------- */
-/** 운영자 이메일 목록 (서버 환경변수 ADMIN_EMAILS, 쉼표로 구분) — 화면에는 절대 보내지 않음 */
-const adminEmails = () =>
-  (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
 // 운영자 = 서버(비밀 키)만 쓸 수 있는 app_metadata.role 이 'admin' 인 계정. 이메일만으로는 절대 운영자가 아님
 // (누가 같은 이메일로 먼저 가입해도 운영자가 될 수 없음)
 const isAdminUser = (u: { app_metadata?: Record<string, unknown> | null; is_anonymous?: boolean }) => u.app_metadata?.role === 'admin' && !u.is_anonymous;
+// (app_metadata 는 비밀 키로만 바꿀 수 있고, 이 서버 코드 어디에도 role 을 쓰는 곳이 없음)
 
-/**
- * 운영자 계정 만들기: 운영자 이메일 + 서버만 아는 1회용 설정 코드(ADMIN_SETUP_CODE)가 있어야 함.
- * (처리방침에 이메일이 공개돼 있어도 코드 없이는 남이 먼저 만들 수 없음)
+/*
+ * 운영자 계정은 화면·API 로 만들 수 없음. 운영자 지정은 DB 비밀 주소가 있는 운영자 컴퓨터에서만:
+ *   npm run db -- set-admin <아이디>   (해제: unset-admin)
  */
-async function adminSignup(b: Body, ip: string) {
-  rateLimit('adminSignup:' + ip, 5, 600_000);
-  const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
-  const password = typeof b.password === 'string' ? b.password : '';
-  const code = typeof b.code === 'string' ? b.code.trim() : '';
-  const want = process.env.ADMIN_SETUP_CODE ?? '';
-  const codeOk = want.length >= 16 && code.length === want.length && timingSafeEqual(Buffer.from(code.toUpperCase()), Buffer.from(want.toUpperCase()));
-  // 설정 코드가 있어야만 운영자 계정. (ADMIN_EMAILS 를 정해 두면 그 이메일만 — 비워 두면 아무 이메일이나:
-  // 누가 그 이메일로 먼저 가입해 막아 버려도 다른 이메일로 만들 수 있게)
-  const allow = adminEmails();
-  if (!codeOk || (allow.length > 0 && !allow.includes(email)) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new GameError('이메일이나 설정 코드가 맞지 않아요.', 403);
-  if (password.length < 10 || password.length > 72) throw new GameError('비밀번호는 10~72자로 정해 주세요.');
-  const res = await db().auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { role: 'admin' } });
-  if (res.error) {
-    if (/already|registered|exists/i.test(res.error.message)) throw new GameError('이미 만든 계정이에요. 로그인해 주세요.', 409);
-    throw new GameError('계정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
-  }
-  return { ok: true };
-}
 
 async function adminAct(action: string, b: Body) {
   const sb = db();
@@ -1462,7 +1438,6 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
 export async function handle(body: unknown, token: string | null, ip = 'unknown'): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
-    if (body && typeof body === 'object' && (body as Body).action === 'adminSignup') return { status: 200, body: await adminSignup(body as Body, ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'loginEmail') {
       rateLimit('loginEmail:' + ip, 30, 600_000);
       return { status: 200, body: await loginEmail(db(), body as Body) };

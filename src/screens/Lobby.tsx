@@ -1279,7 +1279,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <Companies onBack={back} />;
       break;
     case 'admin':
-      body = <Admin onBack={back} />;
+      body = <Admin onBack={back} onLogin={() => go('login')} />;
       break;
     case 'login':
     case 'signup':

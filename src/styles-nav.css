@@ -931,3 +931,14 @@ button.hr-row:hover {
   margin: 0 0 6px;
   width: fit-content;
 }
+
+/* 모바일 게임: 시장·일정·재산 줄은 위에 고정하지 않고 내용과 함께 스크롤 (접혔다 펴지는 움직임 없음) */
+.m-top-more.m-top-flow {
+  max-height: none;
+  overflow: visible;
+  transition: none;
+  padding: 8px 12px 0;
+}
+.m-top-more.m-top-flow.hidden-row {
+  display: none;
+}
