@@ -1311,7 +1311,7 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
     return (
       <Modal title={<><Icon name="target" size={18} /> 하던 연습 게임이 있어요</>} onClose={close}>
         <p className="muted small">
-          연습 중에 창이 닫혔어요 ({solo.data.room.day + 1}일차 / {solo.data.room.total_days}일). 이어서 할까요?
+          연습 중간에 나왔어요 ({solo.data.room.day + 1}일차 / {solo.data.room.total_days}일). 이어서 할까요?
         </p>
         <div className="modal-actions rc-actions">
           <button
