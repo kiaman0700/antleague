@@ -392,9 +392,6 @@ kbd {
   display: flex;
   flex-direction: column;
 }
-.game .p-side .side-body {
-  padding-top: 14px;
-}
 
 /* ---------- 모바일 전용 레이아웃 ---------- */
 .m-game {
@@ -505,7 +502,6 @@ kbd {
 }
 .m-page .pinned,
 .m-page .regions,
-.m-page .scroll-chips,
 .m-page .search {
   margin-left: 0;
   margin-right: 0;

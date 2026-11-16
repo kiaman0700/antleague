@@ -209,41 +209,6 @@
   flex-direction: column;
   gap: 6px;
 }
-.tcard {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  gap: 8px;
-  align-items: center;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 10px;
-  padding: 6px 8px;
-}
-.tcard.t-info {
-  border-left-color: var(--gold);
-}
-.tcard.t-attack {
-  border-left-color: var(--up);
-}
-.tcard.t-defense {
-  border-left-color: var(--green);
-}
-.tc-emoji {
-  font-size: 20px;
-  text-align: center;
-}
-.tc-name {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tc-name em {
-  font-style: normal;
-  color: var(--muted);
-}
 .tc-auto {
   font-size: 11px;
   color: var(--muted);
@@ -415,23 +380,6 @@
 }
 .m-page .tray-cards::-webkit-scrollbar {
   display: none;
-}
-.m-page .tcard {
-  flex: 0 0 auto;
-  grid-template-columns: 26px auto;
-  grid-template-rows: auto auto;
-  min-width: 150px;
-  padding: 8px 10px;
-}
-.m-page .tcard .tc-emoji {
-  grid-row: span 2;
-}
-.m-page .tcard .btn,
-.m-page .tcard .tc-auto {
-  grid-column: 2;
-  justify-self: start;
-  margin-top: 4px;
-  min-height: 34px;
 }
 
 /* 재산 페이지 아래 일정 */

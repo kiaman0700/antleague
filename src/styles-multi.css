@@ -750,13 +750,6 @@
 }
 
 /* 일정 칩: 좌우 화살표로 넘김 */
-.sched-wrap .scroll-chips {
-  margin: 0;
-}
-.sched-wrap .sc-track {
-  gap: 6px;
-  padding: 1px 0;
-}
 
 /* 설정 버튼 */
 .m-top .m-menu {

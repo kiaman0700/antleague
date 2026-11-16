@@ -26,34 +26,6 @@
 }
 
 /* 이어하기 카드 */
-.resume-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.resume-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px 12px 16px;
-  border: 1px solid var(--gold);
-  background: var(--gold-soft);
-  border-radius: var(--r);
-}
-.rc-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.rc-text small {
-  color: var(--text-2);
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .icon-btn.sm {
   width: 30px;
   height: 30px;
@@ -284,7 +256,6 @@
     gap: 12px;
   }
   .lobby.home .hero.compact,
-  .lobby.home .resume-list,
   .lobby.home .home-links {
     grid-column: 1 / -1;
   }
