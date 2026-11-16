@@ -1090,8 +1090,14 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 function ForgetMe() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const acc = useAccount();
+  // 회원이면 이 버튼은 회원 탈퇴(아이디·랭킹 점수까지 삭제) — 이 기기 정리로 착각하지 않게 따로 안내하고 두 번 확인
+  const member = acc.status === 'member' && !!acc.profile;
   const forget = async () => {
-    if (!(await ask('이 기기의 계정과 게임 기록(전적·업적·연습 저장·화면 설정)을 모두 지울까요? 되돌릴 수 없어요.', { ok: '모두 지우기', danger: true }))) return;
+    if (member) {
+      if (!(await ask(`회원 탈퇴: 아이디 '${acc.profile!.username}'와 닉네임·랭킹 점수·전적·업적을 모두 지울까요? 다른 기기에서도 다시 로그인할 수 없어요.`, { ok: '탈퇴하기', danger: true }))) return;
+      if (!(await ask('정말 탈퇴할까요? 되돌릴 수 없어요.', { ok: '탈퇴하기', danger: true }))) return;
+    } else if (!(await ask('이 기기의 계정과 게임 기록(전적·업적·연습 저장·화면 설정)을 모두 지울까요? 되돌릴 수 없어요.', { ok: '모두 지우기', danger: true }))) return;
     setBusy(true);
     setErr('');
     try {
@@ -1115,11 +1121,13 @@ function ForgetMe() {
   return (
     <section className="panel pad forget">
       <div>
-        <b>내 데이터 지우기</b>
-        <small className="muted">이 기기의 익명 계정, 전적·업적, 연습 저장, 화면 설정을 모두 지워요.</small>
+        <b>{member ? '회원 탈퇴 · 내 데이터 지우기' : '내 데이터 지우기'}</b>
+        <small className="muted">
+          {member ? '회원 계정(아이디·닉네임·랭킹 점수)과 전적·업적, 이 기기의 연습 저장·화면 설정을 모두 지워요.' : '이 기기의 게스트 계정, 전적·업적, 연습 저장, 화면 설정을 모두 지워요.'}
+        </small>
       </div>
       <button className="btn sm danger" onClick={forget} disabled={busy}>
-        {busy ? '지우는 중…' : '모두 지우기'}
+        {busy ? '지우는 중…' : member ? '탈퇴하기' : '모두 지우기'}
       </button>
       {err && <p className="error">{err}</p>}
     </section>

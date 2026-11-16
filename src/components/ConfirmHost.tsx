@@ -47,6 +47,8 @@ export function ConfirmHost() {
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!req) return;
+    // 닫은 뒤 초점을 처음 누른 버튼으로 돌려줌 (키보드·화면 읽기 프로그램)
+    const prev = document.activeElement as HTMLElement | null;
     // 되돌릴 수 없는 일(기권·삭제)은 실수로 Enter 를 눌러도 취소가 되게
     (req.danger ? cancelRef : okRef).current?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -56,7 +58,10 @@ export function ConfirmHost() {
       }
     };
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      if (prev && prev !== document.body && prev.isConnected) prev.focus({ preventScroll: true });
+    };
   }, [req]);
   if (!req) return null;
   return (

@@ -572,7 +572,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <Icon name="key" size={14} /> 복구 코드 새로 받기
         </button>
         <small className="muted">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
-        <p className="muted small">탈퇴는 홈 → 업적 → 내 데이터 지우기에서 할 수 있어요.</p>
+        <p className="muted small">탈퇴는 업적 화면 맨 아래 '회원 탈퇴 · 내 데이터 지우기'에서 할 수 있어요.</p>
       </section>
     </div>
   );
