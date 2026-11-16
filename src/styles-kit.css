@@ -56,3 +56,7 @@
   flex: 0 0 auto;
 }
 .more-page .more-sub { margin: -6px 0 12px; }
+
+/* 보조 선택지 글자 버튼: 다른 작은 글씨(13px)와 같게, 누르는 범위 44px 이상 */
+.lobby-shell .linkish-soft { font-size: 13px; color: var(--muted, #9aa0b4); min-height: 36px; padding: 8px 6px; text-decoration: none; cursor: pointer; }
+.lobby-shell .linkish-soft:hover, .lobby-shell .linkish-soft:focus-visible { color: var(--text, #f1f3f7); text-decoration: underline; text-underline-offset: 3px; }
