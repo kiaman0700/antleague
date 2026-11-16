@@ -89,7 +89,11 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
   const ranked = [...results].sort((a, b) => b.equity - a.equity);
   const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0] : null;
-  const rankOf = (id: string) => ranked.findIndex((r) => r.id === id);
+  // 같은 재산이면 같은 순위 (비기면 둘 다 1위)
+  const rankOf = (id: string) => {
+    const eq = ranked.find((r) => r.id === id)?.equity ?? 0;
+    return ranked.filter((r) => r.equity > eq).length;
+  };
 
   const played = useRef(false);
   useEffect(() => {
@@ -127,9 +131,11 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         let best = 0;
         let bd = 0;
         for (let d = 1; d < days; d++) if (gapOn(d) - gapOn(d - 1) > best) [best, bd] = [gapOn(d) - gapOn(d - 1), d];
-        out.push({ icon: 'flame', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
+        // 차이가 없었으면(비김 등) 지어낸 문장 대신 넘어감
+        if (best > 0) out.push({ icon: 'flame', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
-      out.push({ icon: 'refresh', title: '1위 다툼', text: changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
+      const tieEnd = gapOn(days - 1) === 0;
+      out.push({ icon: 'refresh', title: '1위 다툼', text: tieEnd ? '마지막 날까지 똑같아서 비겼어요' : changes ? `1위가 ${changes}번 바뀌었어요` : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요` });
     }
     for (const r of results) {
       let best = 0;
@@ -334,7 +340,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
           totalDays={market.totalDays}
           refLine={{ value: START_CASH, label: `시작 ${START_CASH >= 10_000_000 ? '1,000만원' : '100만원'}` }}
-          fmt={(v) => wonShort(v)}
+          fmt={(v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : `${Math.round(v / 1e4).toLocaleString('ko-KR')}만`)}
           fill={false}
         />
       </div>
