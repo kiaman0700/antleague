@@ -310,3 +310,5 @@
 .cs-sub small, .cs-slot small, .cs-glabel small { font-size: 11px; }
 /* 업적 칸 설명·횟수, 방 만들기 선택지 아래 설명: 10px → 11px */
 .badge-grid .bg-cell small, .seg.four button small { font-size: 11px; }
+/* 휴대폰 게임 위 재산 줄(현금·주식·오늘) 이름표 10px → 11px */
+.m-asum small { font-size: 11px; }
