@@ -136,5 +136,7 @@ export async function resolveGuest(guestToken: string, mode: 'merge' | 'discard'
 export async function logout() {
   await resetMatch(); // 다른 계정으로 바뀌기 전에 이 계정의 매칭 대기를 멈춤
   await supabase?.auth.signOut();
+  // 회원 닉네임이 게스트 닉네임으로 남지 않게 (손님은 회원 닉네임을 못 써서 막힘) → 다음에 온라인 기능을 누르면 손님 닉네임을 새로 정함
+  saveNick('');
   set({ status: 'guest', profile: null, recent: [], badges: {} });
 }

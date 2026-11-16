@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { View } from '../engine/engine';
 import type { Market } from '../game/market';
 import { accessToken, supabase } from '../lib/supabase';
+import { saveNick } from '../session';
 
 export class ApiError extends Error {
   constructor(
@@ -24,6 +25,11 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       if (anon) return api<T>(action, payload, true);
       throw new ApiError('로그인이 풀렸어요. 다시 로그인해 주세요.', 401);
+    }
+    // 손님 닉네임이 회원 닉네임과 같으면: 저장된 닉네임을 비워서 다시 누를 때 새 닉네임을 정하게 (막힌 채로 남지 않게)
+    if (e instanceof ApiError && e.status === 409 && /회원이 쓰는 닉네임/.test(e.message)) {
+      saveNick('');
+      throw new ApiError('회원이 쓰는 닉네임이라 쓸 수 없어요. 다시 누르면 새 닉네임을 정할 수 있어요.', 409);
     }
     throw e;
   }
