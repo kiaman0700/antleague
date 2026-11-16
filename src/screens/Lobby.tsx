@@ -1463,7 +1463,10 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     return () => clearInterval(id);
   }, [matching]);
   const waitedSec = matching ? Math.max(0, Math.floor((Date.now() - match.startedAt) / 1000)) : 0;
-  const goMatchTab = () => go(match.queue?.startsWith('ranked') ? 'ranked' : 'casual');
+  const matchTab: LobbyPage = match.queue?.startsWith('ranked') ? 'ranked' : 'casual';
+  const goMatchTab = () => go(matchTab);
+  // 찾는 중 화면(랭킹전·일반전)에 이미 크게 보이면 아래 떠 있는 '매칭 중' 띠는 숨김 (같은 내용이 두 번, 내용도 가림)
+  const onMatchPage = resolved === matchTab;
   const play = () => {
     if (matching) return goMatchTab();
     if (inParty && !party!.isLeader) return go('casual'); // 파티원은 파티장이 찾기를 시작 (일반전 화면에 안내가 있음)
@@ -1506,7 +1509,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             </span>
           </div>
           <div className="lobby-body">{body}</div>
-          {matching && (
+          {matching && !onMatchPage && (
             <div className="mm-pill" role="status">
               <span className="mf-spin sm" aria-hidden />
               <button className="mm-txt" onClick={goMatchTab}>
