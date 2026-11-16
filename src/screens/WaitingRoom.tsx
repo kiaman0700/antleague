@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ask } from '../components/ConfirmHost';
 import { api, useLiveView } from '../net/api';
-import { loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
+import { estimateMinutes, graceText, loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
 import { ModePicker } from './Lobby';
 import { Icon } from '../components/Icon';
+import { GRANT_EVERY, START_CARDS } from '../game/items';
 import { Sheet } from '../components/PrefsPanel';
 import { useAccount } from '../net/account';
 import { refreshFriends, useFriends } from './Friends';
@@ -182,6 +183,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
       </header>
 
       <div className="wr-main">
+        <div className="wr-left">
         <section className="wr-slots slots" aria-label="참가자">
           {Array.from({ length: room.maxPlayers }, (_, i) => {
             const p = view.players[i];
@@ -219,6 +221,37 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
             );
           })}
         </section>
+        {/* 기다리는 동안 이 방이 어떻게 진행되는지 (빈 공간 대신 쓸모 있는 안내) */}
+        <section className="panel pad wr-rules" aria-label="이 방 규칙">
+          <h3>이 방은 이렇게 진행돼요</h3>
+          <ul>
+            <li>
+              <Icon name="calendar" size={16} />
+              <span>
+                <b>{room.totalDays}일</b> 동안 겨뤄요. 하루 장은 <b>{turnLabel}</b>이에요. 보통 <b>약 {estimateMinutes(room.totalDays, room.turnSeconds).typical}분</b>이면 끝나요.
+              </span>
+            </li>
+            <li>
+              <Icon name="timer" size={16} />
+              <span>
+                모두 장 마감을 누르면 바로 다음 날로 가요. {graceText(room.maxPlayers)} 뒤에 자동으로 넘어가요.
+              </span>
+            </li>
+            <li>
+              <Icon name="news" size={16} />
+              <span>둘째 날부터는 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸 수 있어요.</span>
+            </li>
+            <li>
+              <Icon name="cards" size={16} />
+              <span>찬스 카드는 시작할 때 {START_CARDS}장, {GRANT_EVERY}일마다 1장 무료로 받아요. 상대를 방해하는 카드도 있어요.</span>
+            </li>
+            <li>
+              <Icon name="trophy" size={16} />
+              <span>마지막 날 재산이 가장 많은 사람이 이겨요.</span>
+            </li>
+          </ul>
+        </section>
+        </div>
 
         <aside className="wr-side">
           <div className="panel pad wr-invite">
