@@ -6,8 +6,8 @@
  * - 랭킹: 회원끼리 붙은 멀티 대결만 점수(Elo, 시작 1000) 반영 — 게스트와의 판은 전적만
  * 모든 읽기·쓰기는 서버만 (profiles·match_players 는 브라우저 권한 없음)
  */
-import { randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { BADGES } from '../../src/game/achievements.js';
 
@@ -81,7 +81,38 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
 
 type Body = Record<string, unknown>;
 
-export async function accountAct(sb: SupabaseClient, action: string, b: Body, user: { id: string; app_metadata?: Record<string, unknown> | null }, rateLimit: (k: string, n: number, ms: number) => void): Promise<unknown> {
+/** 아이디 → 로그인 주소 (로그인 전, 서버만 앎). 없는 아이디도 늘 같은 가짜 주소를 돌려줘 있는지 없는지 티 나지 않게 */
+export async function loginEmail(sb: SupabaseClient, b: Body) {
+  const u = typeof b.username === 'string' ? b.username.trim().toLowerCase().slice(0, 32) : '';
+  const fake = `u_${createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('login-email:' + u).digest('hex').slice(0, 24)}@${USER_DOMAIN}`;
+  if (!USERNAME_RE.test(u)) return { email: fake };
+  const p = (await sb.from('profiles').select('user_id').eq('username', u).maybeSingle()).data as { user_id: string } | null;
+  if (!p) return { email: fake };
+  const g = await sb.auth.admin.getUserById(p.user_id);
+  const email = g.data.user?.email;
+  return { email: email && email.endsWith('@' + USER_DOMAIN) ? email : fake };
+}
+
+/** 지금 비밀번호 확인 (따로 만든 클라이언트로 로그인해 보고, 만든 세션은 바로 끝냄) */
+async function verifyPassword(sb: SupabaseClient, uid: string, password: unknown) {
+  const bad = () => new GameError('지금 비밀번호가 맞지 않아요.', 403);
+  if (typeof password !== 'string' || !password || password.length > 72) throw bad();
+  const g = await sb.auth.admin.getUserById(uid);
+  const email = g.data.user?.email;
+  if (!email) throw bad();
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) throw new GameError('서버 설정이 없어요.', 500);
+  const c = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const r = await c.auth.signInWithPassword({ email, password });
+  if (r.error || r.data.user?.id !== uid) {
+    if (r.error && /rate|many/i.test(r.error.message)) throw new GameError('시도가 너무 많아요. 잠시 후 다시 해 주세요.', 429);
+    throw bad();
+  }
+  if (r.data.session) await sb.auth.admin.signOut(r.data.session.access_token, 'local').catch(() => {});
+}
+
+export async function accountAct(sb: SupabaseClient, action: string, b: Body, user: { id: string; app_metadata?: Record<string, unknown> | null }, rateLimit: (k: string, n: number, ms: number) => void, leaveSeat?: (roomId: string, playerId: string) => Promise<unknown>): Promise<unknown> {
   const uid = user.id;
   switch (action) {
     case 'signup': {
@@ -96,13 +127,18 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (!(await nicknameFree(sb, nickname))) throw new GameError('이미 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.', 409);
       const taken = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
       if (taken.data) throw new GameError('이미 쓰는 아이디예요.', 409);
-      // 지금 쓰던 게스트 계정을 정식 계정으로 (같은 계정이라 하던 게임·기록이 그대로)
-      const up = await sb.auth.admin.updateUserById(uid, { email: `${username}@${USER_DOMAIN}`, password, email_confirm: true, user_metadata: { username } });
-      if (up.error) throw new GameError(/already|exists|registered/i.test(up.error.message) ? '이미 쓰는 아이디예요.' : '가입하지 못했어요. 잠시 후 다시 시도해 주세요.', 409);
+      // 1) 프로필을 먼저 넣어 아이디·닉네임을 '예약' (DB 유일 제약 — 동시에 같은 아이디로 가입해도 한 명만)
       const code = newRecovery();
       const ins = await sb.from('profiles').insert({ user_id: uid, username, nickname, recovery_hash: hash(normRecovery(code)) });
-      if (ins.error) throw new GameError(/nickname/.test(ins.error.message) ? '이미 쓰는 닉네임이에요.' : /username/.test(ins.error.message) ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.', 409);
-      return { ok: true, recoveryCode: code, username, nickname };
+      if (ins.error) throw new GameError(/nickname/.test(ins.error.message) ? '이미 쓰는 닉네임이에요.' : /username|duplicate/.test(ins.error.message) ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.', 409);
+      // 2) 지금 쓰던 게스트 계정을 정식 계정으로 (같은 계정이라 하던 게임·기록이 그대로).
+      //    로그인 주소는 아이디와 상관없는 무작위 값 — 아이디로 남이 미리 주소를 선점하거나 알아낼 수 없게
+      const up = await sb.auth.admin.updateUserById(uid, { email: `u_${randomBytes(12).toString('hex')}@${USER_DOMAIN}`, password, email_confirm: true });
+      if (up.error) {
+        await sb.from('profiles').delete().eq('user_id', uid); // 실패하면 예약 취소
+        throw new GameError('가입하지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+      }
+      return { ok: true, recoveryCode: code, nickname };
     }
 
     case 'checkAvailable': {
@@ -163,6 +199,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     case 'changePassword': {
       rateLimit(uid + ':pw', 5, 600_000);
       if (!(await getProfile(sb, uid))) throw new GameError('회원만 바꿀 수 있어요.', 403);
+      // 잠깐 자리를 비운 사이 남이 바꾸지 못하게: 지금 비밀번호를 한 번 더 확인
+      await verifyPassword(sb, uid, b.current);
       const password = cleanNewPassword(b.password);
       const r = await sb.auth.admin.updateUserById(uid, { password });
       if (r.error) throw new GameError('바꾸지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
@@ -172,6 +210,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     case 'newRecovery': {
       rateLimit(uid + ':rec', 3, 600_000);
       if (!(await getProfile(sb, uid))) throw new GameError('회원만 받을 수 있어요.', 403);
+      await verifyPassword(sb, uid, b.current);
       const code = newRecovery();
       await sb.from('profiles').update({ recovery_hash: hash(normRecovery(code)) }).eq('user_id', uid);
       return { recoveryCode: code };
@@ -192,6 +231,45 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         mine = { rank: me.games > 0 ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games };
       }
       return { top: top.map((t, i) => ({ rank: i + 1, ...t })), me: mine };
+    }
+
+    case 'guestSummary':
+    case 'mergeGuest': {
+      // 게스트로 하던 기기에서 이미 있는 회원 계정으로 로그인했을 때: 게스트 기록을 가져오거나 버림.
+      // guestToken = 로그인 전 게스트 세션 토큰 (그 게스트 본인임을 증명)
+      rateLimit(uid + ':merge', 10, 600_000);
+      const tok = typeof b.guestToken === 'string' && b.guestToken.length < 4096 ? b.guestToken : '';
+      const g = tok ? await sb.auth.getUser(tok) : null;
+      const gu = g?.data.user;
+      if (!gu || gu.id === uid) throw new GameError('게스트 기록을 찾을 수 없어요.', 404);
+      if (gu.app_metadata?.role === 'admin' || (await getProfile(sb, gu.id))) throw new GameError('회원 계정의 기록은 가져올 수 없어요.', 403);
+      const me = await getProfile(sb, uid);
+      if (!me) throw new GameError('회원으로 로그인한 뒤에 할 수 있어요.', 403);
+      const seats = ((await sb.from('players').select('id, room_id, rooms!inner(status)').eq('user_id', gu.id)).data ?? []) as unknown as { id: string; room_id: string; rooms: { status: string } }[];
+      if (action === 'guestSummary')
+        return { games: seats.filter((x) => x.rooms.status === 'finished').length, playing: seats.filter((x) => x.rooms.status !== 'finished').length };
+      const mode = b.mode === 'merge' ? 'merge' : 'discard';
+      let moved = 0;
+      if (mode === 'merge' && seats.length) {
+        const mine = new Set((((await sb.from('players').select('room_id').eq('user_id', uid)).data ?? []) as { room_id: string }[]).map((x) => x.room_id));
+        for (const s of seats) {
+          if (mine.has(s.room_id)) continue; // 같은 방에 이미 내 자리가 있으면 건너뜀
+          const r = await sb.from('players').update({ user_id: uid }).eq('id', s.id).eq('user_id', gu.id);
+          if (!r.error) moved++;
+        }
+      }
+      // 가져오지 않은 진행·대기 중 자리는 제대로 나가기 (게임 중이면 기권 → 남은 사람이 기다리지 않게, 대기실이면 자리 빼기)
+      if (leaveSeat) {
+        const left = ((await sb.from('players').select('id, room_id, left_game, rooms!inner(status)').eq('user_id', gu.id)).data ?? []) as unknown as { id: string; room_id: string; left_game: boolean; rooms: { status: string } }[];
+        for (const s of left) {
+          if (s.rooms.status === 'finished' || s.left_game) continue;
+          await leaveSeat(s.room_id, s.id).catch(() => {});
+        }
+      }
+      // 게스트 계정은 지움 (남은 자리는 연결만 끊김 — 다른 사람 기록은 그대로)
+      await sb.from('match_tickets').delete().eq('user_id', gu.id);
+      await sb.auth.admin.deleteUser(gu.id);
+      return { ok: true, moved };
     }
 
     case 'myMatch': {
@@ -221,13 +299,42 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
  * 끝난 대결의 결과를 회원 기록·랭킹에 반영 (한 판에 한 번 — match_players 기본키로 중복 막음).
  * results 는 1등부터, nickname 은 그 방 안에서 유일
  */
+/** 같은 두 사람이 하루(24시간)에 점수를 주고받는 판 수 상한 — 짜고 치기(점수 몰아주기) 방지 */
+export const PAIR_DAILY_LIMIT = 3;
+
+/**
+ * 순위 → Elo 점수 변화. 기권한 사람은 랭킹전에서 꼴찌로 침 (지는 중에 나가서 점수를 지키지 못하게).
+ * skipPair(a,b) 가 true 인 쌍은 점수에 넣지 않음
+ */
+export function eloDeltas(
+  members: { user_id: string; rating: number }[],
+  rankOf: Map<string, number>,
+  skipPair: (a: string, b: string) => boolean = () => false,
+) {
+  const delta = new Map<string, number>();
+  for (const a of members) {
+    let d = 0;
+    for (const o of members) {
+      if (o.user_id === a.user_id || skipPair(a.user_id, o.user_id)) continue;
+      const ra = rankOf.get(a.user_id)!;
+      const ro = rankOf.get(o.user_id)!;
+      const s = ra < ro ? 1 : ra > ro ? 0 : 0.5;
+      const e = 1 / (1 + Math.pow(10, (o.rating - a.rating) / 400));
+      d += s - e;
+    }
+    delta.set(a.user_id, Math.round((32 / Math.max(1, members.length - 1)) * d));
+  }
+  return delta;
+}
+
 export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number }[], ranked = false) {
-  const ps = ((await sb.from('players').select('user_id, nickname').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string }[];
+  const ps = ((await sb.from('players').select('user_id, nickname, left_game').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string; left_game: boolean | null }[];
   if (ps.length < 2) return;
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
   const profs = ((await sb.from('profiles').select('user_id, rating, games, wins, best_ret').in('user_id', uids)).data ?? []) as Profile[];
   if (!profs.length) return;
   const byNick = new Map(ps.map((p) => [p.nickname, p.user_id]));
+  const quit = new Set(ps.filter((p) => p.left_game && p.user_id).map((p) => p.user_id!));
   const rankOf = new Map<string, number>();
   results.forEach((r, i) => {
     const u = byNick.get(r.nickname);
@@ -237,34 +344,39 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   const members = profs.filter((p) => rankOf.has(p.user_id));
   // 점수는 랭킹전(매칭)에서만. 친구 방·일반전은 전적만 남김
   const rated = ranked && members.length >= 2;
-  // 회원끼리 쌍마다 Elo (K=32 를 상대 수로 나눔). 게스트와의 결과는 점수에 넣지 않음
-  const delta = new Map<string, number>();
+  let delta = new Map<string, number>();
   if (rated) {
-    for (const a of members) {
-      let d = 0;
-      for (const o of members) {
-        if (o.user_id === a.user_id) continue;
-        const ra = rankOf.get(a.user_id)!;
-        const ro = rankOf.get(o.user_id)!;
-        const s = ra < ro ? 1 : ra > ro ? 0 : 0.5;
-        const e = 1 / (1 + Math.pow(10, (o.rating - a.rating) / 400));
-        d += s - e;
-      }
-      delta.set(a.user_id, Math.round((32 / (members.length - 1)) * d));
-    }
+    // 랭킹전: 기권한 사람은 재산과 상관없이 꼴찌 (끝까지 한 사람끼리의 순서는 그대로)
+    const eloRank = new Map<string, number>();
+    const order = [...members].sort((x, y) => (quit.has(x.user_id) ? 1 : 0) - (quit.has(y.user_id) ? 1 : 0) || rankOf.get(x.user_id)! - rankOf.get(y.user_id)!);
+    order.forEach((m, i) => eloRank.set(m.user_id, quit.has(m.user_id) ? members.length : i + 1));
+    // 같은 두 사람이 24시간 안에 이미 3판 넘게 점수를 주고받았으면 그 쌍은 빼기
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const past = ((await sb.from('match_players').select('room_id, user_id').in('user_id', members.map((m) => m.user_id)).eq('rated', true).gte('created_at', since)).data ?? []) as { room_id: string; user_id: string }[];
+    const byRoom = new Map<string, string[]>();
+    for (const r of past) if (r.room_id !== roomId) byRoom.set(r.room_id, [...(byRoom.get(r.room_id) ?? []), r.user_id]);
+    const pairKey = (a: string, b: string) => (a < b ? a + b : b + a);
+    const pairCount = new Map<string, number>();
+    for (const us of byRoom.values()) for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) pairCount.set(pairKey(us[i], us[j]), (pairCount.get(pairKey(us[i], us[j])) ?? 0) + 1);
+    delta = eloDeltas(members, eloRank, (a, b) => (pairCount.get(pairKey(a, b)) ?? 0) >= PAIR_DAILY_LIMIT);
   }
   for (const p of members) {
     const rank = rankOf.get(p.user_id)!;
-    const after = p.rating + (delta.get(p.user_id) ?? 0);
+    const d = delta.get(p.user_id) ?? 0;
+    const after = p.rating + d;
+    const ret = retOf.get(p.user_id) ?? 0;
+    // match_players 기본키(방·사람)로 한 판은 한 번만 반영
     const ins = await sb
       .from('match_players')
-      .insert({ room_id: roomId, user_id: p.user_id, rank, players: ps.length, ret: retOf.get(p.user_id) ?? 0, rated, rating_before: p.rating, rating_after: after })
+      .insert({ room_id: roomId, user_id: p.user_id, rank, players: ps.length, ret, rated, rating_before: p.rating, rating_after: after })
       .select('user_id');
     if (ins.error || !ins.data?.length) continue; // 이미 반영된 판
-    const ret = retOf.get(p.user_id) ?? 0;
-    await sb
-      .from('profiles')
-      .update({ rating: after, games: p.games + 1, wins: p.wins + (rank === 1 ? 1 : 0), best_ret: p.best_ret === null ? ret : Math.max(p.best_ret, ret), updated_at: new Date().toISOString() })
-      .eq('user_id', p.user_id);
+    // 점수·전적은 DB 안에서 한 번에 더함 (두 판이 동시에 끝나도 값이 덮어써지지 않게)
+    const rpc = await sb.rpc('apply_rating', { p_user: p.user_id, p_delta: d, p_win: rank === 1 && !quit.has(p.user_id), p_ret: ret });
+    if (rpc.error)
+      await sb
+        .from('profiles')
+        .update({ rating: after, games: p.games + 1, wins: p.wins + (rank === 1 ? 1 : 0), best_ret: p.best_ret === null ? ret : Math.max(p.best_ret, ret), updated_at: new Date().toISOString() })
+        .eq('user_id', p.user_id);
   }
 }

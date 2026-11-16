@@ -57,7 +57,7 @@ npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면�
 `supabase/schema.sql` = 전체 스키마(초기화용, 데이터 삭제됨). 추가 변경은 번호 붙인 파일로:
 `002_orders.sql`(지정가) · `003_rooms.sql`(인원·제목·비밀방) · `004_cards.sql`(새 카드) — 적용 완료.
 `005_turn_times.sql`(제한 시간 1·3·5·10분, `day_deadline`) · `006_rules_version.sql`(room_secrets.rules_version, 새 방=2) — 적용 완료.
-`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) · `012_guest_log.sql`(손님 계정 생성 기록, IP 해시) · `013_feedback.sql`(의견 보내기) — 적용 완료.
+`007_presence_privacy.sql`(players.left_game/last_seen, rooms.rev 방 변경 신호·players 읽기 권한/Realtime 회수, 비밀번호 방 기준 실패 횟수, 닉네임 유니크) · `008_rejoin_rematch.sql`(players.rejoin_hash, rooms.next_code) · `009_forget_keep_games.sql`(계정 삭제 시 자리는 남김, user_id on delete set null) · `010_room_ops.sql`(kick_player·host_leave DB 함수, 서버만) · `011_market_salt.sql`(room_secrets.salt, v4 시장 비밀값) · `012_guest_log.sql`(손님 계정 생성 기록, IP 해시) · `013_feedback.sql`(의견 보내기) · `014`~`016`(의견 읽음·회원·매칭) · `017_match_safety.sql`(대기표 claimed_at·matched_at, `apply_rating` 원자적 점수 함수) — 적용 완료.
 새 마이그레이션은 파일을 만들고(여러 번 실행해도 안전하게) **승인 없이** `npm run db -- apply` 로 직접 적용한 뒤 보고 (사용자 지시, 2026-11-16). 배포(main 푸시)도 검수 통과 후 직접.
 서버는 마이그레이션 전에도 죽지 않게(없는 테이블이면 빈 목록 등) 방어적으로 작성.
 
@@ -80,11 +80,11 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 운영자: `/admin` 에서 로그인(이메일·비밀번호). 서버 환경변수 `ADMIN_EMAILS`(운영자 이메일)·`ADMIN_SETUP_CODE`(계정 처음 만들 때 한 번, 비밀) — `npm run vercel -- setserver` 로 설정. 운영자면 홈에 '새 의견 N개' 알림 + 의견함. 의견 내용은 서버가 운영자 확인 후에만 보냄 (`me`, `adminInbox`, `adminMarkRead`)
 - 방해 카드: 한 사람에게 하루 한 번 (막힘·반사 포함, 반사로 맞은 사람도). 두 번째는 서버가 거절하고 카드는 그대로. 모든 방해 알림은 익명(쓴 사람·상대 방어 카드 종류 숨김)
 - 점수판: 상대는 순위 + 수익률 구간(2%p, `band`)만. 정확한 재산은 나와 끝난 게임만
-- 회원(015): 아이디·비밀번호·닉네임(이메일 X, 만 14세 이상). 가입 = 지금 게스트 계정을 정식 계정으로 전환(같은 user id → 기록 유지, 가입·비번 변경 후엔 다시 로그인 필요). 로그인 주소 `아이디@u.stockduel.invalid`. 복구 코드로 비밀번호 찾기. `api/_lib/accounts.ts`. 화면: /login, /me(마이프로필, 홈에서만), /ranking. 회원은 게임 닉네임을 서버가 프로필 닉네임으로 강제, 이름 옆 회원 표시(`verified`)
-- 랭킹: Elo(시작 1000, K=32/(회원 수−1)), 회원끼리만 점수 변화 — `recordMatch`(match_players 기본키로 한 번만)
-- 매칭(016): 홈 '대결 찾기' = 랭킹전(회원만)/일반전 × 1대1/다인전(4명 바로, 3명은 40초 대기 후) × 신속(10일×60초≈10분)/일반(20일×90초≈20~30분). 실력 범위 ±100에서 10초마다 +50. 대기표 match_tickets, 1.5초마다 queueStatus 때 서버가 묶어 방을 만들고 바로 시작(`src/engine/matching.ts` pickGroup). 랭킹 점수는 매칭 랭킹전(rooms.ranked)에서만. 친구 '방 만들기'는 커스텀(점수 없음)
+- 회원(015): 아이디·비밀번호·닉네임(이메일 X, 만 14세 이상). 가입 = 지금 게스트 계정을 정식 계정으로 전환(같은 user id → 기록 유지, 가입·비번 변경 후엔 다시 로그인 필요). 로그인 주소는 아이디와 무관한 무작위 `u_<hex>@u.stockduel.invalid`(예전 가입자는 `아이디@…`) — 화면은 로그인 전에 서버 `loginEmail`(인증 없음, 없는 아이디도 HMAC 가짜 주소)로 주소를 받아 로그인 → 아이디 선점·존재 확인 불가. 가입은 프로필을 먼저 넣어 아이디·닉네임 예약 후 계정 전환(실패 시 되돌림). 비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호 필요(`verifyPassword`, 확인용 세션은 바로 끝냄). 복구 코드로 비밀번호 찾기. 게스트로 하다 기존 계정 로그인 → 게스트 기록 가져오기/버리기 선택(`guestSummary`·`mergeGuest`, 안 가져온 진행·대기 자리는 `leaveSeat` 로 기권·퇴장). `api/_lib/accounts.ts`. 화면: /login, /me(마이프로필, 홈에서만), /ranking. 회원은 게임 닉네임을 서버가 프로필 닉네임으로 강제, 이름 옆 회원 표시(`verified`)
+- 랭킹: Elo(시작 1000, K=32/(회원 수−1)), 회원끼리만 점수 변화 — `recordMatch`(match_players 기본키로 한 번만, 점수는 `apply_rating` RPC). 랭킹전에서 기권한 사람은 꼴찌. 같은 두 사람은 24시간에 3판까지만 점수 주고받음(`PAIR_DAILY_LIMIT`, 짜고 치기 방지). 매칭 방은 '한 판 더' 불가(다시 찾기)
+- 매칭(016): 홈 '대결 찾기' = 랭킹전(회원만)/일반전 × 1대1/다인전(4명 바로, 3명은 40초 대기 후) × 신속(10일×60초≈10분)/일반(20일×90초≈20~30분). 실력 범위 ±100에서 10초마다 +50. 대기표 match_tickets, 1.5초마다 queueStatus 때 서버가 묶어 방을 만들고 바로 시작(`src/engine/matching.ts` pickGroup — 다인전은 고른 사람끼리 모두 서로 범위 안, 랭킹전 범위 최대 ±400). 무리 중 가장 먼저 온 사람의 확인 때만 방을 만듦(동시 잡기 방지), 10초 응답 없으면 대기표 삭제(창 닫으면 pagehide keepalive 로 queueLeave), 15초 넘게 잡힌 채면 풀어 줌, 실패하면 반쯤 만든 방 삭제, 매칭 결과는 2분간 다시 받을 수 있음. 대기실·진행 중 자리가 있으면 매칭 불가 랭킹 점수는 매칭 랭킹전(rooms.ranked)에서만. 친구 '방 만들기'는 커스텀(점수 없음)
 - 이용자 의견: `npm run db -- feedback` 으로 읽기
-- e2e 계정은 `scripts/e2e/.accounts.json` 에 저장해 재사용 (익명 계정 생성이 IP 당 시간 제한)
+- e2e 계정은 `scripts/e2e/.accounts.json` 에 저장해 재사용 (익명 계정 생성이 IP 당 시간 제한, 손님 계정도 서버 메모리 10분 20개·DB 시간당 60개). `injection.mjs` = 모든 입력에 스크립트·SQL·필터·제어문자·이상한 JSON·CSRF·가짜 토큰 주입 점검
 - 상대 재산은 화면 데이터에서 10만원 단위·오늘 거래 횟수 숨김(보유 역산 방지). 자리 비움 = 90초 응답 없음(AWAY_MS), 나감(기권) = left_game. 남은 사람 기준으로 마감·카운트다운
 
 ## 알아둘 것

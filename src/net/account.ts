@@ -1,6 +1,6 @@
 /**
  * 내 계정 상태 (회원 / 게스트). 회원 정보는 서버에서만 받아 옴 — 화면에 저장하지 않음.
- * 아이디 로그인은 "아이디@u.stockduel.invalid" 가짜 주소로 비밀번호 로그인 (메일은 가지 않음)
+ * 아이디 로그인: 서버가 아이디에 맞는 무작위 가짜 주소(…@u.stockduel.invalid)를 알려 주고 그 주소로 비밀번호 로그인 (메일은 가지 않음)
  */
 import { useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../lib/supabase';
@@ -76,13 +76,54 @@ export function useAccount(): AccountState {
   return s;
 }
 
-/** 아이디·비밀번호 로그인 → 이 기기는 그 회원 계정이 됨 */
-export async function loginWith(username: string, password: string) {
+export interface GuestLeftover {
+  guestToken: string;
+  games: number;
+  playing: number;
+}
+
+/**
+ * 아이디·비밀번호 로그인 → 이 기기는 그 회원 계정이 됨.
+ * 로그인 전에 게스트로 남긴 기록이 있으면 돌려줌 (가져올지 버릴지 고르게)
+ */
+export async function loginWith(username: string, password: string): Promise<GuestLeftover | null> {
   if (!supabase) throw new Error('온라인 설정이 없어요.');
   const u = username.trim().toLowerCase();
-  const { error } = await supabase.auth.signInWithPassword({ email: `${u}@${USER_DOMAIN}`, password });
+  // 무엇이 틀렸는지(아이디·비밀번호·형식) 구별해서 알려 주지 않음
+  if (!/^[a-z0-9_]{4,16}$/.test(u) || password.length < 1 || password.length > 72) throw new Error('아이디 또는 비밀번호가 맞지 않아요.');
+  const before = (await supabase.auth.getSession()).data.session;
+  const wasGuest = before && !before.user.email?.endsWith('@' + USER_DOMAIN) ? before.access_token : null;
+  // 로그인 주소는 아이디와 상관없는 무작위 값이라 서버에 물어봄 (없는 아이디도 가짜 주소가 와서 구별 안 됨)
+  let email = '';
+  try {
+    const r = await fetch('/api/game', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'loginEmail', username: u }) });
+    if (r.status === 429) throw new Error('로그인 시도가 너무 많아요. 잠시 후 다시 해 주세요.');
+    email = ((await r.json()) as { email?: string }).email ?? '';
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('로그인 시도')) throw e;
+    throw new Error('인터넷 연결을 확인해 주세요.');
+  }
+  if (!email) throw new Error('아이디 또는 비밀번호가 맞지 않아요.');
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(/rate|many/i.test(error.message) ? '로그인 시도가 너무 많아요. 잠시 후 다시 해 주세요.' : '아이디 또는 비밀번호가 맞지 않아요.');
   await refreshAccount();
+  if (!wasGuest) return null;
+  try {
+    const s = await api<{ games: number; playing: number }>('guestSummary', { guestToken: wasGuest });
+    if (s.games + s.playing > 0) return { guestToken: wasGuest, ...s };
+    // 남긴 기록이 없는 빈 게스트는 조용히 정리
+    await api('mergeGuest', { guestToken: wasGuest, mode: 'discard' }).catch(() => {});
+  } catch {
+    /* 게스트가 아니었거나 이미 정리됨 */
+  }
+  return null;
+}
+
+/** 게스트 기록을 이 계정으로 가져오거나(merge) 버림(discard) */
+export async function resolveGuest(guestToken: string, mode: 'merge' | 'discard') {
+  const r = await api<{ moved: number }>('mergeGuest', { guestToken, mode });
+  await refreshAccount();
+  return r.moved;
 }
 
 /** 로그아웃 → 다음에 게임하면 새 게스트로 */

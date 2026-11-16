@@ -2791,3 +2791,71 @@ button.tag:hover,
     grid-template-columns: 1fr 1fr;
   }
 }
+.guest-merge {
+  display: grid;
+  gap: 10px;
+}
+.guest-merge .btn {
+  display: grid;
+  gap: 2px;
+  height: auto;
+  padding: 12px 14px;
+  white-space: normal;
+}
+.guest-merge .btn small {
+  font-weight: 500;
+  opacity: 0.85;
+}
+/* 커스텀 + 설정: 한 몸처럼 붙은 라벨 (오른쪽 칸이 설정) */
+.mode-pick.compact .mp-row {
+  grid-template-columns: 1fr 1fr 1.35fr;
+}
+.mp-custom-pill {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.mp-custom-pill.on {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.mode-pick.compact .mp-custom-pill > button:not(.mp-gear) {
+  flex: 1;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.mode-pick.compact .mp-custom-pill .mp-gear.icon-btn {
+  border: 0;
+  border-left: 1px solid var(--line-2);
+  border-radius: 0;
+  background: transparent;
+  width: 38px;
+  min-width: 38px;
+}
+.mp-custom-pill.on .mp-gear.icon-btn {
+  border-left-color: rgba(247, 197, 72, 0.45);
+  color: var(--gold);
+}
+.mode-pick.compact .mp-custom-pill .mp-gear.icon-btn:hover {
+  background: rgba(247, 197, 72, 0.12);
+}
+.mode-pick.compact .mp-custom-pill > button:not(.mp-gear) {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 6px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.mode-pick.compact .mp-custom-pill.on > button:not(.mp-gear) {
+  color: var(--gold);
+}
+.mf-linking { margin: 4px 0 0; font-weight: 700; color: var(--accent, #3182f6); }

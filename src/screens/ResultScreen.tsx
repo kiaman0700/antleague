@@ -33,13 +33,14 @@ const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i +
 export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain }: Props) {
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null } | null>(null);
+  const [ratingGone, setRatingGone] = useState(false);
   useEffect(() => {
     if (session.mode !== 'multi' || !session.roomId) return;
     let n = 0;
     const load = () =>
       api<typeof rating>('myMatch', { roomId: session.roomId })
-        .then((r) => (r ? setRating(r) : n++ < 5 && setTimeout(load, 1500)))
-        .catch(() => {});
+        .then((r) => (r ? setRating(r) : n++ < 5 ? setTimeout(load, 1500) : setRatingGone(true)))
+        .catch(() => setRatingGone(true));
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -364,6 +365,10 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
                 {rating.rating_after - rating.rating_before}
               </em>
             </>
+          ) : rating ? (
+            <span className="muted">이번 판은 랭킹 점수에 반영되지 않았어요</span>
+          ) : ratingGone ? (
+            <span className="muted">점수는 마이프로필에서 확인할 수 있어요</span>
           ) : (
             <span className="muted">랭킹 점수를 반영하는 중…</span>
           )}

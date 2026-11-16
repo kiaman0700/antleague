@@ -3,10 +3,9 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
 import { loadNick } from '../session';
-import { loginWith, logout, refreshAccount, useAccount, USER_DOMAIN } from '../net/account';
+import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
 import { BADGES, titleOf } from '../game/achievements';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct } from '../lib/format';
@@ -93,6 +92,7 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
+  const [leftover, setLeftover] = useState<GuestLeftover | null>(null);
 
   const uOk = /^[a-z0-9_]{4,16}$/.test(username.trim().toLowerCase());
   const pOk = password.length >= 8 && /[A-Za-z]/.test(password) && /[0-9]/.test(password) && !(uOk && password.toLowerCase().includes(username.trim().toLowerCase()));
@@ -112,6 +112,42 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
       setBusy(false);
     }
   };
+
+  // 이미 기록이 있는 계정으로 로그인했는데 이 기기에 게스트 기록도 있으면: 가져올지 버릴지
+  if (leftover) return (
+    <div className="lobby page">
+      <PageHead title="게스트 기록이 있어요" onBack={() => {}} />
+      <section className="panel pad guest-merge">
+        <p>
+          로그인 전에 이 기기에서 게스트로 한 기록이 있어요: 끝낸 대결 <b>{leftover.games}판</b>
+          {leftover.playing > 0 && (
+            <>
+              , 진행 중인 대결 <b>{leftover.playing}판</b>
+            </>
+          )}
+          .
+        </p>
+        <p className="muted small">랭킹 점수는 랭킹전에서만 바뀌므로 어느 쪽을 골라도 계정 점수는 그대로예요. 이 기기의 연습 게임·화면 설정은 그대로 남아요.</p>
+        {err && <p className="error">{err}</p>}
+        <button
+          className="btn primary full"
+          disabled={busy}
+          onClick={() => run(async () => (await resolveGuest(leftover.guestToken, 'merge'), setLeftover(null), onDone()))}
+        >
+          게스트 기록을 이 계정으로 가져오기
+          <small> 전적·업적에 더해지고, 진행 중인 대결도 이어서 할 수 있어요</small>
+        </button>
+        <button
+          className="btn ghost full"
+          disabled={busy}
+          onClick={() => run(async () => (await resolveGuest(leftover.guestToken, 'discard'), setLeftover(null), onDone()))}
+        >
+          게스트 기록은 버리고 계정 기록만 쓰기
+          <small> 게스트로 한 기록은 지워져요 (되돌릴 수 없어요)</small>
+        </button>
+      </section>
+    </div>
+  );
 
   if (recovery) return (
     <div className="lobby page">
@@ -191,7 +227,17 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
         {err && <p className="error">{err}</p>}
 
         {tab === 'login' && (
-          <button className="btn primary full" disabled={busy || !username || !password} onClick={() => run(async () => (await loginWith(username, password), onDone()))}>
+          <button
+            className="btn primary full"
+            disabled={busy || !username || !password}
+            onClick={() =>
+              run(async () => {
+                const left = await loginWith(username, password);
+                if (left) setLeftover(left);
+                else onDone();
+              })
+            }
+          >
             {busy ? '확인 중…' : '로그인'}
           </button>
         )}
@@ -203,8 +249,7 @@ export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () =
               run(async () => {
                 const r = await api<{ recoveryCode: string }>('signup', { username: username.trim().toLowerCase(), password, nickname: nickname.trim(), agree14, agreePrivacy });
                 // 비밀번호를 정하면 예전 세션이 끝나므로 새 아이디로 바로 로그인
-                await supabase!.auth.signInWithPassword({ email: `${username.trim().toLowerCase()}@${USER_DOMAIN}`, password });
-                await refreshAccount();
+                await loginWith(username, password);
                 setRecovery(r.recoveryCode);
               })
             }
@@ -241,6 +286,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   const [nick, setNick] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [cur, setCur] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -412,16 +458,18 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       <section className="panel pad">
         <h3>계정</h3>
         <div className="acc-pw">
-          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" maxLength={72} autoComplete="new-password" />
-          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
+          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" aria-label="새 비밀번호" maxLength={72} autoComplete="new-password" />
+          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
           <button
             className="btn sm"
-            disabled={pw.length < 8 || pw !== pw2}
+            disabled={!cur || pw.length < 8 || pw !== pw2}
             onClick={() =>
               act(async () => {
-                await api('changePassword', { password: pw });
+                await api('changePassword', { current: cur, password: pw });
                 // 비밀번호를 바꾸면 예전 세션이 끝나므로 새 비밀번호로 다시 로그인
                 await loginWith(p.username, pw);
+                setCur('');
                 setPw('');
                 setPw2('');
               }, '비밀번호를 바꿨어요')
@@ -430,9 +478,20 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
             비밀번호 바꾸기
           </button>
         </div>
-        <button className="btn sm ghost" onClick={() => act(async () => setRecovery((await api<{ recoveryCode: string }>('newRecovery')).recoveryCode), '새 복구 코드를 받았어요')}>
+        <button
+          className="btn sm ghost"
+          disabled={!cur}
+          title={cur ? '' : '위에 지금 비밀번호를 먼저 적어 주세요'}
+          onClick={() =>
+            act(async () => {
+              setRecovery((await api<{ recoveryCode: string }>('newRecovery', { current: cur })).recoveryCode);
+              setCur('');
+            }, '새 복구 코드를 받았어요')
+          }
+        >
           <Icon name="key" size={14} /> 복구 코드 새로 받기
         </button>
+        <small className="muted">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
         <p className="muted small">탈퇴는 홈 → 기록·업적 → 내 데이터 지우기에서 할 수 있어요.</p>
       </section>
     </div>

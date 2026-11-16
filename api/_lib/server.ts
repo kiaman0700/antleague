@@ -112,8 +112,8 @@ import {
   MAX_PLAYERS,
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
-import { accountAct, getProfile, recordMatch, resetPassword } from './accounts.js';
-import { parseQueue, pickGroup, queueName, SPEED_PRESET } from '../../src/engine/matching.js';
+import { accountAct, getProfile, loginEmail, recordMatch, resetPassword } from './accounts.js';
+import { CASUAL_MAX_WINDOW, parseQueue, pickGroup, queueName, RANKED_MAX_WINDOW, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import type { Trade } from '../../src/game/portfolio.js';
 
 export interface ApiResult {
@@ -518,42 +518,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
     case 'leave': {
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
-      const room = must(await sb.from('rooms').select('status, host_id').eq('id', roomId).single(), 'room') as { status: string; host_id: string };
-      if (room.status === 'playing') {
-        // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
-        const d = await loadGame(roomId);
-        const patch = validateLeave(d, playerId);
-        const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
-        if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
-        else must(res, 'leave');
-        const fresh = await loadGame(roomId);
-        if (!(await maybeAdvance(fresh))) {
-          const grace = graceDeadline(fresh, Date.now());
-          if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
-        }
-        await touchRoom(roomId);
-        return { ok: true };
-      }
-      if (room.status !== 'waiting') return { ok: true }; // 끝난 게임은 기록 보존
-      if (room.host_id === playerId) {
-        // 방장이 나가면 먼저 들어온 다음 사람에게 방장을 넘김 (아무도 없으면 방 삭제) — DB 함수로 한 번에(010)
-        const rpc = await sb.rpc('host_leave', { p_room: roomId, p_host: playerId });
-        if (!rpc.error) return { ok: true };
-        if (!/host_leave/.test(rpc.error.message)) must(rpc, 'host leave');
-        const others = must(await sb.from('players').select('id').eq('room_id', roomId).neq('id', playerId).order('created_at').limit(1), 'others') as { id: string }[];
-        if (!others.length) {
-          must(await sb.from('rooms').delete().eq('id', roomId), 'delete room');
-          return { ok: true };
-        }
-        must(await sb.from('players').delete().eq('id', playerId), 'leave');
-        must(await sb.from('players').update({ ready: true }).eq('id', others[0].id), 'new host ready');
-        must(await sb.from('rooms').update({ host_id: others[0].id }).eq('id', roomId), 'new host');
-        await touchRoom(roomId);
-        return { ok: true };
-      }
-      must(await sb.from('players').delete().eq('id', playerId), 'leave');
-      await touchRoom(roomId);
-      return { ok: true };
+      return leaveSeat(roomId, playerId);
     }
 
     case 'rejoinCode': {
@@ -610,10 +575,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'rematch': {
       // 한 판 더: 끝난 방과 같은 설정으로 새 방. 이미 누가 만들었으면 그 코드로 (같은 방 사람만)
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
-      const old = must(await sb.from('rooms').select('status, total_days, turn_seconds, title, max_players, is_private, next_code').eq('id', roomId).single(), 'room') as {
-        status: string; total_days: number; turn_seconds: number; title: string; max_players: number; is_private: boolean; next_code: string | null;
+      const old = must(await sb.from('rooms').select('status, total_days, turn_seconds, title, max_players, is_private, next_code, kind').eq('id', roomId).single(), 'room') as {
+        status: string; total_days: number; turn_seconds: number; title: string; max_players: number; is_private: boolean; next_code: string | null; kind?: string;
       };
       if (old.status !== 'finished') throw new GameError('게임이 끝난 뒤에 할 수 있어요.', 409);
+      // 매칭 방은 '한 판 더' 대신 같은 조건으로 다시 찾기 (랭킹전 상대를 골라 반복하지 못하게)
+      if (old.kind === 'match') throw new GameError('매칭 대결은 같은 조건으로 다시 찾아 주세요.', 409);
       const me = must(await sb.from('players').select('nickname, mode').eq('id', playerId).single(), 'me') as { nickname: string; mode: string };
       const prof = await getProfile(sb, uid);
       if (prof) me.nickname = prof.nickname;
@@ -689,87 +656,105 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (q.kind === 'ranked' && !prof) throw new GameError('랭킹전은 로그인한 회원만 할 수 있어요.', 403);
       const nickname = prof ? prof.nickname : cleanNickname(b.nickname);
       const mode = cleanMode(b.mode);
-      // 진행 중인 대결이 있으면 먼저 끝내거나 기권하게 (두 판을 동시에 하지 않게)
-      const playing = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid).eq('rooms.status', 'playing'), 'playing') as unknown as { left_game: boolean }[];
-      if (playing.some((p) => !p.left_game)) throw new GameError('진행 중인 대결이 있어요. 홈의 이어하기로 돌아가거나 기권한 뒤에 찾아 주세요.', 409);
+      // 진행 중인 대결·대기실이 있으면 먼저 끝내거나 나가게 (두 판을 동시에 하지 않게)
+      const seats = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { left_game: boolean; rooms: { status: string } }[];
+      if (seats.some((p) => p.rooms.status === 'playing' && !p.left_game)) throw new GameError('진행 중인 대결이 있어요. 홈의 이어하기로 돌아가거나 기권한 뒤에 찾아 주세요.', 409);
+      if (seats.some((p) => p.rooms.status === 'waiting')) throw new GameError('들어가 있는 대기실이 있어요. 그 방에서 나온 뒤에 찾아 주세요.', 409);
+      // 이미 다른 사람이 나를 잡아 방을 만드는 중이면 덮어쓰지 않음
+      const cur = (await sb.from('match_tickets').select('claim, claimed_at, room_id').eq('user_id', uid).maybeSingle()).data as { claim: string | null; claimed_at: string | null; room_id: string | null } | null;
+      if (cur && !cur.room_id && cur.claim && cur.claimed_at && Date.now() - new Date(cur.claimed_at).getTime() < 15_000)
+        throw new GameError('지금 상대를 연결하고 있어요. 잠시만 기다려 주세요.', 409);
       const now = new Date().toISOString();
-      const row = { user_id: uid, queue: queueName(q), rating: prof?.rating ?? 1000, nickname, mode, claim: null, room_id: null, player_id: null, created_at: now, last_poll: now };
+      const row = { user_id: uid, queue: queueName(q), rating: prof?.rating ?? 1000, nickname, mode, claim: null, claimed_at: null, room_id: null, player_id: null, matched_at: null, created_at: now, last_poll: now };
       const res = await sb.from('match_tickets').upsert(row, { onConflict: 'user_id' });
       if (res.error) throw new GameError(/match_tickets/.test(res.error.message) ? '아직 준비 중인 기능이에요.' : '대기열에 들어가지 못했어요.', 503);
       return { ok: true };
     }
 
     case 'queueLeave': {
-      await sb.from('match_tickets').delete().eq('user_id', uid).is('room_id', null);
-      return { ok: true };
+      // 아직 아무도 잡지 않은 대기표만 지움. 이미 상대가 잡혔으면 지우지 않고 알려 줌 (곧 매칭 결과가 나옴)
+      const gone = must(await sb.from('match_tickets').delete().eq('user_id', uid).is('room_id', null).is('claim', null).select('id'), 'leave') as unknown[];
+      if (gone.length) return { ok: true };
+      const left = (await sb.from('match_tickets').select('id, room_id').eq('user_id', uid).maybeSingle()).data as { id: string; room_id: string | null } | null;
+      return left ? { ok: false, pending: true } : { ok: true };
     }
 
     case 'queueStatus': {
-      const mine = (await sb.from('match_tickets').select('*').eq('user_id', uid).maybeSingle()).data as {
-        id: string; queue: string; rating: number; nickname: string; mode: string; claim: string | null; room_id: string | null; player_id: string | null; created_at: string;
-      } | null;
+      type T = { id: string; user_id: string; queue: string; rating: number; nickname: string; mode: string; claim: string | null; room_id: string | null; player_id: string | null; created_at: string; matched_at: string | null };
+      const mine = (await sb.from('match_tickets').select('*').eq('user_id', uid).maybeSingle()).data as T | null;
       if (!mine) return { status: 'none' };
       if (mine.room_id && mine.player_id) {
+        // 매칭 결과는 잠시(2분) 남겨 둠 — 응답을 놓쳐도 다음 확인 때 다시 받음
         const room = (await sb.from('rooms').select('code').eq('id', mine.room_id).maybeSingle()).data as { code: string } | null;
-        await sb.from('match_tickets').delete().eq('id', mine.id);
-        return { status: 'matched', roomId: mine.room_id, playerId: mine.player_id, code: room?.code ?? '', nickname: mine.nickname, mode: mine.mode };
+        if (!room) {
+          await sb.from('match_tickets').delete().eq('id', mine.id);
+          return { status: 'none' };
+        }
+        return { status: 'matched', roomId: mine.room_id, playerId: mine.player_id, code: room.code, nickname: mine.nickname, mode: mine.mode };
       }
       const nowMs = Date.now();
+      const ago = (ms: number) => new Date(nowMs - ms).toISOString();
       await sb.from('match_tickets').update({ last_poll: new Date(nowMs).toISOString() }).eq('id', mine.id);
-      // 오래 응답 없는 대기표(창을 닫은 사람)는 버림
-      await sb.from('match_tickets').delete().is('room_id', null).lt('last_poll', new Date(nowMs - 20_000).toISOString());
+      // 정리: 창을 닫은 사람(10초 응답 없음), 서버가 멈춰 15초 넘게 '잡힌 채' 남은 표, 2분 지난 매칭 결과
+      await sb.from('match_tickets').delete().is('room_id', null).is('claim', null).lt('last_poll', ago(10_000));
+      await sb.from('match_tickets').update({ claim: null, claimed_at: null }).is('room_id', null).lt('claimed_at', ago(15_000));
+      await sb.from('match_tickets').delete().lt('matched_at', ago(120_000));
       const q = parseQueue(mine.queue)!;
-      const waiting = ((await sb.from('match_tickets').select('id, user_id, rating, nickname, mode, created_at').eq('queue', mine.queue).is('room_id', null).is('claim', null).order('created_at').limit(50)).data ?? []) as {
-        id: string; user_id: string; rating: number; nickname: string; mode: string; created_at: string;
-      }[];
+      const maxWin = q.kind === 'ranked' ? RANKED_MAX_WINDOW : CASUAL_MAX_WINDOW;
+      const waiting = ((await sb.from('match_tickets').select('id, user_id, rating, nickname, mode, created_at').eq('queue', mine.queue).is('room_id', null).is('claim', null).gte('last_poll', ago(10_000)).order('created_at').limit(50)).data ?? []) as { id: string; user_id: string; rating: number; nickname: string; mode: string; created_at: string }[];
       const toT = (t: { id: string; rating: number; created_at: string }) => ({ id: t.id, rating: t.rating, createdAt: new Date(t.created_at).getTime() });
       const meT = toT(mine);
-      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs);
-      if (group) {
-        // 고른 사람들을 한꺼번에 '잡기' — 다른 사람이 동시에 잡았으면 놓아주고 다음 번에
-        const batch = randomBytes(16).toString('hex').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
-        const ids = group.map((g) => g.id);
-        const got = must(await sb.from('match_tickets').update({ claim: batch }).in('id', ids).is('claim', null).is('room_id', null).select('id'), 'claim') as { id: string }[];
-        if (got.length !== ids.length) {
-          await sb.from('match_tickets').update({ claim: null }).eq('claim', batch);
-        } else {
-          try {
-            const members = ids.map((id) => waiting.find((w) => w.id === id) ?? { id: mine.id, user_id: uid, rating: mine.rating, nickname: mine.nickname, mode: mine.mode, created_at: mine.created_at });
-            // 닉네임이 겹치면 뒤에 숫자를 붙임 (방 안에서는 유일해야 함)
-            const used = new Set<string>();
-            for (const m of members) {
-              let n = m.nickname;
-              for (let k = 2; used.has(n); k++) n = (m.nickname.slice(0, 8) + k).slice(0, 10);
-              used.add(n);
-              m.nickname = n;
-            }
-            const preset = SPEED_PRESET[q.speed];
-            const title = `${q.kind === 'ranked' ? '랭킹전' : '일반전'} · ${q.size === 'duel' ? '1대1' : `${members.length}인`} · ${preset.label}`;
-            let room: { id: string; code: string } | null = null;
-            for (let i = 0; i < 5 && !room; i++) {
-              const res = await sb.from('rooms').insert({ code: newCode(), total_days: preset.days, turn_seconds: preset.turnSeconds, title, max_players: members.length, is_private: true, kind: 'match', ranked: q.kind === 'ranked' }).select('id, code').single();
-              if (!res.error) room = res.data;
-              else if (!/duplicate/i.test(res.error.message)) must(res, 'match room');
-            }
-            if (!room) throw new GameError('방을 만들지 못했어요.', 500);
-            await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
-            const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
-            const deadline = iso(Date.now() + (preset.turnSeconds + 5) * 1000);
-            must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
-            for (const m of members) {
-              const p = ins.find((x) => x.user_id === m.user_id);
-              await sb.from('match_tickets').update({ room_id: room.id, player_id: p?.id ?? null }).eq('id', m.id);
-            }
-            const meP = ins.find((x) => x.user_id === uid)!;
-            await sb.from('match_tickets').delete().eq('id', mine.id);
-            return { status: 'matched', roomId: room.id, playerId: meP.id, code: room.code, nickname: members.find((m) => m.user_id === uid)!.nickname, mode: mine.mode };
-          } catch (e) {
-            await sb.from('match_tickets').update({ claim: null }).eq('claim', batch);
-            throw e;
-          }
-        }
+      const waitingInfo = { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, window: ratingWindow(meT, nowMs, maxWin) };
+      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin);
+      if (!group) return waitingInfo;
+      // 같은 사람들을 둘이 동시에 잡으려다 서로 계속 실패하지 않게: 무리 중 가장 먼저 온 사람의 확인 때만 방을 만듦
+      const first = [...group].sort((x, y) => x.createdAt - y.createdAt || (x.id < y.id ? -1 : 1))[0];
+      if (first.id !== mine.id) return waitingInfo;
+      const batch = randomBytes(16).toString('hex').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+      const ids = group.map((g) => g.id);
+      const got = must(await sb.from('match_tickets').update({ claim: batch, claimed_at: new Date(nowMs).toISOString() }).in('id', ids).is('claim', null).is('room_id', null).select('id'), 'claim') as { id: string }[];
+      if (got.length !== ids.length) {
+        await sb.from('match_tickets').update({ claim: null, claimed_at: null }).eq('claim', batch);
+        return waitingInfo;
       }
-      return { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, window: Math.min(1000, 100 + 50 * Math.floor((nowMs - meT.createdAt) / 10_000)) };
+      let roomId: string | null = null;
+      try {
+        const members = ids.map((id) => waiting.find((w) => w.id === id) ?? { id: mine.id, user_id: uid, rating: mine.rating, nickname: mine.nickname, mode: mine.mode, created_at: mine.created_at });
+        // 닉네임이 겹치면 뒤에 숫자를 붙임 (방 안에서는 유일해야 함)
+        const used = new Set<string>();
+        for (const m of members) {
+          let n = m.nickname;
+          for (let k = 2; used.has(n); k++) n = (m.nickname.slice(0, 8) + k).slice(0, 10);
+          used.add(n);
+          m.nickname = n;
+        }
+        const preset = SPEED_PRESET[q.speed];
+        const title = `${q.kind === 'ranked' ? '랭킹전' : '일반전'} · ${q.size === 'duel' ? '1대1' : `${members.length}인`} · ${preset.label}`;
+        let room: { id: string; code: string } | null = null;
+        for (let i = 0; i < 5 && !room; i++) {
+          const res = await sb.from('rooms').insert({ code: newCode(), total_days: preset.days, turn_seconds: preset.turnSeconds, title, max_players: members.length, is_private: true, kind: 'match', ranked: q.kind === 'ranked' }).select('id, code').single();
+          if (!res.error) room = res.data;
+          else if (!/duplicate/i.test(res.error.message)) must(res, 'match room');
+        }
+        if (!room) throw new GameError('방을 만들지 못했어요.', 500);
+        roomId = room.id;
+        await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
+        const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
+        const deadline = iso(Date.now() + (preset.turnSeconds + 5) * 1000);
+        must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
+        const matchedAt = new Date().toISOString();
+        for (const m of members) {
+          const p = ins.find((x) => x.user_id === m.user_id);
+          await sb.from('match_tickets').update({ room_id: room.id, player_id: p?.id ?? null, nickname: m.nickname, matched_at: matchedAt }).eq('id', m.id);
+        }
+        const meP = ins.find((x) => x.user_id === uid)!;
+        return { status: 'matched', roomId: room.id, playerId: meP.id, code: room.code, nickname: members.find((m) => m.user_id === uid)!.nickname, mode: mine.mode };
+      } catch (e) {
+        // 반쯤 만들어진 방은 지우고(자리·비밀값도 함께 지워짐) 대기표는 다시 풀어 줌
+        if (roomId) await sb.from('rooms').delete().eq('id', roomId);
+        await sb.from('match_tickets').update({ claim: null, claimed_at: null, room_id: null, player_id: null, matched_at: null }).eq('claim', batch);
+        throw e;
+      }
     }
 
     case 'kick': {
@@ -962,10 +947,55 @@ async function adminAct(action: string, b: Body) {
   throw new GameError('알 수 없는 요청이에요.');
 }
 
+/** 방에서 나가기: 게임 중이면 기권, 대기실이면 자리 빼기(방장이면 넘기기), 끝난 방은 그대로 */
+async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }> {
+  const sb = db();
+  const room = must(await sb.from('rooms').select('status, host_id').eq('id', roomId).single(), 'room') as { status: string; host_id: string };
+  if (room.status === 'playing') {
+    // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
+    const d = await loadGame(roomId);
+    const patch = validateLeave(d, playerId);
+    const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
+    if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
+    else must(res, 'leave');
+    const fresh = await loadGame(roomId);
+    if (!(await maybeAdvance(fresh))) {
+      const grace = graceDeadline(fresh, Date.now());
+      if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
+    }
+    await touchRoom(roomId);
+    return { ok: true };
+  }
+  if (room.status !== 'waiting') return { ok: true }; // 끝난 게임은 기록 보존
+  if (room.host_id === playerId) {
+    // 방장이 나가면 먼저 들어온 다음 사람에게 방장을 넘김 (아무도 없으면 방 삭제) — DB 함수로 한 번에(010)
+    const rpc = await sb.rpc('host_leave', { p_room: roomId, p_host: playerId });
+    if (!rpc.error) return { ok: true };
+    if (!/host_leave/.test(rpc.error.message)) must(rpc, 'host leave');
+    const others = must(await sb.from('players').select('id').eq('room_id', roomId).neq('id', playerId).order('created_at').limit(1), 'others') as { id: string }[];
+    if (!others.length) {
+      must(await sb.from('rooms').delete().eq('id', roomId), 'delete room');
+      return { ok: true };
+    }
+    must(await sb.from('players').delete().eq('id', playerId), 'leave');
+    must(await sb.from('players').update({ ready: true }).eq('id', others[0].id), 'new host ready');
+    must(await sb.from('rooms').update({ host_id: others[0].id }).eq('id', roomId), 'new host');
+    await touchRoom(roomId);
+    return { ok: true };
+  }
+  must(await sb.from('players').delete().eq('id', playerId), 'leave');
+  await touchRoom(roomId);
+  return { ok: true };
+}
+
 export async function handle(body: unknown, token: string | null, ip = 'unknown'): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'adminSignup') return { status: 200, body: await adminSignup(body as Body, ip) };
+    if (body && typeof body === 'object' && (body as Body).action === 'loginEmail') {
+      rateLimit('loginEmail:' + ip, 30, 600_000);
+      return { status: 200, body: await loginEmail(db(), body as Body) };
+    }
     if (body && typeof body === 'object' && (body as Body).action === 'resetPassword') {
       rateLimit('reset:' + ip, 8, 600_000);
       return { status: 200, body: await resetPassword(db(), body as Body) };
@@ -982,7 +1012,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
-    if (['signup', 'checkAvailable', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit) };
+    if (['signup', 'checkAvailable', 'guestSummary', 'mergeGuest', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit, leaveSeat) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };
       return { status: 200, body: await adminAct(action, b) };

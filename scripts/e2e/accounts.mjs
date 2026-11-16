@@ -9,6 +9,8 @@ const post = async (body, tok) => {
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+/** 아이디 → 로그인 주소 (서버에 물어봄, 화면과 같은 흐름) */
+const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;
 /** 새 게스트 (서버 손님 계정 경로) */
 async function guest() {
   const g = await post({ action: 'guest' });
@@ -39,7 +41,7 @@ const sb2 = await B({ action: 'signup', username: ub, password: pw, nickname: 'B
 ok('B 가입', sb2.s === 200, sb2.b?.error ?? '');
 // 가입하면 예전 세션이 끝나므로(비밀번호 설정) 새 아이디로 다시 로그인 — 화면도 같은 흐름
 const relog = async (u) => {
-  const { data } = await client().auth.signInWithPassword({ email: `${u}@u.stockduel.invalid`, password: pw });
+  const { data } = await client().auth.signInWithPassword({ email: await loginEmail(u), password: pw });
   const tok = data.session.access_token;
   return (body) => post(body, tok);
 };
@@ -61,12 +63,28 @@ ok('비밀번호에 아이디가 들어가면 거절', samePw.s === 400, samePw.
 
 // ---- 다른 기기에서 로그인 ----
 const c2 = client();
-const li = await c2.auth.signInWithPassword({ email: `${ua}@u.stockduel.invalid`, password: pw });
+const li = await c2.auth.signInWithPassword({ email: await loginEmail(ua), password: pw });
 ok('아이디·비밀번호로 로그인', !li.error, li.error?.message ?? '');
 const A2 = (body) => post(body, li.data.session.access_token);
 const prof = await A2({ action: 'profile' });
 ok('프로필 (아이디·닉네임·점수 1000)', prof.b?.profile?.username === ua && prof.b.profile.nickname === 'A' + rnd && prof.b.profile.rating === 1000, JSON.stringify(prof.b?.profile));
 ok('프로필에 내부 id 없음', !JSON.stringify(prof.b).includes('user_id') && !JSON.stringify(prof.b).includes('recovery'));
+// 로그인 주소에 아이디가 들어 있지 않고, 없는 아이디도 같은 모양의 (늘 같은) 가짜 주소
+const ea = await loginEmail(ua);
+const ghost1 = await loginEmail('nobody' + rnd);
+const ghost2 = await loginEmail('nobody' + rnd);
+ok('로그인 주소에 아이디가 없음', !ea.includes(ua) && /^u_[0-9a-f]+@u\.stockduel\.invalid$/.test(ea), ea.replace(/[0-9a-f]{6,}/, '…'));
+ok('없는 아이디도 진짜처럼 보이는 같은 주소 (있는지 티 안 남)', ghost1 === ghost2 && /^u_[0-9a-f]+@u\.stockduel\.invalid$/.test(ghost1) && ghost1 !== ea);
+// 비밀번호 바꾸기·복구 코드는 지금 비밀번호가 있어야
+const noCur = await A2({ action: 'changePassword', password: 'another' + rnd + '1' });
+ok('지금 비밀번호 없이 비밀번호 바꾸기 거절', noCur.s === 403, noCur.b?.error);
+const badCur = await A2({ action: 'newRecovery', current: 'wrong-pass-1' });
+ok('틀린 지금 비밀번호로 복구 코드 거절', badCur.s === 403, badCur.b?.error);
+const goodCur = await A2({ action: 'newRecovery', current: pw });
+ok('맞는 지금 비밀번호면 새 복구 코드', goodCur.s === 200 && !!goodCur.b?.recoveryCode, goodCur.b?.error ?? '');
+if (goodCur.b?.recoveryCode) sa.b.recoveryCode = goodCur.b.recoveryCode; // 아래 비밀번호 찾기는 새 코드로
+const A2still = await A2({ action: 'profile' });
+ok('확인용 로그인이 내 세션을 끊지 않음', A2still.s === 200 && !!A2still.b?.profile);
 const t = await A2({ action: 'updateProfile', title: 'winner' });
 ok('얻지 않은 업적은 칭호로 못 고름', t.s === 400, t.b?.error);
 const nn = await A2({ action: 'updateProfile', nickname: 'B' + rnd });
@@ -111,9 +129,9 @@ ok('틀린 복구 코드 거절', wrong.s === 403, wrong.b?.error);
 const pw2 = 'newpass' + rnd + '9';
 const rs = await post({ action: 'resetPassword', username: ua, code: sa.b.recoveryCode, password: pw2 });
 ok('복구 코드로 새 비밀번호 (새 복구 코드 받음)', rs.s === 200 && rs.b.recoveryCode && rs.b.recoveryCode !== sa.b.recoveryCode, rs.b?.error ?? '');
-const old = await client().auth.signInWithPassword({ email: `${ua}@u.stockduel.invalid`, password: pw });
+const old = await client().auth.signInWithPassword({ email: await loginEmail(ua), password: pw });
 ok('예전 비밀번호로는 로그인 안 됨', !!old.error);
-const neu = await client().auth.signInWithPassword({ email: `${ua}@u.stockduel.invalid`, password: pw2 });
+const neu = await client().auth.signInWithPassword({ email: await loginEmail(ua), password: pw2 });
 ok('새 비밀번호로 로그인', !neu.error);
 const reuse = await post({ action: 'resetPassword', username: ua, code: sa.b.recoveryCode, password: pw });
 ok('쓴 복구 코드는 다시 못 씀', reuse.s === 403);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseQueue, pickGroup, ratingWindow, type Ticket } from './matching.js';
+import { parseQueue, pickGroup, ratingWindow, RANKED_MAX_WINDOW, type Ticket } from './matching.js';
 
 const now = 1_800_000_000_000;
 const t = (id: string, rating: number, agoSec: number): Ticket => ({ id, rating, createdAt: now - agoSec * 1000 });
@@ -38,5 +38,18 @@ describe('매칭', () => {
   it('다인전: 2명뿐이면 시작 안 함', () => {
     const me = t('me', 1000, 300);
     expect(pickGroup(me, [me, t('a', 1000, 300)], 'multi', now)).toBeNull();
+  });
+  it('랭킹전: 아무리 기다려도 점수 차 400 넘게는 안 만남', () => {
+    expect(ratingWindow(t('a', 1000, 3600), now, RANKED_MAX_WINDOW)).toBe(400);
+    expect(pickGroup(t('me', 1500, 600), [t('x', 1000, 600)], 'duel', now, RANKED_MAX_WINDOW)).toBeNull();
+    expect(pickGroup(t('me', 1400, 600), [t('x', 1000, 600)], 'duel', now, RANKED_MAX_WINDOW)).not.toBeNull();
+  });
+  it('다인전: 고른 사람끼리 모두 서로 범위 안', () => {
+    // 1100 은 1000·1200 둘 다와 맞지만 1000 과 1200 은 서로 안 맞음 (막 들어옴: ±100)
+    const me = t('me', 1100, 0);
+    const g = pickGroup(me, [t('lo', 1000, 0), t('hi', 1200, 0), t('lo2', 1050, 0), t('mid', 1100, 0)], 'multi', now);
+    expect(g?.length).toBe(4);
+    const r = g!.map((x) => x.rating);
+    expect(Math.max(...r) - Math.min(...r)).toBeLessThanOrEqual(100);
   });
 });

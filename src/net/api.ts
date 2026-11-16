@@ -15,6 +15,7 @@ export class ApiError extends Error {
 /** 게임 서버(/api/game) 호출 — 로그인 토큰을 함께 보낸다 */
 export async function api<T = unknown>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
   const token = await accessToken();
+  lastToken = token ?? null;
   let res: Response;
   try {
     res = await fetch('/api/game', {
@@ -33,6 +34,17 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
   }
   if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status);
   return body as T;
+}
+
+/** 창을 닫을 때 매칭 대기에서 빠지기: 페이지가 사라져도 요청이 끝까지 가도록 keepalive */
+let lastToken: string | null = null;
+export function leaveQueueOnExit() {
+  if (!lastToken) return;
+  try {
+    fetch('/api/game', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', authorization: `Bearer ${lastToken}` }, body: '{"action":"queueLeave"}' }).catch(() => {});
+  } catch {
+    /* 무시 — 서버가 10초 뒤 정리 */
+  }
 }
 
 export interface LiveView {

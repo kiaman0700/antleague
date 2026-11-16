@@ -88,6 +88,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
         <button role="radio" aria-checked={!custom && value === 'pro'} className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
           <Icon name="bars" size={16} /> 일반
         </button>
+        <div className={'mp-custom-pill' + (custom ? ' on' : '')}>
         <button role="radio" aria-checked={custom} className={custom ? 'on' : ''} onClick={() => setPrefs({ enabled: true })}>
           <Icon name="sliders" size={16} /> 커스텀
         </button>
@@ -104,6 +105,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
         >
           <Icon name="settings" size={16} />
         </button>
+        </div>
       </div>
       <small className="mp-desc muted">{desc}</small>
       {open && (
@@ -527,6 +529,13 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
               </button>
             </div>
           </div>
+        ) : online && account.status === 'loading' ? (
+          <div className="field">
+            <span>닉네임</span>
+            <div className="nick-member nick-loading" aria-busy="true">
+              <span className="muted small">내 계정을 확인하는 중…</span>
+            </div>
+          </div>
         ) : (
         <label className={'field' + (nickErr && !profile.ok ? ' invalid' : '')}>
           <span>닉네임 {account.status === 'guest' && <small className="muted">· 게스트 (랭킹에는 안 올라가요)</small>}</span>
@@ -552,6 +561,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       {online && (
         <MatchFinder
           member={account.status === 'member'}
+          loading={account.status === 'loading'}
           nickname={account.profile?.nickname ?? profile.nick}
           nickOk={account.status === 'member' || profile.ok}
           ui={profile.ui}

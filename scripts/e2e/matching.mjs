@@ -9,6 +9,8 @@ const post = async (body, tok) => {
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+/** 아이디 → 로그인 주소 (서버에 물어봄, 화면과 같은 흐름) */
+const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;
 async function guest() {
   const g = await post({ action: 'guest' });
   const { data } = await client().auth.signInWithPassword(g.b);
@@ -22,7 +24,7 @@ async function member(tag) {
   const pw = 'pw' + rnd + '123';
   const r = await G({ action: 'signup', username: u, password: pw, nickname: tag + rnd, agree14: true, agreePrivacy: true });
   if (r.s !== 200) throw new Error('signup ' + JSON.stringify(r.b));
-  const { data } = await client().auth.signInWithPassword({ email: `${u}@u.stockduel.invalid`, password: pw });
+  const { data } = await client().auth.signInWithPassword({ email: await loginEmail(u), password: pw });
   const tok = data.session.access_token;
   return (body) => post(body, tok);
 }
@@ -49,6 +51,8 @@ async function pollAll(us, max = 15) {
   await B({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: '매칭B', mode: 'pro' });
   const [ma, mb] = await pollAll([A, B]);
   ok('두 사람이 같은 방으로 매칭', ma && mb && ma.roomId === mb.roomId, JSON.stringify([ma, mb]));
+  const re = (await A({ action: 'queueStatus' })).b;
+  ok('매칭 결과를 놓쳐도 다시 물으면 같은 방', re.status === 'matched' && re.roomId === ma.roomId, JSON.stringify(re));
   const v = (await A({ action: 'state', roomId: ma.roomId })).b;
   ok('바로 게임 시작 (신속 = 10일 · 하루 1분)', v.room.status === 'playing' && v.room.totalDays === 10 && v.room.turnSeconds === 60, JSON.stringify(v.room));
   ok('일반전은 랭킹 아님 · 매칭 방', v.room.ranked === false && v.room.kind === 'match');
@@ -103,7 +107,30 @@ async function pollAll(us, max = 15) {
   const fa = (await A({ action: 'myMatch', roomId })).b;
   const fb = (await B({ action: 'myMatch', roomId })).b;
   ok('랭킹전은 점수 반영 (합 0)', fa?.rated && fb?.rated && fa.rating_after - fa.rating_before === -(fb.rating_after - fb.rating_before) && fa.rating_after !== fa.rating_before, JSON.stringify([fa, fb]));
+  const rm = await A({ action: 'rematch', roomId });
+  ok("매칭 방은 '한 판 더' 대신 다시 찾기", rm.s === 409, rm.b?.error);
   ok('A 탈퇴', (await A({ action: 'forgetMe' })).s === 200);
   ok('B 탈퇴', (await B({ action: 'forgetMe' })).s === 200);
+}
+// ---- 랭킹전 기권 = 꼴찌 (지는 중에 나가서 점수를 지키지 못하게) ----
+{
+  const [C, D] = [await member('fc'), await member('fd')];
+  await C({ action: 'queueJoin', queue: 'ranked_duel_quick', mode: 'easy' });
+  await D({ action: 'queueJoin', queue: 'ranked_duel_quick', mode: 'easy' });
+  const [mc] = await pollAll([C, D]);
+  const roomId = mc.roomId;
+  // D 는 몰빵 → 재산이 C(현금)보다 낮아질 수도 있지만, C 가 기권하면 C 가 꼴찌
+  await D({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 50 });
+  await C({ action: 'leave', roomId });
+  for (let d = 0; d < 12; d++) {
+    await D({ action: 'endTurn', roomId });
+    const st = (await D({ action: 'state', roomId })).b;
+    if (st?.room?.status === 'finished') break;
+  }
+  let fc = null;
+  for (let i = 0; i < 5 && !fc; i++) fc = (await C({ action: 'myMatch', roomId })).b;
+  ok('기권한 사람은 랭킹 점수가 내려감', fc?.rated && fc.rating_after < fc.rating_before, JSON.stringify(fc));
+  ok('C 탈퇴', (await C({ action: 'forgetMe' })).s === 200);
+  ok('D 탈퇴', (await D({ action: 'forgetMe' })).s === 200);
 }
 done();

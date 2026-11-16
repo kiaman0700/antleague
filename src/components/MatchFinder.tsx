@@ -3,7 +3,7 @@
  * 랭킹전은 회원만. 친구와는 아래 '방 만들기'(커스텀 방, 점수 반영 없음)
  */
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../net/api';
+import { api, leaveQueueOnExit } from '../net/api';
 import { SPEED_PRESET, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { play } from '../lib/sound';
@@ -31,6 +31,8 @@ export interface Matched {
 
 interface Props {
   member: boolean;
+  /** 계정 상태를 아직 모름 (게스트 안내를 잠깐 보였다 숨기지 않게) */
+  loading?: boolean;
   nickname: string;
   nickOk: boolean;
   ui: string;
@@ -39,7 +41,7 @@ interface Props {
   onMatched: (m: Matched) => void;
 }
 
-export function MatchFinder({ member, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
+export function MatchFinder({ member, loading, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
   const [pref, setPref] = useState(loadPref);
   const [searching, setSearching] = useState(false);
   const [info, setInfo] = useState<{ waitedSec: number; inQueue: number; window: number } | null>(null);
@@ -61,15 +63,23 @@ export function MatchFinder({ member, nickname, nickOk, ui, onNeedNick, onLogin,
     try {
       await api('queueJoin', { queue: `${kind}_${pref.size}_${pref.speed}`, nickname: nickname.trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
       matchedRef.current = false;
+      setLinking(false);
       setInfo(null);
       setSearching(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
   };
-  const cancel = () => {
+  const [linking, setLinking] = useState(false);
+  const cancel = async () => {
+    try {
+      const r = await api<{ ok: boolean; pending?: boolean }>('queueLeave');
+      // 이미 상대가 잡혀 방을 만드는 중이면 취소하지 않고 결과를 기다림
+      if (r.pending) return setLinking(true);
+    } catch {
+      /* 연결이 끊겼어도 화면은 닫음 — 서버가 10초 뒤 대기표를 정리 */
+    }
     setSearching(false);
-    api('queueLeave').catch(() => {});
   };
 
   // 결과 화면에서 '다시 찾기'로 왔으면 바로 시작
@@ -119,13 +129,19 @@ export function MatchFinder({ member, nickname, nickOk, ui, onNeedNick, onLogin,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searching]);
 
-  // 화면을 떠나면 대기 취소 (매칭이 이미 됐으면 그대로)
-  useEffect(
-    () => () => {
-      if (!matchedRef.current) api('queueLeave').catch(() => {});
-    },
-    [],
-  );
+  // 화면을 떠나거나 창을 닫으면 대기 취소 (매칭이 이미 됐으면 그대로)
+  const searchingRef = useRef(false);
+  searchingRef.current = searching;
+  useEffect(() => {
+    const bye = () => {
+      if (searchingRef.current && !matchedRef.current) leaveQueueOnExit();
+    };
+    window.addEventListener('pagehide', bye);
+    return () => {
+      window.removeEventListener('pagehide', bye);
+      if (searchingRef.current && !matchedRef.current) api('queueLeave').catch(() => {});
+    };
+  }, []);
 
   const seg = <T extends string>(value: T, items: [T, string, string?][], on: (v: T) => void, disabled?: (v: T) => boolean) => (
     <div className="seg mf-seg" role="radiogroup">
@@ -146,9 +162,9 @@ export function MatchFinder({ member, nickname, nickOk, ui, onNeedNick, onLogin,
       {seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
       {seg(pref.size, [['duel', '1대1', '두 명'], ['multi', '다인전', '3~4명']], (v) => save({ ...pref, size: v }))}
       {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, SPEED_PRESET.quick.minutes], ['normal', SPEED_PRESET.normal.label, SPEED_PRESET.normal.minutes]], (v) => save({ ...pref, speed: v }))}
-      {!member && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
+      {!member && !loading && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
       {err && <p className="error">{err}</p>}
-      <button className="btn primary xl full" onClick={start} disabled={searching}>
+      <button className="btn primary xl full" onClick={start} disabled={searching || loading}>
         <Icon name="search" size={18} /> {kind === 'ranked' ? '랭킹전' : '일반전'} 찾기
       </button>
 
@@ -165,9 +181,13 @@ export function MatchFinder({ member, nickname, nickOk, ui, onNeedNick, onLogin,
               {pref.size === 'multi' ? '4명이 모이면 바로, 3명이면 조금 기다렸다가 시작해요. ' : ''}
               {kind === 'ranked' ? `점수 ±${info?.window ?? 100} 안에서 찾는 중 (기다릴수록 넓어져요)` : '실력이 비슷한 사람부터 찾아요'}
             </small>
-            <button className="btn ghost" onClick={cancel}>
-              그만 찾기
-            </button>
+            {linking ? (
+              <p className="mf-linking">상대를 찾았어요! 방을 만드는 중…</p>
+            ) : (
+              <button className="btn ghost" onClick={cancel}>
+                그만 찾기
+              </button>
+            )}
           </div>
         </div>
       )}
