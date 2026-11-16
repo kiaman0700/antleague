@@ -250,7 +250,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 4;
+export const CURRENT_RULES_VERSION = 5;
 
 export function marketFor(seed: number, days: number, version = 1, salt?: string | null): Market {
   const key = `${seed}:${days}:${version}:${salt ?? ''}`;

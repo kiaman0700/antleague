@@ -60,3 +60,26 @@ describe('v4 시장 비밀값', () => {
     expect(same / n).toBeLessThan(0.66);
   });
 });
+
+describe('v5 갭 메우기', () => {
+  it('뉴스 없는 큰 갭은 장중에 계속 같은 방향으로 갈 확률이 거의 반반', () => {
+    let same = 0;
+    let n = 0;
+    for (const salt of [SALT_A, SALT_B, 'cd'.repeat(16), 'ef'.repeat(16)]) {
+      const m = generateMarket(3, 20, 5, salt);
+      for (const sym of Object.keys(m.bars)) {
+        const b = m.bars[sym];
+        for (let d = 1; d < 20; d++) {
+          if (m.news.some((x) => x.day === d && x.symbol === sym)) continue;
+          const gap = b[d].open / b[d - 1].close - 1;
+          const intra = b[d].close / b[d].open - 1;
+          if (Math.abs(gap) < 0.02 || intra === 0) continue;
+          n++;
+          if (Math.sign(gap) === Math.sign(intra)) same++;
+        }
+      }
+    }
+    expect(n).toBeGreaterThan(40);
+    expect(same / n).toBeLessThan(0.6);
+  });
+});

@@ -464,6 +464,9 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         const N3 = s.sectorBeta * sr.n3 + s.vol * gaussian(rng3);
         rOpen = g * S + 0.45 * N3;
         rDay = (1 - g) * S + 0.9 * N;
+        // v5: 이유 없이(뉴스와 상관없는 잡음으로) 벌어진 갭은 장중에 절반쯤 되돌아감 (실제 '갭 메우기')
+        // → 아침에 많이 오른 종목만 기계적으로 사는 전략이 뉴스를 읽는 것보다 유리하지 않게
+        if (version >= 5) rDay -= 0.5 * 0.45 * N3;
       } else {
         rOpen = g1 * S + 0.3 * N;
         rDay = (1 - g1) * S + 0.7 * N;
