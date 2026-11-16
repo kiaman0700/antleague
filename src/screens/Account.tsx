@@ -15,6 +15,7 @@ import { BADGES, titleOf } from '../game/achievements';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct, tone } from '../lib/format';
 import { josa } from '../engine/engine';
+import { LegalSheet, type LegalKind } from '../components/Legal';
 
 function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
   return (
@@ -102,6 +103,8 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
   const [code, setCode] = useState('');
   const [agree14, setAgree14] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [legal, setLegal] = useState<LegalKind | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -113,7 +116,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
   const uAvail = useAvailability('username', username.trim().toLowerCase(), tab === 'signup', uOk);
   const nAvail = useAvailability('nickname', nickname, tab === 'signup', nOk);
   const pwState: 'idle' | 'match' | 'mismatch' = !password2 ? 'idle' : password2 === password && pOk ? 'match' : 'mismatch';
-  const signupReady = uAvail === 'ok' && nAvail === 'ok' && pwState === 'match' && agree14 && agreePrivacy;
+  const signupReady = uAvail === 'ok' && nAvail === 'ok' && pwState === 'match' && agree14 && agreePrivacy && agreeTerms;
   const run = async (fn: () => Promise<void>) => {
     setErr('');
     setBusy(true);
@@ -258,13 +261,41 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
           </label>
         )}
         {tab === 'signup' && (
-          <div className="acc-agree">
-            <label className="check">
-              <input type="checkbox" checked={agree14} onChange={(e) => setAgree14(e.target.checked)} /> 만 14세 이상이에요
+          <div className="acc-agree" role="group" aria-label="가입 동의">
+            {/* 전체 동의: 아래 [필수] 세 칸을 한 번에 켜고 끔 */}
+            <label className="check agree-all">
+              <input
+                type="checkbox"
+                checked={agree14 && agreeTerms && agreePrivacy}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setAgree14(v);
+                  setAgreeTerms(v);
+                  setAgreePrivacy(v);
+                }}
+              />{' '}
+              <b>모두 동의해요</b>
             </label>
             <label className="check">
-              <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> 개인정보 처리 안내(아이디·닉네임·게임 기록 저장)에 동의해요
+              <input type="checkbox" checked={agree14} onChange={(e) => setAgree14(e.target.checked)} /> <span className="req">[필수]</span> 만 14세 이상이에요
             </label>
+            <div className="check-row">
+              <label className="check">
+                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} /> <span className="req">[필수]</span> 이용약관에 동의해요
+              </label>
+              <button type="button" className="linkish-soft" onClick={() => setLegal('terms')}>
+                보기
+              </button>
+            </div>
+            <div className="check-row">
+              <label className="check">
+                <input type="checkbox" checked={agreePrivacy} onChange={(e) => setAgreePrivacy(e.target.checked)} /> <span className="req">[필수]</span> 개인정보 수집·이용에 동의해요
+              </label>
+              <button type="button" className="linkish-soft" onClick={() => setLegal('privacy')}>
+                보기
+              </button>
+            </div>
+            <small className="muted">[선택] 항목은 없어요. 광고·마케팅 정보는 받지도 보내지도 않아요.</small>
           </div>
         )}
         {err && <p className="error">{err}</p>}
@@ -290,7 +321,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
             disabled={busy || !signupReady}
             onClick={() =>
               run(async () => {
-                const r = await api<{ recoveryCode: string }>('signup', { username: username.trim().toLowerCase(), password, nickname: nickname.trim(), agree14, agreePrivacy });
+                const r = await api<{ recoveryCode: string }>('signup', { username: username.trim().toLowerCase(), password, nickname: nickname.trim(), agree14, agreePrivacy, agreeTerms });
                 // 비밀번호를 정하면 예전 세션이 끝나므로 새 아이디로 바로 로그인
                 await loginWith(username, password);
                 setRecovery(r.recoveryCode);
@@ -300,7 +331,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
             {busy ? '가입하는 중…' : '가입하기'}
           </button>
         )}
-        {tab === 'signup' && !signupReady && <small className="muted center-text">아이디·닉네임·비밀번호 확인과 두 가지 동의를 마치면 가입할 수 있어요</small>}
+        {tab === 'signup' && !signupReady && <small className="muted center-text">아이디·닉네임·비밀번호 확인과 [필수] 동의 세 가지를 마치면 가입할 수 있어요</small>}
         {tab === 'reset' && (
           <button
             className="btn primary full"
@@ -319,6 +350,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
           </button>
         )}
       </section>
+      {legal && <LegalSheet kind={legal} onClose={() => setLegal(null)} />}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrom
 import { Companies } from './Companies';
 import { Admin } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
+import { LegalSheet, OPERATOR } from '../components/Legal';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
 import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
@@ -314,53 +315,6 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
   );
 }
 
-/** 운영자·개인정보 보호 책임자 (Vercel 환경변수 VITE_OPERATOR_CONTACT, 예: "홍길동 · contact@example.com") */
-const OPERATOR = ((import.meta.env.VITE_OPERATOR_CONTACT as string | undefined) ?? '').trim().slice(0, 120);
-
-/** 개인정보 처리 안내 — 이 게임이 실제로 저장하는 것만 */
-function Privacy({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal title={<><Icon name="lock" size={18} /> 개인정보 처리 안내</>} onClose={onClose}>
-      <div className="privacy">
-        <p>개미리그는 게스트로도 플레이할 수 있어요. 이름·이메일·전화번호 같은 개인정보는 받지 않아요.</p>
-        <h4>저장하는 것</h4>
-        <ul>
-          <li>이 기기를 구분하는 익명 계정 번호 (로그인용)</li>
-          <li>직접 정한 닉네임, 참가한 방, 게임 안의 거래·카드 기록, 전적·업적</li>
-          <li>회원으로 가입하면: 아이디, 비밀번호·복구 코드(되돌릴 수 없게 바꿔서), 랭킹 점수 — 이메일·전화번호는 받지 않아요. 만 14세 미만은 가입할 수 없어요</li>
-          <li>회원끼리 친구 기능을 쓰면: 친구·차단 목록, 친구에게만 보이는 마지막 접속 시각</li>
-          <li>잠깐만 두는 것: 손님 계정을 만들 때와 대결을 찾는 동안 인터넷 주소(IP)를 알아볼 수 없게 바꾼 값 — 도배 방지용이고, 손님 계정 기록은 이틀 뒤 지워요</li>
-          <li>의견을 보내면: 적은 내용과 그때의 화면 주소·화면 크기·브라우저 종류</li>
-          <li>이 기기 안에만: 연습 게임 저장, 화면 설정, 관심 종목</li>
-        </ul>
-        <h4>쓰는 곳</h4>
-        <p>게임 진행과 결과·기록 보여 주기에만 써요. 광고나 다른 곳에 넘기지 않아요. 서버는 Supabase(데이터베이스)와 Vercel(웹 호스팅)을 써요.</p>
-        <h4>방문 통계</h4>
-        <p>어떤 화면을 얼마나 보는지 알기 위해 Vercel 웹 분석을 써요. 쿠키를 쓰지 않고, 이름이나 계정과 연결되지 않은 통계(본 화면 주소, 들어온 경로, 대략적인 나라·지역, 브라우저·기기 종류)만 모여요. 주소 뒤에 붙는 방 코드 같은 값은 빼고 보내요. 방문자를 구분하는 임시 값은 24시간 뒤 지워져요.</p>
-        <h4>지우기</h4>
-        <p>
-          홈 → <b>업적</b> 맨 아래 <b>내 데이터 지우기</b>(회원은 <b>회원 탈퇴</b>)에서 언제든 모두 지울 수 있어요. 함께 한 사람들의 기록이 깨지지 않게, 끝난 게임 순위표에는 '탈퇴'로 바뀐 이름과 수익률만 남아요. 보낸 의견은 누가 보냈는지 알 수 없게 된 채로 남아요.
-        </p>
-        <h4>문의</h4>
-        <p>
-          궁금한 점, 버그·오류, 개인정보 관련 요청(내 데이터 확인·삭제 등)은 홈 아래 또는 게임 중 설정의 <b>의견·버그 보내기</b>로 남겨 주세요. 운영자만 읽고 답변이 필요한 요청은 처리해요. 개인정보 관련 요청은 '개인정보'를 골라 보내 주세요.
-        </p>
-        {OPERATOR && (
-          <>
-            <h4>개인정보 보호 책임자</h4>
-            <p>{OPERATOR}</p>
-          </>
-        )}
-      </div>
-      <div className="modal-actions">
-        <button className="btn primary" onClick={onClose}>
-          확인
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 function HowTo({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
@@ -389,7 +343,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
 /* ================= 메뉴별 화면 (랭킹전·일반전·커스텀·연습·더보기) ================= */
 
 type HubTab = 'ranked' | 'casual' | 'custom' | 'practice' | 'more';
-type FrameModal = null | 'howto' | 'privacy' | 'feedback';
+type FrameModal = null | 'howto' | 'privacy' | 'terms' | 'feedback';
 
 const TAB_HEAD: Record<HubTab, { title: string; desc: string }> = {
   ranked: { title: '랭킹전', desc: '실력이 비슷한 회원끼리 겨뤄요. 이기면 점수가 올라요' },
@@ -750,7 +704,10 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('privacy')}>
-                <Icon name="lock" /> <span className="mr-t"><b>개인정보 처리 안내</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
+                <Icon name="lock" /> <span className="mr-t"><b>개인정보처리방침</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
+              </button>
+              <button className="more-row" onClick={() => openModal('terms')}>
+                <Icon name="book" /> <span className="mr-t"><b>이용약관</b><small>서비스 이용 약속</small></span> <Icon name="right" size={14} />
               </button>
             </section>
           </div>
@@ -1555,13 +1512,18 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             </div>
           )}
           <footer className="cl-foot">
-            <button className="linkish-soft" onClick={() => setModal('feedback')}>
-              의견·버그 보내기
-            </button>
-            <span aria-hidden> · </span>
-            <button className="linkish-soft" onClick={() => setModal('privacy')}>
-              개인정보 처리 안내
-            </button>
+            <nav className="cl-foot-links" aria-label="안내">
+              <button className="linkish-soft" onClick={() => setModal('privacy')}>
+                <b>개인정보처리방침</b>
+              </button>
+              <button className="linkish-soft" onClick={() => setModal('terms')}>
+                이용약관
+              </button>
+              <button className="linkish-soft" onClick={() => setModal('feedback')}>
+                의견·버그 보내기
+              </button>
+            </nav>
+            {OPERATOR && <p className="cl-foot-op">개미리그 · 개인 운영 · 운영자 {OPERATOR}</p>}
           </footer>
         </main>
         {online && (
@@ -1583,7 +1545,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       <FlashNote />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
-      {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
+      {(modal === 'privacy' || modal === 'terms') && <LegalSheet kind={modal} onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
     </div>
   );

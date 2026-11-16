@@ -47,7 +47,7 @@ for (const p of PAYLOADS) {
   await probe('joinRoom', { action: 'joinRoom', roomId: p, nickname: '정상', mode: 'easy', password: p });
   await probe('state', { action: 'state', roomId: p });
   await probe('check', { action: 'checkAvailable', username: p, nickname: p });
-  await probe('signup', { action: 'signup', username: p, password: p, nickname: p, agree14: true, agreePrivacy: true });
+  await probe('signup', { action: 'signup', username: p, password: p, nickname: p, agree14: true, agreePrivacy: true, agreeTerms: true });
   await probe('queue', { action: 'queueJoin', queue: p, nickname: p, mode: p });
   await probe('rank', { action: 'myMatch', roomId: p });
   await probe('mode', { action: p });

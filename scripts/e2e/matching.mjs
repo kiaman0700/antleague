@@ -28,9 +28,9 @@ async function guest() {
 const rnd = Math.random().toString(36).slice(2, 7);
 async function member(tag) {
   const G = await guest();
-  const u = 'mm' + tag + rnd;
+  const u = 'e2emm' + tag + rnd;
   const pw = 'pw' + rnd + '123';
-  const r = await G({ action: 'signup', username: u, password: pw, nickname: tag + rnd, agree14: true, agreePrivacy: true });
+  const r = await G({ action: 'signup', username: u, password: pw, nickname: tag + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
   if (r.s !== 200) throw new Error('signup ' + JSON.stringify(r.b));
   const { data } = await client().auth.signInWithPassword({ email: await loginEmail(u), password: pw });
   const tok = data.session.access_token;

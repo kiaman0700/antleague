@@ -46,6 +46,8 @@ const check = (v: string, stored: string | null) => {
 };
 // 아이디가 없을 때도 같은 시간이 걸리게 비교할 가짜 해시
 const DUMMY_HASH = hash('dummy-recovery-code');
+/** 가입 때 동의받는 이용약관·개인정보처리방침 판(版) — 화면 src/components/Legal.tsx 의 LEGAL_VERSION 과 같게 */
+export const TERMS_VERSION = '2026-11-17';
 /** 이 계정의 모든 로그인(다른 기기 포함)을 끊음 — 028 함수가 없으면 조용히 넘어감 */
 const revokeSessions = async (sb: SupabaseClient, uid: string) => {
   await sb.rpc('revoke_user_sessions', { target: uid }).then(
@@ -135,7 +137,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       rateLimit(uid + ':signup', 5, 600_000);
       if (user.app_metadata?.role === 'admin') throw new GameError('운영자 계정은 회원 가입을 할 수 없어요.');
       if (await getProfile(sb, uid)) throw new GameError('이미 가입한 계정이에요.', 409);
-      if (b.agree14 !== true || b.agreePrivacy !== true) throw new GameError('만 14세 이상 확인과 개인정보 안내 동의가 필요해요.');
+      // [필수] 세 가지: 만 14세 이상 · 이용약관 · 개인정보 수집·이용 (화면에서 칸을 지워 보내도 여기서 다시 확인)
+      if (b.agree14 !== true || b.agreePrivacy !== true || b.agreeTerms !== true) throw new GameError('만 14세 이상 확인, 이용약관 동의, 개인정보 수집·이용 동의가 모두 필요해요.');
       const username = cleanUsername(b.username);
       const password = cleanNewPassword(b.password);
       if (password.toLowerCase().includes(username)) throw new GameError('비밀번호에 아이디를 그대로 넣지 말아 주세요.');
@@ -145,7 +148,10 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (taken.data) throw new GameError('이미 쓰는 아이디예요.', 409);
       // 1) 프로필을 먼저 넣어 아이디·닉네임을 '예약' (DB 유일 제약 — 동시에 같은 아이디로 가입해도 한 명만)
       const code = newRecovery();
-      const ins = await sb.from('profiles').insert({ user_id: uid, username, nickname, recovery_hash: hash(normRecovery(code)) });
+      // 동의한 약관 판(版)과 시험 회원 표시(아이디가 e2e… 로 시작 — 자동 시험용, 공개 랭킹에서 뺌)를 함께 저장. 031 전이면 빼고 저장
+      const base = { user_id: uid, username, nickname, recovery_hash: hash(normRecovery(code)) };
+      let ins = await sb.from('profiles').insert({ ...base, terms_version: TERMS_VERSION, is_test: /^x?e2e/.test(username) });
+      if (ins.error && /terms_version|is_test/.test(ins.error.message)) ins = await sb.from('profiles').insert(base);
       if (ins.error) throw new GameError(/nickname/.test(ins.error.message) ? '이미 쓰는 닉네임이에요.' : /username|duplicate/.test(ins.error.message) ? '이미 쓰는 아이디예요.' : '가입하지 못했어요.', 409);
       // 2) 지금 쓰던 게스트 계정을 정식 계정으로 (같은 계정이라 하던 게임·기록이 그대로).
       //    로그인 주소는 아이디와 상관없는 무작위 값 — 아이디로 남이 미리 주소를 선점하거나 알아낼 수 없게
@@ -243,7 +249,15 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
 
     case 'ranking': {
       // 랭킹에는 배치(랭킹전 2판)를 마친 회원만
-      const top = ((await sb.from('profiles').select('nickname, title, rating, games, wins, avatar').gte('ranked_games', PLACEMENT_GAMES).order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100)).data ?? []) as {
+      // 자동 시험 회원(is_test)은 공개 랭킹에서 뺌 (031 전이면 그 조건 없이)
+      const topQ = (withTest: boolean) => {
+        let q = sb.from('profiles').select('nickname, title, rating, games, wins, avatar').gte('ranked_games', PLACEMENT_GAMES);
+        if (!withTest) q = q.eq('is_test', false);
+        return q.order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100);
+      };
+      let topR = await topQ(false);
+      if (topR.error && /is_test/.test(topR.error.message)) topR = await topQ(true);
+      const top = (topR.data ?? []) as {
         nickname: string;
         title: string | null;
         rating: number;
@@ -254,7 +268,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const me = uid ? await getProfile(sb, uid) : null;
       let mine: { rank: number | null; rating: number; nickname: string; games: number; ranked_games: number } | null = null;
       if (me) {
-        const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating);
+        let above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating).eq('is_test', false);
+        if (above.error) above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating);
         mine = { rank: isPlaced(me.ranked_games) ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games, ranked_games: me.ranked_games ?? 0 };
       }
       return { top: top.map((t, i) => ({ rank: i + 1, ...t })), me: mine };

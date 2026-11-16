@@ -35,8 +35,8 @@ async function member(tag) {
   if (!data?.session) {
     const G = await guest();
     const r5 = Math.random().toString(36).slice(2, 7);
-    m = { u: 'fr' + tag.toLowerCase() + r5, pw: 'pw' + r5 + '123', nick: tag + r5 };
-    const r = await G({ action: 'signup', username: m.u, password: m.pw, nickname: m.nick, agree14: true, agreePrivacy: true });
+    m = { u: 'e2efr' + tag.toLowerCase() + r5, pw: 'pw' + r5 + '123', nick: tag + r5 };
+    const r = await G({ action: 'signup', username: m.u, password: m.pw, nickname: m.nick, agree14: true, agreePrivacy: true, agreeTerms: true });
     if (r.s !== 200) throw new Error('signup ' + JSON.stringify(r.b));
     data = (await client().auth.signInWithPassword({ email: await loginEmail(m.u), password: m.pw })).data;
     saved['social' + tag] = m;

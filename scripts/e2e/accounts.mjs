@@ -27,17 +27,19 @@ const ub = 'e2eb' + rnd;
 const pw = 'test' + rnd + '123';
 
 // ---- 가입 ----
-const bad = await A({ action: 'signup', username: ua, password: pw, nickname: 'A' + rnd, agree14: false, agreePrivacy: true });
+const bad = await A({ action: 'signup', username: ua, password: pw, nickname: 'A' + rnd, agree14: false, agreePrivacy: true, agreeTerms: true });
 ok('만 14세 확인 없이는 가입 불가', bad.s === 400, bad.b?.error);
-const weak = await A({ action: 'signup', username: ua, password: 'short', nickname: 'A' + rnd, agree14: true, agreePrivacy: true });
+const noTerms = await A({ action: 'signup', username: ua, password: pw, nickname: 'A' + rnd, agree14: true, agreePrivacy: true });
+ok('이용약관 동의 없이 가입 불가 (화면에서 칸을 지워도 서버가 확인)', noTerms.s === 400, noTerms.b?.error);
+const weak = await A({ action: 'signup', username: ua, password: 'short', nickname: 'A' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('약한 비밀번호 거절', weak.s === 400, weak.b?.error);
-const sa = await A({ action: 'signup', username: ua, password: pw, nickname: 'A' + rnd, agree14: true, agreePrivacy: true });
+const sa = await A({ action: 'signup', username: ua, password: pw, nickname: 'A' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('A 가입 (복구 코드 받음)', sa.s === 200 && /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(sa.b?.recoveryCode ?? ''), sa.b?.error ?? '');
-const dupU = await B({ action: 'signup', username: ua, password: pw, nickname: 'B' + rnd, agree14: true, agreePrivacy: true });
+const dupU = await B({ action: 'signup', username: ua, password: pw, nickname: 'B' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('같은 아이디는 거절', dupU.s === 409, dupU.b?.error);
-const dupN = await B({ action: 'signup', username: ub, password: pw, nickname: 'A' + rnd, agree14: true, agreePrivacy: true });
+const dupN = await B({ action: 'signup', username: ub, password: pw, nickname: 'A' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('같은 닉네임은 거절', dupN.s === 409, dupN.b?.error);
-const sb2 = await B({ action: 'signup', username: ub, password: pw, nickname: 'B' + rnd, agree14: true, agreePrivacy: true });
+const sb2 = await B({ action: 'signup', username: ub, password: pw, nickname: 'B' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('B 가입', sb2.s === 200, sb2.b?.error ?? '');
 // 가입하면 예전 세션이 끝나므로(비밀번호 설정) 새 아이디로 다시 로그인 — 화면도 같은 흐름
 const relog = async (u) => {
@@ -47,7 +49,7 @@ const relog = async (u) => {
 };
 A = await relog(ua);
 B = await relog(ub);
-const again = await A({ action: 'signup', username: 'x' + ua, password: pw, nickname: 'Z' + rnd, agree14: true, agreePrivacy: true });
+const again = await A({ action: 'signup', username: 'x' + ua, password: pw, nickname: 'Z' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('이미 가입한 계정은 다시 가입 불가', again.s === 409, JSON.stringify(again));
 
 // ---- 실시간 중복 확인 ----
@@ -63,7 +65,7 @@ const impQ = await G0({ action: 'queueJoin', queue: 'casual_duel_quick', nicknam
 ok('게스트가 회원 닉네임(대소문자만 다름)으로 매칭 거절', impQ.s === 409, impQ.b?.error);
 const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
 ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
-const samePw = await G0({ action: 'signup', username: 'pwtest' + rnd, password: 'pwtest' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true });
+const samePw = await G0({ action: 'signup', username: 'e2epw' + rnd, password: 'e2epw' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
 ok('비밀번호에 아이디가 들어가면 거절', samePw.s === 400, samePw.b?.error);
 
 // ---- 다른 기기에서 로그인 ----

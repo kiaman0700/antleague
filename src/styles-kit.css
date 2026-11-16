@@ -413,3 +413,20 @@ body { background: var(--bg) !important; }
 .result .banner h1 { letter-spacing: inherit !important; }
 .wr-client .slot.ready { box-shadow: none !important; } /* 준비 완료 자리: 초록 빛 번짐 대신 테두리 색만 */
 .cl-play { background: #6b58ee !important; } .cl-play small { color: #fff !important; opacity: 1 !important; } /* 플레이 버튼 안 작은 글씨 대비 */
+
+/* 화면 아래 법적 안내 줄 + 운영자 정보 */
+.cl-foot { flex-direction: column; gap: 2px; text-align: center; }
+.cl-foot-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px; }
+.cl-foot-op { margin: 0; font-size: 12px; color: var(--muted); }
+/* 가입 동의: [필수] 표시·보기 버튼 줄 맞춤 */
+.acc-agree .agree-all { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.acc-agree .req { color: var(--accent-text, #b9aefe); font-weight: 700; }
+.acc-agree .check-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.acc-agree .check-row .linkish-soft { flex: none; font-size: 12px; text-decoration: underline; padding: 6px 4px; }
+.legal h4 { margin: 16px 0 6px; font-size: 14px; }
+.legal ul { margin: 0; padding-left: 18px; }
+.legal li { margin: 4px 0; }
+.acc-agree { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.acc-agree > .check, .acc-agree .check-row .check { display: flex; align-items: center; gap: 8px; }
+/* 법적 안내 줄은 휴대폰에서도 (예전엔 PC 에서만 보였음) — 아래 탭바에 가리지 않게 여백 */
+.cl-foot { display: flex !important; padding: 12px 0 calc(18px + env(safe-area-inset-bottom)); font-size: 12px; color: var(--muted); }
