@@ -12,10 +12,18 @@ const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_
 /** 아이디 → 로그인 주소 (서버에 물어봄, 화면과 같은 흐름) */
 const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;
 async function guest() {
-  const g = await post({ action: 'guest' });
-  const { data } = await client().auth.signInWithPassword(g.b);
-  const tok = data.session.access_token;
-  return (body) => post(body, tok);
+  // 손님 계정 생성 제한(같은 IP 시간당 60)에 걸리면 1분마다 다시 (최대 60분)
+  for (let i = 0; i < 60; i++) {
+    const g = await post({ action: 'guest' });
+    if (g.s === 200) {
+      const { data } = await client().auth.signInWithPassword(g.b);
+      const tok = data.session.access_token;
+      return (body) => post(body, tok);
+    }
+    if (i === 0) console.log('  (손님 계정 생성 제한 — 풀릴 때까지 1분마다 다시 시도)');
+    await new Promise((r) => setTimeout(r, 60_000));
+  }
+  throw new Error('손님 계정을 만들지 못했어요');
 }
 const rnd = Math.random().toString(36).slice(2, 7);
 async function member(tag) {
