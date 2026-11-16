@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, canBuy, canUse, deriveItems, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, canBuy, canUse, deriveItems, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, TICK_MS, ticksPerDay } from '../game/intraday.js';
@@ -617,9 +617,10 @@ export function validateBuyItem(d: GameData, meId: string, now: number, input: {
   const solo = d.players.length < 2;
   if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 둘이서 할 때만 쓸 수 있어요.');
   const mine = itemsOf(d).players[meId];
-  const why = canBuy(mine, kind, portfolioOf(d, meId).cash);
+  const cost = itemCost(kind, d.players.length);
+  const why = canBuy(mine, kind, portfolioOf(d, meId).cash, cost);
   if (why) throw new GameError(why);
-  return { player_id: meId, day: d.room.day, kind, action: 'buy', cost: ITEM_MAP[kind].cost, payload: null };
+  return { player_id: meId, day: d.room.day, kind, action: 'buy', cost, payload: null };
 }
 
 export function validateUseItem(d: GameData, meId: string, now: number, input: { kind?: unknown; payload?: unknown }): ItemRow {

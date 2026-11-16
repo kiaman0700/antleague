@@ -167,6 +167,28 @@ if (run('multi')) {
   }
 }
 
+/* ===================== 3-2. 실력 있는 사람들끼리 (약한 봇 없이) ===================== */
+if (run('strong')) {
+  const pool = ['hold', 'lev', 'news', 'smart', 'aggro'];
+  for (const P of [2, 3, 4, 6]) {
+    const n = N(P === 2 ? 400 : 300);
+    const games: GameLog[] = [];
+    for (let s = 0; s < n; s++) {
+      const r = mulberry(SEED0 + 911 + s);
+      const pick = [...pool].sort(() => r() - 0.5).slice(0, Math.min(P, pool.length));
+      while (pick.length < P) pick.push(pool[Math.floor(r() * pool.length)]);
+      games.push(playGame(SEED0 + 9000 + s, 20, pick.map((k) => ARCHETYPES[k]())));
+    }
+    const s = summarize(games);
+    console.log(`## 실력형끼리 ${P}인 (${n}판) — 기대 승률 ${pct(1 / P)}
+`);
+    table(
+      ['봇', '판 수', '승률', '평균 수익률', '10%~90%'],
+      pool.filter((k) => s[k]).map((k) => [k, s[k].games, pct(s[k].win / s[k].games), pct(mean(s[k].ret)), `${pct(quant(s[k].ret, 0.1))} ~ ${pct(quant(s[k].ret, 0.9))}`]),
+    );
+  }
+}
+
 function mulberry(seed: number) {
   let a = seed >>> 0;
   return () => {

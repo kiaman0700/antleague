@@ -695,6 +695,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const cards = (
     <CardsPanel
       solo={solo}
+      players={players.length}
       day={day}
       totalDays={total}
       mine={view.myItems}

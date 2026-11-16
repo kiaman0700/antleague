@@ -2,7 +2,7 @@ import { josa } from '../engine/engine';
 import { useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
-import { ITEM_MAP, ITEMS, canBuy, canUse, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
+import { ITEM_MAP, ITEMS, canBuy, canUse, itemCost, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
@@ -250,6 +250,8 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect }: AssetsP
 
 interface CardsProps {
   solo: boolean;
+  /** 참가 인원 (1대1이면 방해 카드 값이 다름) */
+  players?: number;
   day: number;
   totalDays: number;
   mine: PlayerItems;
@@ -262,7 +264,7 @@ interface CardsProps {
   busy?: boolean;
 }
 
-export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
+export function CardsPanel({ solo, players = 3, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
   const [shop, setShop] = useState(false);
   const [guide, setGuide] = useState(false);
   const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
@@ -321,7 +323,8 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
       {shop && (
         <div className="shop">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
-            const why = canAct ? canBuy(mine, d.kind, cash) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
+            const cost = itemCost(d.kind, players);
+            const why = canAct ? canBuy(mine, d.kind, cash, cost) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
             return (
               <div key={d.kind} className={'card-item t-' + d.type}>
                 <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
@@ -333,7 +336,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                   {why && <small className="ci-why">{why}</small>}
                 </div>
                 <button className="btn sm" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
-                  {wonShort(d.cost)}
+                  {wonShort(cost)}
                 </button>
               </div>
             );

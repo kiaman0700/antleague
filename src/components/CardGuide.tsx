@@ -15,7 +15,7 @@ export function CardGuide({ onClose }: { onClose: () => void }) {
   const groups: ItemType[] = ['info', 'attack', 'defense', 'bonus'];
   return (
     <Sheet title="카드 도감" onClose={onClose} wide>
-      <p className="muted small">카드는 시작할 때와 며칠마다 무료로 받고, 상점에서 살 수도 있어요. 방해 카드는 친구와 할 때만 쓸 수 있어요.</p>
+      <p className="muted small">카드는 시작할 때와 며칠마다 무료로 받고, 상점에서 살 수도 있어요. 방해 카드는 친구와 할 때만 쓸 수 있고, 한 사람에게는 하루 한 번만 쓸 수 있어요(막히거나 되돌아가도 한 번). 1대1에서는 방해 카드 값이 1.5배예요.</p>
       {groups.map((g) => (
         <section key={g} className="cg-group">
           <h4 className={'cg-type t-' + g}>

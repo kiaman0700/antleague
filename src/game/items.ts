@@ -189,12 +189,21 @@ export function activeEffects(state: ItemState, playerId: string, day: number) {
 }
 
 /** 아이템을 살/쓸 수 있는지. 문제가 있으면 이유 문자열 */
-export function canBuy(p: PlayerItems, kind: ItemKind, cash: number): string | null {
+/**
+ * 카드 값: 1대1에서는 방해 카드가 1.5배 (상대가 한 명뿐이라 매일 같은 사람을 방해할 수 있어 너무 강했음 — 시뮬 69%)
+ */
+export const DUEL_ATTACK_MULT = 1.5;
+export function itemCost(kind: ItemKind, players: number): number {
+  const d = ITEM_MAP[kind];
+  return d.type === 'attack' && players === 2 ? Math.round((d.cost * DUEL_ATTACK_MULT) / 10_000) * 10_000 : d.cost;
+}
+
+export function canBuy(p: PlayerItems, kind: ItemKind, cash: number, cost = ITEM_MAP[kind].cost): string | null {
   const def = ITEM_MAP[kind];
   if (!def || def.shopless) return '상점에서 살 수 없는 카드예요';
   if (p.total >= HOLD_LIMIT) return `카드는 최대 ${HOLD_LIMIT}장까지 가질 수 있어요`;
   if ((p.used[kind] ?? 0) + (p.inventory[kind] ?? 0) >= USE_LIMIT) return `이 카드는 한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
-  if (cash < def.cost) return '현금이 부족해요';
+  if (cash < cost) return '현금이 부족해요';
   return null;
 }
 
