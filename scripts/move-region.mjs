@@ -114,6 +114,10 @@ try {
       const cb = new Set(await cols(b, full));
       const use = ca.filter((x) => cb.has(x));
       const rows = (await a.query(`select ${use.map((x) => `"${x}"`).join(',')} from ${full}`)).rows;
+      // json/jsonb 칸은 글자로 바꿔 넘김 (목록 값이 Postgres 배열로 바뀌지 않게)
+      const [sch, tbl] = full.split('.');
+      const jsonCols = new Set((await a.query(`select column_name from information_schema.columns where table_schema=$1 and table_name=$2 and data_type in ('json','jsonb')`, [sch, tbl])).rows.map((r) => r.column_name));
+      if (jsonCols.size) for (const r of rows) for (const c of jsonCols) if (r[c] !== null && r[c] !== undefined) r[c] = JSON.stringify(r[c]);
       for (let i = 0; i < rows.length; i += 200) {
         const chunk = rows.slice(i, i + 200);
         const vals = [];

@@ -307,7 +307,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
       ))}
       <div className="cards-head">
         <h4 className="sec-title">
-          내 카드 <span className="count-badge">{mine.total}/{holdLimit(version)}</span>
+          내 카드 <span className="count-badge">{mine.total}/{Math.max(holdLimit(version), mine.total)}</span>
         </h4>
         <span className="row">
           <button className="btn sm ghost" onClick={() => setGuide(true)}>

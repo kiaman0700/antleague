@@ -80,7 +80,7 @@ try {
     }
   } else if (cmd === 'env') {
     const j = await api(`/v9/projects/${project.projectId}/env`);
-    for (const e of j.envs) console.log(`${e.key}  → ${e.target.join(', ')}  (${e.type})`);
+    for (const e of j.envs) console.log(`${e.key}  → ${e.target.join(', ')}  (${e.type})${e.updatedAt ? '  바뀐 시각 ' + new Date(e.updatedAt).toLocaleString('ko-KR') : ''}`);
   } else if (cmd === 'setpublic') {
     // 공개돼도 되는 화면용 값(VITE_ 로 시작)만 설정 — 비밀 키는 이 명령으로 넣지 않음
     const [key, ...rest] = process.argv.slice(3);
