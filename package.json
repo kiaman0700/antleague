@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "node scripts/e2e/three-players.mjs && node scripts/e2e/cards.mjs && node scripts/e2e/turn-rules.mjs && node scripts/e2e/realtime.mjs && node scripts/e2e/lifecycle.mjs && node scripts/e2e/attacks.mjs && node scripts/e2e/admin.mjs",
+    "e2e": "node scripts/e2e/three-players.mjs && node scripts/e2e/cards.mjs && node scripts/e2e/turn-rules.mjs && node scripts/e2e/realtime.mjs && node scripts/e2e/lifecycle.mjs && node scripts/e2e/attacks.mjs && node scripts/e2e/admin.mjs && node scripts/e2e/accounts.mjs",
     "db": "node scripts/db.mjs",
     "vercel": "node scripts/vercel.mjs"
   },

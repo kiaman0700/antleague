@@ -112,6 +112,7 @@ import {
   MAX_PLAYERS,
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
+import { accountAct, getProfile, recordMatch, resetPassword } from './accounts.js';
 import type { Trade } from '../../src/game/portfolio.js';
 
 export interface ApiResult {
@@ -249,6 +250,27 @@ async function insertSecret(row: { room_id: string; seed: number; password_hash:
   must(sec, 'secret');
 }
 
+/** 회원이면 프로필 닉네임, 아니면 입력한 닉네임 */
+async function nickFor(uid: string, raw: unknown) {
+  const p = await getProfile(db(), uid);
+  return p ? p.nickname : cleanNickname(raw);
+}
+
+/** 이 방에서 회원(프로필 있음)인 플레이어들 — 화면엔 '회원 표시'만 (user_id 는 보내지 않음). 1분 캐시 */
+const verifiedCache = new Map<string, { at: number; ids: Set<string> }>();
+async function verifiedPlayers(roomId: string): Promise<Set<string>> {
+  const hit = verifiedCache.get(roomId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.ids;
+  const ps = ((await db().from('players').select('id, user_id').eq('room_id', roomId)).data ?? []) as { id: string; user_id: string | null }[];
+  const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
+  const pr = uids.length ? await db().from('profiles').select('user_id').in('user_id', uids) : { data: [] as { user_id: string }[], error: null };
+  const have = new Set(((pr.error ? [] : pr.data) ?? []).map((x) => x.user_id));
+  const ids = new Set(ps.filter((p) => p.user_id && have.has(p.user_id)).map((p) => p.id));
+  verifiedCache.set(roomId, { at: Date.now(), ids });
+  if (verifiedCache.size > 2000) verifiedCache.clear();
+  return ids;
+}
+
 /** 시장 키를 섞을 방별 비밀값 (서버 비밀 키로 만든 HMAC — 화면은 절대 알 수 없음) */
 function keySalt(roomId: string) {
   return createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('market-key:' + roomId).digest('hex');
@@ -331,6 +353,11 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     const fresh = await loadGame(d.room.id);
     const fin = finalResults(fresh);
     await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
+    try {
+      await recordMatch(db(), d.room.id, fin.results);
+    } catch (e) {
+      console.error('[api] rank', e instanceof Error ? e.message : e);
+    }
   }
   return true;
 }
@@ -343,7 +370,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
   const sb = db();
   switch (action) {
     case 'create': {
-      const nickname = cleanNickname(b.nickname);
+      const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       const totalDays = cleanDays(b.totalDays);
       const turnSeconds = cleanTurn(b.turnSeconds);
@@ -373,7 +400,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
     case 'join': {
       const code = cleanCode(b.code);
-      const nickname = cleanNickname(b.nickname);
+      const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       const room = must(await sb.from('rooms').select('id, code, status, max_players').eq('code', code).maybeSingle(), 'find room') as { id: string; code: string; status: string; max_players: number } | null;
       if (!room) throw new GameError('그런 방 코드가 없어요.', 404);
@@ -421,7 +448,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'joinRoom': {
       // 방 목록에서 입장 — 비밀방은 비밀번호 확인
       if (typeof b.roomId !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.roomId)) throw new GameError('잘못된 방이에요.');
-      const nickname = cleanNickname(b.nickname);
+      const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       const room = must(await sb.from('rooms').select('id, code, status, max_players, is_private').eq('id', b.roomId).maybeSingle(), 'find room') as
         | { id: string; code: string; status: string; max_players: number; is_private: boolean }
@@ -470,7 +497,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
-      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId));
+      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await verifiedPlayers(roomId));
     }
 
     case 'ready':
@@ -585,6 +612,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       };
       if (old.status !== 'finished') throw new GameError('게임이 끝난 뒤에 할 수 있어요.', 409);
       const me = must(await sb.from('players').select('nickname, mode').eq('id', playerId).single(), 'me') as { nickname: string; mode: string };
+      const prof = await getProfile(sb, uid);
+      if (prof) me.nickname = prof.nickname;
       if (old.next_code) {
         const nr = must(await sb.from('rooms').select('id, code, status, max_players').eq('code', old.next_code).maybeSingle(), 'next') as { id: string; code: string; status: string; max_players: number } | null;
         if (!nr) throw new GameError('다시 하기 방이 사라졌어요.', 404);
@@ -842,6 +871,10 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'adminSignup') return { status: 200, body: await adminSignup(body as Body, ip) };
+    if (body && typeof body === 'object' && (body as Body).action === 'resetPassword') {
+      rateLimit('reset:' + ip, 8, 600_000);
+      return { status: 200, body: await resetPassword(db(), body as Body) };
+    }
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
     const { data, error } = await db().auth.getUser(token);
     if (error || !data.user) return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
@@ -854,6 +887,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
+    if (['signup', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };
       return { status: 200, body: await adminAct(action, b) };

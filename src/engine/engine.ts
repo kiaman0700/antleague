@@ -100,6 +100,8 @@ export interface PublicPlayer {
   band?: [number, number] | null;
   /** 지금 순위 (서버가 정확한 재산으로 계산) */
   rank?: number;
+  /** 회원(로그인한 사람) — 이름 옆 인증 표시. 게스트는 false */
+  verified?: boolean;
 }
 
 /** 상대 수익률을 보여 주는 구간 폭(%p) */
@@ -411,14 +413,14 @@ export function portfolioOf(d: GameData, pid: string) {
  * keySalt: 시장 키를 섞을 서버 비밀값(방마다). 시드처럼 화면이 알면 안 되는 값은 절대 키에 넣지 않음.
  * 없으면(혼자 연습 — 어차피 브라우저에서 도는 게임) 방 ID 를 씀
  */
-export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string): View {
+export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, verified?: Set<string>): View {
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
     room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1 },
     serverNow: now,
     meId,
-    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
+    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, verified: !!verified?.has(p.id), status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
     market: null,
     live: null,
     marketKey: 'waiting',

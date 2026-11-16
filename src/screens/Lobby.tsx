@@ -3,6 +3,8 @@ import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
+import { LoginPage, MyProfilePage, RankingPage } from './Account';
+import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct } from '../lib/format';
@@ -41,7 +43,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin';
+export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'me' | 'ranking';
 
 interface Props {
   page: LobbyPage;
@@ -324,6 +326,7 @@ function Privacy({ onClose }: { onClose: () => void }) {
         <ul>
           <li>이 기기를 구분하는 익명 계정 번호 (로그인용)</li>
           <li>직접 정한 닉네임, 참가한 방, 게임 안의 거래·카드 기록, 전적·업적</li>
+          <li>회원으로 가입하면: 아이디, 비밀번호(암호화해서), 랭킹 점수 — 이메일·전화번호는 받지 않아요. 만 14세 미만은 가입할 수 없어요</li>
           <li>이 기기 안에만: 연습 게임 저장, 화면 설정, 관심 종목</li>
         </ul>
         <h4>쓰는 곳</h4>
@@ -382,6 +385,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
 /* ================= 홈 ================= */
 
 function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
+  const account = useAccount();
   const profile = useProfile();
   const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs' | 'privacy' | 'feedback'>(null);
   const prefs = usePrefs();
@@ -444,6 +448,23 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
           </h1>
           <p className="sub">같은 시장, 같은 뉴스. 누가 더 벌까?</p>
         </div>
+        {online && (
+          <div className="hero-acc">
+            {account.status === 'member' && account.profile ? (
+              <button className="acc-chip" onClick={() => go('me')} aria-label="마이프로필">
+                <span className="acc-av">{account.profile.nickname.slice(0, 1)}</span>
+                <span className="acc-txt">
+                  <b>{account.profile.nickname}</b>
+                  <small>{account.profile.rating}점 · 마이프로필</small>
+                </span>
+              </button>
+            ) : account.status === 'guest' ? (
+              <button className="btn sm primary" onClick={() => go('login')}>
+                <Icon name="userPlus" size={14} /> 로그인
+              </button>
+            ) : null}
+          </div>
+        )}
       </header>
 
       {online && <AdminBanner onOpen={() => go('admin')} />}
@@ -493,8 +514,20 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       )}
 
       <section className="panel pad profile">
+        {account.status === 'member' && account.profile ? (
+          <div className="field">
+            <span>닉네임</span>
+            <div className="nick-member">
+              <b>{account.profile.nickname}</b>
+              <span className="muted small">회원 · 수정은 마이프로필에서</span>
+              <button className="btn sm ghost" onClick={() => go('me')}>
+                마이프로필
+              </button>
+            </div>
+          </div>
+        ) : (
         <label className={'field' + (nickErr && !profile.ok ? ' invalid' : '')}>
-          <span>닉네임</span>
+          <span>닉네임 {account.status === 'guest' && <small className="muted">· 게스트 (랭킹에는 안 올라가요)</small>}</span>
           <input
             ref={nickRef}
             value={profile.nick}
@@ -507,6 +540,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
           />
           {nickErr && !profile.ok && <small className="error">닉네임을 1~10자로 입력해 주세요.</small>}
         </label>
+        )}
         <div className="field">
           <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
           <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
@@ -539,6 +573,9 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
       <div className="home-links">
         <button className="btn ghost sm" onClick={() => go('tutorial')}>
           <Icon name="play" /> 튜토리얼
+        </button>
+        <button className="btn ghost sm" onClick={() => go('ranking')}>
+          <Icon name="trophy" /> 랭킹
         </button>
         <button className="btn ghost sm" onClick={() => go('companies')}>
           <Icon name="book" /> 기업 도감
@@ -1006,5 +1043,8 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   if (page === 'records') return <Records go={go} />;
   if (page === 'companies') return <Companies onBack={() => go('home')} />;
   if (page === 'admin') return <Admin onBack={() => go('home')} />;
+  if (page === 'login') return <LoginPage onBack={() => go('home')} onDone={() => go('me')} />;
+  if (page === 'me') return <MyProfilePage onBack={() => go('home')} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
+  if (page === 'ranking') return <RankingPage onBack={() => go('home')} onLogin={() => go('login')} />;
   return <Home go={go} onWaiting={onWaiting} onGame={onGame} />;
 }
