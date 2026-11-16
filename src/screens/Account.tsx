@@ -13,7 +13,7 @@ import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
 import { BADGES, titleOf } from '../game/achievements';
 import { BadgeIcon, Icon } from '../components/Icon';
-import { pct } from '../lib/format';
+import { pct, tone } from '../lib/format';
 import { josa } from '../engine/engine';
 
 function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
@@ -178,7 +178,17 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
         ))}
       </div>
 
-      <section className="panel pad acc-form">
+      {/* 칸에서 엔터를 누르면 지금 탭의 버튼(로그인·가입하기·바꾸기)을 누른 것처럼 — 한글 입력 중(조합 중) 엔터는 무시 */}
+      <section
+        className="panel pad acc-form"
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || e.nativeEvent.isComposing || (e.target as HTMLElement).tagName !== 'INPUT') return;
+          if ((e.target as HTMLInputElement).type === 'checkbox') return;
+          e.preventDefault();
+          const btn = e.currentTarget.querySelector<HTMLButtonElement>('.btn.primary.full');
+          if (btn && !btn.disabled) btn.click();
+        }}
+      >
         {tab === 'signup' && (
           <p className="muted small">
             가입하면 <b>랭킹</b>에 올라가고, 다른 기기에서도 아이디로 이어서 할 수 있어요. 지금 이 기기에서 하던 게임·기록은 그대로 새 계정으로 옮겨져요. 이메일은 받지 않아요.
@@ -486,7 +496,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
                 <b>
                   {r.rank}위 / {r.players}명
                 </b>
-                <span className={r.ret >= 0 ? 'up' : 'down'}>{pct(r.ret, 1)}</span>
+                <span className={tone(r.ret)}>{pct(r.ret, 1)}</span>
                 {r.rated && r.rating_after !== null && r.rating_before !== null && isPlaced(p.ranked_games) ? (
                   <span className={r.rating_after >= r.rating_before ? 'up' : 'down'}>
                     {r.rating_after >= r.rating_before ? '+' : ''}

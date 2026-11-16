@@ -18,7 +18,7 @@ import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel'
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
-import { pct } from '../lib/format';
+import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
@@ -635,7 +635,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <small className="muted">
                   {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                 </small>
-                <span className={'hr-ret ' + (m.ret >= 0 ? 'up' : 'down')}>{pct(m.ret, 1)}</span>
+                <span className={'hr-ret ' + tone(m.ret)}>{pct(m.ret, 1)}</span>
                 {m.rated && m.rating_before !== null && m.rating_after !== null && isPlaced(account.profile?.ranked_games) && (
                   <span className={'hr-elo ' + (m.rating_after >= m.rating_before ? 'up' : 'down')}>
                     {m.rating_after >= m.rating_before ? '+' : ''}

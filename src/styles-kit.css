@@ -60,3 +60,7 @@
 /* 보조 선택지 글자 버튼: 다른 작은 글씨(13px)와 같게, 누르는 범위 44px 이상 */
 .lobby-shell .linkish-soft { font-size: 13px; color: var(--muted, #9aa0b4); min-height: 36px; padding: 8px 6px; text-decoration: none; cursor: pointer; }
 .lobby-shell .linkish-soft:hover, .lobby-shell .linkish-soft:focus-visible { color: var(--text, #f1f3f7); text-decoration: underline; text-underline-offset: 3px; }
+
+/* 업적 칸: 15개가 5개씩 3줄로 딱 맞게 (PC). 좁으면 3개·2개씩 */
+.badge-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 700px) { .badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
