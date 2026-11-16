@@ -1,5 +1,6 @@
 import { gaussian, mulberry32, pick, range, seeded, type Rng } from '../lib/rng.js';
 import * as T from './news.js';
+import { planStories, SECTOR_NEWS_MULT } from './stories.js';
 import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
 /** 하루 장중 가격 포인트 수 (마감 애니메이션 / 라인차트용) */
@@ -199,6 +200,23 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
     } else base[s.symbol] = roundPrice(s.basePrice * range(rng, 0.85, 1.15));
   }
   for (const e of ETFS) base[e.symbol] = roundPrice(e.basePrice * range(rng, 0.8, 1.6));
+  // v12: 판마다 시작 가격이 크게 다름 (대략 절반~두 배) — 전용 난수라 예전 방 가격은 그대로
+  const v12 = version >= 12;
+  if (v12) {
+    const rngB = R('base12', () => mulberry32((seed ^ 0x1b873593) >>> 0));
+    for (const s of COMPANIES) {
+      const f = Math.min(2, Math.max(0.5, Math.exp(0.3 * gaussian(rngB))));
+      if (s.currency === 'USD') {
+        baseUsd[s.symbol] = roundUsd(baseUsd[s.symbol] * f);
+        base[s.symbol] = roundPrice(baseUsd[s.symbol] * macro.fx);
+      } else base[s.symbol] = roundPrice(base[s.symbol] * f);
+    }
+  }
+  // v12: 며칠에 걸친 사건 흐름 (임상 결과·수주·신작·상장 등) — 전용 난수
+  const rngS = R('story12', () => mulberry32((seed ^ 0x27d4eb2f) >>> 0));
+  const stories = v12 ? planStories(rngS, totalDays) : [];
+  /** 사건 흐름 뉴스 (머리말을 그대로 두고, 무작위 장중 속보로 뽑지 않음) */
+  const storyNews = new WeakSet<NewsEvent>();
 
   const bars: Record<string, Bar[]> = Object.fromEntries(STOCKS.map((s) => [s.symbol, []]));
   const usd: Record<string, Bar[]> = Object.fromEntries(COMPANIES.filter((s) => s.currency === 'USD').map((s) => [s.symbol, []]));
@@ -341,6 +359,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         const rumor = !earningsOnly && rng() < 0.25;
         const realGood = rumor ? (rng() < 0.6 ? good : !good) : good;
         let mag = boost * range(rng, 0.05, 0.14) * Math.sqrt(s.vol / 0.018) * (rumor ? 0.75 : 1) * (realGood ? 1 : -1);
+        // v12: 업종마다 뉴스 반응 크기가 다름 (바이오·코인 크게, 식품·금융 작게)
+        if (v12) mag *= SECTOR_NEWS_MULT[s.sector] ?? 1;
         // 이미 소문이 퍼져 '재료 소멸' — 좋은 뉴스에도 떨어지는 경우
         if (!rumor && rng() < 0.12) mag = -mag * 0.3;
         addStock(s.symbol, mag);
@@ -362,6 +382,42 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           realTone: realGood ? 'good' : 'bad',
           related: relatedForCompany(s),
         });
+      }
+    }
+
+    // ---- v12 사건 흐름 ----
+    const storyBreaking: { sym: string; at: number }[] = [];
+    for (const st of stories) {
+      const def = STOCK_MAP[st.symbol];
+      const vars = { name: def.name, d: String(st.resolve - st.start) };
+      const push = (headline: string, tone: 'good' | 'bad', realTone: 'good' | 'bad', rumor: boolean, extra: Partial<NewsEvent> = {}) => {
+        const ev: NewsEvent = { day, kind: 'company', symbol: st.symbol, sector: def.sector, headline: (rumor ? '[루머] ' : '') + fill(headline, vars), rumor, tone, realTone, related: relatedForCompany(def), ...extra };
+        storyNews.add(ev);
+        news.push(ev);
+      };
+      if (day === st.start) {
+        // 기대감: 결과 발표를 앞두고 미리 오름
+        addStock(st.symbol, st.setupMag);
+        push(pick(rngS, st.kind.open), 'good', 'good', false, { label: '단독' });
+      } else if (day > st.start && day < st.resolve) {
+        // 중간 찌라시: 70%는 실제 결과 쪽, 30%는 반대 (감별기로 진짜를 가릴 수 있음). 미리 아는 사람이 조금씩 움직여 주가도 살짝
+        if (rngS() < 0.75) {
+          const rumorGood = rngS() < 0.7 ? st.good : !st.good;
+          push(pick(rngS, rumorGood ? st.kind.rumorGood : st.kind.rumorBad), rumorGood ? 'good' : 'bad', st.good ? 'good' : 'bad', true);
+          addStock(st.symbol, (st.good ? 1 : -1) * st.setupMag * 0.35);
+        }
+      } else if (day === st.resolve) {
+        // 결과 발표: 장중 속보로 크게 (상·하한가 근처)
+        const mag = (st.good ? 1 : -1) * st.resultMag;
+        addStock(st.symbol, mag);
+        for (const [l, w] of Object.entries(COMPANY_LINKS[st.symbol] ?? {})) addStock(l, mag * w * 0.5);
+        for (const pe of COMPANIES) if (pe.sector === def.sector && pe.symbol !== st.symbol) addStock(pe.symbol, mag * 0.15);
+        const at = Math.round(range(rngS, 0.2, 0.7) * 1000) / 1000;
+        push(pick(rngS, st.good ? st.kind.good : st.kind.bad), st.good ? 'good' : 'bad', st.good ? 'good' : 'bad', false, { at, label: '속보' });
+        storyBreaking.push({ sym: st.symbol, at });
+      } else if (day === st.resolve + 1) {
+        // 다음 날: 차익 실현·추격 매수로 조금 되돌리거나 더 감
+        addStock(st.symbol, (rngS() < 0.5 ? -1 : 1) * range(rngS, 0.01, 0.05));
       }
     }
 
@@ -430,8 +486,13 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
 
     // v3: 장중 속보를 가격 만들기 전에 정함 → 그 종목은 속보 전(시가)엔 거의 반영 안 됨
     const breaking = new Set<string>();
+    // v12: 사건 결과 발표는 늘 장중 속보 (속보 전에는 거의 안 움직이고 발표 순간 크게)
+    for (const b of storyBreaking) {
+      breaking.add(b.sym);
+      for (const l of Object.keys(COMPANY_LINKS[b.sym] ?? {})) breaking.add(l);
+    }
     if (v3) {
-      const pool = news.filter((n) => n.day === day && n.kind === 'company' && n.symbol);
+      const pool = news.filter((n) => n.day === day && n.kind === 'company' && n.symbol && n.at == null && !storyNews.has(n));
       const count = (rng3() < 0.55 ? 1 : 0) + (rng3() < 0.2 ? 1 : 0);
       for (let i = 0; i < count && pool.length; i++) {
         const n = pool.splice(Math.floor(rng3() * pool.length), 1)[0];
