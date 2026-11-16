@@ -6,7 +6,7 @@
  */
 import { marketFor } from '../src/engine/engine.js';
 import { SIM_V } from './version.js';
-import { ITEM_MAP, type ItemKind } from '../src/game/items.js';
+import { ITEM_MAP, itemCost, type ItemKind } from '../src/game/items.js';
 import { startCashFor } from '../src/game/portfolio.js';
 const START0 = startCashFor(SIM_V);
 import { dayTicks, releaseTick } from '../src/game/intraday.js';
@@ -21,7 +21,7 @@ const run = (k: string) => want.length === 0 || want.includes(k);
 const N = (x: number) => Math.max(10, Math.round(x * scale));
 
 const pct = (x: number) => (x * 100).toFixed(1) + '%';
-const man = (x: number) => (x / 10_000).toFixed(0) + '만';
+const man = (x: number) => (x / 10_000).toFixed(1) + '만';
 const mean = (a: number[]) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
 const quant = (a: number[], q: number) => {
   const s = [...a].sort((x, y) => x - y);
@@ -239,7 +239,7 @@ if (run('cards')) {
         winV += v.winShare.p0;
       }
       const u = Math.max(1, uses);
-      rows.push([`${ITEM_MAP[kind].name} (${man(ITEM_MAP[kind].cost)})`, (uses / n).toFixed(2), man(gain / u), man((gain + spend) / u), man(dmg / u), ITEM_MAP[kind].type === 'attack' ? pct(bad / u) : '-', `${pct(winB / n)} → ${pct(winV / n)}`]);
+      rows.push([`${ITEM_MAP[kind].name} (${man(itemCost(kind, 2, SIM_V))})`, (uses / n).toFixed(2), man(gain / u), man((gain + spend) / u), man(dmg / u), ITEM_MAP[kind].type === 'attack' ? pct(bad / u) : '-', `${pct(winB / n)} → ${pct(winV / n)}`]);
     }
     table(['카드 (1장 값)', '판당 추가 사용', '1장당 순이익(값 포함)', '1장당 총이익(값 빼고)', '1장당 상대들 손해', '막힘/반사', '쓴 사람 승률'], rows);
   }
@@ -258,7 +258,7 @@ if (run('cards')) {
         const v = playGame(SEED0 + 9000 + s, 20, [newsBot({ name: 'x', news: { verdict: true, skipRecap: true, rumorW: 0.4 }, useInfo: true, plan: { kind, days } }), mk()]);
         dmg.push(b.final.p1 - v.final.p1);
       }
-      rows.push([label, ITEM_MAP[kind].name, man(2 * ITEM_MAP[kind].cost), man(mean(dmg))]);
+      rows.push([label, ITEM_MAP[kind].name, man(2 * itemCost(kind, 2, SIM_V)), man(mean(dmg))]);
     }
   }
   table(['대상', '카드', '2장 비용', '대상 손해(평균)'], rows);

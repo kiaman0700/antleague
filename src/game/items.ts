@@ -220,8 +220,29 @@ export function activeEffects(state: ItemState, playerId: string, day: number) {
  * 카드 값: 1대1에서는 방해 카드가 1.5배 (상대가 한 명뿐이라 매일 같은 사람을 방해할 수 있어 너무 강했음 — 시뮬 69%)
  */
 export const DUEL_ATTACK_MULT = 1.5;
+/**
+ * (v8) 카드 값 다시 매김 — 시뮬(뉴스봇끼리 3·11일차 사용)에서 카드가 값보다 이득이 작아 사는 쪽이 손해였음
+ * → 정보 카드는 '잘 쓰면 이득', 방해 카드는 '상대 손해 ≈ 값'이 되게. 100만원 시작 기준 금액
+ */
+export const PRICE_V8: Partial<Record<ItemKind, number>> = {
+  paper: 30_000,
+  analyst: 30_000,
+  scout: 10_000,
+  detector: 10_000,
+  spy: 10_000,
+  freeze: 10_000,
+  blackout: 10_000,
+  fake: 10_000,
+  fee: 15_000,
+  shield: 15_000,
+  mirror: 30_000,
+};
 export function itemCost(kind: ItemKind, players: number, version = 1): number {
   const d = ITEM_MAP[kind];
+  if (version >= 8 && PRICE_V8[kind] != null) {
+    const base = PRICE_V8[kind]!;
+    return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / 5_000) * 5_000 : base;
+  }
   // v6: 시작 돈이 1/10 이라 카드 값도 1/10
   const k = version >= 6 ? 0.1 : 1;
   const unit = 10_000 * k;

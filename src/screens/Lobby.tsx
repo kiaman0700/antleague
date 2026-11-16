@@ -497,7 +497,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               </button>
             </div>
             <button className="linkish-soft" onClick={() => go('casual')}>
-              먼저 일반전으로 해 볼래요 →
+              먼저 일반전으로 해 볼래요
             </button>
           </section>
         ))}

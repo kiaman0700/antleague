@@ -110,3 +110,13 @@ describe('v6: 용돈 봉투 확률', () => {
     expect(json).not.toContain('amount');
   });
 });
+
+describe('v8: 카드 값 다시 매김 (예전 방은 그대로)', () => {
+  it('v8 새 값, v7 은 1/10 그대로', () => {
+    expect(itemCost('paper', 3, 8)).toBe(30_000);
+    expect(itemCost('paper', 3, 7)).toBe(60_000);
+    expect(itemCost('freeze', 2, 8)).toBe(15_000); // 1대1 방해 1.5배
+    expect(itemCost('freeze', 4, 8)).toBe(10_000);
+    expect(itemCost('fee', 2, 8)).toBe(25_000);
+  });
+});
