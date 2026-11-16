@@ -312,3 +312,12 @@
 .badge-grid .bg-cell small, .seg.four button small { font-size: 11px; }
 /* 휴대폰 게임 위 재산 줄(현금·주식·오늘) 이름표 10px → 11px */
 .m-asum small { font-size: 11px; }
+
+/* 게스트/회원 비교표: 한글 단어 중간에서 줄이 끊기지 않게 (예: '등/록') */
+.gs-compare th, .gs-compare td { word-break: keep-all; overflow-wrap: anywhere; }
+/* 사이트 전체: 한글은 단어(띄어쓰기) 단위로 줄바꿈 — 아주 긴 낱말(닉네임·코드)만 넘칠 때 끊음 */
+body { word-break: keep-all; overflow-wrap: break-word; }
+/* 아주 좁은 휴대폰(360 이하): 카드 3장 칸이 화면 밖으로 넘치지 않게 칸을 줄임 */
+@media (max-width: 360px) {
+  .m-page .tray-cards.gc-row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px; }
+}
