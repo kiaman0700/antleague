@@ -136,3 +136,21 @@ export function useEscape(onClose: () => void, on = true) {
     return () => window.removeEventListener('keydown', onKey);
   }, [on]);
 }
+
+/**
+ * 창(모달)이 열리면 키보드 초점을 창 안으로, 닫히면 원래 누른 버튼으로 돌려줌
+ * (키보드·화면 읽기 프로그램 사용자가 창이 열린 걸 알고, 닫은 뒤 제자리로 돌아오게)
+ * 창 안에 autoFocus 칸이 있으면 그대로 둠
+ */
+export function useDialogFocus<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    const el = ref.current;
+    if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    return () => {
+      if (prev && prev.isConnected && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
+    };
+  }, []);
+  return ref;
+}

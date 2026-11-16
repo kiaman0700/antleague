@@ -10,7 +10,7 @@ import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
-import { EmptyState, useEscape } from './ui';
+import { EmptyState, useDialogFocus, useEscape } from './ui';
 
 /* ------------------------------ 뉴스 ------------------------------ */
 
@@ -684,9 +684,10 @@ export function Tutorial({ onDone }: { onDone: () => void }) {
   const [i, setI] = useState(0);
   const s = STEPS[i];
   useEscape(onDone);
+  const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg strong">
-      <div className="modal tutorial" role="dialog" aria-modal aria-label="게임 방법">
+      <div ref={boxRef} tabIndex={-1} className="modal tutorial" role="dialog" aria-modal aria-label="게임 방법">
         <div className="dots">
           {STEPS.map((_, k) => (
             <i key={k} className={k === i ? 'on' : ''} />

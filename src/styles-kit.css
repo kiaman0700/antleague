@@ -321,3 +321,5 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 @media (max-width: 360px) {
   .m-page .tray-cards.gc-row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px; }
 }
+/* 창 자체에 옮긴 초점은 테두리를 그리지 않음 (창 안 버튼의 초점 표시는 그대로) */
+.modal[tabindex="-1"]:focus { outline: none; }

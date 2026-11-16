@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast, useEscape } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast, useDialogFocus, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
@@ -172,6 +172,7 @@ function useProfile() {
 }
 
 function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
+  const boxRef = useDialogFocus<HTMLDivElement>();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -179,7 +180,7 @@ function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => 
   }, [onClose]);
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
         {children}
       </div>

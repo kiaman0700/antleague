@@ -1,5 +1,6 @@
 /** 내 화면 설정: 금액 단위 · 차트 기본 보기 · 자주 쓰는 업종(순서). 이 기기에 저장되어 다음 게임에도 그대로 */
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useDialogFocus } from './ui';
 import { isCustom, resetPrefs, setPrefs, usePrefs } from '../prefs';
 import { manExact } from '../lib/format';
 import type { UiMode } from '../session';
@@ -16,6 +17,7 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const soft = async () => (!guardRef.current || (await guardRef.current())) && closeRef.current();
+  const boxRef = useDialogFocus<HTMLDivElement>();
   useEffect(() => {
     // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘
     const id = ++sheetSeq;
@@ -35,7 +37,7 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   }, []);
   return (
     <div className="modal-bg" onClick={soft}>
-      <div className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h3>{title}</h3>
           <button className="icon-btn" onClick={onClose} aria-label="닫기">
