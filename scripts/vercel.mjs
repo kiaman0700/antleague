@@ -81,6 +81,18 @@ try {
   } else if (cmd === 'env') {
     const j = await api(`/v9/projects/${project.projectId}/env`);
     for (const e of j.envs) console.log(`${e.key}  → ${e.target.join(', ')}  (${e.type})`);
+  } else if (cmd === 'setpublic') {
+    // 공개돼도 되는 화면용 값(VITE_ 로 시작)만 설정 — 비밀 키는 이 명령으로 넣지 않음
+    const [key, ...rest] = process.argv.slice(3);
+    const value = rest.join(' ');
+    if (!/^VITE_[A-Z0-9_]+$/.test(key ?? '') || /KEY|SECRET|TOKEN|PASSWORD/.test(key) || !value) throw new Error('사용법: npm run vercel -- setpublic VITE_이름 값  (공개 값만)');
+    const r = await fetch(`https://api.vercel.com/v10/projects/${project.projectId}/env?upsert=true&teamId=${project.orgId}`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+      body: JSON.stringify({ key, value, type: 'plain', target: ['production', 'preview', 'development'] }),
+    });
+    if (!r.ok) throw new Error(`설정 실패 (${r.status}) ${(await r.text()).slice(0, 200)}`);
+    console.log(`✅ ${key} 설정 완료 — 다음 배포부터 적용돼요`);
   } else if (cmd === 'runtime') {
     const id = arg ?? (await latestId());
     const since = Date.now() - 24 * 3600_000;

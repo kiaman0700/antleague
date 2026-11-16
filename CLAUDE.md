@@ -19,6 +19,7 @@ BASE=https://game-taupe-three-58.vercel.app npm run e2e   # 배포본 테스트
 npm run db -- check                         # Supabase 연결·마이그레이션 상태 (읽기만)
 npm run db -- apply supabase/00X_이름.sql     # SQL 적용 (한 트랜잭션). 적용 전 사용자에게 내용 보여주고 확인받기
 npm run vercel -- status | logs | env | runtime   # Vercel 배포 상태·빌드 로그·환경변수 이름·서버 오류
+npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면용 환경변수만 설정 (비밀 키 금지), 다음 배포부터 적용
 ```
 - DB 는 `.env.local` 의 `SUPABASE_DB_URL`(Session pooler 주소 — 직접 주소는 IPv6 라 이 네트워크에서 안 됨)
 - Vercel 은 `.env.local` 의 `VERCEL_TOKEN`(팀 토큰) + `.vercel/project.json`. Vercel CLI 는 한글 컴퓨터 이름·팀 토큰 때문에 안 돼서 API 를 직접 씀. 배포는 main 푸시로 자동
@@ -75,7 +76,7 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 기권(left_game)한 사람은 거래·마감 취소 불가. 자리 비움은 바로 건너뛰지 않고 카운트다운 기준에서만 빠짐
 - 익명 로그인이 IP 당 제한(429)에 걸리면 서버 손님 계정(`action:'guest'`, 관리자 API로 가짜 이메일 계정 → 비밀번호 로그인)으로 대체. 같은 IP 시간당 60·전체 3000 (guest_log)
 - v4 규칙: 레버리지·인버스 ETF(lev≠1)는 합쳐서 총재산의 30%까지만 살 수 있음(`LEVERAGE_CAP`, `leveragedCap`) — 다인전에서 몰빵 한 방이 이기던 문제 (시뮬 4인 41%→29%)
-- 운영자·개인정보 책임자 표시: Vercel 환경변수 `VITE_OPERATOR_CONTACT` (예: "이름 · 이메일") 를 넣으면 개인정보 안내에 표시
+- 운영자·개인정보 보호 책임자: Vercel 환경변수 `VITE_OPERATOR_CONTACT` = "이준엽 · kiaman0700@naver.com" (사용자가 공개 동의, 2026-11-16) → 개인정보 안내에 표시
 - 이용자 의견: `npm run db -- feedback` 으로 읽기
 - e2e 계정은 `scripts/e2e/.accounts.json` 에 저장해 재사용 (익명 계정 생성이 IP 당 시간 제한)
 - 상대 재산은 화면 데이터에서 10만원 단위·오늘 거래 횟수 숨김(보유 역산 방지). 자리 비움 = 90초 응답 없음(AWAY_MS), 나감(기권) = left_game. 남은 사람 기준으로 마감·카운트다운
