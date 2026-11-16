@@ -110,3 +110,13 @@
 @media (min-width: 760px) {
   .result .badge-cols, .result .hl-grid { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
 }
+
+/* 뉴스 보기 칩: 전체(고정) | 찌라시 · 1일 · 2일 … (넘치면 옆으로 밀어서) */
+.news-cats { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 2px 0 10px; margin-bottom: 4px; background: inherit; }
+.news-cats .nc-fixed { flex: 0 0 auto; }
+.news-cats .nc-scroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; mask-image: linear-gradient(90deg, #000 88%, transparent); }
+.news-cats .nc-scroll::-webkit-scrollbar { display: none; }
+.news-cats .chip { flex: 0 0 auto; white-space: nowrap; }
+.news-cats .chip:disabled { opacity: 0.35; cursor: not-allowed; }
+.news-cats .chip.nc-today:not(.on) { border-color: var(--accent); color: var(--accent-text); }
+.news-card.past { opacity: 0.92; }

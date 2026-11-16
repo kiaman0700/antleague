@@ -799,6 +799,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       change={change}
       onSelect={selectStock}
       onSelectSector={selectSector}
+      totalDays={total}
     />
   );
   const assets = (

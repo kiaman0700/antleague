@@ -299,7 +299,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     }
 
     case 'myMatch': {
-      if (typeof b.roomId !== 'string') return null;
+      if (typeof b.roomId !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.roomId)) return null; // 방 번호 모양이 아니면 DB 에 묻지도 않음
       const r = await sb.from('match_players').select('rank, players, rated, rating_before, rating_after').eq('room_id', b.roomId).eq('user_id', uid).maybeSingle();
       if (!r.data) return null;
       const me = await getProfile(sb, uid);

@@ -10,6 +10,7 @@ import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
+import { EmptyState } from './ui';
 
 /* ------------------------------ 뉴스 ------------------------------ */
 
@@ -33,6 +34,8 @@ interface NewsProps {
   onSelectSector: (sector: string) => void;
   /** 방금 새로 들어온 기사 (일+제목) — 강조 표시 */
   fresh?: Set<string>;
+  /** 게임 전체 일수 (날짜 칩을 다 보여 주기 위해) */
+  totalDays?: number;
 }
 
 const KIND_LABEL = { macro: '시장', sector: '업종', company: '기업' } as const;
@@ -62,15 +65,81 @@ function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change
   );
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
+  // 보기: 전체 / 찌라시 / n일차 (날이 바뀌면 다시 전체로)
+  const [cat, setCat] = useState<'all' | 'rumor' | number>('all');
+  useEffect(() => setCat('all'), [day]);
   const today = news.filter((n) => n.day === day);
   const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
+  const hasRumors = !!rumors && rumors.length > 0;
+  const showAll = cat === 'all';
+  const showRumors = showAll || cat === 'rumor';
+  const showToday = showAll || cat === day;
+  const pastDay = typeof cat === 'number' && cat < day ? cat : null;
+  const days = Math.max(totalDays ?? day + 1, day + 1);
 
   return (
     <div className="news-panel">
-      {rumors && rumors.length > 0 && (
+      {/* 보기 칩: 전체(맨 앞 고정) · 찌라시 · 1~마지막 날 (아직 안 온 날은 꺼짐) */}
+      <div className="news-cats" role="tablist" aria-label="뉴스 보기">
+        <button role="tab" aria-selected={cat === 'all'} className={'chip sm nc-fixed' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
+          전체
+        </button>
+        <div className="nc-scroll">
+          <button role="tab" aria-selected={cat === 'rumor'} className={'chip sm' + (cat === 'rumor' ? ' on' : '')} disabled={!hasRumors} onClick={() => setCat('rumor')} title={hasRumors ? '오늘 장 전 찌라시' : '오늘은 찌라시가 없어요'}>
+            찌라시
+          </button>
+          {Array.from({ length: days }, (_, d) => (
+            <button
+              key={d}
+              role="tab"
+              aria-selected={cat === d}
+              className={'chip sm' + (cat === d ? ' on' : '') + (d === day ? ' nc-today' : '')}
+              disabled={d > day}
+              onClick={() => setCat(d)}
+              title={d > day ? '아직 오지 않은 날이에요' : d === day ? '오늘 뉴스' : `${d + 1}일차 뉴스`}
+            >
+              {d + 1}일{d === day ? ' · 오늘' : ''}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pastDay !== null && (
+        <>
+          <h4 className="sec-title">
+            {pastDay + 1}일차 뉴스 <span className="count-badge">{news.filter((n) => n.day === pastDay).length}</span>
+          </h4>
+          {news.filter((n) => n.day === pastDay).length === 0 && <EmptyState compact icon="news" title="이날은 뉴스가 없었어요" />}
+          {news
+            .filter((n) => n.day === pastDay)
+            .map((n) => (
+              <div key={n.day + n.headline} className={'news-card past ' + n.tone}>
+                <div className="news-meta">
+                  <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
+                  {n.sector && (
+                    <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>
+                      <SectorIcon id={n.sector} /> {SECTOR_MAP[n.sector].name}
+                    </button>
+                  )}
+                  {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
+                  {n.verdict === 'true' && n.rumor && <em className="old-verdict true">사실로 확인</em>}
+                </div>
+                <div className="news-headline">
+                  <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
+                  {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
+                  {n.headline.replace('[루머] ', '')}
+                </div>
+                <RelatedChips symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
+              </div>
+            ))}
+        </>
+      )}
+
+      {cat === 'rumor' && !hasRumors && <EmptyState compact icon="news" title="오늘은 찌라시가 없어요" desc="둘째 날부터 장이 열리기 전에 찌라시가 돌아요." />}
+      {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
           <div className="rb-head">
             <b>장 전 찌라시</b>
@@ -88,6 +157,8 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           ))}
         </section>
       )}
+      {showToday && (
+      <>
       {tomorrow && (
         <div className="reveal paper">
           <div className="reveal-title"><CardIcon kind="paper" size={15} /> 내일 신문 (나만 보여요)</div>
@@ -177,7 +248,10 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         </div>
       ))}
 
-      {old.length > 0 && (
+      </>
+      )}
+
+      {showAll && old.length > 0 && (
         <>
           <button className="old-toggle" onClick={() => setShowOld((v) => !v)}>
             지난 뉴스 {old.length}개 {showOld ? '접기 ▴' : '펼치기 ▾'}
