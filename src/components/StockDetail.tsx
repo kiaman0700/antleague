@@ -368,7 +368,7 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
   const unitKrw = kind === 'limit' && limitKrw > 0 ? limitKrw : price;
   const reservedSell = orders.filter((o) => o.side === 'sell' && o.status === 'open').reduce((a, o) => a + o.qty, 0);
   const availCash = kind === 'limit' ? cash - reservedCash : cash;
-  // 레버리지·인버스 ETF 는 총재산의 절반까지만 (서버 규칙과 같게 미리 보여 줌)
+  // 레버리지·인버스 ETF 는 합쳐서 총재산의 LEVERAGE_CAP(30%)까지만 (서버 규칙과 같게 미리 보여 줌)
   const cap = side === 'buy' ? (trade.capFor?.(symbol) ?? null) : null;
   const maxQty = side === 'buy' ? Math.min(maxBuyQty(Math.max(0, availCash), unitKrw, fee), cap ?? Infinity) : Math.max(0, held - (kind === 'limit' ? reservedSell : 0));
   const qty = Math.min(Math.floor(Number(qtyText) || 0), 1_000_000);
@@ -391,7 +391,8 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
     setQtyText('');
     if (kind === 'limit') setLimitPct(sd === 'buy' ? -0.03 : 0.03);
   };
-  const addMoney = (w: number) => setQtyText(String(Math.min(maxQty, Math.floor((qty * unitKrw + w) / unitKrw))));
+  // 1주가 버튼 금액보다 비싸도 최소 1주는 더해지게
+  const addMoney = (w: number) => setQtyText(String(Math.min(maxQty, Math.max(qty + 1, Math.floor((qty * unitKrw + w) / unitKrw)))));
   const setFrac = (f: number) => setQtyText(String(Math.max(0, Math.floor(maxQty * f))));
   const submit = () => {
     if (!valid) return;
@@ -472,6 +473,11 @@ export function TradePanel({ ui, symbol, price, usd, fx, cash, held, avgCost, tr
           />
           <span>주</span>
         </div>
+        {qty > maxQty && (
+          <small className="error-inline qty-over">
+            {side === 'buy' ? (cap !== null && maxQty === cap ? `레버리지·인버스 제한으로 최대 ${num(maxQty)}주까지예요` : `현금으로 최대 ${num(maxQty)}주까지 살 수 있어요`) : `갖고 있는 ${num(maxQty)}주까지 팔 수 있어요`}
+          </small>
+        )}
         <div className="qty-meta">
           <small className="muted">
             최대 {num(maxQty)}주 · 1주 {kind === 'limit' && limitNative > 0 ? fmtN(limitNative) : isUS ? `${fmtUsd(native)} ≈ ${num(price)}원` : `${num(price)}원`}

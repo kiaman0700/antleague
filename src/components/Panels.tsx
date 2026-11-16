@@ -296,7 +296,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
       {!shop &&
         owned.map(([k, n]) => {
           const d = ITEM_MAP[k];
-          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
+          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '장 마감 후·시간이 끝난 뒤에는 쓸 수 없어요';
           return (
             <div key={k} className={'card-item t-' + d.type}>
               <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
@@ -305,6 +305,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                   {d.name} {n > 1 && <span className="muted">×{n}</span>}
                 </b>
                 <small>{d.desc}</small>
+                {why && !ITEM_MAP[k].passive && <small className="ci-why">{why}</small>}
               </div>
               {!ITEM_MAP[k].passive ? (
                 <button className="btn sm primary" disabled={!!why || busy} title={why ?? ''} onClick={() => onUse(k)}>
@@ -320,7 +321,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
       {shop && (
         <div className="shop">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
-            const why = canAct ? canBuy(mine, d.kind, cash) : '지금은 살 수 없어요';
+            const why = canAct ? canBuy(mine, d.kind, cash) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
             return (
               <div key={d.kind} className={'card-item t-' + d.type}>
                 <div className="ci-emoji"><CardIcon kind={d.kind} size={22} /></div>
@@ -329,6 +330,7 @@ export function CardsPanel({ solo, day, totalDays, mine, cash, usedToday, canAct
                     {d.name} <span className={'type-tag ' + d.type}>{{ info: '정보', attack: '방해', defense: '방어', bonus: '보너스' }[d.type]}</span>
                   </b>
                   <small>{d.desc}</small>
+                  {why && <small className="ci-why">{why}</small>}
                 </div>
                 <button className="btn sm" disabled={!!why || busy} title={why ?? ''} onClick={() => onBuy(d.kind)}>
                   {wonShort(d.cost)}
@@ -463,8 +465,8 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
 const STEPS = [
   { t: '주식 대결에 온 걸 환영해요', d: '1,000만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
   { t: '① 아침 뉴스를 읽어요', d: '매일 아침 뉴스가 나와요. 좋은 뉴스(▲)가 난 회사·업종은 오르는 경우가 많고, 같은 업종이나 연관 업종도 함께 움직여요. [루머]는 틀릴 수도 있어요!' },
-  { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 금액 버튼(+10만원 등)으로 쉽게 살 수 있어요. 오늘은 아침 가격(시가)으로 거래돼요.' },
-  { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 둘 다 누르면(또는 시간이 다 되면) 하루가 흘러 가격이 움직여요.' },
+  { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 금액 버튼(+10만원 등)으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 5초마다 움직여요.' },
+  { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 모두 누르면(또는 시간이 다 되면) 하루가 끝나요.' },
   { t: '④ 찬스 카드로 승부를 뒤집어요', d: '카드로 내일 뉴스를 미리 보거나, 상대를 방해할 수 있어요. 상점에서 돈으로 살 수도 있어요. 점선 밑줄 단어를 누르면 뜻이 나와요.' },
 ];
 

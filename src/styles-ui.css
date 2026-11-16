@@ -2235,3 +2235,25 @@ button.tag:hover,
     max-width: none;
   }
 }
+
+/* 왜 안 되는지 화면에 바로 (터치 기기는 툴팁을 못 봄) */
+.ci-why {
+  display: block;
+  margin-top: 4px;
+  color: var(--gold) !important;
+  font-size: 11px;
+}
+.m-tradebar .mt-why {
+  flex: 1 1 100%;
+  order: -1;
+  font-size: 11.5px;
+  color: var(--gold);
+  text-align: center;
+}
+.m-tradebar:has(.mt-why) {
+  flex-wrap: wrap;
+}
+.qty-over {
+  display: block;
+  margin: 4px 0;
+}

@@ -6,14 +6,16 @@ import { STOCK_SECTORS } from '../game/stocks';
 import type { UiMode } from '../session';
 import { Icon, SectorIcon } from './Icon';
 
-export function Sheet({ title, onClose, children, wide }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Sheet({ title, onClose, children, wide, guard }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; guard?: () => boolean }) {
+  // guard: 닫기 전에 확인 (예: 쓰던 글이 있으면 물어봄). 닫기 버튼(X)은 그대로 닫힘
+  const soft = () => (!guard || guard()) && onClose();
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && soft();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="modal-bg" onClick={onClose}>
+    <div className="modal-bg" onClick={soft}>
       <div className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h3>{title}</h3>

@@ -166,7 +166,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       window.removeEventListener('offline', off);
     };
   }, []);
-  const [tutorial, setTutorial] = useState(() => !session.demo && !session.tutorial && session.ui === 'easy' && !tutorialSeen());
+  // 첫 판 안내: 대결 중에는 제한 시간이 흐르므로 자동으로 띄우지 않음 (도움말 버튼으로는 언제든)
+  const [tutorial, setTutorial] = useState(() => !session.demo && !session.tutorial && session.mode !== 'multi' && session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
@@ -738,6 +739,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             <button
               className="btn full danger"
               onClick={() => {
+                if (!window.confirm('기권하면 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?')) return;
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .catch(() => {})
@@ -876,8 +878,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           setMuted(!muted);
           setMutedState(!muted);
         }}
-        aria-label="소리"
-        title="소리"
+        aria-label={muted ? '소리 켜기' : '소리 끄기'}
+        aria-pressed={!muted}
+        title={muted ? '소리 켜기' : '소리 끄기'}
       >
         <Icon name={muted ? 'mute' : 'sound'} size={18} />
       </button>
@@ -1138,7 +1141,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
               <b className={tone(q.ch)}>{q.usd !== null ? '$' + q.usd.toFixed(2) : num(q.krw) + '원'}</b>
               <small className={tone(q.ch)}>{pct(q.ch)}</small>
             </div>
-            <button className="btn sell" disabled={!tradeState.allowed || held === 0} onClick={() => setSheet('sell')}>
+            {!tradeState.allowed && tradeState.reason && <small className="mt-why">{tradeState.reason}</small>}
+            <button className="btn sell" disabled={!tradeState.allowed || held === 0} title={held === 0 ? '아직 갖고 있는 주식이 없어요' : undefined} onClick={() => setSheet('sell')}>
               {easy ? '팔기' : '매도'}
             </button>
             <button className="btn buy" disabled={!tradeState.allowed} onClick={() => setSheet('buy')}>

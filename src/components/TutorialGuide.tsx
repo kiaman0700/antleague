@@ -69,7 +69,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: '사 보기',
     text: (c) => `${josa(c.symbolName, '을', '를')} 사 보세요. 금액(또는 수량)을 정하고 '사기'를 누르면 돼요.`,
     // 모바일: 사기 창(시트)이 열리면 그 창을 비추고 말풍선은 위로
-    target: '.trade-panel, .sheet .trade, .m-tradebar',
+    target: '.p-detail .trade, .sheet .trade, .m-tradebar',
     tab: 'detail',
     wait: (c) => c.myTrades > 0,
     waitHint: '사기를 눌러 사 보세요',
@@ -110,10 +110,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '하루 결산',
-    text: () => '하루가 끝나면 오늘 손익과 많이 오른·내린 종목을 보여줘요. 다음 날 시작을 눌러 보세요.',
+    text: () => "하루가 끝나면 오늘 손익과 많이 오른·내린 종목을 보여줘요. '2일차 시작'을 눌러 보세요.",
     target: '.close-modal',
     wait: (c) => !c.closing && c.viewDay >= 1,
-    waitHint: '다음 날 시작을 눌러 보세요',
+    waitHint: "'2일차 시작'을 눌러 보세요",
   },
   {
     title: '연습봇의 공격!',
@@ -128,7 +128,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '튜토리얼 끝!',
-    text: () => '이제 남은 날을 직접 해 보거나, 혼자 연습·친구와 대결을 시작해 보세요. 회사 공부는 홈의 기업 도감에서 할 수 있어요.',
+    text: () => '튜토리얼 끝! 이제 홈에서 혼자 연습이나 친구와 대결을 시작해 보세요. 회사 공부는 홈의 기업 도감에서 할 수 있어요.',
   },
 ];
 
@@ -153,6 +153,9 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
     };
     find();
+    // 단계가 바뀌면 강조할 곳을 화면 안으로 (스크롤 칸 안에 숨어 있어도 보이게)
+    const first = s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0);
+    first?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     const id = setInterval(find, 300);
     return () => clearInterval(id);
   }, [s?.target, step]);
@@ -180,7 +183,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
         : { bottom: Math.max(window.innerHeight - rect.top + 12, 12), left: 12, right: 12 }
       : below
         ? { top: rect.bottom + 12, left: Math.min(Math.max(12, rect.left), window.innerWidth - 392) }
-        : { bottom: window.innerHeight - rect.top + 12, left: Math.min(Math.max(12, rect.left), window.innerWidth - 392) }
+        : { bottom: Math.min(window.innerHeight - rect.top + 12, window.innerHeight - 220), left: Math.min(Math.max(12, rect.left), window.innerWidth - 392) }
     : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
 
   return (
@@ -196,7 +199,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
             {step + 1} / {TUTORIAL_STEPS.length}
           </span>
           <b>{s.title}</b>
-          <button className="icon-btn sm" onClick={onExit} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
+          <button className="icon-btn sm" onClick={() => window.confirm('튜토리얼을 그만할까요? 다시 하려면 처음부터 해야 해요.') && onExit()} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
             <Icon name="x" size={14} />
           </button>
         </div>

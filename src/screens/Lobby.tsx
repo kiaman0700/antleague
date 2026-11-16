@@ -73,12 +73,12 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
   };
   return (
     <div className="mode-pick three">
-      <button className={!custom && value === 'easy' ? 'on' : ''} onClick={() => pick('easy')}>
+      <button aria-pressed={!custom && value === 'easy'} className={!custom && value === 'easy' ? 'on' : ''} onClick={() => pick('easy')}>
         <span className="mp-emoji"><Icon name="book" size={22} /></span>
         <b>초보 모드</b>
-        <small>쉬운 말 · 금액으로 사기 · 용어 설명 · 첫 판 안내</small>
+        <small>쉬운 말 · 금액 버튼으로 쉽게 사기 · 용어 설명 · 첫 판 안내</small>
       </button>
-      <button className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
+      <button aria-pressed={!custom && value === 'pro'} className={!custom && value === 'pro' ? 'on' : ''} onClick={() => pick('pro')}>
         <span className="mp-emoji"><Icon name="bars" size={22} /></span>
         <b>일반 모드</b>
         <small>캔들 차트 · 수량 주문 · 시가/고가/저가 정보</small>
@@ -108,10 +108,10 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
           <div className="field">
             <span>바탕 모드 (쉬운 말·주문 방식)</span>
             <div className="seg two">
-              <button className={value === 'easy' ? 'on' : ''} onClick={() => onChange('easy')}>
+              <button aria-pressed={value === 'easy'} className={value === 'easy' ? 'on' : ''} onClick={() => onChange('easy')}>
                 <b>초보</b>
               </button>
-              <button className={value === 'pro' ? 'on' : ''} onClick={() => onChange('pro')}>
+              <button aria-pressed={value === 'pro'} className={value === 'pro' ? 'on' : ''} onClick={() => onChange('pro')}>
                 <b>일반</b>
               </button>
             </div>
@@ -258,10 +258,12 @@ function CodeJoin({
           autoCapitalize="characters"
           onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-+/g, '-'))}
         />
-        <button className="btn primary" disabled={busy || !online || !valid}>
+        <button className="btn primary" disabled={busy || !online}>
           {isRejoin ? '이어하기' : '입장'}
         </button>
       </form>
+      {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
+      {!err && code.length > 0 && !isRejoin && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
       {err && <p className="error">{err}</p>}
     </Modal>
   );
@@ -278,7 +280,7 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
         <span>게임 길이</span>
         <div className="seg">
           {DAY_OPTIONS.map((o) => (
-            <button key={o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+            <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
               <b>{o.label}</b>
               <small>최대 {Math.round((o.days * (daySec + 8)) / 60)}분</small>
             </button>
@@ -289,7 +291,7 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
         <span>하루(장) 길이</span>
         <div className="seg">
           {SOLO_DAY_OPTIONS.map((sec) => (
-            <button key={sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
+            <button key={sec} aria-pressed={daySec === sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
               <b>{sec / 60}분</b>
               <small>{sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
             </button>
@@ -587,11 +589,12 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const [codeOpen, setCodeOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'private'>('all');
 
+  const [loadErr, setLoadErr] = useState(false);
   const load = () => {
     if (!online) return;
     api<RoomInfo[]>('rooms')
-      .then(setRooms)
-      .catch(() => setRooms([]));
+      .then((r) => (setRooms(r), setLoadErr(false)))
+      .catch(() => (setRooms((x) => x ?? []), setLoadErr(true)));
   };
   useEffect(() => {
     load();
@@ -661,7 +664,8 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         {rooms !== null && shown.length === 0 && (
           <div className="empty-state">
             <i><Icon name="door" size={32} /></i>
-            <b>{rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
+            <b>{loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
+            {loadErr && <small>인터넷 연결을 확인해 주세요. 6초마다 다시 시도해요.</small>}
             <small>직접 방을 만들고 친구를 불러 보세요.</small>
             <button className="btn primary" onClick={() => go('create')}>
               <Icon name="plus" /> 방 만들기
@@ -790,7 +794,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <span>인원 (방장 포함)</span>
           <div className="seg five">
             {[2, 3, 4, 5, 6].map((n) => (
-              <button key={n} className={maxPlayers === n ? 'on' : ''} onClick={() => setMaxPlayers(n)}>
+              <button key={n} aria-pressed={maxPlayers === n} className={maxPlayers === n ? 'on' : ''} onClick={() => setMaxPlayers(n)}>
                 <b>{n}명</b>
               </button>
             ))}
@@ -804,7 +808,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <span>게임 길이</span>
           <div className="seg">
             {DAY_OPTIONS.map((o) => (
-              <button key={o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+              <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
                 <b>{o.label}</b>
                 <small>약 {estimateMinutes(o.days, turnSec).typical}분</small>
               </button>
@@ -815,7 +819,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <span>하루 제한 시간</span>
           <div className="seg four">
             {TURN_OPTIONS.map((o) => (
-              <button key={o.sec} className={turnSec === o.sec ? 'on' : ''} onClick={() => setTurnSec(o.sec)}>
+              <button key={o.sec} aria-pressed={turnSec === o.sec} className={turnSec === o.sec ? 'on' : ''} onClick={() => setTurnSec(o.sec)}>
                 <b>{o.label}</b>
                 <small>{o.desc}</small>
               </button>
@@ -833,11 +837,11 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
       <section className="panel pad">
         <h3 className="sec-h">공개 설정</h3>
         <div className="seg two">
-          <button className={!isPrivate ? 'on' : ''} onClick={() => setIsPrivate(false)}>
+          <button aria-pressed={!isPrivate} className={!isPrivate ? 'on' : ''} onClick={() => setIsPrivate(false)}>
             <b><Icon name="globe" /> 공개방</b>
             <small>누구나 목록에서 입장</small>
           </button>
-          <button className={isPrivate ? 'on' : ''} onClick={() => setIsPrivate(true)}>
+          <button aria-pressed={isPrivate} className={isPrivate ? 'on' : ''} onClick={() => setIsPrivate(true)}>
             <b><Icon name="lock" /> 비밀방</b>
             <small>비밀번호 또는 초대 코드</small>
           </button>
@@ -907,11 +911,13 @@ function ForgetMe() {
 
 function Records({ go }: Pick<Props, 'go'>) {
   const [history, setHistory] = useState<MatchResult[] | null>(null);
+  const [histErr, setHistErr] = useState(false);
   useEffect(() => {
     if (!online) return setHistory([]);
+    setHistErr(false);
     api<MatchResult[]>('history')
       .then(setHistory)
-      .catch(() => setHistory([]));
+      .catch(() => (setHistory([]), setHistErr(true)));
   }, []);
 
   const list = history ?? [];
@@ -938,7 +944,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history !== null && list.length === 0 && (
         <div className="empty-state">
           <i><Icon name="trophy" size={32} /></i>
-          <b>아직 끝낸 게임이 없어요</b>
+          <b>{histErr ? '기록을 불러오지 못했어요' : '아직 끝낸 게임이 없어요'}</b>
           <small>친구와 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
         </div>
       )}

@@ -105,7 +105,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
         </button>
         <p className="muted small">
-          최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 고민 시간 {turnLabel}
+          최대 {room.maxPlayers}명 · {room.totalDays}일 · 하루 제한 시간 {turnLabel}
           {room.isPrivate && <> · 방 목록에선 비밀번호 필요</>}
         </p>
       </div>
@@ -163,7 +163,14 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
             {me?.ready ? '준비 취소' : '준비 완료'}
           </button>
         )}
-        <button className="btn ghost full" onClick={() => api('leave', { roomId }).catch(() => {}).finally(onLeave)}>
+        <button
+          className="btn ghost full"
+          onClick={() => {
+            if (isHost && view.players.length > 1 && !window.confirm('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?')) return;
+            if (isHost && view.players.length <= 1 && !window.confirm('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?')) return;
+            api('leave', { roomId }).catch(() => {}).finally(onLeave);
+          }}
+        >
           나가기
         </button>
         {(err || error) && <p className="error">{err || error}</p>}

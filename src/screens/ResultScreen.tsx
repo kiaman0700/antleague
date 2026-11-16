@@ -348,7 +348,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           </>
         ) : (
           <button className="btn primary xl" onClick={onExit}>
-            한 판 더!
+            로비로 (새 게임 시작)
           </button>
         )}
       </div>
