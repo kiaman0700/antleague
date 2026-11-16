@@ -283,3 +283,6 @@
 .party-away, .party-back { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-left: auto; white-space: nowrap; }
 .party-away { color: var(--muted); background: rgba(255,255,255,.06); }
 .party-back { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); display: inline-flex; align-items: center; gap: 3px; }
+/* 파티원 줄: 돌아옴 표시는 이름 바로 뒤, 티어는 두 줄 모두 오른쪽 끝에 맞춤 */
+.party-members li .party-away, .party-members li .party-back { margin-left: 0; order: 1; }
+.party-members li small { order: 2; }
