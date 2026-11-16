@@ -1504,6 +1504,16 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       rateLimit('reset:' + ip, 8, 600_000);
       return { status: 200, body: await resetPassword(db(), body as Body) };
     }
+    // 방 목록은 공개 정보(제목·인원, 코드·비밀번호 없음) — 아직 계정이 없는 처음 온 사람도 계정을 만들지 않고 볼 수 있게
+    if (!token && body && typeof body === 'object' && (body as Body).action === 'rooms') {
+      rateLimit('rooms:' + ip, 30, 60_000);
+      return { status: 200, body: await act('rooms', body as Body, '') };
+    }
+    // 랭킹도 공개 정보(닉네임·티어·점수) — 로그인 없이 보면 '내 순위'만 빠짐
+    if (!token && body && typeof body === 'object' && (body as Body).action === 'ranking') {
+      rateLimit('ranking:' + ip, 20, 60_000);
+      return { status: 200, body: await accountAct(db(), 'ranking', body as Body, { id: '' }, rateLimit) };
+    }
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
     const { data, error } = await db().auth.getUser(token);
     if (error || !data.user) return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };

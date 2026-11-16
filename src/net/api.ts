@@ -13,8 +13,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 읽기만 하는 확인 요청: 아직 계정(로그인 세션)이 없으면 서버에 묻지 않고 빈 값으로 답함
+ * — 처음 온 사람이 아무것도 안 했는데 화면을 여는 것만으로 익명 계정이 생기지 않게
+ *   (검색 로봇·잠깐 들른 사람마다 계정이 쌓이고, 같은 IP 익명 가입 제한도 빨리 닳음)
+ * 계정은 대결 찾기·방 만들기·입장처럼 실제 온라인 기능을 쓸 때 만들어짐
+ */
+const PEEK_EMPTY: Record<string, () => unknown> = {
+  profile: () => ({ profile: null }),
+  resume: () => null,
+  queueCounts: () => ({ counts: {}, eta: {} }),
+  invites: () => ({ incoming: [], duel: null }),
+  party: () => ({ party: null }),
+  me: () => ({ isAdmin: false }),
+  history: () => [],
+};
+
 /** 게임 서버(/api/game) 호출 — 로그인 토큰을 함께 보낸다 */
 export async function api<T = unknown>(action: string, payload: Record<string, unknown> = {}, retried = false): Promise<T> {
+  const peek = Object.prototype.hasOwnProperty.call(PEEK_EMPTY, action);
+  if (supabase && (peek || action === 'rooms' || action === 'ranking')) {
+    const has = await supabase.auth
+      .getSession()
+      .then((r) => !!r.data.session)
+      .catch(() => true);
+    if (!has && peek) return PEEK_EMPTY[action]() as T;
+    // 방 목록·랭킹은 공개 — 계정 없이 서버에 물어봄 (토큰 없이)
+    if (!has) return apiOnce<T>(action, payload, true);
+  }
   try {
     return await apiOnce<T>(action, payload);
   } catch (e) {
@@ -35,14 +61,14 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
   }
 }
 
-async function apiOnce<T>(action: string, payload: Record<string, unknown>): Promise<T> {
-  const token = await accessToken();
-  lastToken = token ?? null;
+async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAuth = false): Promise<T> {
+  const token = noAuth ? null : await accessToken();
+  if (!noAuth) lastToken = token ?? null;
   let res: Response;
   try {
     res = await fetch('/api/game', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ action, ...payload }),
     });
   } catch {

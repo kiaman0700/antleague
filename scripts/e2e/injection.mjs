@@ -93,4 +93,16 @@ const fake = await raw(JSON.stringify({ action: 'me' }), 'eyJhbGciOiJIUzI1NiJ9.e
 ok('가짜 토큰 거절 (401)', fake.s === 401);
 const huge = await raw(JSON.stringify({ action: 'me' }), 'x'.repeat(5000));
 ok('너무 긴 토큰 거절 (401)', huge.s === 401);
+
+// 7) 로그인 없이: 방 목록(공개 정보)만 되고 코드·비밀번호·계정 id 는 없음, 나머지는 모두 401
+const pubRooms = await raw(JSON.stringify({ action: 'rooms' }), null);
+const pubTxt = pubRooms.t;
+ok('로그인 없이 방 목록은 보임 (공개 정보)', pubRooms.s === 200 && pubTxt.startsWith('['), `${pubRooms.s} ${pubTxt.slice(0, 60)}`);
+ok('로그인 없는 방 목록에 코드·비밀번호·계정 id 없음', !/"code"|password|pw_hash|user_id|host_id|"joined":true/.test(pubTxt), pubTxt.slice(0, 120));
+const pubRank = await raw(JSON.stringify({ action: 'ranking' }), null);
+ok('로그인 없이 랭킹은 보임, 내 순위·계정 id 없음', pubRank.s === 200 && /"me":null/.test(pubRank.t) && !/user_id|username/.test(pubRank.t), `${pubRank.s} ${pubRank.t.slice(0, 80)}`);
+for (const a of ['state', 'resume', 'profile', 'history', 'queueCounts', 'create', 'join', 'friends', 'feedback']) {
+  const r = await raw(JSON.stringify({ action: a }), null);
+  ok(`로그인 없이 ${a} 거절 (401)`, r.s === 401, String(r.s));
+}
 done();

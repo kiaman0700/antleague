@@ -250,7 +250,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         games: number;
         wins: number;
       }[];
-      const me = await getProfile(sb, uid);
+      // uid 가 비었으면(로그인 없이 보는 공개 랭킹) 내 순위는 없음
+      const me = uid ? await getProfile(sb, uid) : null;
       let mine: { rank: number | null; rating: number; nickname: string; games: number; ranked_games: number } | null = null;
       if (me) {
         const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating);
