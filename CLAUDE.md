@@ -65,6 +65,7 @@ npm run vercel -- setpublic VITE_이름 값       # 공개돼도 되는 화면�
 
 ## 배포
 Vercel 프로젝트 `antleague`(2026-11-16 새로 만듦, 주소 https://antleague.vercel.app, 함수 서울 icn1). GitHub `kiaman0700/antleague` main 푸시 → 자동 배포.
+Vercel 방화벽 규칙 "게임 서버 요청 제한"(2026-11-17): `/api/game` 에 IP 당 1분 600번 넘으면 차단 (서버 메모리 제한보다 앞에서 막음). 대시보드 Firewall 에서 확인.
 Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`, `VITE_OPERATOR_CONTACT`. (Supabase 연동이 만드는 POSTGRES_*·SUPABASE_SERVICE_ROLE_KEY 등은 안 씀. VERCEL_TOKEN·DB 주소는 절대 Vercel 에 넣지 않기)
 `.env.local` 의 `VERCEL_TOKEN` 은 팀 범위 토큰(90일) — `/v2/user` 는 안 되고 `?teamId=` 로 프로젝트 API 사용. 만료되면 사용자에게 새로 받아 달라고 할 것
 

@@ -40,6 +40,29 @@ interface NewsProps {
 
 const KIND_LABEL = { macro: '시장', sector: '업종', company: '기업' } as const;
 
+/** 읽은 뉴스·찌라시 (이 창에서만 기억 — 날짜 칩의 '안 읽음' 숫자용) */
+const SEEN_KEY = 'stockduel.newsSeen';
+const seenNews: Set<string> = (() => {
+  try {
+    return new Set<string>(JSON.parse(sessionStorage.getItem(SEEN_KEY) ?? '[]'));
+  } catch {
+    return new Set<string>();
+  }
+})();
+function markSeen(keys: string[]) {
+  let added = false;
+  for (const k of keys) if (!seenNews.has(k)) (seenNews.add(k), (added = true));
+  if (!added) return false;
+  try {
+    sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seenNews].slice(-600)));
+  } catch {
+    /* 저장 못 해도 화면은 그대로 */
+  }
+  return true;
+}
+const newsKey = (n: NewsEvent) => 'n:' + n.day + ':' + n.headline;
+const rumorKey = (day: number, text: string) => 'r:' + day + ':' + text;
+
 function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change: (s: string) => number; onSelect: (s: string) => void }) {
   if (!symbols.length) return null;
   return (
@@ -79,6 +102,19 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
   const showToday = showAll || cat === day;
   const pastDay = typeof cat === 'number' && cat < day ? cat : null;
   const days = Math.max(totalDays ?? day + 1, day + 1);
+  // 지금 보이는 것을 읽음으로 (전체 = 오늘 뉴스·찌라시, 날짜 = 그날, 찌라시 = 찌라시, 지난 뉴스를 펼치면 지난 것도)
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const keys: string[] = [];
+    if (cat === 'all' || cat === day) keys.push(...today.map(newsKey));
+    if ((cat === 'all' || cat === 'rumor') && rumors) keys.push(...rumors.map((r) => rumorKey(day, r.text)));
+    if (typeof cat === 'number' && cat < day) keys.push(...news.filter((n) => n.day === cat).map(newsKey));
+    if (cat === 'all' && showOld) keys.push(...old.map(newsKey));
+    if (markSeen(keys)) bump((x) => x + 1);
+  });
+  const unreadOf = (d: number) => news.filter((n) => n.day === d && !seenNews.has(newsKey(n))).length;
+  const unreadRumors = rumors ? rumors.filter((r) => !seenNews.has(rumorKey(day, r.text))).length : 0;
+  const dot = (k: number) => (k > 0 ? <span className="nc-unread" aria-label={`안 읽은 것 ${k}개`}>{k > 9 ? '9+' : k}</span> : null);
 
   return (
     <div className="news-panel">
@@ -89,7 +125,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         </button>
         <div className="nc-scroll">
           <button role="tab" aria-selected={cat === 'rumor'} className={'chip sm' + (cat === 'rumor' ? ' on' : '')} disabled={!hasRumors} onClick={() => setCat('rumor')} title={hasRumors ? '오늘 장 전 찌라시' : '오늘은 찌라시가 없어요'}>
-            찌라시
+            찌라시{dot(cat === 'rumor' ? 0 : unreadRumors)}
           </button>
           {Array.from({ length: days }, (_, d) => (
             <button
@@ -101,7 +137,9 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
               onClick={() => setCat(d)}
               title={d > day ? '아직 오지 않은 날이에요' : d === day ? '오늘 뉴스' : `${d + 1}일차 뉴스`}
             >
-              {d + 1}일{d === day ? ' · 오늘' : ''}
+              {d === day && <i className="nc-dot" aria-hidden />}
+              {d + 1}일{d === day ? ' 오늘' : ''}
+              {d <= day && dot(cat === d ? 0 : unreadOf(d))}
             </button>
           ))}
         </div>
