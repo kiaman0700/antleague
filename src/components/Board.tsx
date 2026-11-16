@@ -5,7 +5,6 @@ import { CardIcon, Icon, type IconName } from './Icon';
 import type { PublicPlayer } from '../engine/engine';
 import { ITEM_MAP, type ItemKind } from '../game/items';
 import { barNow, KR_INDEX_BASE, US_INDEX_BASE, type Market } from '../game/market';
-import { START_CASH } from '../game/portfolio';
 import { pct, tone, wonShort } from '../lib/format';
 import { graceText } from '../session';
 import { ScrollChips } from './StockBrowser';
@@ -28,6 +27,8 @@ export interface RankRow {
   rank?: number;
   /** 회원(로그인) — 이름 옆 인증 표시 */
   verified?: boolean;
+  /** 수익률 (시작 돈 기준 — 방 규칙마다 시작 돈이 다름) */
+  ret: number;
 }
 
 /** 수익률 구간 글자: [4,6] → "+4~6%", [-2,0] → "-2~0%" */
@@ -39,9 +40,9 @@ export function bandText(b: [number, number]) {
 const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
-export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number): RankRow[] {
+export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
-    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified }))
+    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -65,8 +66,8 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
                 수익률 {bandText(r.band)}
               </small>
             ) : (
-              <small className={tone(r.equity / START_CASH - 1)}>
-                {wonShort(r.equity)} · {pct(r.equity / START_CASH - 1, 1)}
+              <small className={tone(r.ret)}>
+                {wonShort(r.equity)} · {pct(r.ret, 1)}
               </small>
             )}
           </span>
@@ -146,7 +147,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
             ) : (
               <>
                 <b>{wonShort(r.equity)}</b>
-                <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1)}</small>
+                <small className={tone(r.ret)}>{pct(r.ret)}</small>
               </>
             )}
           </span>
@@ -173,7 +174,7 @@ export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind;
               <button key={r.id} className="target-row" onClick={() => onPick(r.id)}>
                 <b>{r.nickname}</b>
                 <span>
-                  {r.band ? <small className={tone(r.band[0] + r.band[1])}>수익률 {bandText(r.band)}</small> : <>{wonShort(r.equity)} <small className={tone(r.equity / START_CASH - 1)}>{pct(r.equity / START_CASH - 1, 1)}</small></>}
+                  {r.band ? <small className={tone(r.band[0] + r.band[1])}>수익률 {bandText(r.band)}</small> : <>{wonShort(r.equity)} <small className={tone(r.ret)}>{pct(r.ret, 1)}</small></>}
                 </span>
               </button>
             ))}

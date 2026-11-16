@@ -1,5 +1,6 @@
 /** 카드 도감: 찬스 카드마다 능력·종류·가격을 한눈에 */
-import { ITEMS, type ItemType } from '../game/items';
+import { ITEMS, itemCost, type ItemType } from '../game/items';
+import { CURRENT_RULES_VERSION } from '../engine/engine';
 import { won } from '../lib/format';
 import { GameCard } from './GameCard';
 import { Sheet } from './PrefsPanel';
@@ -26,7 +27,7 @@ export function CardGuide({ onClose }: { onClose: () => void }) {
               <GameCard
                 key={i.kind}
                 kind={i.kind}
-                corner={<span className="gc-price">{i.shopless ? '무료' : won(i.cost)}</span>}
+                corner={<span className="gc-price">{i.shopless ? '무료' : won(itemCost(i.kind, 3, CURRENT_RULES_VERSION))}</span>}
                 footer={i.multiOnly ? <span className="gc-tag">여럿이 할 때</span> : undefined}
               />
             ))}

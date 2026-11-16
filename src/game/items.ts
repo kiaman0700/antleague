@@ -48,6 +48,33 @@ export const USE_LIMIT = 2;
 export const FEE_BOMB_RATE = 0.01;
 export const FEE_BOMB_DAYS = 3;
 export const BONUS_AMOUNT = 500_000;
+/**
+ * (v6) 용돈 봉투: 공개된 확률로 받거나 잃음. 평균 약 +5.2만원 (시작 돈 100만원의 약 5%)
+ * 결과는 서버가 방 비밀값으로 뽑아 사용 기록(payload.amount)에 저장 → 화면은 미리 알 수 없음
+ */
+export const BONUS_TABLE: readonly { amount: number; p: number }[] = [
+  { amount: 300_000, p: 0.05 },
+  { amount: 150_000, p: 0.15 },
+  { amount: 80_000, p: 0.3 },
+  { amount: 30_000, p: 0.25 },
+  { amount: -50_000, p: 0.15 },
+  { amount: -100_000, p: 0.1 },
+];
+/** 0~1 난수 하나로 봉투 결과 */
+export function drawBonus(u: number): number {
+  let acc = 0;
+  for (const b of BONUS_TABLE) {
+    acc += b.p;
+    if (u < acc) return b.amount;
+  }
+  return BONUS_TABLE[BONUS_TABLE.length - 1].amount;
+}
+/** 카드 설명 (규칙 버전에 따라 용돈 봉투 문구가 다름) */
+export function itemDesc(kind: ItemKind, version = 6): string {
+  if (kind === 'bonus' && version >= 6)
+    return '쓰면 확률에 따라 현금을 받거나 잃어요. +30만 5% · +15만 15% · +8만 30% · +3만 25% · −5만 15% · −10만 10%. 무료 카드로만 나와요.';
+  return ITEM_MAP[kind].desc;
+}
 export const SCOUT_ACCURACY = 0.7;
 
 export interface ItemRow {
@@ -58,7 +85,7 @@ export interface ItemRow {
   action: 'buy' | 'use';
   cost: number;
   /** target: 방해·염탐 카드의 대상 / symbol: 가짜 뉴스·차트 분석 종목 */
-  payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string } | null;
+  payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string; amount?: number } | null;
   created_at?: string;
 }
 
@@ -109,7 +136,7 @@ export function grantDays(totalDays: number) {
 export function spendsFromRows(rows: ItemRow[]): { day: number; cost: number }[] {
   return rows
     .filter((r) => r.action === 'buy' || (r.action === 'use' && r.kind === 'bonus'))
-    .map((r) => ({ day: r.day, cost: r.action === 'buy' ? r.cost : -BONUS_AMOUNT }));
+    .map((r) => ({ day: r.day, cost: r.action === 'buy' ? r.cost : -(typeof r.payload?.amount === 'number' ? r.payload.amount : BONUS_AMOUNT) }));
 }
 
 /** 아이템 상태는 DB에 저장된 구매/사용 기록으로부터 모든 기기가 똑같이 계산한다 */
@@ -193,9 +220,13 @@ export function activeEffects(state: ItemState, playerId: string, day: number) {
  * 카드 값: 1대1에서는 방해 카드가 1.5배 (상대가 한 명뿐이라 매일 같은 사람을 방해할 수 있어 너무 강했음 — 시뮬 69%)
  */
 export const DUEL_ATTACK_MULT = 1.5;
-export function itemCost(kind: ItemKind, players: number): number {
+export function itemCost(kind: ItemKind, players: number, version = 1): number {
   const d = ITEM_MAP[kind];
-  return d.type === 'attack' && players === 2 ? Math.round((d.cost * DUEL_ATTACK_MULT) / 10_000) * 10_000 : d.cost;
+  // v6: 시작 돈이 1/10 이라 카드 값도 1/10
+  const k = version >= 6 ? 0.1 : 1;
+  const unit = 10_000 * k;
+  const base = Math.round((d.cost * k) / (unit / 2)) * (unit / 2);
+  return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / unit) * unit : base;
 }
 
 export function canBuy(p: PlayerItems, kind: ItemKind, cash: number, cost = ITEM_MAP[kind].cost): string | null {

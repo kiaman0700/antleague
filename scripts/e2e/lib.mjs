@@ -83,18 +83,33 @@ async function session() {
 
 /** 테스트 계정 하나 → (body) => {s: 상태코드, b: 응답} */
 let lock = Promise.resolve();
+/** 방마다 그 방에 요청을 보낸 테스트 계정들 */
+const roomUsers = new Map();
 export async function user() {
   // 여러 개를 동시에 만들어도 같은 계정을 두 번 고르지 않게 차례로
   const p = lock.then(() => session());
   lock = p.catch(() => {});
   const tok = await p;
-  const U = async (body) => {
+  const raw = async (body) => {
     const r = await fetch(BASE + '/api/game', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok },
       body: JSON.stringify(body),
     });
     return { s: r.status, b: await r.json().catch(() => null) };
+  };
+  // (규칙 v7) 장 전 시간에는 '장 마감'이 막힘 → 테스트에서 날을 넘길 땐 그 방 사람 모두 '준비 완료'를 누른 뒤 다시 마감
+  const U = async (body) => {
+    if (body?.roomId) {
+      if (!roomUsers.has(body.roomId)) roomUsers.set(body.roomId, new Set());
+      roomUsers.get(body.roomId).add(raw);
+    }
+    const res = await raw(body);
+    if (body?.action === 'endTurn' && res.s === 409 && /장이 열린 뒤/.test(res.b?.error ?? '')) {
+      for (const u of roomUsers.get(body.roomId) ?? []) await u({ action: 'preReady', roomId: body.roomId });
+      return raw(body);
+    }
+    return res;
   };
   // 다시 쓰는 계정: 지난 테스트에서 남은 방·대결에서 나옴 (한 사람은 한 방에만 들어갈 수 있어서)
   for (let i = 0; i < 40; i++) {

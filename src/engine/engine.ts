@@ -5,13 +5,14 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, canBuy, canUse, deriveItems, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, canBuy, canUse, deriveItems, drawBonus, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, TICK_MS, ticksPerDay } from '../game/intraday.js';
 import { mulberry32, seeded } from '../lib/rng.js';
+import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
-import { buyCost, computePortfolio, equityWith, FEE_RATE, START_CASH, type Holding, type Trade } from '../game/portfolio.js';
+import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
 
 export type UiMode = 'easy' | 'pro';
@@ -59,6 +60,8 @@ export interface PlayerRow {
   left_game?: boolean;
   /** 마지막으로 화면을 받아 간 시각 (자리 비움 판단) — 서버만 */
   last_seen?: string | null;
+  /** (v7) 장 전 '준비 완료'를 누른 날 — 025 마이그레이션 */
+  pre_day?: number;
 }
 
 /** 지정가(예약) 주문 — 그날 장중 가격이 닿으면 지정한 가격에 체결, 못 닿으면 장 마감 때 만료 */
@@ -105,6 +108,8 @@ export interface PublicPlayer {
   rank?: number;
   /** 회원(로그인한 사람) — 이름 옆 인증 표시. 게스트는 false */
   verified?: boolean;
+  /** (v7) 오늘 장 전 '준비 완료'를 눌렀는지 */
+  preReady?: boolean;
 }
 
 /** 상대 수익률을 보여 주는 구간 폭(%p) */
@@ -119,10 +124,12 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number; ranked?: boolean; kind?: 'custom' | 'match' };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; /** (v7) 장 전이면 장이 열리는 시각 */ preUntil?: number | null; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number; ranked?: boolean; kind?: 'custom' | 'match' };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
+  /** (v7) 오늘 장 전 찌라시 — 진위는 감별기를 쓴 사람에게만 */
+  rumors?: PublicRumor[];
   /** 시장 정보가 바뀌었을 때만 채워짐 (marketKey 로 판단) */
   market: Market | null;
   /** 오늘 장중 가격 — 지금 칸까지만. 장이 열려 있을 때만 */
@@ -264,7 +271,25 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 5;
+export const CURRENT_RULES_VERSION = 7;
+/** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
+export const PREMARKET_VERSION = 7;
+/** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
+export function preSeconds(turnSeconds: number) {
+  if (turnSeconds <= 60) return 20;
+  if (turnSeconds <= 90) return 30;
+  return Math.max(15, Math.min(45, Math.round(turnSeconds / 3)));
+}
+/** 지금 장 전인지 (v7 방, 장이 아직 안 열림) */
+export function inPremarket(r: RoomRow, now: number) {
+  if ((r.version ?? 1) < PREMARKET_VERSION || r.status !== 'playing' || r.day === 0 || r.day >= r.total_days) return false;
+  // 예전부터 있던 장 시작 전 4초(시가 그대로 거래 가능)는 장 전으로 치지 않음 → 그 앞까지만
+  return now < premarketEnd(r, now);
+}
+/** 장 전 시간이 끝나는 시각 */
+export function premarketEnd(r: RoomRow, now: number) {
+  return dayClock(r, now).startAt - 4000;
+}
 
 export function marketFor(seed: number, days: number, version = 1, salt?: string | null): Market {
   const key = `${seed}:${days}:${version}:${salt ?? ''}`;
@@ -373,6 +398,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
     usd: Object.fromEntries(Object.entries(m.usd).map(([k, v]) => [k, cut(v)])),
     index: cut(m.index),
     usIndex: cut(m.usIndex),
+    version: m.version,
     macro: m.macro.slice(0, day + 1),
     macro0: m.macro0,
     news,
@@ -409,6 +435,7 @@ export function portfolioOf(d: GameData, pid: string) {
     spendsOf(d, pid),
     Infinity,
     paidDividends(d),
+    startCashFor(d.room.version),
   );
 }
 
@@ -423,7 +450,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '개미리그', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1, ranked: !!r.ranked, kind: r.kind ?? 'custom' },
     serverNow: now,
     meId,
-    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, verified: !!verified?.has(p.id), status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
+    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: startCashFor(r.version), tradeCount: 0, verified: !!verified?.has(p.id), preReady: (p.pre_day ?? -1) >= r.day, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
     market: null,
     live: null,
     marketKey: 'waiting',
@@ -459,11 +486,12 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   base.players = players.map((p) => {
     const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;
-    const lo = Math.floor(((exact / START_CASH - 1) * 100) / RET_BAND) * RET_BAND;
+    const start = startCashFor(r.version);
+    const lo = Math.floor(((exact / start - 1) * 100) / RET_BAND) * RET_BAND;
     return {
       ...base.players.find((x) => x.id === p.id)!,
       // 상대: 구간 가운데 값(대략) — 화면은 금액 대신 구간으로 보여 줌
-      equity: mine ? exact : Math.round(START_CASH * (1 + (lo + RET_BAND / 2) / 100)),
+      equity: mine ? exact : Math.round(start * (1 + (lo + RET_BAND / 2) / 100)),
       band: mine ? null : ([lo, lo + RET_BAND] as [number, number]),
       rank: order.indexOf(p.id) + 1,
       tradeCount: d.trades.filter((t) => t.player_id === p.id && (mine || t.day < r.day)).length,
@@ -544,6 +572,9 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     : items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews);
   const blackout = !finished && base.effectsToday.includes('blackout');
   base.reveals.blackout = blackout;
+  // (v7) 장 전 찌라시 (둘째 날부터, 정보 차단을 맞은 날은 안 보임) · 장 전이면 장이 열리는 시각
+  if ((r.version ?? 1) >= PREMARKET_VERSION && open && r.day > 0 && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck);
+  base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   const releasedNow = open ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
@@ -582,6 +613,7 @@ function requirePlaying(d: GameData, meId: string, now: number) {
 
 export function validateTrade(d: GameData, meId: string, now: number, input: { symbol?: unknown; side?: unknown; qty?: unknown }): Trade {
   requirePlaying(d, meId, now);
+  if (inPremarket(d.room, now)) throw new GameError('아직 장이 열리지 않았어요. 장 전에는 예약 주문만 할 수 있어요.', 409);
   const symbol = cleanSymbol(input.symbol);
   const side = input.side === 'buy' || input.side === 'sell' ? input.side : null;
   if (!side) throw new GameError('사기/팔기를 골라 주세요.');
@@ -630,7 +662,7 @@ export function validateBuyItem(d: GameData, meId: string, now: number, input: {
   const solo = d.players.length < 2;
   if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 둘이서 할 때만 쓸 수 있어요.');
   const mine = itemsOf(d).players[meId];
-  const cost = itemCost(kind, d.players.length);
+  const cost = itemCost(kind, d.players.length, d.room.version ?? 1);
   const why = canBuy(mine, kind, portfolioOf(d, meId).cash, cost);
   if (why) throw new GameError(why);
   return { player_id: meId, day: d.room.day, kind, action: 'buy', cost, payload: null };
@@ -668,6 +700,13 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     if (p.tone !== 'good' && p.tone !== 'bad') throw new GameError('호재/악재를 골라 주세요.');
     payload = { ...payload, symbol, tone: p.tone };
   }
+  // (v6) 용돈 봉투: 서버가 방 비밀값으로 결과를 뽑아 기록 — 잃는 돈은 지금 현금까지만 (빚 없음)
+  if (kind === 'bonus' && (d.room.version ?? 1) >= 6) {
+    const nth = d.items.filter((r) => r.player_id === meId && r.action === 'use' && r.kind === 'bonus').length;
+    const u = seeded(`${d.room.salt ?? d.room.seed}:bonus:${meId}:${nth}`)();
+    const cash = portfolioOf(d, meId).cash;
+    payload = { amount: Math.max(drawBonus(u), -Math.max(0, cash)) };
+  }
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
 }
 
@@ -679,6 +718,8 @@ export function attackedToday(items: ReturnType<typeof deriveItems>, playerId: s
 
 export function validateEndTurn(d: GameData, meId: string, now: number) {
   const me = requirePlaying(d, meId, now - 1e12); // 시간이 지나도 마감 버튼은 허용
+  // 장 전에 마감하면 그날 장이 통째로 건너뛰어질 수 있음 → 장이 열린 뒤에만
+  if (inPremarket(d.room, now)) throw new GameError('장이 열린 뒤에 마감할 수 있어요.', 409);
   return { playerId: me.id, day: d.room.day };
 }
 
@@ -754,8 +795,29 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
   if (!allEnded && !timeUp) return null;
   const day = r.day + 1;
   const status: RoomStatus = day >= r.total_days ? 'finished' : 'playing';
-  const deadline = status === 'playing' && r.turn_seconds > 0 ? now + (r.turn_seconds + 4) * 1000 : null;
+  // v7: 다음 날 장이 열리기 전에 장 전 시간을 둠 (장 시계의 시작 = 마감 시각 - 하루 시간 이므로 마감 시각을 그만큼 뒤로)
+  // (장 전 시간 + 예전부터 있던 장 시작 전 4초)
+  const pre = (r.version ?? 1) >= PREMARKET_VERSION ? preSeconds(r.turn_seconds) + 4 : 4;
+  const deadline = status === 'playing' && r.turn_seconds > 0 ? now + (r.turn_seconds + pre) * 1000 : null;
   return { day, status, deadline, day_deadline: deadline };
+}
+
+/** (v7) 장 전 '준비 완료' */
+export function validatePreReady(d: GameData, meId: string, now: number) {
+  const r = d.room;
+  const me = d.players.find((p) => p.id === meId);
+  if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
+  if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
+  if (!inPremarket(r, now)) throw new GameError('지금은 장 전 시간이 아니에요.', 409);
+  return { playerId: me.id, day: r.day };
+}
+/** (v7) 남은 사람이 모두 준비 완료했으면 바로 장을 여는 새 마감 시각 (아니면 null) */
+export function preAllReadyDeadline(d: GameData, now: number): number | null {
+  const r = d.room;
+  if (!inPremarket(r, now)) return null;
+  const staying = d.players.filter((p) => !p.left_game && isActive(p, now));
+  if (!staying.length || !staying.every((p) => (p.pre_day ?? -1) >= r.day)) return null;
+  return now + ticksPerDay(r.turn_seconds) * TICK_MS;
 }
 
 export function finalResults(d: GameData) {
@@ -775,7 +837,7 @@ export function finalResults(d: GameData) {
   });
   const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
-    return { nickname: p.nickname, equity, ret: equity / START_CASH - 1, badges: badges[p.id] ?? [] };
+    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [] };
   });
   const ranked = [...results].sort((a, b) => b.equity - a.equity);
   const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0].nickname : null;
@@ -860,7 +922,7 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
       continue;
     }
     const price = isUS ? Math.round(o.limit_price * fx) : o.limit_price;
-    const pf = computePortfolio([...d.trades.filter((t) => t.player_id === o.player_id), ...extra.filter((t) => t.player_id === o.player_id)], spendsOf(d, o.player_id), Infinity, paidDividends(d));
+    const pf = computePortfolio([...d.trades.filter((t) => t.player_id === o.player_id), ...extra.filter((t) => t.player_id === o.player_id)], spendsOf(d, o.player_id), Infinity, paidDividends(d), startCashFor(d.room.version));
     const ok = o.side === 'buy' ? buyCost(o.qty, price, o.fee) <= pf.cash : (pf.holdings[o.symbol]?.qty ?? 0) >= o.qty;
     if (!ok) {
       out.push({ id: o.id!, status: 'cancelled' });

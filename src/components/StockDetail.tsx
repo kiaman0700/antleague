@@ -46,6 +46,8 @@ interface Props {
     fee: number;
     busy: boolean;
     capFor?: (symbol: string) => number | null;
+    /** (v7) 장 전: 지금 가격 거래는 안 되고 예약 주문만 */
+    limitOnly?: boolean;
   };
   onTrade: (symbol: string, side: "buy" | "sell", qty: number) => void;
   orders: OrderRow[];
@@ -579,6 +581,8 @@ export function StockDetail(props: Props) {
 }
 
 export interface TradeProps {
+  /** 시작 돈 (빠른 금액 버튼 단위) */
+  startCash?: number;
   ui: UiMode;
   symbol: string;
   price: number;
@@ -617,12 +621,13 @@ export function TradePanel({
   onOrder,
   onCancel,
   initialSide = "buy",
+  startCash = 10_000_000,
 }: TradeProps) {
   const easy = ui === "easy";
   const isUS = usd !== null;
   const native = usd ?? price;
   const [side, setSide] = useState<"buy" | "sell">(initialSide);
-  const [kind, setKind] = useState<"now" | "limit">("now");
+  const [kind, setKind] = useState<"now" | "limit">(trade.limitOnly ? "limit" : "now");
   const [qtyText, setQtyText] = useState("");
   const [limitText, setLimitText] = useState("");
   const fee = trade.fee;
@@ -729,6 +734,8 @@ export function TradePanel({
         <button
           className={kind === "now" ? "on" : ""}
           onClick={() => switchKind("now")}
+          disabled={!!trade.limitOnly}
+          title={trade.limitOnly ? "장이 열리면 지금 가격으로 살 수 있어요" : undefined}
         >
           {easy ? "지금 가격으로" : "시장가(현재가)"}
         </button>
@@ -740,6 +747,9 @@ export function TradePanel({
         </button>
       </div>
 
+      {trade.limitOnly && (
+        <div className="trade-block pre">장 전이에요. 예약 주문만 걸 수 있고, 장이 열리면 가격이 닿을 때 체결돼요.</div>
+      )}
       {!trade.allowed && trade.reason && (
         <div className="trade-block">{trade.reason}</div>
       )}
@@ -853,11 +863,17 @@ export function TradePanel({
       <div className="quick">
         {easy && side === "buy"
           ? (
-              [
-                [100_000, "+10만원"],
-                [500_000, "+50만원"],
-                [1_000_000, "+100만원"],
-              ] as const
+              (startCash >= 10_000_000
+                ? ([
+                    [100_000, "+10만원"],
+                    [500_000, "+50만원"],
+                    [1_000_000, "+100만원"],
+                  ] as const)
+                : ([
+                    [10_000, "+1만원"],
+                    [50_000, "+5만원"],
+                    [100_000, "+10만원"],
+                  ] as const))
             ).map(([w, l]) => (
               <button
                 key={l}

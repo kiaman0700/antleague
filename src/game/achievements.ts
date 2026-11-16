@@ -1,6 +1,6 @@
 import { deriveItems, type ItemRow } from './items.js';
 import { KR_INDEX_BASE, type Market } from './market.js';
-import { computePortfolio, equityHistory, START_CASH, type Spend, type Trade } from './portfolio.js';
+import { computePortfolio, equityHistory, moneyScale, startCashFor, type Spend, type Trade } from './portfolio.js';
 import { STOCK_MAP } from './stocks.js';
 
 export interface Badge {
@@ -62,7 +62,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const out: Record<string, string[]> = {};
   for (const p of inp.players) {
     const got = new Set<string>();
-    const ret = finalEq(p.id) / START_CASH - 1;
+    const ret = finalEq(p.id) / startCashFor(m.version) - 1;
     if (winner === p.id) got.add('winner');
     if (ret > indexRet) got.add('beat_market');
     if (p.trades.length >= 20) got.add('trader');
@@ -81,16 +81,17 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
 
     if (p.trades.some((t) => t.side === 'buy' && t.price <= minPrice[t.symbol] * 1.03)) got.add('bottom');
 
-    const pfEnd = computePortfolio(p.trades, p.spends, Infinity, m.dividends);
-    if (pfEnd.dividendIncome >= 100_000) got.add('dividend');
-    const bigClosed = pfEnd.closed.some((c) => c.pnl >= 1_000_000);
-    const bigOpen = Object.entries(pfEnd.holdings).some(([s, h]) => h.qty * (m.bars[s][last].close - h.avgCost) >= 1_000_000);
+    const pfEnd = computePortfolio(p.trades, p.spends, Infinity, m.dividends, startCashFor(m.version));
+    const k = moneyScale(m.version);
+    if (pfEnd.dividendIncome >= 100_000 * k) got.add('dividend');
+    const bigClosed = pfEnd.closed.some((c) => c.pnl >= 1_000_000 * k);
+    const bigOpen = Object.entries(pfEnd.holdings).some(([s, h]) => h.qty * (m.bars[s][last].close - h.avgCost) >= 1_000_000 * k);
     if (bigClosed || bigOpen) got.add('big_win');
 
     // 날짜별 마감 보유로 판단하는 배지
     const streak: Record<string, number> = {};
     for (let d = 0; d <= last; d++) {
-      const hold = computePortfolio(p.trades, p.spends, d).holdings;
+      const hold = computePortfolio(p.trades, p.spends, d, [], startCashFor(m.version)).holdings;
       const syms = Object.keys(hold);
       for (const s of Object.keys(streak)) if (!hold[s]) streak[s] = 0;
       for (const s of syms) {

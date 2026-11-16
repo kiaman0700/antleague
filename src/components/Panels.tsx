@@ -14,6 +14,10 @@ import { Term } from './Term';
 /* ------------------------------ 뉴스 ------------------------------ */
 
 interface NewsProps {
+  /** (v7) 오늘 장 전 찌라시 */
+  rumors?: { text: string; sector: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
+  /** 지금 장 전인지 (찌라시 칸을 강조) */
+  pre?: boolean;
   ui: UiMode;
   day: number;
   news: NewsEvent[];
@@ -58,7 +62,7 @@ function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change
   );
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
   const today = news.filter((n) => n.day === day);
@@ -66,6 +70,24 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
 
   return (
     <div className="news-panel">
+      {rumors && rumors.length > 0 && (
+        <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
+          <div className="rb-head">
+            <b>장 전 찌라시</b>
+            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜일 수도, 헛소문일 수도 있어요'}</small>
+          </div>
+          {rumors.map((r, i) => (
+            <div key={i} className={'rb-item ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>
+              <span className="rb-arrow" aria-hidden>{r.tone === 'good' ? '▲' : '▼'}</span>
+              <span className="rb-text">{r.text}</span>
+              <button className="rb-sec" onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
+                <SectorIcon id={r.sector} /> {SECTOR_MAP[r.sector]?.name ?? r.sector}
+              </button>
+              {r.verdict && <em className={'rb-verdict ' + r.verdict}>{r.verdict === 'true' ? '진짜 단서' : '헛소문'}</em>}
+            </div>
+          ))}
+        </section>
+      )}
       {tomorrow && (
         <div className="reveal paper">
           <div className="reveal-title"><CardIcon kind="paper" size={15} /> 내일 신문 (나만 보여요)</div>
@@ -185,6 +207,8 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
 /* ------------------------------ 내 자산 ------------------------------ */
 
 interface AssetsProps {
+  /** 시작 돈 (방 규칙마다 다름) */
+  start?: number;
   ui: UiMode;
   portfolio: PortfolioState;
   prices: Record<string, number>;
@@ -192,11 +216,11 @@ interface AssetsProps {
   onSelect: (s: string) => void;
 }
 
-export function AssetsPanel({ ui, portfolio, prices, equity, onSelect }: AssetsProps) {
+export function AssetsPanel({ ui, portfolio, prices, equity, onSelect, start = START_CASH }: AssetsProps) {
   const easy = ui === 'easy';
   const entries = Object.entries(portfolio.holdings);
   const stockValue = equity - portfolio.cash;
-  const ret = equity / START_CASH - 1;
+  const ret = equity / start - 1;
   const cashShare = equity > 0 ? portfolio.cash / equity : 1;
   return (
     <div className="assets">
@@ -204,7 +228,7 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect }: AssetsP
         <small>{easy ? '내 전체 재산' : '총자산'}</small>
         <b>{won(equity)}</b>
         <span className={tone(ret)}>
-          <Term k="수익률" /> {pct(ret)} ({wonShort(equity - START_CASH)})
+          <Term k="수익률" /> {pct(ret)} ({wonShort(equity - start)})
         </span>
         <div className="alloc" aria-label="자산 구성">
           <div style={{ width: `${(1 - cashShare) * 100}%` }} className="alloc-stock" />
@@ -250,6 +274,8 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect }: AssetsP
 /* ------------------------------ 찬스 카드 ------------------------------ */
 
 interface CardsProps {
+  /** 방 규칙 버전 (v6: 카드 값 1/10, 봉투 확률) */
+  version?: number;
   solo: boolean;
   /** 참가 인원 (1대1이면 방해 카드 값이 다름) */
   players?: number;
@@ -265,7 +291,7 @@ interface CardsProps {
   busy?: boolean;
 }
 
-export function CardsPanel({ solo, players = 3, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
+export function CardsPanel({ version = 1, solo, players = 3, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
   const [shop, setShop] = useState(false);
   const [guide, setGuide] = useState(false);
   const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
@@ -304,6 +330,7 @@ export function CardsPanel({ solo, players = 3, day, totalDays, mine, cash, used
             return (
               <GameCard
                 key={k}
+                version={version}
                 kind={k}
                 count={n}
                 why={d.passive ? null : why}
@@ -324,11 +351,12 @@ export function CardsPanel({ solo, players = 3, day, totalDays, mine, cash, used
       {shop && (
         <div className="shop gc-grid">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
-            const cost = itemCost(d.kind, players);
+            const cost = itemCost(d.kind, players, version);
             const why = canAct ? canBuy(mine, d.kind, cash, cost) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
             return (
               <GameCard
                 key={d.kind}
+                version={version}
                 kind={d.kind}
                 corner={<span className="gc-price">{wonShort(cost)}</span>}
                 why={why}
@@ -435,9 +463,11 @@ interface DayCloseProps {
   onNext: () => void;
   /** 대결: 이 초가 지나면 저절로 다음 날로 (장은 서버 시계대로 흐르므로 팝업이 막고 있으면 안 됨) */
   autoSec?: number;
+  /** (v7) 다음은 장 전 시간 — 찌라시·예약 주문 안내 */
+  pre?: boolean;
 }
 
-export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec }: DayCloseProps) {
+export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec, pre }: DayCloseProps) {
   const [left, setLeft] = useState(autoSec ?? 0);
   const nextRef = useRef(onNext);
   nextRef.current = onNext;
@@ -508,9 +538,13 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
           </div>
         </div>
         <button className="btn primary xl" onClick={onNext} autoFocus>
-          {last ? '최종 결과 보기' : `${day + 2}일차 시작 →`}
+          {last ? '최종 결과 보기' : pre ? `${day + 2}일차 장 전으로` : `${day + 2}일차 시작`}
         </button>
-        {autoSec ? <div className="muted close-auto-note">다음 날 장이 이미 열렸어요 · {left}초 뒤 자동으로 넘어가요</div> : null}
+        {autoSec ? (
+          <div className="muted close-auto-note">
+            {pre ? `장 전 시간이에요. 찌라시를 보고 예약 주문을 걸어 두세요 (${left}초 뒤 자동으로 넘어가요)` : `다음 날 장이 이미 열렸어요. ${left}초 뒤 자동으로 넘어가요`}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -519,7 +553,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
 /* ------------------------------ 튜토리얼 ------------------------------ */
 
 const STEPS = [
-  { t: '개미리그에 온 걸 환영해요', d: '1,000만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
+  { t: '개미리그에 온 걸 환영해요', d: '100만원으로 시작해서, 정해진 날이 끝났을 때 재산이 더 많은 사람이 이겨요.' },
   { t: '① 아침 뉴스를 읽어요', d: '매일 아침 뉴스가 나와요. 좋은 뉴스(▲)가 난 회사·업종은 오르는 경우가 많고, 같은 업종이나 연관 업종도 함께 움직여요. [루머]는 틀릴 수도 있어요!' },
   { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 금액 버튼(+10만원 등)으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 5초마다 움직여요.' },
   { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 모두 누르면(또는 시간이 다 되면) 하루가 끝나요.' },

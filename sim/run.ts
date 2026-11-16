@@ -4,8 +4,11 @@
  * 실험: news, duel, multi, cards, gang, length (기본: 전부)
  * src/ 는 고치지 않고, 실제 엔진을 그대로 돌린다.
  */
-import { CURRENT_RULES_VERSION, marketFor } from '../src/engine/engine.js';
+import { marketFor } from '../src/engine/engine.js';
+import { SIM_V } from './version.js';
 import { ITEM_MAP, type ItemKind } from '../src/game/items.js';
+import { startCashFor } from '../src/game/portfolio.js';
+const START0 = startCashFor(SIM_V);
 import { dayTicks, releaseTick } from '../src/game/intraday.js';
 import { COMPANIES } from '../src/game/stocks.js';
 import { ARCHETYPES, newsBot } from './bots.js';
@@ -50,7 +53,7 @@ if (run('news')) {
   const bestStockDay: number[] = [];
   for (let g = 0; g < N(600); g++) {
     const seed = SEED0 + g;
-    const m = marketFor(seed, 20, CURRENT_RULES_VERSION);
+    const m = marketFor(seed, 20, SIM_V);
     kidxGame.push(m.bars.KIDX[19].close / m.bars.KIDX[0].open - 1);
     klevGame.push(m.bars.KLEV[19].close / m.bars.KLEV[0].open - 1);
     for (let day = 0; day < 20; day++) {
@@ -110,7 +113,7 @@ function summarize(games: GameLog[]) {
       const b = (by[g.bots[i]] ??= { win: 0, games: 0, ret: [] });
       b.games++;
       b.win += g.winShare[id];
-      b.ret.push(g.final[id] / 1e7 - 1);
+      b.ret.push(g.final[id] / START0 - 1);
     });
   return by;
 }
@@ -319,7 +322,7 @@ if (run('gang')) {
           const rank = [...prev].sort((a, b) => b - a).indexOf(prev[g.ids.indexOf(target)]);
           byRank[rank]++;
         }
-      const spread = mean(games.map((g) => (Math.max(...Object.values(g.final)) - Math.min(...Object.values(g.final))) / 1e7));
+      const spread = mean(games.map((g) => (Math.max(...Object.values(g.final)) - Math.min(...Object.values(g.final))) / START0));
       rows.push([label, pct(l10.lead), pct(l15.lead), pct(l10.last), (att / n).toFixed(1), att ? byRank.map((x) => pct(x / att)).join(' / ') : '-', att ? pct(blocked / att) + ' / ' + pct(refl / att) : '-', pct(spread)]);
       if (label.startsWith('뉴스+')) {
         const s = summarize(games);

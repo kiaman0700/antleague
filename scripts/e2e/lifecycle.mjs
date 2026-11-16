@@ -48,10 +48,10 @@ async function room(players, opts = {}) {
 {
   const { us: [A, B, C], roomId, ids } = await room(3);
   await A({ action: 'start', roomId });
-  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 37 });
+  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 4 });
   const s = (await A({ action: 'state', roomId })).b;
   const b = s.players.find((p) => p.id === ids[1]);
-  ok('상대 재산은 10만원 단위', b.equity % 100000 === 0, String(b.equity));
+  ok('상대 재산은 대략값(구간 가운데)만', b.equity % 10000 === 0 && !!b.band, String(b.equity));
   ok('상대의 오늘 거래 횟수는 안 보임', b.tradeCount === 0, String(b.tradeCount));
   ok('접속 시각 같은 내부 값은 없음', !JSON.stringify(s).includes('last_seen') && !JSON.stringify(s).includes('rejoin'));
   const leave = await C({ action: 'leave', roomId });

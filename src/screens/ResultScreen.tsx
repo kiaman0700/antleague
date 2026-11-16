@@ -9,7 +9,7 @@ import { PLAYER_COLORS } from '../components/Board';
 import { josa, type View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
-import { computePortfolio, equityHistory, START_CASH } from '../game/portfolio';
+import { computePortfolio, equityHistory, startCashFor } from '../game/portfolio';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { pct, tone, won, wonShort } from '../lib/format';
 import { play } from '../lib/sound';
@@ -61,6 +61,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
   };
   const solo = session.mode === 'solo';
   const last = market.totalDays - 1;
+  const START_CASH = startCashFor(market.version);
 
   const results = useMemo(() => {
     const people = [...final.players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
@@ -68,7 +69,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
     return people.map((p) => {
       const trades = final.trades.filter((t) => t.player_id === p.id);
       const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id));
-      const pf = computePortfolio(trades, spends);
+      const pf = computePortfolio(trades, spends, Infinity, [], START_CASH);
       const hist = equityHistory(trades, spends, market);
       const equity = hist[hist.length - 1];
       const closed = [
@@ -84,7 +85,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       const fakesReceived = items.effects.filter((e) => e.to === p.id && e.kind === 'fake' && !e.blocked).length;
       return { id: p.id, nickname: p.nickname, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
-  }, [final, session.playerId, market, last]);
+  }, [final, session.playerId, market, last, START_CASH]);
 
   const ranked = [...results].sort((a, b) => b.equity - a.equity);
   const winner = ranked.length >= 2 && ranked[0].equity !== ranked[1].equity ? ranked[0] : null;
@@ -332,7 +333,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         <LineChart
           series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
           totalDays={market.totalDays}
-          refLine={{ value: START_CASH, label: '시작 1,000만원' }}
+          refLine={{ value: START_CASH, label: `시작 ${START_CASH >= 10_000_000 ? '1,000만원' : '100만원'}` }}
           fmt={(v) => wonShort(v)}
           fill={false}
         />

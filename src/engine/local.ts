@@ -131,9 +131,9 @@ export function makeDemo(nickname: string): SoloSave {
   d.room = { ...d.room, day: 4, deadline: dl, day_deadline: dl };
   // 예약 주문도 하나 보이게
   const nanoOpen = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt).bars.NANO[4].open;
-  d.orders.push({ id: 'demo-o1', player_id: 'me', day: 4, symbol: 'NANO', side: 'buy', qty: 10, limit_price: Math.round((nanoOpen * 0.95) / 50) * 50, fee: 0.0015, status: 'open', created_at: new Date(frozenAt - 60_000).toISOString() });
-  d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 20, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
-  d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 5, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
+  d.orders.push({ id: 'demo-o1', player_id: 'me', day: 4, symbol: 'NANO', side: 'buy', qty: 5, limit_price: Math.round((nanoOpen * 0.95) / 50) * 50, fee: 0.0015, status: 'open', created_at: new Date(frozenAt - 60_000).toISOString() });
+  d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 4, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
+  d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 1, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
   return { ...s, demo: true, frozenAt };
 }
 

@@ -3,7 +3,8 @@
  * 봇은 buildView 가 주는 화면 데이터(View)와 자기 포트폴리오만 본다 (미래 가격·루머 진실·상대 거래는 못 봄).
  * 모든 행동은 validate* 를 거치므로 실제 게임 규칙(카드 제한·거래 정지·수수료 폭탄 등)이 그대로 적용된다.
  */
-import { buildView, CURRENT_RULES_VERSION, finalResults, marketFor, nextRoomState, portfolioOf, validateBuyItem, validateTrade, validateUseItem, GameError, type GameData, type View } from '../src/engine/engine.js';
+import { SIM_V } from './version.js';
+import { buildView, finalResults, marketFor, nextRoomState, portfolioOf, validateBuyItem, validateTrade, validateUseItem, GameError, type GameData, type View } from '../src/engine/engine.js';
 import { deriveItems, type ItemKind } from '../src/game/items.js';
 import { ticksPerDay, TICK_MS } from '../src/game/intraday.js';
 import { equityWith, FEE_RATE, maxBuyQty, type Holding } from '../src/game/portfolio.js';
@@ -72,13 +73,13 @@ export function playGame(seed: number, days: number, bots: Bot[], opts: { quiet?
   const startAt = (day: number) => BASE_T + day * 1e9;
   const deadline = (day: number) => startAt(day) + N_TICKS * TICK_MS;
   const d: GameData = {
-    room: { id: 'sim', code: 'SIM000', seed, status: 'playing', total_days: days, turn_seconds: TURN_SECONDS, day: 0, deadline: deadline(0), day_deadline: deadline(0), host_id: ids[0], version: CURRENT_RULES_VERSION, max_players: bots.length },
+    room: { id: 'sim', code: 'SIM000', seed, status: 'playing', total_days: days, turn_seconds: TURN_SECONDS, day: 0, deadline: deadline(0), day_deadline: deadline(0), host_id: ids[0], version: SIM_V, max_players: bots.length },
     players: ids.map((id, i) => ({ id, room_id: 'sim', nickname: id, mode: 'pro', ready: true, ended_day: -1, created_at: String(i), version: 0 })),
     trades: [],
     items: [],
     orders: [],
   };
-  const full = marketFor(seed, days, CURRENT_RULES_VERSION);
+  const full = marketFor(seed, days, SIM_V);
   const markets: Record<string, Market | null> = {};
   const keys: Record<string, string | undefined> = {};
   const rngs = ids.map((id, i) => mulberry32((seed * 31 + i * 7919) >>> 0));

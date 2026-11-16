@@ -106,6 +106,9 @@ ok('닉네임은 프로필 닉네임으로 (입력값 무시)', s.players.map((p
 ok('회원 표시', s.players.every((p) => p.verified === true));
 await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 5 });
 for (let d = 0; d < 10; d++) {
+  // (v7) 장 전 시간이면 둘 다 준비 완료 → 장이 바로 열림 (아니면 그냥 무시됨)
+  await A({ action: 'preReady', roomId });
+  await B({ action: 'preReady', roomId });
   await A({ action: 'endTurn', roomId });
   await B({ action: 'endTurn', roomId });
   await A({ action: 'state', roomId });

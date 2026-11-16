@@ -121,6 +121,8 @@ import {
   validatePlaceOrder,
   validateTrade,
   validateUseItem,
+  validatePreReady,
+  preAllReadyDeadline,
   type GameData,
   type OrderRow,
   type PlayerRow,
@@ -182,13 +184,15 @@ async function loadGame(roomId: string): Promise<GameData> {
   const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
-    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen').eq('room_id', roomId),
+    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
   ]);
   // 007 마이그레이션 전이면 나감·접속 컬럼 없이 다시 읽음
   let pl = players as { data: unknown; error: { message: string } | null };
+  // 025(pre_day) 적용 전이면 그 칸만 빼고 다시
+  if (pl.error && /pre_day/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen').eq('room_id', roomId);
   if (pl.error && /left_game|last_seen/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId);
   const r = must(room, 'room');
   const s = must(secret, 'secret');
@@ -959,6 +963,19 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const grace = graceDeadline(fresh, Date.now());
         if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
       }
+      await touchRoom(roomId);
+      return { ok: true };
+    }
+
+    case 'preReady': {
+      // (v7) 장 전 '준비 완료' — 남은 사람이 모두 누르면 장을 바로 엶
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const d = await loadGame(roomId);
+      const { day } = validatePreReady(d, playerId, Date.now());
+      await bumpPlayer(d, playerId, { pre_day: day });
+      const fresh = await loadGame(roomId);
+      const open = preAllReadyDeadline(fresh, Date.now());
+      if (open !== null) await updatePlayingRoom(roomId, day, { turn_deadline: iso(open), day_deadline: iso(open) }, 'preopen');
       await touchRoom(roomId);
       return { ok: true };
     }

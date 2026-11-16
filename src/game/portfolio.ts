@@ -2,6 +2,10 @@ import type { Market } from './market.js';
 import { STOCKS } from './stocks.js';
 
 export const START_CASH = 10_000_000;
+/** 규칙 v6 부터 시작 돈 100만원 (그 전 방은 1,000만원 그대로) */
+export const startCashFor = (version?: number | null) => ((version ?? 1) >= 6 ? 1_000_000 : START_CASH);
+/** 돈 단위 배율: v6 = 1/10 (카드 값·업적 기준 금액 등) */
+export const moneyScale = (version?: number | null) => startCashFor(version) / START_CASH;
 export const FEE_RATE = 0.001;
 
 export interface Trade {
@@ -69,8 +73,8 @@ export interface PaidDividend {
  * 거래 + 카드 구매 + 배당 → 포트폴리오.
  * upToDay 를 주면 그 날(마감 포함)까지만 반영. 배당은 기준일 마감 때 보유 수량만큼 지급.
  */
-export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay = Infinity, dividends: PaidDividend[] = []): PortfolioState {
-  let cash = START_CASH;
+export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay = Infinity, dividends: PaidDividend[] = [], start = START_CASH): PortfolioState {
+  let cash = start;
   const holdings: Record<string, Holding> = {};
   const closed: ClosedTrade[] = [];
   let itemSpend = 0;
@@ -131,11 +135,12 @@ export function equityWith(p: PortfolioState, prices: Record<string, number>): n
 
 /** 날짜별 마감 총자산 (index 0 = 시작 전, i = i-1일차 종가) */
 export function equityHistory(trades: Trade[], spends: Spend[], m: Market, upToDay = m.totalDays - 1): number[] {
-  const out = [START_CASH];
+  const start = startCashFor(m.version);
+  const out = [start];
   for (let d = 0; d <= upToDay; d++) {
     const closes: Record<string, number> = {};
     for (const s of STOCKS) closes[s.symbol] = m.bars[s.symbol][d].close;
-    out.push(equityWith(computePortfolio(trades, spends, d, m.dividends), closes));
+    out.push(equityWith(computePortfolio(trades, spends, d, m.dividends, start), closes));
   }
   return out;
 }

@@ -1530,7 +1530,7 @@ body:has(.result) {
 
 /* 화면 편집(모바일 줄): 이름표·버튼을 칸 위에 띄워서, 편집 중에도 칸 크기가 실제와 같게 */
 .edit-slot { margin-top: 16px; }
-.edit-slot > .es-bar { position: absolute; top: -14px; right: 6px; z-index: 6; margin: 0; padding: 1px 3px 1px 8px; gap: 4px; font-size: 11px;
+.edit-slot > .es-bar { position: absolute; top: -14px; left: 8px; z-index: 6; margin: 0; padding: 1px 3px 1px 8px; gap: 4px; font-size: 11px;
   background: #1f1a40; border: 1px solid rgba(139,123,255,.55); border-radius: 99px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 .edit-slot > .es-bar .es-btn { width: 26px; height: 26px; border-radius: 99px; }
 
@@ -1650,3 +1650,41 @@ body:has(.result) {
 .desk .p-detail .chart-wrap > .pchart { flex: 1 1 100%; min-width: 0; }
 .desk .p-detail .chart-wrap > .pc-seg { margin: 0; }
 .desk .p-detail .pc-help { display: none; }
+.gc-detail.t-info { --tc: #5aa9ff; } .gc-detail.t-attack { --tc: #ff5d73; } .gc-detail.t-defense { --tc: #34d39a; } .gc-detail.t-bonus { --tc: #f5b83d; }
+
+/* ===== (v7) 장 전 찌라시 ===== */
+.rumor-board { display: grid; gap: 6px; padding: 10px 12px; margin-bottom: 10px; border-radius: 12px; border: 1px dashed rgba(245,184,61,.45); background: rgba(245,184,61,.05); }
+.rumor-board.live { border-style: solid; border-color: rgba(245,184,61,.7); box-shadow: 0 0 0 3px rgba(245,184,61,.08); }
+.rb-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.rb-head b { font-size: 14px; color: #f5b83d; }
+.rb-head small { font-size: 11.5px; }
+.rb-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; font-size: 13px; line-height: 1.45; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.05); }
+.rb-item:first-of-type { border-top: 0; }
+.rb-arrow { font-size: 11px; }
+.rb-item.good .rb-arrow { color: var(--up); }
+.rb-item.bad .rb-arrow { color: var(--down); }
+.rb-text { word-break: keep-all; }
+.rb-sec { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line-2); background: transparent; color: var(--muted); white-space: nowrap; }
+.rb-sec:hover { color: #fff; border-color: rgba(245,184,61,.6); }
+.rb-verdict { grid-column: 2 / -1; font-style: normal; font-size: 11px; font-weight: 800; }
+.rb-verdict.true { color: #34d39a; } .rb-verdict.false { color: var(--muted); text-decoration: line-through; }
+.rb-item.v-false .rb-text { opacity: .55; }
+/* 장 전 버튼 */
+.desk .end-turn.pre:not(.waiting) { background: #f5b83d; color: #1a1406; box-shadow: 0 6px 16px rgba(245,184,61,.25); }
+.m-end2.pre:not(.waiting) { background: linear-gradient(180deg, #ffcf6a, #f5b83d); color: #1a1406; }
+.m-end2.pre.waiting, .m-end2.waiting { background: var(--surface-2); color: var(--muted); box-shadow: none; }
+.trade-block.pre { background: rgba(245,184,61,.08); border-color: rgba(245,184,61,.4); color: #f5d38a; }
+.desk .desk-score > .end-turn.pre:not(.waiting) { background: #f5b83d; color: #1a1406; box-shadow: 0 6px 16px rgba(245,184,61,.25); }
+.desk .desk-score > .end-turn.pre:not(.waiting):hover { background: #ffc85a; }
+.desk .desk-score > .end-turn.waiting { background: transparent; color: var(--text); border: 1px solid var(--line-2); box-shadow: none; }
+/* 장 전 버튼 색: 위쪽 점수줄 규칙보다 우선 */
+.game.desk .desk-score > .btn.end-turn.pre:not(.waiting) { background: #f5b83d; color: #1a1406; }
+.game.desk .desk-score > .btn.end-turn.pre.waiting,
+.game.desk .desk-score > .btn.end-turn.waiting { background: transparent; color: var(--text); border: 1px solid var(--line-2); box-shadow: none; }
+
+/* 설정 아이콘 이름: PC 위 줄에서는 숨기고(마우스를 올리면 설명), 휴대폰 설정 창에서는 아이콘 아래 글자로 */
+.ib-label { display: none; }
+.m-settings .row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.m-settings .row > .mode-toggle { grid-column: 1 / -1; }
+.m-settings .icon-btn { width: auto; height: auto; min-height: 64px; display: grid; justify-items: center; align-content: center; gap: 6px; padding: 10px 4px; border-radius: 12px; }
+.m-settings .ib-label { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; }

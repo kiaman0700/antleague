@@ -6,7 +6,12 @@
  */
 import type { Bot, Ctx } from './harness.js';
 import type { ItemKind } from '../src/game/items.js';
-import { ITEM_MAP } from '../src/game/items.js';
+import { ITEM_MAP, itemCost } from '../src/game/items.js';
+import { SIM_V } from './version.js';
+import { startCashFor } from '../src/game/portfolio.js';
+/** 돈 기준(시작 돈 대비) — v6 은 100만원 시작이라 1/10 */
+const K = startCashFor(SIM_V) / 10_000_000;
+const cardCost = (c: Ctx, k: ItemKind) => itemCost(k, c.nPlayers, SIM_V);
 import type { NewsEvent } from '../src/game/market.js';
 import { COMPANIES, STOCK_MAP, STOCKS } from '../src/game/stocks.js';
 
@@ -26,7 +31,7 @@ export const holdBot = (sym = 'KIDX', name = 'hold'): Bot => ({
   name,
   act: (c) => {
     useBonus(c);
-    if (c.tick === 0 && c.cash() > 200_000) c.buyCash(sym, c.cash());
+    if (c.tick === 0 && c.cash() > 200_000 * K) c.buyCash(sym, c.cash());
   },
 });
 
@@ -111,7 +116,7 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
     useFreeAttacks: false,
     buyDefense: [],
     feeAware: true,
-    reserve: 2_000_000,
+    reserve: 2_000_000 * K,
     ...o,
   };
   let overnight = new Set<string>();
@@ -169,7 +174,7 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
           tryUse(c, opt.plan.kind, pickTarget(c, opt.plan.target));
         }
         // ---- 방어 ----
-        for (const k of opt.buyDefense) if (!has(c, k) && c.cash() > opt.reserve + ITEM_MAP[k].cost) c.buyCard(k);
+        for (const k of opt.buyDefense) if (!has(c, k) && c.cash() > opt.reserve + cardCost(c, k)) c.buyCard(k);
         // ---- 방해 ----
         if (!lastDay && c.nPlayers > 1) {
           const target = pickTarget(c, 'leader');
@@ -178,7 +183,7 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
           for (const k of usable) if (!used && has(c, k)) used = tryUse(c, k, target);
           if (!used)
             for (const k of opt.attack) {
-              if (c.cash() < opt.reserve + ITEM_MAP[k].cost) continue;
+              if (c.cash() < opt.reserve + cardCost(c, k)) continue;
               if (c.buyCard(k)) {
                 tryUse(c, k, target);
                 break;
@@ -193,7 +198,7 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
             if (has(c, k)) continue;
             if (k === 'detector' && companyN < 2) continue;
             if (k === 'paper' && lastDay) continue;
-            if (c.cash() < ITEM_MAP[k].cost + 1_000_000) continue;
+            if (c.cash() < cardCost(c, k) + 1_000_000 * K) continue;
             c.buyCard(k);
           }
           if (has(c, 'detector') && companyN >= 2) tryUse(c, 'detector');
@@ -287,7 +292,7 @@ export const ARCHETYPES: Record<string, () => Bot> = {
     name: 'lev',
     act: (c) => {
       useBonus(c);
-      if (c.tick === 0 && c.cash() > 200_000) {
+      if (c.tick === 0 && c.cash() > 200_000 * K) {
         c.buyCash('KLEV', c.cash() * 0.29);
         c.buyCash('KIDX', c.cash());
       }

@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ITEM_MAP, type ItemKind, type ItemType } from '../game/items';
+import { ITEM_MAP, itemDesc, type ItemKind, type ItemType } from '../game/items';
 import { CardIcon } from './Icon';
 
 export const CARD_TYPE: Record<ItemType, string> = { info: '정보', attack: '방해', defense: '방어', bonus: '보너스' };
@@ -41,7 +41,10 @@ export function GameCard({
   dim,
   footer,
   desc = size !== 'sm',
+  version = 6,
 }: {
+  /** 방 규칙 버전 (용돈 봉투 설명이 다름) */
+  version?: number;
   kind: ItemKind;
   count?: number;
   /** sm = PC 카드 칸(설명 없이), md = 손패·상점·도감 */
@@ -54,7 +57,7 @@ export function GameCard({
   footer?: ReactNode;
   desc?: boolean;
 }) {
-  const d = ITEM_MAP[kind];
+  const d = { ...ITEM_MAP[kind], desc: itemDesc(kind, version) };
   const [open, setOpen] = useState(false);
   // PC: 마우스를 올리면 카드 위(자리가 없으면 아래)에 설명 — 화면 맨 위 층에 그려서 칸 가장자리에 잘리지 않게
   const [pop, setPop] = useState<{ x: number; y: number; below: boolean } | null>(null);
@@ -79,7 +82,7 @@ export function GameCard({
       {open &&
         createPortal(
           <div className="modal-bg gc-detail-bg" onClick={() => setOpen(false)}>
-            <div className="gc-detail" role="dialog" aria-label={d.name} onClick={(e) => e.stopPropagation()}>
+            <div className={`gc-detail t-${d.type}`} role="dialog" aria-label={d.name} onClick={(e) => e.stopPropagation()}>
               <GameCard kind={kind} count={count} corner={corner} desc={false} />
               <div className="gc-detail-txt">
                 <b>{d.name}</b>

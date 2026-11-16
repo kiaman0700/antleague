@@ -155,7 +155,9 @@ export function CardTray({
   busy,
   onUse,
   onOpen,
+  version = 6,
 }: {
+  version?: number;
   mine: PlayerItems;
   day: number;
   totalDays: number;
@@ -187,6 +189,7 @@ export function CardTray({
               kind={k}
               count={n}
               size="sm"
+              version={version}
               why={d.passive ? null : why}
               dim={!d.passive && !!why}
               footer={

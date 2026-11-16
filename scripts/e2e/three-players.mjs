@@ -41,7 +41,7 @@ for (const [P, sym] of [
   [B, 'NEOT'],
   [C, 'KIDX'],
 ]) {
-  const t = await P({ action: 'trade', roomId, symbol: sym, side: 'buy', qty: 10 });
+  const t = await P({ action: 'trade', roomId, symbol: sym, side: 'buy', qty: 5 });
   ok('거래 ' + sym, t.s === 200);
 }
 await A({ action: 'endTurn', roomId });
