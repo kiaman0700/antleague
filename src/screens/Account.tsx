@@ -560,11 +560,13 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
   const acc = useAccount();
   const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number } | null } | null>(null);
   const [err, setErr] = useState(false);
+  const [tryN, setTryN] = useState(0);
   useEffect(() => {
+    setErr(false);
     api<typeof data>('ranking')
       .then((d) => setData(d))
       .catch(() => setErr(true));
-  }, []);
+  }, [tryN]);
   return (
     <div className="lobby page ranking">
       <PageHead title="랭킹" onBack={onBack} />
@@ -584,7 +586,16 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
           <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
         </section>
       )}
-      {err && <p className="error">랭킹을 불러오지 못했어요. 인터넷을 확인해 주세요.</p>}
+      {err && (
+        <div className="empty-state">
+          <i><Icon name="trophy" size={32} /></i>
+          <b>랭킹을 불러오지 못했어요</b>
+          <small>인터넷 연결을 확인하고 다시 시도해 주세요.</small>
+          <button className="btn sm" onClick={() => setTryN((n) => n + 1)}>
+            <Icon name="refresh" size={14} /> 다시 시도
+          </button>
+        </div>
+      )}
       {!data && !err && <p className="muted center">불러오는 중…</p>}
       {data && data.top.length === 0 && (
         <div className="empty-state">
