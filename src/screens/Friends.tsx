@@ -179,7 +179,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
       </section>
 
       {d && d.incoming.length > 0 && (
-        <section className="panel pad">
+        <section className="panel pad fr-in">
           <h3 className="fr-h">
             받은 신청 <span className="fr-count">{d.incoming.length}</span>
           </h3>
@@ -211,7 +211,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
         </section>
       )}
 
-      <section className="panel pad">
+      <section className="panel pad fr-main">
         <h3 className="fr-h">
           친구 <span className="fr-count">{d ? `${d.friends.length}/${d.max}` : ''}</span>
         </h3>
@@ -265,7 +265,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
       </section>
 
       {d && d.outgoing.length > 0 && (
-        <section className="panel pad">
+        <section className="panel pad fr-out">
           <h3 className="fr-h">보낸 신청</h3>
           <ul className="fr-list">
             {d.outgoing.map((f) => (
@@ -287,7 +287,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
       )}
 
       {d && d.blocked.length > 0 && (
-        <section className="panel pad">
+        <section className="panel pad fr-block">
           <h3 className="fr-h">차단한 사람</h3>
           <ul className="fr-list">
             {d.blocked.map((x) => (

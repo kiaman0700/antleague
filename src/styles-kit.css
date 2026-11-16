@@ -64,3 +64,22 @@
 /* 업적 칸: 15개가 5개씩 3줄로 딱 맞게 (PC). 좁으면 3개·2개씩 */
 .badge-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 700px) { .badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* 친구 화면(PC): 왼쪽 = 추가·받은/보낸 신청·차단, 오른쪽 = 친구 목록 (한쪽에 몰려 오른쪽이 비지 않게) */
+@media (min-width: 1000px) {
+  .friends {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-areas: 'add main' 'in main' 'out main' 'block main' '. main';
+    grid-template-rows: auto auto auto auto 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .friends > .fr-add { grid-area: add; }
+  .friends > .fr-in { grid-area: in; }
+  .friends > .fr-main { grid-area: main; }
+  .friends > .fr-out { grid-area: out; }
+  .friends > .fr-block { grid-area: block; }
+  .friends > .panel { margin: 0; }
+}
