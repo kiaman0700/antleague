@@ -1325,6 +1325,7 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
             onClick={() => {
               saveSolo(null);
               setSolo(null);
+              setDone('연습을 그만뒀어요');
             }}
           >
             그만두기
