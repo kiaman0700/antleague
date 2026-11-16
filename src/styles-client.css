@@ -1869,3 +1869,10 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 .wr-rules li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; line-height: 1.55; font-size: 14px; }
 .wr-rules li > .ico, .wr-rules li > svg { width: 28px; height: 28px; padding: 6px; border-radius: 8px; background: rgba(139,123,255,.12); color: #b9b0ff; box-sizing: border-box; }
 .wr-invite .big-code { font-size: clamp(28px, 3vw, 40px); letter-spacing: .16em; padding-left: .16em; text-align: center; overflow-wrap: anywhere; }
+/* 휴대폰·좁은 화면: 자리 → 친구 부르기(초대 코드) → 진행 안내 순서 (초대가 아래로 밀리지 않게) */
+@media (max-width: 860px) {
+  .wr-left { display: contents; }
+  .wr-main > .wr-left > .wr-slots, .wr-left > .wr-slots { order: 1; }
+  .wr-main > .wr-side { order: 2; }
+  .wr-left > .wr-rules { order: 3; }
+}
