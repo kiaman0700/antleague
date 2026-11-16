@@ -298,3 +298,10 @@
 
 /* 결과 화면 시장 성적 '전체 보기' */
 .stock-rank-more { display: flex; margin: 12px auto 0; }
+
+/* 가로로 눕힌 휴대폰: 사기/팔기 막대를 얇게 하고 아래 탭 바로 위에 붙임 (차트가 더 보이게, 틈 없이) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .m-tradebar { bottom: calc(49px + env(safe-area-inset-bottom)); padding: 6px 12px; }
+  .m-tradebar .btn { min-height: 40px; font-size: 15px; }
+  .mt-price b { font-size: 15px; }
+}
