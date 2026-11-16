@@ -8,7 +8,7 @@ import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
-import { PartyPanel, useParty } from '../components/PartyPanel';
+import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
@@ -383,7 +383,7 @@ const TAB_HEAD: Record<HubTab, { title: string; desc: string }> = {
   more: { title: '설정·더보기', desc: '내 계정 · 화면 모드 · 도움말' },
 };
 
-function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { tab: HubTab; openModal: (m: FrameModal) => void }) {
+function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit<Props, 'page'> & { tab: HubTab; openModal: (m: FrameModal) => void; party: PartyState | null; reloadParty: () => Promise<void> }) {
   const account = useAccount();
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
@@ -414,8 +414,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   const head = TAB_HEAD[tab];
-  // 파티 상태 (회원, 랭킹전·일반전 메뉴에서만 확인)
-  const { party, reload: reloadParty } = useParty(online && member && (tab === 'casual' || tab === 'ranked'));
 
   const finder = (kind: 'ranked' | 'casual') => (
     <MatchFinder
@@ -1251,12 +1249,18 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const [modal, setModal] = useState<FrameModal>(null);
   // 받은 친구 신청 수 → 메뉴 배지 (회원만, 30초마다)
   const friends = useFriendsPoll(online && account.status === 'member');
+  // 파티 상태는 어느 메뉴에 있든 확인 — 파티장이 찾기를 시작하면 파티원은 일반전 화면으로 데려가 같이 찾음
+  const { party, reload: reloadParty } = useParty(online && account.status === 'member');
   const badges = { friends: friends?.incoming.length ?? 0 };
   const resolved: LobbyPage = page === 'home' ? lastTab() : page;
   const active = PAGE_TAB[resolved] ?? null;
   useEffect(() => {
     if (active) rememberTab(active);
   }, [active]);
+  useEffect(() => {
+    if (party?.searching && !party.isLeader && resolved !== 'casual' && party.members.length > 1) go('casual');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [party?.searching]);
   const goTab = (t: NavTab) => go(t as LobbyPage);
   const back = () => go('home');
 
@@ -1305,10 +1309,10 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     case 'custom':
     case 'practice':
     case 'more':
-      body = <Hub key={resolved} tab={resolved} go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} />;
+      body = <Hub key={resolved} tab={resolved} go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} party={party} reloadParty={reloadParty} />;
       break;
     default:
-      body = <Hub key="casual" tab="casual" go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} />;
+      body = <Hub key="casual" tab="casual" go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} party={party} reloadParty={reloadParty} />;
   }
 
   return (

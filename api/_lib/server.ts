@@ -683,6 +683,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (party.leader !== uid) throw new GameError('파티는 파티장이 찾기를 시작해요.', 409);
         if (q.kind !== 'casual' || q.size !== 'multi') throw new GameError('파티는 일반전 다인전만 같이 찾을 수 있어요. 랭킹전·1대1은 파티에서 나온 뒤 혼자 찾아 주세요.', 409);
         const rows = [];
+        // 파티원이 1분 안에 접속해 있어야 (없으면 찾다가 바로 취소됨)
+        const seenRows = (((await sb.from('profiles').select('user_id, last_seen').in('user_id', party.members)).data ?? []) as { user_id: string; last_seen: string | null }[]);
+        if (seenRows.some((r) => r.user_id !== uid && (!r.last_seen || Date.now() - new Date(r.last_seen).getTime() > 75_000)))
+          throw new GameError('파티원이 지금 접속해 있지 않아요. 친구가 들어오면 다시 찾아 주세요.', 409);
+        // 파티원 중 누가 이미 다른 대결에 잡혀 있으면 덮어쓰지 않음
+        const curT = (((await sb.from('match_tickets').select('user_id, claim, room_id, party_id').in('user_id', party.members)).data ?? []) as { user_id: string; claim: string | null; room_id: string | null; party_id: string | null }[]);
+        if (curT.some((t) => t.claim && !t.room_id)) throw new GameError('지금 상대를 연결하고 있어요. 잠시만 기다려 주세요.', 409);
         for (const m of party.members) {
           if (m !== uid) {
             const ss = must(await sb.from('players').select('left_game, rooms!inner(status)').eq('user_id', m).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { left_game: boolean; rooms: { status: string } }[];
@@ -710,7 +717,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'queueLeave': {
       // 아직 아무도 잡지 않은 대기표만 지움. 이미 상대가 잡혔으면 지우지 않고 알려 줌 (곧 매칭 결과가 나옴)
       const myT = (await sb.from('match_tickets').select('party_id').eq('user_id', uid).maybeSingle()).data as { party_id: string | null } | null;
-      if (myT?.party_id) await sb.from('match_tickets').delete().eq('party_id', myT.party_id).is('room_id', null).is('claim', null);
+      if (myT?.party_id) {
+        // 파티 대기 중 하나라도 이미 잡혔으면(방 만드는 중) 취소하지 않고 결과를 기다림
+        const claimed = (await sb.from('match_tickets').select('id').eq('party_id', myT.party_id).or('claim.not.is.null,room_id.not.is.null').limit(1)).data ?? [];
+        if (claimed.length) return { ok: false, pending: true };
+        await sb.from('match_tickets').delete().eq('party_id', myT.party_id).is('room_id', null).is('claim', null);
+      }
       const gone = must(await sb.from('match_tickets').delete().eq('user_id', uid).is('room_id', null).is('claim', null).select('id'), 'leave') as unknown[];
       if (myT?.party_id) return { ok: true };
       if (gone.length) return { ok: true };
@@ -769,21 +781,25 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 파티는 파티원 모두의 표가 살아 있어야 (한 명이 창을 닫았으면 파티 표 전체를 정리)
       const partyCount = new Map<string, number>();
       for (const w of waiting) if (w.party_id) partyCount.set(w.party_id, (partyCount.get(w.party_id) ?? 0) + 1);
-      if (mine.party_id && (partyCount.get(mine.party_id) ?? 0) < 2) {
-        if (!(await sb.from('match_tickets').select('id').eq('party_id', mine.party_id).is('claim', null).neq('id', mine.id).limit(1)).data?.length) {
-          await sb.from('match_tickets').delete().eq('party_id', mine.party_id).is('room_id', null);
+      if (mine.party_id && !mine.claim && (partyCount.get(mine.party_id) ?? 0) < 2) {
+        // 파티원 표가 (잡힌 것 포함) 하나도 없으면 = 파티원이 창을 닫음 → 파티 대기 취소. 누가 방을 만드는 중(잡힘)이면 그대로 둠
+        const rest = (await sb.from('match_tickets').select('id, claim').eq('party_id', mine.party_id).neq('id', mine.id).limit(2)).data ?? [];
+        if (!rest.length) {
+          await sb.from('match_tickets').delete().eq('party_id', mine.party_id).is('room_id', null).is('claim', null);
           return { status: 'none', reason: 'party' };
         }
       }
       waiting = waiting.filter((w) => !w.party_id || (partyCount.get(w.party_id) ?? 0) === 2);
       const toT = (t: { id: string; rating: number; created_at: string; party_id?: string | null }) => ({ id: t.id, rating: t.rating, createdAt: new Date(t.created_at).getTime(), party: t.party_id ?? null });
       const meT = toT(mine);
+      // 내 파티 표가 정확히 2장 살아 있을 때만 파티로 매칭 (동시에 셋이 들어간 경우 등은 매칭하지 않음)
+      const partyOk = !mine.party_id || (partyCount.get(mine.party_id) ?? 0) === 2;
       const st = await matchStats();
       const etaSec = waitEstimate(mine.queue, mine.rating, nowMs - meT.createdAt, waiting.filter((w) => w.id !== mine.id).map((w) => w.rating), st, nowMs, mine.party_id ? 2 : 1);
       const similar = waiting.filter((w) => w.id !== mine.id && compatible(meT, toT(w), nowMs, maxWin)).length;
       const waitingInfo = { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, similar, online: st.online, etaSec, window: ratingWindow(meT, nowMs, maxWin) };
       // 친구·같은 상대끼리도 만날 수 있음 (사람이 적을 때 대기가 길어지지 않게). 짜고 치기는 점수 쪽에서 막음
-      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin);
+      const group = mine.claim || !partyOk ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin);
       if (!group) return waitingInfo;
       // 같은 사람들을 둘이 동시에 잡으려다 서로 계속 실패하지 않게: 무리 중 가장 먼저 온 사람의 확인 때만 방을 만듦
       const first = [...group].sort((x, y) => x.createdAt - y.createdAt || (x.id < y.id ? -1 : 1))[0];
@@ -1043,6 +1059,16 @@ async function friendOf(uid: string, friendId: unknown): Promise<string> {
   return other;
 }
 
+/** 지금도 친구이고 서로 차단하지 않았는지 */
+async function areFriends(a: string, b: string) {
+  const sb = db();
+  const pr = a < b ? { user_a: a, user_b: b } : { user_a: b, user_b: a };
+  const f = (await sb.from('friendships').select('status').eq('user_a', pr.user_a).eq('user_b', pr.user_b).maybeSingle()).data as { status: string } | null;
+  if (!f || f.status !== 'accepted') return false;
+  const blk = (await sb.from('blocks').select('id').or(`and(blocker.eq.${a},blocked.eq.${b}),and(blocker.eq.${b},blocked.eq.${a})`).limit(1)).data ?? [];
+  return blk.length === 0;
+}
+
 /** 진행 중인 대결·대기실이 있는지 */
 async function busySeat(uid: string) {
   const seats = must(await db().from('players').select('left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { left_game: boolean; rooms: { status: string } }[];
@@ -1074,17 +1100,22 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
       const nick = new Map(uids.length ? (((await sb.from('profiles').select('user_id, nickname').in('user_id', uids)).data ?? []) as { user_id: string; nickname: string }[]).map((p) => [p.user_id, p.nickname]) : []);
       const roomIds = inbox.map((x) => x.room_id).filter((x): x is string => !!x);
       const rooms = new Map(roomIds.length ? (((await sb.from('rooms').select('id, title, status, max_players').in('id', roomIds)).data ?? []) as { id: string; title: string; status: string; max_players: number }[]).map((r) => [r.id, r]) : []);
+      const stillFriends = new Set<string>();
+      for (const f of inbox.map((x) => x.from_user)) if (await areFriends(uid, f)) stillFriends.add(f);
       const incoming = inbox
+        .filter((x) => stillFriends.has(x.from_user))
         .filter((x) => x.kind === 'duel' || x.kind === 'party' || rooms.get(x.room_id ?? '')?.status === 'waiting')
-        .map((x) => ({ id: x.id, kind: x.kind, from: nick.get(x.from_user) ?? '친구', title: x.kind === 'room' ? (rooms.get(x.room_id!)?.title ?? '') : null, speed: x.speed, expiresAt: x.expires_at }));
+        .map((x) => ({ id: x.id, kind: x.kind, from: nick.get(x.from_user) ?? '친구', title: x.kind === 'room' ? (rooms.get(x.room_id!)?.title ?? '') : null, speed: x.speed, expiresAt: x.expires_at, left: Math.max(0, Math.round((new Date(x.expires_at).getTime() - now) / 1000)) }));
       const s = sent[0];
       let duel: unknown = null;
       if (s) {
         const expired = s.status === 'pending' && new Date(s.expires_at).getTime() <= now;
-        duel = { id: s.id, to: nick.get(s.to_user) ?? '친구', status: expired ? 'expired' : s.status, speed: s.speed, expiresAt: s.expires_at };
+        duel = { id: s.id, to: nick.get(s.to_user) ?? '친구', status: expired ? 'expired' : s.status, speed: s.speed, expiresAt: s.expires_at, left: Math.max(0, Math.round((new Date(s.expires_at).getTime() - now) / 1000)) };
         if (s.status === 'accepted' && s.room_id && s.from_player) {
           const room = (await sb.from('rooms').select('code, status').eq('id', s.room_id).maybeSingle()).data as { code: string; status: string } | null;
-          if (room && room.status === 'playing') duel = { ...(duel as object), roomId: s.room_id, playerId: s.from_player, code: room.code, nickname: me.nickname };
+          const seat = (await sb.from('players').select('left_game').eq('id', s.from_player).maybeSingle()).data as { left_game: boolean | null } | null;
+          const fresh = now - new Date(s.expires_at).getTime() < 3 * 60_000;
+          if (room && room.status === 'playing' && seat && !seat.left_game && fresh) duel = { ...(duel as object), roomId: s.room_id, playerId: s.from_player, code: room.code, nickname: me.nickname };
         }
       }
       return { incoming, duel };
@@ -1101,8 +1132,10 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         throw e;
       }
       const { roomId } = await myPlayerId(b.roomId, uid);
-      const room = must(await sb.from('rooms').select('status, max_players').eq('id', roomId).single(), 'room') as { status: string; max_players: number };
+      const room = must(await sb.from('rooms').select('status, max_players, is_private, host_id').eq('id', roomId).single(), 'room') as { status: string; max_players: number; is_private: boolean; host_id: string };
       if (room.status !== 'waiting') throw new GameError('대기 중인 방에서만 초대할 수 있어요.', 409);
+      const mySeat = (await myPlayerId(b.roomId, uid)).playerId;
+      if (room.is_private && room.host_id !== mySeat) throw new GameError('비밀방은 방장만 초대할 수 있어요.', 403);
       const n = (((await sb.from('players').select('id').eq('room_id', roomId)).data ?? []) as unknown[]).length;
       if (n >= room.max_players) throw new GameError('방이 가득 찼어요.', 409);
       // 같은 사람·같은 방 초대가 이미 있으면 시간만 늘림
@@ -1127,6 +1160,10 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         throw e;
       }
       if (await busySeat(uid)) throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 신청해 주세요.', 409);
+      // 지난 매칭 결과 표는 정리, 지금 찾는 중이면 먼저 그만 찾기
+      await sb.from('match_tickets').delete().eq('user_id', uid).not('room_id', 'is', null);
+      const myQ = (await sb.from('match_tickets').select('id').eq('user_id', uid).maybeSingle()).data;
+      if (myQ) throw new GameError('매칭을 찾는 중이에요. 그만 찾기를 누른 뒤에 신청해 주세요.', 409);
       // 내가 보낸 다른 1대1 신청은 취소 (한 번에 하나만)
       await sb.from('invites').update({ status: 'cancelled' }).eq('from_user', uid).eq('kind', 'duel').eq('status', 'pending');
       const ins = await sb.from('invites').insert({ from_user: uid, to_user: other, kind: 'duel', speed, expires_at: new Date(now + DUEL_INVITE_MS).toISOString() });
@@ -1152,6 +1189,18 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         await sb.from('invites').update({ status: 'declined' }).eq('id', id).eq('status', 'pending');
         return { ok: true };
       }
+      if (inv.kind !== 'party') {
+        await sb.from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
+        await sb.from('match_tickets').delete().eq('user_id', uid).not('room_id', 'is', null);
+      }
+      if (!(await areFriends(uid, inv.from_user))) {
+        await sb.from('invites').update({ status: 'cancelled' }).eq('id', id);
+        throw new GameError('초대를 찾을 수 없어요.', 404);
+      }
+      // 매칭을 찾는 중이면 그 대기는 취소하고 받음 (이미 상대가 잡혔으면 받을 수 없음)
+      // (이미 끝난 매칭 결과 표는 진짜 게임 여부를 busySeat 가 따로 봄)
+      const myTicket = (await sb.from('match_tickets').select('claim, room_id').eq('user_id', uid).maybeSingle()).data as { claim: string | null; room_id: string | null } | null;
+      if (myTicket && myTicket.claim && !myTicket.room_id && inv.kind !== 'party') throw new GameError('지금 매칭 상대를 연결하고 있어요. 잠시 뒤 다시 눌러 주세요.', 409);
       // 한 번만 쓰이게: pending → accepted 를 먼저 잡음
       const took = must(await sb.from('invites').update({ status: 'accepted' }).eq('id', id).eq('status', 'pending').select('id'), 'take') as unknown[];
       if (!took.length) throw new GameError('초대를 찾을 수 없어요.', 404);
@@ -1162,10 +1211,15 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         if (!pt || pt.leader !== inv.from_user) throw new GameError('파티가 없어졌어요.', 404);
         const n = (((await sb.from('party_members').select('user_id').eq('party_id', pt.id)).data ?? []) as unknown[]).length;
         if (n >= PARTY_MAX) throw new GameError('파티가 가득 찼어요.', 409);
-        // 다른 파티에 있었으면 거기서 나오고 들어감
+        // 다른 파티에 있었으면 거기서 나오고, 혼자 찾던 대기도 취소하고 들어감
         await leaveParty(uid);
-        const j = await sb.from('party_members').insert({ party_id: pt.id, user_id: uid });
-        if (j.error) throw new GameError('파티에 들어가지 못했어요.', 409);
+        await sb.from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
+        const j = await sb.rpc('join_party', { p_party: pt.id, p_user: uid, p_max: PARTY_MAX });
+        if (j.error) {
+          // 021 전: 그냥 넣기
+          const ins = await sb.from('party_members').insert({ party_id: pt.id, user_id: uid });
+          if (ins.error) throw new GameError('파티에 들어가지 못했어요.', 409);
+        } else if (j.data !== true) throw new GameError('파티가 가득 찼어요.', 409);
         return { kind: 'party' };
       }
       if (inv.kind === 'room') {
@@ -1179,10 +1233,12 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
       }
       // 1대1: 둘 다 다른 게임이 없어야
       if (await busySeat(uid)) throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 수락해 주세요.', 409);
-      if (await busySeat(inv.from_user)) {
+      const fromT = (await sb.from('match_tickets').select('claim, room_id').eq('user_id', inv.from_user).maybeSingle()).data as { claim: string | null; room_id: string | null } | null;
+      if ((await busySeat(inv.from_user)) || (fromT && fromT.claim && !fromT.room_id)) {
         await sb.from('invites').update({ status: 'cancelled' }).eq('id', id);
         throw new GameError('신청한 친구가 지금 다른 게임 중이에요.', 409);
       }
+      await sb.from('match_tickets').delete().eq('user_id', inv.from_user).is('claim', null);
       const from = await getProfile(sb, inv.from_user);
       if (!from) throw new GameError('신청한 친구를 찾을 수 없어요.', 404);
       const preset = SPEED_PRESET[inv.speed === 'normal' ? 'normal' : 'quick'];
@@ -1208,6 +1264,7 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         return { kind: 'duel', roomId: room.id, playerId: meP.id, code: room.code, nickname: me.nickname };
       } catch (e) {
         await sb.from('rooms').delete().eq('id', room.id);
+        await sb.from('invites').update({ status: 'cancelled' }).eq('id', id);
         throw e;
       }
     }
@@ -1236,7 +1293,7 @@ async function leaveParty(uid: string) {
   const sb = db();
   const p = await partyOf(uid);
   if (!p) return;
-  await sb.from('match_tickets').delete().eq('party_id', p.id).is('room_id', null);
+  await sb.from('match_tickets').delete().eq('party_id', p.id).is('room_id', null).is('claim', null);
   if (p.leader === uid || p.members.length <= 2) await sb.from('parties').delete().eq('id', p.id);
   else await sb.from('party_members').delete().eq('party_id', p.id).eq('user_id', uid);
 }
@@ -1397,7 +1454,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     const b = body as Body;
     const action = typeof b.action === 'string' ? b.action : '';
     // 화면 갱신과 행동(거래·마감 등)은 따로 셈 → 붐비는 방에서도 갱신 때문에 거래가 막히지 않게
-    if (action === 'state') rateLimit(uid + ':state', 60, 20_000);
+    if (['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'friends', 'resume', 'profile'].includes(action)) rateLimit(uid + ':state', 90, 20_000);
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)

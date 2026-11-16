@@ -26,7 +26,7 @@ interface FRow {
   user_a: string;
   user_b: string;
   requested_by: string;
-  status: 'pending' | 'accepted';
+  status: 'pending' | 'accepted' | 'declined';
   created_at: string;
 }
 
@@ -52,6 +52,17 @@ async function myBlocks(sb: SupabaseClient, uid: string) {
   return (r.data ?? []) as { id: string; blocked: string }[];
 }
 
+/** 친구를 끊거나 차단하면: 서로 보낸 대기 중 초대 취소, 같은 파티에 있으면 파티 해산(찾던 대기도 취소) */
+async function cutTies(sb: SupabaseClient, a: string, b: string) {
+  await sb.from('invites').update({ status: 'cancelled' }).eq('status', 'pending').or(`and(from_user.eq.${a},to_user.eq.${b}),and(from_user.eq.${b},to_user.eq.${a})`);
+  const pa = (await sb.from('party_members').select('party_id').eq('user_id', a).maybeSingle()).data as { party_id: string } | null;
+  const pb = (await sb.from('party_members').select('party_id').eq('user_id', b).maybeSingle()).data as { party_id: string } | null;
+  if (pa && pb && pa.party_id === pb.party_id) {
+    await sb.from('match_tickets').delete().eq('party_id', pa.party_id).is('room_id', null).is('claim', null);
+    await sb.from('parties').delete().eq('id', pa.party_id);
+  }
+}
+
 export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid: string, rateLimit: RL): Promise<unknown> {
   const me = await getProfile(sb, uid);
   if (!me) throw new GameError('친구 기능은 회원만 쓸 수 있어요. 로그인하거나 가입해 주세요.', 403);
@@ -62,7 +73,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       rateLimit(uid + ':friends', 30, 60_000);
       await touchSeen(sb, uid);
       // 7일 지난 신청은 정리
-      await sb.from('friendships').delete().eq('status', 'pending').lt('created_at', new Date(Date.now() - PENDING_DAYS * 86_400_000).toISOString());
+      await sb.from('friendships').delete().in('status', ['pending', 'declined']).lt('created_at', new Date(Date.now() - PENDING_DAYS * 86_400_000).toISOString());
       const rows = await myRows(sb, uid);
       const blocks = await myBlocks(sb, uid);
       const blockedSet = new Set(blocks.map((x) => x.blocked));
@@ -95,7 +106,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       // 받은 신청: 내가 차단한 사람 것은 안 보임
       const incoming = rows.filter((r) => r.status === 'pending' && r.requested_by !== uid && !blockedSet.has(otherOf(r)) && P.has(otherOf(r))).map((r) => ({ ...card(r), at: r.created_at }));
       // 보낸 신청: 상대가 나를 차단했어도 그대로 '대기 중'으로 보임 (차단 사실을 알 수 없게)
-      const outgoing = rows.filter((r) => r.status === 'pending' && r.requested_by === uid && P.has(otherOf(r))).map((r) => ({ ...card(r), at: r.created_at }));
+      const outgoing = rows.filter((r) => (r.status === 'pending' || r.status === 'declined') && r.requested_by === uid && P.has(otherOf(r))).map((r) => ({ ...card(r), at: r.created_at }));
       const blocked = blocks.filter((x) => P.has(x.blocked)).map((x) => ({ id: x.id, nickname: P.get(x.blocked)!.nickname }));
       return { friends, incoming, outgoing, blocked, max: FRIEND_MAX };
     }
@@ -113,6 +124,11 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       const existing = rows.find((r) => otherOf(r) === other);
       if (existing?.status === 'accepted') throw new GameError('이미 친구예요.', 409);
       if (existing && existing.requested_by === uid) return { ok: true, status: 'pending' };
+      if (existing && existing.status === 'declined') {
+        // 내가 예전에 거절했던 사람에게 이번엔 내가 신청 → 상대 신청은 아직 살아 있으므로(상대 화면엔 '대기 중') 바로 친구
+        await sb.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', existing.id);
+        return { ok: true, status: 'accepted' };
+      }
       // 내가 그 사람을 차단했으면 먼저 차단을 풀어야
       const iBlocked = await sb.from('blocks').select('id').eq('blocker', uid).eq('blocked', other).maybeSingle();
       if (iBlocked.data) throw new GameError('내가 차단한 사람이에요. 차단을 푼 뒤에 신청해 주세요.', 409);
@@ -144,13 +160,16 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
         await sb.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', id).eq('status', 'pending');
         return { ok: true, status: 'accepted' };
       }
-      await sb.from('friendships').delete().eq('id', id);
+      // 거절은 지우지 않고 숨김 — 보낸 사람에게는 7일 동안 '대기 중'으로 보여 거절한 걸 알 수 없음
+      await sb.from('friendships').update({ status: 'declined', updated_at: new Date().toISOString() }).eq('id', id).eq('status', 'pending');
       return { ok: true, status: 'declined' };
     }
 
     case 'friendRemove': {
-      // 친구 끊기 / 보낸 신청 취소
+      // 친구 끊기 / 보낸 신청 취소 (+ 서로 보낸 초대 취소, 같은 파티면 해산)
       const id = cleanId(b.id);
+      const r = ((await sb.from('friendships').select('id, user_a, user_b, requested_by, status, created_at').eq('id', id).maybeSingle()).data ?? null) as FRow | null;
+      if (r && (r.user_a === uid || r.user_b === uid)) await cutTies(sb, uid, otherOf(r));
       await sb.from('friendships').delete().eq('id', id).or(`user_a.eq.${uid},user_b.eq.${uid}`);
       return { ok: true };
     }
@@ -163,6 +182,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       if (!r || (r.user_a !== uid && r.user_b !== uid)) throw new GameError('찾을 수 없어요.', 404);
       const other = otherOf(r);
       await sb.from('blocks').upsert({ blocker: uid, blocked: other }, { onConflict: 'blocker,blocked', ignoreDuplicates: true });
+      await cutTies(sb, uid, other);
       await sb.from('friendships').delete().eq('id', id);
       return { ok: true };
     }

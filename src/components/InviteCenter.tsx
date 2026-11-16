@@ -16,6 +16,7 @@ export interface IncomingInvite {
   title: string | null;
   speed: 'quick' | 'normal' | null;
   expiresAt: string;
+  left?: number;
 }
 export interface SentDuel {
   id: string;
@@ -27,6 +28,7 @@ export interface SentDuel {
   playerId?: string;
   code?: string;
   nickname?: string;
+  left?: number;
 }
 
 type Listener = () => void;
@@ -57,8 +59,9 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
       api<{ incoming: IncomingInvite[]; duel: SentDuel | null }>('invites')
         .then((r) => {
           if (!alive) return;
-          setIncoming(r.incoming ?? []);
-          setDuel(r.duel ?? null);
+          const local = (x: { left?: number; expiresAt: string }) => (typeof x.left === 'number' ? new Date(Date.now() + x.left * 1000).toISOString() : x.expiresAt);
+          setIncoming((r.incoming ?? []).map((x) => ({ ...x, expiresAt: local(x) })));
+          setDuel(r.duel ? { ...r.duel, expiresAt: local(r.duel) } : null);
           for (const x of r.incoming ?? [])
             if (!seen.current.has(x.id)) {
               seen.current.add(x.id);
@@ -91,8 +94,19 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
   // 내가 보낸 1대1 이 수락되면 바로 게임으로
   useEffect(() => {
     if (!duel || entered.current) return;
-    if (duel.status === 'accepted' && duel.roomId && duel.playerId) {
+    let done = false;
+    try {
+      done = sessionStorage.getItem('stockduel.duelIn') === duel.id;
+    } catch {
+      /* 무시 */
+    }
+    if (duel.status === 'accepted' && duel.roomId && duel.playerId && !done) {
       entered.current = true;
+      try {
+        sessionStorage.setItem('stockduel.duelIn', duel.id);
+      } catch {
+        /* 무시 */
+      }
       play('win');
       onGame({ mode: 'multi', roomId: duel.roomId, code: duel.code ?? '', playerId: duel.playerId, nickname: duel.nickname ?? '', ui: loadUi() as UiMode });
     }
@@ -122,7 +136,8 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
       else if (r.kind === 'room') onWaiting(r.roomId, r.playerId, r.nickname, r.code);
       else onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname: r.nickname, ui: loadUi() as UiMode });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      // 초대 창은 닫히므로 이유는 아래 알림으로
+      setNote(e instanceof Error ? e.message : String(e));
       setIncoming((xs) => xs.filter((x) => x.id !== inv.id));
     } finally {
       setBusy(false);

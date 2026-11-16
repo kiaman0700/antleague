@@ -189,7 +189,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         }
         if (s.status === 'none') {
           setSearching(false);
-          setErr('대기가 끝났어요. 다시 찾아 주세요.');
+          setErr((s as { reason?: string }).reason === 'party' ? '파티원 연결이 끊겨서 같이 찾기가 취소됐어요. 친구가 다시 들어오면 찾아 주세요.' : '대기가 끝났어요. 다시 찾아 주세요.');
           return;
         }
         setInfo({ waitedSec: s.waitedSec ?? 0, inQueue: s.inQueue ?? 1, window: s.window ?? 100, similar: s.similar ?? 0, online: s.online ?? 0, etaSec: s.etaSec ?? null });

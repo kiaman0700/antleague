@@ -78,6 +78,15 @@ const none = await A({ action: 'friendRequest', nickname: '없는닉' + rnd });
 ok('없는 닉네임은 못 찾음', none.s === 404);
 const wild = await A({ action: 'friendRequest', nickname: '%' });
 ok("'%' 같은 와일드카드로 아무나 찾을 수 없음", wild.s === 404 || wild.s === 400, String(wild.s));
+// 거절은 보낸 사람에게 티 나지 않음 (계속 '대기 중')
+await C({ action: 'friendRequest', nickname: nA });
+const cIn = (await A({ action: 'friends' })).b.incoming.find((x) => x.nickname === nC);
+await A({ action: 'friendRespond', id: cIn.id, accept: false });
+const cOut = (await C({ action: 'friends' })).b.outgoing;
+ok('거절당해도 보낸 사람에게는 대기 중으로 보임', cOut.some((x) => x.nickname === nA), JSON.stringify(cOut));
+ok('거절한 신청은 받은 사람 목록에서 사라짐', !(await A({ action: 'friends' })).b.incoming.some((x) => x.nickname === nC));
+await C({ action: 'friendRemove', id: cOut.find((x) => x.nickname === nA).id });
+
 const r1 = await A({ action: 'friendRequest', nickname: nB.toLowerCase() });
 ok('A → B 신청 (대소문자 무시)', r1.s === 200 && r1.b.status === 'pending', JSON.stringify(r1.b));
 const r1b = await A({ action: 'friendRequest', nickname: nB });
@@ -170,7 +179,7 @@ ok('파티로 랭킹전 불가', pRanked.s === 409, pRanked.b?.error);
 const pDuel = await A({ action: 'queueJoin', queue: 'casual_duel_quick', mode: 'easy' });
 ok('파티로 1대1 불가', pDuel.s === 409, pDuel.b?.error);
 const G2 = await user();
-for (let i = 0; i < 5; i++) {
+for (let i = 0; i < 40; i++) {
   const r = (await G2({ action: 'resume' })).b;
   if (!r?.roomId) break;
   await G2({ action: 'leave', roomId: r.roomId });
