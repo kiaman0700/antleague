@@ -577,7 +577,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               <i><Icon name="search" size={24} /></i>
               <b>방 찾기</b>
-              <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
+              <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '공개방·비밀방 둘러보기'}</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setModal('code'))}>
               <i><Icon name="key" size={24} /></i>
