@@ -3,6 +3,7 @@
  * 1280px 이상은 소셜 패널이 늘 보이고, 861~1279px 은 위 메뉴의 친구 버튼으로 열고 닫음. 860px 이하는 모바일 틀(아래 탭바)
  */
 import { useEffect, useState } from 'react';
+import { Loading } from './ui';
 import { Icon } from './Icon';
 import { AccountChip, Brand, type NavTab } from './LobbyNav';
 import type { AccountState } from '../net/account';
@@ -241,7 +242,7 @@ export function SocialPanel({
           )}
 
           <div className="cs-list">
-            {!d && <p className="muted small">불러오는 중…</p>}
+            {!d && <Loading inline />}
             {d && friends.length === 0 && (
               <div className="cs-empty">
                 <p className="muted small">아직 친구가 없어요.</p>

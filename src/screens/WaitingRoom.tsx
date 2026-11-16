@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { EmptyState, IconList, Loading, SectionTitle } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { api, useLiveView } from '../net/api';
 import { estimateMinutes, graceText, loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
@@ -31,7 +32,7 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
   const list = d?.friends ?? [];
   return (
     <Sheet title={<><Icon name="userPlus" size={18} /> 친구 초대</>} onClose={onClose}>
-      {!d && <p className="muted small">불러오는 중…</p>}
+      {!d && <Loading inline />}
       {d && list.length === 0 && <p className="muted small">아직 친구가 없어요. 로비의 '친구'에서 닉네임으로 추가할 수 있어요.</p>}
       <ul className="fr-list">
         {list.map((f) => (
@@ -85,19 +86,23 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   if (gone) {
     return (
       <div className="center-msg">
-        <Icon name="door" size={28} />
-        <p>방에서 나오게 됐어요</p>
-        <p className="muted small">방장이 방을 닫았거나 나를 내보냈어요. 다른 방을 찾아보세요.</p>
-        <button className="btn primary" onClick={onLeave}>
-          로비로
-        </button>
+        <EmptyState
+          icon="door"
+          title="방에서 나오게 됐어요"
+          desc="방장이 방을 닫았거나 나를 내보냈어요. 다른 방을 찾아보세요."
+          action={
+            <button className="btn primary" onClick={onLeave}>
+              로비로
+            </button>
+          }
+        />
       </div>
     );
   }
   if (!view) {
     return (
       <div className="center-msg">
-        {error ? <p className="error">{error}</p> : <div className="spinner" />}
+        {error ? <EmptyState icon="warn" tone="error" title={error} /> : <Loading label="대기실에 들어가는 중…" />}
         {error && (
           <button className="btn" onClick={onLeave}>
             로비로
@@ -223,33 +228,16 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
         </section>
         {/* 기다리는 동안 이 방이 어떻게 진행되는지 (빈 공간 대신 쓸모 있는 안내) */}
         <section className="panel pad wr-rules" aria-label="이 방 규칙">
-          <h3>이 방은 이렇게 진행돼요</h3>
-          <ul>
-            <li>
-              <Icon name="calendar" size={16} />
-              <span>
-                <b>{room.totalDays}일</b> 동안 겨뤄요. 하루 장은 <b>{turnLabel}</b>이에요. 보통 <b>약 {estimateMinutes(room.totalDays, room.turnSeconds).typical}분</b>이면 끝나요.
-              </span>
-            </li>
-            <li>
-              <Icon name="timer" size={16} />
-              <span>
-                모두 장 마감을 누르면 바로 다음 날로 가요. {graceText(room.maxPlayers)} 뒤에 자동으로 넘어가요.
-              </span>
-            </li>
-            <li>
-              <Icon name="news" size={16} />
-              <span>둘째 날부터는 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸 수 있어요.</span>
-            </li>
-            <li>
-              <Icon name="cards" size={16} />
-              <span>찬스 카드는 시작할 때 {START_CARDS}장, {GRANT_EVERY}일마다 1장 무료로 받아요. 상대를 방해하는 카드도 있어요.</span>
-            </li>
-            <li>
-              <Icon name="trophy" size={16} />
-              <span>마지막 날 재산이 가장 많은 사람이 이겨요.</span>
-            </li>
-          </ul>
+          <SectionTitle>이 방은 이렇게 진행돼요</SectionTitle>
+          <IconList
+            items={[
+              { icon: 'calendar', body: <><b>{room.totalDays}일</b> 동안 겨뤄요. 하루 장은 <b>{turnLabel}</b>이에요. 보통 <b>약 {estimateMinutes(room.totalDays, room.turnSeconds).typical}분</b>이면 끝나요.</> },
+              { icon: 'timer', body: <>모두 장 마감을 누르면 바로 다음 날로 가요. {graceText(room.maxPlayers)} 뒤에 자동으로 넘어가요.</> },
+              { icon: 'news', body: '둘째 날부터는 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸 수 있어요.' },
+              { icon: 'cards', body: <>찬스 카드는 시작할 때 {START_CARDS}장, {GRANT_EVERY}일마다 1장 무료로 받아요. 상대를 방해하는 카드도 있어요.</> },
+              { icon: 'trophy', body: '마지막 날 재산이 가장 많은 사람이 이겨요.' },
+            ]}
+          />
         </section>
         </div>
 

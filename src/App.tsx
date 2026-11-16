@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Loading } from './components/ui';
 import { consumeMatched, useMatch } from './net/matchStore';
 import { loadSolo, newSolo } from './engine/local';
 import { api } from './net/api';
@@ -60,8 +61,7 @@ export default function App() {
     case 'resolve':
       return (
         <div className="center-msg">
-          <div className="spinner" />
-          <p className="muted">불러오는 중…</p>
+          <Loading />
         </div>
       );
     case 'waiting':

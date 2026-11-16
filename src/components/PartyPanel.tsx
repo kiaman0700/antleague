@@ -4,6 +4,7 @@
  * 랭킹전·1대1 에는 파티로 못 들어감 (점수 몰아주기·다구리 방지)
  */
 import { useCallback, useEffect, useState } from 'react';
+import { Loading } from './ui';
 import { ask } from './ConfirmHost';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
@@ -107,7 +108,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
       )}
       {open && canInvite && (
         <div className="party-invite">
-          {!friends && <p className="muted small">불러오는 중…</p>}
+          {!friends && <Loading inline />}
           {friends && online.length === 0 && <p className="muted small">지금 접속 중인 친구가 없어요.</p>}
           <ul className="fr-list">
             {online.map((f) => (

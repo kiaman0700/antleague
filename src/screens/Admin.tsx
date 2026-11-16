@@ -4,6 +4,7 @@
  * 의견 내용은 서버가 운영자 계정인지 확인한 뒤에만 보내 줌 — 화면을 열어도 다른 사람은 아무것도 볼 수 없음
  */
 import { useCallback, useEffect, useState } from 'react';
+import { EmptyState } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
 import { Icon } from '../components/Icon';
@@ -108,12 +109,7 @@ export function Admin({ onBack, onLogin }: { onBack: () => void; onLogin: () => 
           </div>
           {msg && <p className="error">{msg}</p>}
           {rows.length === 0 ? (
-            <div className="empty-state">
-              <i>
-                <Icon name="check" size={28} />
-              </i>
-              <b>{filter === 'unread' ? '새 의견이 없어요' : '아직 받은 의견이 없어요'}</b>
-            </div>
+            <EmptyState icon="check" title={filter === 'unread' ? '새 의견이 없어요' : '아직 받은 의견이 없어요'} />
           ) : (
             <>
               {filter === 'unread' && (

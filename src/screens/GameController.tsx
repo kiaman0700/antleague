@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Loading } from '../components/ui';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
 import { setDrawScope } from '../components/ProChart';
@@ -640,8 +641,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           </>
         ) : (
           <>
-            <div className="spinner" />
-            <p className="muted">게임 불러오는 중…</p>
+            <Loading label="게임 불러오는 중…" />
           </>
         )}
       </div>
@@ -651,8 +651,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     if (!view.final)
       return (
         <div className="center-msg">
-          <div className="spinner" />
-          <p className="muted">결과 집계 중…</p>
+          <Loading label="결과 집계 중…" />
           <ResultWaitExit onExit={onExit} />
         </div>
       );

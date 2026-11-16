@@ -1,0 +1,41 @@
+/* ============ 공통 화면 부품 (components/ui.tsx) — 모든 화면이 같은 모양을 쓰게 ============ */
+:root {
+  --kit-accent: #8b7bff;
+  --kit-accent-soft: rgba(139, 123, 255, 0.14);
+  --kit-accent-text: #b9b0ff;
+  --kit-radius: 12px;
+  --kit-gap: 12px;
+}
+
+/* 불러오는 중 */
+.ui-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 28px 12px; color: var(--muted, #9aa0b4); font-size: 13.5px; }
+.ui-loading.inline { justify-content: flex-start; padding: 6px 0; font-size: 13px; }
+.ui-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--kit-accent-soft); border-top-color: var(--kit-accent); animation: uiSpin 0.8s linear infinite; flex: 0 0 auto; }
+@keyframes uiSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-spin { animation-duration: 2.4s; } }
+
+/* 비어 있을 때 · 실패 */
+.ui-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 32px 16px; border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: var(--kit-radius); }
+.ui-empty.compact { padding: 18px 10px; }
+.ui-empty > i { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--kit-accent-soft); color: var(--kit-accent-text); margin-bottom: 4px; font-style: normal; }
+.ui-empty.compact > i { width: 40px; height: 40px; border-radius: 11px; }
+.ui-empty > b { font-size: 15px; font-weight: 800; }
+.ui-empty > small { color: var(--muted, #9aa0b4); font-size: 13px; line-height: 1.5; max-width: 34em; word-break: keep-all; }
+.ui-empty-act { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ui-empty.error > i { background: rgba(255, 93, 115, 0.12); color: #ff8a9a; }
+
+/* 아이콘 안내 목록 */
+.ui-iconlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ui-iconlist > li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; align-items: start; }
+.ui-iconlist > li > i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--kit-accent-soft); color: var(--kit-accent-text); font-style: normal; }
+.ui-iconlist > li > span { display: grid; gap: 2px; padding-top: 5px; line-height: 1.55; font-size: 14px; word-break: keep-all; }
+.ui-iconlist > li b { font-size: 15px; font-weight: 800; }
+.ui-iconlist > li b + .ui-il-body { color: var(--muted, #9aa0b4); font-size: 13px; }
+.ui-iconlist.steps { gap: 14px; }
+.ui-iconlist.steps > li:not(:last-child)::after { content: ''; position: absolute; left: 15px; top: 38px; bottom: -12px; width: 2px; background: rgba(139, 123, 255, 0.2); }
+
+/* 칸 제목 */
+.ui-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.ui-title h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 800; }
+.ui-title h3 > svg, .ui-title h3 > .ico { color: var(--kit-accent-text); }
+.ui-title-right { color: var(--muted, #9aa0b4); font-size: 13px; }

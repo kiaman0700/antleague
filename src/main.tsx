@@ -14,6 +14,7 @@ import './styles-lobby.css';
 import './styles-ui.css';
 import './styles-nav.css';
 import './styles-client.css';
+import './styles-kit.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

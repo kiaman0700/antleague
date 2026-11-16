@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { EmptyState, ErrorState, IconList, Loading, SectionTitle } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
@@ -594,7 +595,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               전체 보기 <Icon name="right" size={14} />
             </button>
           </div>
-          {roomList === null && <p className="muted small">불러오는 중…</p>}
+          {roomList === null && <Loading inline />}
           {roomList !== null && roomList.length === 0 && <p className="muted small">지금 열린 방이 없어요. 방을 만들고 친구에게 코드를 보내 보세요.</p>}
           {roomList !== null && roomList.length > 0 && (
             <ul className="hr-list">
@@ -760,28 +761,18 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
 /** 한 판이 흘러가는 순서 (처음 온 사람용) */
 function MatchFlow() {
-  const steps: [string, string, string][] = [
-    ['search', '대결 찾기', '비슷한 사람과 자동으로 묶여요. 모두 같은 시장·같은 뉴스로 시작해요.'],
-    ['news', '장 전', '둘째 날부터 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어요.'],
-    ['activity', '장중', '가격이 1초마다 움직여요. 속보를 보고 사고팔고, 찬스 카드를 써요.'],
-    ['trophy', '결과', '마지막 날 재산이 가장 많은 사람이 이겨요.'],
-  ];
   return (
-    <section className="panel pad match-flow" aria-label="한 판 진행 순서">
-      <h3>한 판은 이렇게 진행돼요</h3>
-      <ol>
-        {steps.map(([icon, t, d]) => (
-          <li key={t}>
-            <i>
-              <Icon name={icon as 'search'} size={18} />
-            </i>
-            <span>
-              <b>{t}</b>
-              <small className="muted">{d}</small>
-            </span>
-          </li>
-        ))}
-      </ol>
+    <section className="panel pad" aria-label="한 판 진행 순서">
+      <SectionTitle>한 판은 이렇게 진행돼요</SectionTitle>
+      <IconList
+        steps
+        items={[
+          { icon: 'search', title: '대결 찾기', body: '비슷한 사람과 자동으로 묶여요. 모두 같은 시장·같은 뉴스로 시작해요.' },
+          { icon: 'news', title: '장 전', body: '둘째 날부터 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어요.' },
+          { icon: 'activity', title: '장중', body: '가격이 1초마다 움직여요. 속보를 보고 사고팔고, 찬스 카드를 써요.' },
+          { icon: 'trophy', title: '결과', body: '마지막 날 재산이 가장 많은 사람이 이겨요.' },
+        ]}
+      />
     </section>
   );
 }
@@ -879,17 +870,19 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
       {err && <p className="error">{err}</p>}
 
       <div className="room-list">
-        {rooms === null && <p className="muted small center">불러오는 중…</p>}
+        {rooms === null && <Loading />}
         {rooms !== null && shown.length === 0 && (
-          <div className="empty-state">
-            <i><Icon name="door" size={32} /></i>
-            <b>{loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
-            {loadErr && <small>인터넷 연결을 확인해 주세요. 6초마다 다시 시도해요.</small>}
-            <small>직접 방을 만들고 친구를 불러 보세요.</small>
-            <button className="btn primary" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
-              <Icon name="plus" /> 방 만들기
-            </button>
-          </div>
+          <EmptyState
+            icon={loadErr ? 'warn' : 'door'}
+            tone={loadErr ? 'error' : undefined}
+            title={loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}
+            desc={loadErr ? '인터넷 연결을 확인해 주세요. 잠시 뒤 저절로 다시 불러와요.' : '직접 방을 만들고 친구를 불러 보세요.'}
+            action={
+              <button className="btn primary" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
+                <Icon name="plus" /> 방 만들기
+              </button>
+            }
+          />
         )}
         {shown.map((r) => (
           <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => enter(r))}>
@@ -1163,23 +1156,13 @@ function Records({ go }: Pick<Props, 'go'>) {
   return (
     <div className="lobby page records">
       <PageHead title="업적" onBack={() => go('home')} />
-      {history === null && <p className="muted small center">불러오는 중…</p>}
-      {history !== null && list.length === 0 && (
-        <div className="empty-state">
-          <i><Icon name="trophy" size={32} /></i>
-          <b>{histErr ? '기록을 불러오지 못했어요' : '아직 끝낸 게임이 없어요'}</b>
-          {histErr ? (
-            <>
-              <small>인터넷 연결을 확인하고 다시 시도해 주세요.</small>
-              <button className="btn sm" onClick={() => (setHistory(null), setHistTry((n) => n + 1))}>
-                <Icon name="refresh" size={14} /> 다시 시도
-              </button>
-            </>
-          ) : (
-            <small>대결을 한 판 끝내면 전적과 업적이 여기에 쌓여요.</small>
-          )}
-        </div>
-      )}
+      {history === null && <Loading />}
+      {history !== null && list.length === 0 &&
+        (histErr ? (
+          <ErrorState what="기록" onRetry={() => (setHistory(null), setHistTry((n) => n + 1))} />
+        ) : (
+          <EmptyState icon="trophy" title="아직 끝낸 게임이 없어요" desc="대결을 한 판 끝내면 전적과 업적이 여기에 쌓여요." />
+        ))}
       {list.length > 0 && (
         <section className="panel pad">
           <h3>최근 전적</h3>

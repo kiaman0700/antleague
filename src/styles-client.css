@@ -1834,14 +1834,6 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 .tier-ladder li { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.025); }
 .tier-ladder li b { font-size: 15px; font-weight: 800; }
 
-/* 일반전(비회원): 한 판 진행 순서 */
-.match-flow h3 { margin: 0 0 12px; }
-.match-flow ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; counter-reset: mf; }
-.match-flow li { position: relative; display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; padding: 8px 0; }
-.match-flow li i { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(139,123,255,.14); color: #b9b0ff; }
-.match-flow li:not(:last-child)::after { content: ''; position: absolute; left: 17px; top: 46px; bottom: -6px; width: 2px; background: rgba(139,123,255,.18); }
-.match-flow li span { display: grid; gap: 2px; line-height: 1.4; }
-.match-flow li b { font-size: 15px; }
 .quick-note { margin: 6px 2px 0; font-size: 12px; }
 /* 카드 결과가 나온 자리를 잠깐 반짝여 알려 줌 */
 .reveal.flash { animation: revealFlash 1.5s ease-out; }
@@ -1864,10 +1856,6 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 /* 대기실: 자리 아래 '이 방은 이렇게 진행돼요', 초대 코드는 칸 안에 맞게 */
 .wr-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .wr-rules { border: 1px solid rgba(139,123,255,.14); background: linear-gradient(180deg, rgba(20,25,36,.92), rgba(14,17,25,.92)); }
-.wr-rules h3 { margin: 0 0 10px; font-size: 16px; }
-.wr-rules ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.wr-rules li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; line-height: 1.55; font-size: 14px; }
-.wr-rules li > .ico, .wr-rules li > svg { width: 28px; height: 28px; padding: 6px; border-radius: 8px; background: rgba(139,123,255,.12); color: #b9b0ff; box-sizing: border-box; }
 .wr-invite .big-code { font-size: clamp(28px, 3vw, 40px); letter-spacing: .16em; padding-left: .16em; text-align: center; overflow-wrap: anywhere; }
 /* 휴대폰·좁은 화면: 자리 → 친구 부르기(초대 코드) → 진행 안내 순서 (초대가 아래로 밀리지 않게) */
 @media (max-width: 860px) {

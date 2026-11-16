@@ -3,6 +3,7 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { useEffect, useState } from 'react';
+import { EmptyState, ErrorState, Loading } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 import { AVATARS, canUseAvatar } from '../game/avatars';
 import { TierBadge } from '../components/TierBadge';
@@ -303,7 +304,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
     if (p) setNick(p.nickname);
   }, [p?.nickname]);
 
-  if (acc.status === 'loading') return <div className="center-msg"><div className="spinner" /></div>;
+  if (acc.status === 'loading') return <Loading />;
   if (!p)
     return (
       <div className="lobby page">
@@ -586,26 +587,9 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
           <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
         </section>
       )}
-      {err && (
-        <div className="empty-state">
-          <i><Icon name="trophy" size={32} /></i>
-          <b>랭킹을 불러오지 못했어요</b>
-          <small>인터넷 연결을 확인하고 다시 시도해 주세요.</small>
-          <button className="btn sm" onClick={() => setTryN((n) => n + 1)}>
-            <Icon name="refresh" size={14} /> 다시 시도
-          </button>
-        </div>
-      )}
-      {!data && !err && <p className="muted center">불러오는 중…</p>}
-      {data && data.top.length === 0 && (
-        <div className="empty-state">
-          <i>
-            <Icon name="trophy" size={32} />
-          </i>
-          <b>아직 랭킹이 비어 있어요</b>
-          <small>랭킹전 배치 {PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.</small>
-        </div>
-      )}
+      {err && <ErrorState what="랭킹" onRetry={() => setTryN((n) => n + 1)} />}
+      {!data && !err && <Loading />}
+      {data && data.top.length === 0 && <EmptyState icon="trophy" title="아직 랭킹이 비어 있어요" desc={`랭킹전 배치 ${PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.`} />}
       {data && data.top.length > 0 && (
         <ol className="rank-board">
           {data.top.map((r) => {

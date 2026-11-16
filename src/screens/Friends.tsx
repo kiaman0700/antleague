@@ -3,6 +3,7 @@
  * 서버는 user id 를 보내지 않음 — 화면의 id 는 '친구 관계 줄'의 id
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { EmptyState, Loading } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { api } from '../net/api';
 import { refreshAccount, useAccount } from '../net/account';
@@ -214,16 +215,8 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
         <h3 className="fr-h">
           친구 <span className="fr-count">{d ? `${d.friends.length}/${d.max}` : ''}</span>
         </h3>
-        {!d && <p className="muted small">불러오는 중…</p>}
-        {d && d.friends.length === 0 && (
-          <div className="empty-state small">
-            <i>
-              <Icon name="users" size={28} />
-            </i>
-            <b>아직 친구가 없어요</b>
-            <small>위에서 친구 닉네임을 입력해 신청해 보세요.</small>
-          </div>
-        )}
+        {!d && <Loading inline />}
+        {d && d.friends.length === 0 && <EmptyState compact icon="users" title="아직 친구가 없어요" desc="위에서 친구 닉네임을 입력해 신청해 보세요." />}
         {d && d.friends.length > 0 && (
           <ul className="fr-list">
             {d.friends.map((f) => {
