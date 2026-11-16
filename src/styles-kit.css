@@ -346,3 +346,5 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .down { color: #5b9bff; }
 .breaking-badge, .news-cats .nc-unread { background: #d42f48; }
 .news-cats .chip.on { background: #6b58ee; border-color: #6b58ee; }
+/* 흰 글자가 얹힌 작은 보라 표시(일정 '오늘', 아래 탭 숫자 배지): 배경을 조금 진하게 */
+.sched-chip.today b, .nav-count:not(.hot) { background-color: #6b58ee !important; }
