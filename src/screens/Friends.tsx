@@ -12,6 +12,7 @@ import { pokeInvites } from '../components/InviteCenter';
 import { okWhileMatching } from '../net/matchStore';
 import { BADGES } from '../game/achievements';
 import { tierShort } from '../components/TierBadge';
+import { SPEED_PRESET } from '../engine/matching';
 import { Avatar } from '../components/Avatar';
 
 export interface FriendItem {
@@ -262,7 +263,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                     {menu === f.id && (
                       <span className="fr-menu" role="menu">
                         <button role="menuitem" onClick={() => run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites()))}>
-                          1대1 신청 · 일반 (약 20~30분)
+                          1대1 신청 · 일반 ({SPEED_PRESET.normal.minutes})
                         </button>
                         <button role="menuitem" onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>
                           친구 끊기
