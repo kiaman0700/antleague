@@ -389,3 +389,27 @@ body { background: var(--bg) !important; }
 .lobby-shell.client, .waiting.wr-client, body:has(.result) { background: var(--bg) !important; }
 .lobby-shell.client::before { display: none !important; }
 .banner.win, .banner.lose { background: var(--surface) !important; }
+
+/* ===== 각진 모양 → 둥근 모서리로 통일 (2026-11-17, 'AI·템플릿 같은 장식 빼기' 기준) =====
+   게임처럼 보이려고 몇 군데에만 쓴 깎은 모서리·평행사변형·넓은 자간·번쩍이는 그라데이션을
+   사이트 나머지와 같은 둥근 모서리(--r 14px / 큰 칸 --r-lg 20px)·단색·기본 자간으로 */
+.cl-play, .lobby-shell.client .match-finder .btn.primary.xl, .wr-go, .result .center-actions .btn.primary {
+  clip-path: none !important;
+  border-radius: var(--r) !important;
+  background: var(--accent) !important;
+  letter-spacing: inherit !important;
+}
+.wr-go.off, .wr-go:disabled { background: var(--surface-3) !important; }
+.cl-play::after { display: none !important; }
+.lobby-shell.client .hub .tile,
+.lobby-shell.client .match-finder .mf-seg button,
+.wr-client .slot {
+  clip-path: none !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+}
+.lobby-shell.client .match-finder .mf-seg button.on { background: rgba(139, 123, 255, 0.16) !important; }
+.result .banner { clip-path: none !important; border-radius: var(--r-lg) !important; }
+.result .banner h1 { letter-spacing: inherit !important; }
+.wr-client .slot.ready { box-shadow: none !important; } /* 준비 완료 자리: 초록 빛 번짐 대신 테두리 색만 */
+.cl-play { background: #6b58ee !important; } .cl-play small { color: #fff !important; opacity: 1 !important; } /* 플레이 버튼 안 작은 글씨 대비 */
