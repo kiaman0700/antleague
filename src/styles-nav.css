@@ -925,3 +925,9 @@ button.hr-row:hover {
     inset: -6px -3px;
   }
 }
+
+/* 장중 차트: 봉 간격 고르기 */
+.live-k {
+  margin: 0 0 6px;
+  width: fit-content;
+}

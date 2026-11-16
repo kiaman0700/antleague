@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../net/api';
-import { useAccount } from '../net/account';
+import { refreshAccount, useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
 import { pokeInvites } from '../components/InviteCenter';
 import { BADGES } from '../game/achievements';
@@ -38,7 +38,10 @@ export function refreshFriends(fresh = false): Promise<void> {
       data = d;
       emit();
     })
-    .catch(() => {})
+    // 로그인이 풀렸으면(403) 계정 상태를 다시 확인 → 게스트 화면으로 (헛된 요청 반복 방지)
+    .catch((e) => {
+      if ((e as { status?: number })?.status === 403) void refreshAccount();
+    })
     .finally(() => (inflight = null));
   return inflight;
 }

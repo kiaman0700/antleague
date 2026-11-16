@@ -4,6 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
+import { refreshAccount } from '../net/account';
 import { Icon } from './Icon';
 import { SPEED_PRESET } from '../engine/matching';
 import { loadUi, type Session, type UiMode } from '../session';
@@ -68,7 +69,9 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
               play('news');
             }
         })
-        .catch(() => {});
+        .catch((e) => {
+          if ((e as { status?: number })?.status === 403) void refreshAccount();
+        });
     };
     load();
     const id = setInterval(load, 6000);
@@ -119,7 +122,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
     if (duel.status === 'declined' || duel.status === 'expired' || expiredNow) {
       seen.current.add('d:' + duel.id);
       // 방금 보낸 신청에 대해서만 (예전 기록이면 조용히)
-      if (Date.now() - new Date(duel.expiresAt).getTime() < 60_000) setNote(duel.status === 'declined' ? `${duel.to} 님이 이번엔 어렵대요. 친구 목록에서 다시 신청할 수 있어요.` : `${duel.to} 님의 답이 없었어요. 다시 신청해 보세요.`);
+      if (Date.now() - new Date(duel.expiresAt).getTime() < 60_000) setNote(duel.status === 'declined' ? `${duel.to} 님이 거절했어요.` : `${duel.to} 님의 답이 없었어요.`);
     }
   }, [duel, now]);
 

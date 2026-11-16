@@ -67,11 +67,26 @@ async function roomPwFail(roomId: string) {
 }
 
 /** 방에 새 플레이어 추가 (인원·닉네임 검사) */
+/**
+ * 한 사람은 한 방에만: 다른 대기실에 있으면 거기서 자동으로 나오고, 진행 중인 대결(기권 안 함)이 있으면 막음.
+ * (재입장 팝업이 여러 방 중 하나만 보여 주는 문제·한 사람이 여러 판을 동시에 하는 문제 방지)
+ */
+async function ensureFree(uid: string, exceptRoom?: string) {
+  const seats = must(await db().from('players').select('id, room_id, left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { id: string; room_id: string; left_game: boolean; rooms: { status: string } }[];
+  const others = seats.filter((p) => p.room_id !== exceptRoom);
+  if (others.some((p) => p.rooms.status === 'playing' && !p.left_game))
+    throw new GameError('진행 중인 대결이 있어요. 로비의 재입장 안내로 돌아가거나 기권한 뒤에 다른 방에 들어갈 수 있어요.', 409);
+  for (const p of others.filter((x) => x.rooms.status === 'waiting')) await leaveSeat(p.room_id, p.id).catch(() => {});
+  // 매칭을 찾던 중이었으면 그 대기도 취소 (이미 잡혔으면 그대로 — 곧 그쪽 게임이 시작됨)
+  await db().from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
+}
+
 async function addToRoom(room: { id: string; code: string; status: string; max_players: number }, uid: string, nickname: string, mode: string) {
   const sb = db();
   const players = must(await sb.from('players').select('id, user_id, nickname').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string }[];
   const already = players.find((p) => p.user_id === uid);
   if (already) return { roomId: room.id, playerId: already.id, code: room.code };
+  await ensureFree(uid, room.id);
   if (room.status !== 'waiting') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
   if (players.length >= room.max_players) throw new GameError(`방이 가득 찼어요 (최대 ${room.max_players}명).`, 409);
   if (players.some((p) => p.nickname === nickname)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
@@ -393,6 +408,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const title = cleanTitle(b.title, `${nickname}의 방`);
       const isPrivate = b.isPrivate === true;
       const passwordHash = isPrivate ? hashPassword(cleanPassword(b.password)) : null;
+      await ensureFree(uid); // 한 사람은 한 방에만 (다른 대기실은 자동으로 나옴)
       // 방 만들기 남용 방지: 1시간에 10개까지
       const since = new Date(Date.now() - 3600_000).toISOString();
       rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
@@ -408,7 +424,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 새 방은 최신 시장 규칙(v2). rules_version 컬럼이 아직 없으면(006 적용 전) 빼고 저장 → v1
       const secretRow = { room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash };
       await insertSecret(secretRow);
-      const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'host') as { id: string };
+      let p: { id: string };
+      try {
+        await ensureFree(uid, room.id);
+        p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'host') as { id: string };
+      } catch (e) {
+        await sb.from('rooms').delete().eq('id', room.id); // 빈 방이 남지 않게
+        throw e;
+      }
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
       return { roomId: room.id, playerId: p.id, code: room.code };
     }
@@ -578,6 +601,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
       const mine = ps.find((p) => p.user_id === uid);
       if (mine && mine.id !== hit.id) throw new GameError('이 기기는 이미 이 방에 다른 자리로 들어와 있어요.', 409);
+      await ensureFree(uid, room.id); // 다른 대결 중이면 옮겨 오지 못함 (한 사람은 한 방에만)
       const moved = must(await sb.from('players').update({ user_id: uid, rejoin_hash: null }).eq('id', hit.id).eq('rejoin_hash', hit.rejoin_hash!).select('id'), 'rejoin') as unknown[];
       if (!moved.length) throw fail(); // 같은 코드로 동시에 두 번 — 한 번만 성공
       await touchRoom(room.id);
@@ -604,6 +628,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const since = new Date(Date.now() - 3600_000).toISOString();
       rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
       if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
+      await ensureFree(uid);
       const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', roomId).maybeSingle(), 'pw') as { password_hash: string | null } | null;
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {

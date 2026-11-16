@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../net/api';
+import { refreshAccount } from '../net/account';
 import { Icon } from './Icon';
 import { refreshFriends, useFriends } from '../screens/Friends';
 
@@ -22,7 +23,9 @@ export function useParty(member: boolean) {
     if (!member || document.visibilityState !== 'visible') return Promise.resolve();
     return api<{ party: PartyState | null }>('party')
       .then((r) => setParty(r.party))
-      .catch(() => {});
+      .catch((e) => {
+        if ((e as { status?: number })?.status === 403) void refreshAccount();
+      });
   }, [member]);
   useEffect(() => {
     if (!member) return setParty(null);

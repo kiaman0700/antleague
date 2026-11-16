@@ -8,8 +8,17 @@ for (let i = 0; i < 3; i++) pool.push(await user());
 const X1 = pool[2];
 const X2 = await user();
 
+// 한 사람은 한 방에만 들어갈 수 있어서, 새 방 전에 지난 방·대결에서 나옴
+async function free(U) {
+  for (let i = 0; i < 20; i++) {
+    const r = (await U({ action: 'resume' })).b;
+    if (!r?.roomId) break;
+    await U({ action: 'leave', roomId: r.roomId });
+  }
+}
 async function room(players, opts = {}) {
   const us = pool.slice(0, players);
+  for (const U of us) await free(U);
   const made = await us[0]({ action: 'create', nickname: 'P0', mode: 'easy', totalDays: opts.days ?? 10, turnSeconds: 180, maxPlayers: Math.max(players, opts.max ?? players), title: '생애주기' });
   const { roomId, code } = made.b;
   const ids = [made.b.playerId];
@@ -95,4 +104,26 @@ async function room(players, opts = {}) {
   ok('남의 방에서는 한 판 더 불가', outsider.s === 403, outsider.b?.error);
 }
 
+// ---- 한 사람은 한 방에만 ----
+{
+  const [A, B] = pool;
+  await free(A);
+  await free(B);
+  const r1 = (await A({ action: 'create', nickname: 'P0', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '첫 방' })).b;
+  const r2 = (await A({ action: 'create', nickname: 'P0', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '둘째 방' })).b;
+  const res = (await A({ action: 'resume' })).b;
+  ok('새 방을 만들면 예전 대기실에서는 자동으로 나옴', res?.roomId === r2.roomId && (await A({ action: 'state', roomId: r1.roomId })).s !== 200, JSON.stringify(res));
+  await B({ action: 'join', code: r2.code, nickname: 'P1', mode: 'easy' });
+  await B({ action: 'ready', roomId: r2.roomId, ready: true });
+  await A({ action: 'start', roomId: r2.roomId });
+  const other = (await X2({ action: 'create', nickname: 'X', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '다른 방' })).b;
+  const busy = await A({ action: 'join', code: other.code, nickname: 'P0', mode: 'easy' });
+  ok('대결 중에는 다른 방에 못 들어감', busy.s === 409, busy.b?.error);
+  await A({ action: 'leave', roomId: r2.roomId });
+  const after = await A({ action: 'join', code: other.code, nickname: 'P0', mode: 'easy' });
+  ok('기권한 뒤에는 들어갈 수 있음', after.s === 200, after.b?.error ?? '');
+  await A({ action: 'leave', roomId: other.roomId });
+  await X2({ action: 'leave', roomId: other.roomId });
+  await B({ action: 'leave', roomId: r2.roomId });
+}
 done();

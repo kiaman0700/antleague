@@ -88,7 +88,7 @@ export async function user() {
   const p = lock.then(() => session());
   lock = p.catch(() => {});
   const tok = await p;
-  return async (body) => {
+  const U = async (body) => {
     const r = await fetch(BASE + '/api/game', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok },
@@ -96,6 +96,14 @@ export async function user() {
     });
     return { s: r.status, b: await r.json().catch(() => null) };
   };
+  // 다시 쓰는 계정: 지난 테스트에서 남은 방·대결에서 나옴 (한 사람은 한 방에만 들어갈 수 있어서)
+  for (let i = 0; i < 40; i++) {
+    const r = (await U({ action: 'resume' })).b;
+    if (!r?.roomId) break;
+    await U({ action: 'leave', roomId: r.roomId });
+  }
+  await U({ action: 'queueLeave' });
+  return U;
 }
 
 let failed = 0;
