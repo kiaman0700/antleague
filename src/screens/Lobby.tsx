@@ -893,6 +893,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
                 {r.isPrivate && (
                   <span className="lock" title="비밀방">
                     <Icon name="lock" size={14} />
+                    <span className="sr-only">비밀방</span>
                   </span>
                 )}
                 <FitText>{r.title}</FitText>
