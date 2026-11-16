@@ -11,7 +11,7 @@ import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
 import { isLeveraged, LEVERAGE_CAP, type View } from '../engine/engine';
-import { loadSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
+import { loadSolo, saveSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
 import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
@@ -47,16 +47,21 @@ const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', sche
 const COL_LABEL: Record<PcCol, string> = { list: '종목 목록', detail: '차트·주문', side: '뉴스·카드' };
 const COL_WIDTH: Record<PcCol, string> = { list: 'minmax(260px, 300px)', detail: 'minmax(0, 1fr)', side: 'minmax(280px, 320px)' };
 
+/** 연습을 '그만두기'로 나갔는지 (나간 뒤 1초 타이머가 다시 저장하지 않게) */
+const soloQuit = { current: false };
+
 /** 둘이서: 서버(/api/game) · 혼자: 브라우저 안의 같은 엔진 */
 function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
-  const [solo, setSolo] = useState<SoloSave | null>(() => (multi ? null : session.tutorial ? makeTutorial(session.nickname) : session.demo ? makeDemo(session.nickname) : loadSolo()));
+  const [solo, setSolo] = useState<SoloSave | null>(() => ((soloQuit.current = false), multi ? null : session.tutorial ? makeTutorial(session.nickname) : session.demo ? makeDemo(session.nickname) : loadSolo()));
   const [soloNow, setSoloNow] = useState(() => solo?.frozenAt ?? Date.now());
   useEffect(() => {
     // 화면 편집용 가상 게임은 멈춘 장면 (시간·가격·날짜 고정)
     if (multi || session.demo) return;
     const id = setInterval(() => {
+      // 연습을 그만둔 뒤에는 다시 저장하지 않게
+      if (soloQuit.current) return;
       const t = Date.now();
       setSoloNow(t);
       setSolo((s) => (s ? soloSync(s, t) : s));
@@ -746,11 +751,11 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         </div>
       )}
       {exitAsk && (
-        <Sheet title="게임에서 나갈까요?" onClose={() => setExitAsk(false)}>
+        <Sheet title="대결에서 나갈까요?" onClose={() => setExitAsk(false)}>
           <div className="exit-ask">
-            <button className="btn full" onClick={() => (setExitAsk(false), onExit())}>
-              <Icon name="back" size={16} /> 잠깐 로비로
-              <small>게임은 계속 진행돼요. 홈의 '이어하기'로 다시 들어올 수 있어요</small>
+            <p className="muted small">대결 중에 나가면 <b>기권</b>이에요. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어오면 '재입장'을 물어봐요.</p>
+            <button className="btn full primary" onClick={() => setExitAsk(false)}>
+              <Icon name="play" size={16} /> 계속하기
             </button>
             <button
               className="btn full danger"
@@ -767,7 +772,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </button>
             <div className="rejoin-box">
               <b>
-                <Icon name="share" size={14} /> 다른 기기에서 이어하기
+                <Icon name="share" size={14} /> 다른 기기로 옮기기 (기권 아님)
               </b>
               <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 10분 안에 한 번만 쓸 수 있고, 다른 사람에게 보여 주면 자리를 뺏길 수 있어요.</small>
               {rejoinCode ? (
@@ -908,7 +913,13 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       <button className="icon-btn" onClick={() => {
           setMenu(false);
           if (session.mode === 'multi' && room?.status === 'playing') setExitAsk(true);
-          else onExit();
+          else if (session.mode === 'solo' && !session.demo && !session.tutorial && room?.status !== 'finished') {
+            // 연습은 나가면 그 게임은 끝 (창이 닫히거나 끊긴 경우에만 로비에서 '이어하기'를 물어봄)
+            if (!window.confirm('연습을 그만둘까요? 지금 하던 연습 게임은 사라져요.')) return;
+            soloQuit.current = true;
+            saveSolo(null);
+            onExit();
+          } else onExit();
         }} aria-label="로비로" title="로비로">
         <Icon name="exit" size={18} />
       </button>

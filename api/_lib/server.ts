@@ -112,8 +112,9 @@ import {
   MAX_PLAYERS,
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
+import { SOCIAL_ACTIONS, socialAct, touchSeen } from './social.js';
 import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
-import { CASUAL_MAX_WINDOW, parseQueue, pickGroup, queueName, RANKED_MAX_WINDOW, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
+import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import type { Trade } from '../../src/game/portfolio.js';
 
 export interface ApiResult {
@@ -662,7 +663,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const mode = cleanMode(b.mode);
       // 진행 중인 대결·대기실이 있으면 먼저 끝내거나 나가게 (두 판을 동시에 하지 않게)
       const seats = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { left_game: boolean; rooms: { status: string } }[];
-      if (seats.some((p) => p.rooms.status === 'playing' && !p.left_game)) throw new GameError('진행 중인 대결이 있어요. 홈의 이어하기로 돌아가거나 기권한 뒤에 찾아 주세요.', 409);
+      if (seats.some((p) => p.rooms.status === 'playing' && !p.left_game)) throw new GameError('진행 중인 대결이 있어요. 새로고침하면 나오는 재입장 안내로 돌아가거나 기권한 뒤에 찾아 주세요.', 409);
       if (seats.some((p) => p.rooms.status === 'waiting')) throw new GameError('들어가 있는 대기실이 있어요. 그 방에서 나온 뒤에 찾아 주세요.', 409);
       // 이미 다른 사람이 나를 잡아 방을 만드는 중이면 덮어쓰지 않음
       const cur = (await sb.from('match_tickets').select('claim, claimed_at, room_id').eq('user_id', uid).maybeSingle()).data as { claim: string | null; claimed_at: string | null; room_id: string | null } | null;
@@ -681,6 +682,26 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (gone.length) return { ok: true };
       const left = (await sb.from('match_tickets').select('id, room_id').eq('user_id', uid).maybeSingle()).data as { id: string; room_id: string | null } | null;
       return left ? { ok: false, pending: true } : { ok: true };
+    }
+
+    case 'queueCounts': {
+      // 대기열마다 지금 기다리는 사람 수 (숫자만 — 누가 기다리는지는 안 보냄). 사람이 많은 쪽을 고르기 쉽게
+      rateLimit(uid + ':qcounts', 30, 60_000);
+      const rows = ((await sb.from('match_tickets').select('queue, rating, user_id').is('room_id', null).gte('last_poll', new Date(Date.now() - 10_000).toISOString()).limit(2000)).data ?? []) as { queue: string; rating: number; user_id: string }[];
+      const counts: Record<string, number> = {};
+      for (const r of rows) if (r.user_id !== uid) counts[r.queue] = (counts[r.queue] ?? 0) + 1;
+      // 대기열마다 '지금 찾으면' 예상 대기 (내 점수 기준)
+      const myRating = (await getProfile(sb, uid))?.rating ?? 1000;
+      const st = await matchStats();
+      const eta: Record<string, number | null> = {};
+      for (const kind of ['ranked', 'casual'] as const)
+        for (const size of ['duel', 'multi'] as const)
+          for (const speed of ['quick', 'normal'] as const) {
+            const q = `${kind}_${size}_${speed}`;
+            const others = rows.filter((r) => r.queue === q && r.user_id !== uid);
+            eta[q] = waitEstimate(q, myRating, 0, others.map((o) => o.rating), st);
+          }
+      return { counts, eta, online: st.online };
     }
 
     case 'queueStatus': {
@@ -704,11 +725,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       await sb.from('match_tickets').update({ claim: null, claimed_at: null }).is('room_id', null).lt('claimed_at', ago(15_000));
       await sb.from('match_tickets').delete().lt('matched_at', ago(120_000));
       const q = parseQueue(mine.queue)!;
-      const maxWin = q.kind === 'ranked' ? RANKED_MAX_WINDOW : CASUAL_MAX_WINDOW;
+      const maxWin = q.kind === 'ranked' ? rankedMax : CASUAL_MAX_WINDOW;
       const waiting = ((await sb.from('match_tickets').select('id, user_id, rating, nickname, mode, created_at').eq('queue', mine.queue).is('room_id', null).is('claim', null).gte('last_poll', ago(10_000)).order('created_at').limit(50)).data ?? []) as { id: string; user_id: string; rating: number; nickname: string; mode: string; created_at: string }[];
       const toT = (t: { id: string; rating: number; created_at: string }) => ({ id: t.id, rating: t.rating, createdAt: new Date(t.created_at).getTime() });
       const meT = toT(mine);
-      const waitingInfo = { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, window: ratingWindow(meT, nowMs, maxWin) };
+      const st = await matchStats();
+      const etaSec = waitEstimate(mine.queue, mine.rating, nowMs - meT.createdAt, waiting.filter((w) => w.id !== mine.id).map((w) => w.rating), st, nowMs);
+      const similar = waiting.filter((w) => w.id !== mine.id && compatible(meT, toT(w), nowMs, maxWin)).length;
+      const waitingInfo = { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, similar, online: st.online, etaSec, window: ratingWindow(meT, nowMs, maxWin) };
       const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs, maxWin);
       if (!group) return waitingInfo;
       // 같은 사람들을 둘이 동시에 잡으려다 서로 계속 실패하지 않게: 무리 중 가장 먼저 온 사람의 확인 때만 방을 만듦
@@ -951,6 +975,42 @@ async function adminAct(action: string, b: Body) {
   throw new GameError('알 수 없는 요청이에요.');
 }
 
+/* ---------- 매칭 예상 대기 ---------- */
+/** 최근 1시간 매칭 기록(대기열별 들어온 사람 수)과 접속 중인 사람 수. 15초 캐시 */
+let statsCache: { at: number; recent: Record<string, number>; online: number } | null = null;
+async function matchStats() {
+  if (statsCache && Date.now() - statsCache.at < 15_000) return statsCache;
+  const sb = db();
+  const since = new Date(Date.now() - 3_600_000).toISOString();
+  const rooms = ((await sb.from('rooms').select('ranked, max_players, turn_seconds').eq('kind', 'match').gte('created_at', since).limit(2000)).data ?? []) as { ranked: boolean; max_players: number; turn_seconds: number }[];
+  const recent: Record<string, number> = {};
+  for (const r of rooms) {
+    const speed = r.turn_seconds === SPEED_PRESET.quick.turnSeconds ? 'quick' : 'normal';
+    const q = `${r.ranked ? 'ranked' : 'casual'}_${r.max_players === 2 ? 'duel' : 'multi'}_${speed}`;
+    recent[q] = (recent[q] ?? 0) + r.max_players;
+  }
+  const twoMin = new Date(Date.now() - 120_000).toISOString();
+  const members = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('last_seen', twoMin);
+  const tickets = await sb.from('match_tickets').select('id', { count: 'exact', head: true }).is('room_id', null).gte('last_poll', new Date(Date.now() - 10_000).toISOString());
+  statsCache = { at: Date.now(), recent, online: (members.count ?? 0) + (tickets.count ?? 0) };
+  return statsCache;
+}
+/**
+ * 예상 대기(초): 같은 대기열에서 기다리는 사람(점수 범위 안/밖), 최근 1시간 이 대기열에 들어온 사람 수,
+ * 지금 접속 중인 사람 수(일부가 들어올 거라고 어림)를 함께 봄
+ */
+function waitEstimate(queue: string, rating: number, waitedMs: number, others: number[], st: { recent: Record<string, number>; online: number }, now = Date.now()) {
+  const q = parseQueue(queue);
+  if (!q) return null;
+  const max = q.kind === 'ranked' ? rankedMax : CASUAL_MAX_WINDOW;
+  const me = { id: 'me', rating, createdAt: now - waitedMs };
+  // 다른 사람들도 대략 나만큼 기다렸다고 보고 범위를 계산
+  const sim = others.filter((r) => compatible(me, { id: 'o', rating: r, createdAt: now - waitedMs }, now, max)).length;
+  const gaps = others.map((r) => Math.abs(r - rating)).filter((g, i) => !compatible(me, { id: 'o', rating: others[i], createdAt: now - waitedMs }, now, max));
+  const arrivalsPerMin = (st.recent[queue] ?? 0) / 60 + (st.online * 0.1) / 8;
+  return estimateWaitSec({ size: q.size, similar: sim, nearestGap: gaps.length ? Math.min(...gaps) : null, arrivalsPerMin, waitedMs, max });
+}
+
 /** 방에서 나가기: 게임 중이면 기권, 대기실이면 자리 빼기(방장이면 넘기기), 끝난 방은 그대로 */
 async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }> {
   const sb = db();
@@ -1015,7 +1075,10 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (action === 'state') rateLimit(uid + ':state', 60, 20_000);
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
+    // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)
+    touchSeen(db(), uid).catch(() => {});
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
+    if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };
     if (['signup', 'checkAvailable', 'guestSummary', 'mergeGuest', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit, leaveSeat) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };

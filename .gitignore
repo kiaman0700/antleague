@@ -7,3 +7,5 @@ dist
 .mcp.json
 sim/.out/
 scripts/e2e/.accounts.json
+scripts/e2e/.members.json
+scripts/e2e/.ui-friend.json

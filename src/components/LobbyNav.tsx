@@ -10,13 +10,14 @@ import { api } from '../net/api';
 import { loadNick, saveNick } from '../session';
 import type { AccountState } from '../net/account';
 
-export type NavTab = 'ranked' | 'casual' | 'custom' | 'practice' | 'ranking' | 'records' | 'companies' | 'more';
+export type NavTab = 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'ranking' | 'records' | 'companies' | 'more';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string, IconName][] = [
   ['ranked', '랭킹전', 'trophy'],
   ['casual', '일반전', 'users'],
   ['custom', '커스텀', 'door'],
+  ['friends', '친구', 'userPlus'],
   ['practice', '연습', 'target'],
 ];
 const SUB: [NavTab, string, IconName][] = [
@@ -53,7 +54,10 @@ interface NavProps {
   onProfile: () => void;
   onLogin: () => void;
   footer?: ReactNode;
+  /** 메뉴 칸 옆 숫자 (받은 친구 신청 등) */
+  badges?: Partial<Record<NavTab, number>>;
 }
+const Badge = ({ n }: { n?: number }) => (n ? <i className="ln-badge" aria-label={`새 알림 ${n}개`}>{n > 9 ? '9+' : n}</i> : null);
 
 export function Brand() {
   // 같은 화면에 로고가 두 번(숨긴 왼쪽 메뉴·위 머리줄) 있어도 색이 사라지지 않게 id 를 따로
@@ -101,10 +105,13 @@ export function AccountChip({ account, online, onProfile, onLogin, compact }: { 
 }
 
 /** PC·태블릿 가로: 왼쪽 세로 메뉴 */
-export function SideNav({ active, account, online, onGo, onProfile, onLogin, footer }: NavProps) {
+export function SideNav({ active, account, online, onGo, onProfile, onLogin, footer, badges }: NavProps) {
   const item = ([k, label, icon]: [NavTab, string, IconName]) => (
     <button key={k} className={'ln-item' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)}>
-      <Icon name={icon} size={20} />
+      <span className="ln-ic">
+        <Icon name={icon} size={20} />
+        <Badge n={badges?.[k]} />
+      </span>
       <span>{label}</span>
     </button>
   );
@@ -123,16 +130,20 @@ export function SideNav({ active, account, online, onGo, onProfile, onLogin, foo
 }
 
 /** 모바일·태블릿 세로: 아래 탭바 */
-export function BottomNav({ active, onGo, online }: Pick<NavProps, 'active' | 'onGo' | 'online'>) {
-  const tabs: [NavTab, string, IconName][] = [...MAIN.filter(([k]) => online || k === 'practice'), ['more', '더보기', 'grid']];
-  const isSub = active !== null && SUB.some(([k]) => k === active);
+export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'active' | 'onGo' | 'online' | 'badges'>) {
+  // 아래 탭은 5칸: 연습은 온라인이면 '더보기' 안으로
+  const tabs: [NavTab, string, IconName][] = [...MAIN.filter(([k]) => (online ? k !== 'practice' : k === 'practice')), ['more', '더보기', 'grid']];
+  const isSub = active !== null && !tabs.some(([k]) => k === active);
   return (
     <nav className="lobby-bottom" aria-label="메뉴">
       {tabs.map(([k, label, icon]) => {
         const on = active === k || (k === 'more' && isSub);
         return (
           <button key={k} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined} onClick={() => onGo(k)}>
-            <Icon name={icon} size={20} />
+            <span className="ln-ic">
+              <Icon name={icon} size={20} />
+              <Badge n={badges?.[k]} />
+            </span>
             <span>{label}</span>
           </button>
         );

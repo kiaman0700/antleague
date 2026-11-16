@@ -36,24 +36,29 @@ export interface Ticket {
   createdAt: number;
 }
 
-/** 랭킹전은 아무리 오래 기다려도 점수 차 400까지만 (실력 차가 너무 큰 판으로 점수를 주고받지 않게) */
+/** 랭킹전은 처음 2분 동안 점수 차 400까지만. 사람이 적어 2분 넘게 못 만나면 범위 제한을 풀어 줌
+ *  (점수 차가 크면 Elo 가 알아서 이긴 쪽 점수를 조금만 올려 줌 + 같은 상대 하루 3판 제한) */
 export const RANKED_MAX_WINDOW = 400;
 export const CASUAL_MAX_WINDOW = 1000;
+export const RANKED_RELAX_MS = 120_000;
+export type WindowMax = number | ((t: Ticket, now: number) => number);
+export const rankedMax: WindowMax = (t, now) => (now - t.createdAt < RANKED_RELAX_MS ? RANKED_MAX_WINDOW : CASUAL_MAX_WINDOW);
+const maxOf = (m: WindowMax, t: Ticket, now: number) => (typeof m === 'number' ? m : m(t, now));
 
 /** 이 사람이 받아들이는 점수 차 (기다릴수록 넓어짐) */
-export function ratingWindow(t: Ticket, now: number, max = CASUAL_MAX_WINDOW) {
-  return Math.min(max, 100 + 50 * Math.floor(Math.max(0, now - t.createdAt) / 10_000));
+export function ratingWindow(t: Ticket, now: number, max: WindowMax = CASUAL_MAX_WINDOW) {
+  return Math.min(maxOf(max, t, now), 100 + 50 * Math.floor(Math.max(0, now - t.createdAt) / 10_000));
 }
 
 /** 두 사람이 같이 할 수 있나: 둘의 범위 중 넓은 쪽 안 */
-export const compatible = (a: Ticket, b: Ticket, now: number, max = CASUAL_MAX_WINDOW) =>
+export const compatible = (a: Ticket, b: Ticket, now: number, max: WindowMax = CASUAL_MAX_WINDOW) =>
   Math.abs(a.rating - b.rating) <= Math.max(ratingWindow(a, now, max), ratingWindow(b, now, max));
 
 /**
  * me 를 포함한 한 판 인원을 고름. 못 고르면 null
  * 다인전은 고른 사람끼리 '모두 서로' 범위 안이어야 함 (1000점과 1400점이 1200점을 사이에 두고 만나지 않게)
  */
-export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: number, max = CASUAL_MAX_WINDOW): Ticket[] | null {
+export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: number, max: WindowMax = CASUAL_MAX_WINDOW): Ticket[] | null {
   const cand = waiting
     .filter((t) => t.id !== me.id && compatible(me, t, now, max))
     .sort((a, b) => Math.abs(a.rating - me.rating) - Math.abs(b.rating - me.rating) || a.createdAt - b.createdAt);
@@ -70,4 +75,66 @@ export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: n
     if (now - oldest >= MULTI_WAIT_FOR_3) return g3;
   }
   return null;
+}
+
+/* ---------- 예상 대기 시간 ---------- */
+export interface WaitInput {
+  size: QueueSize;
+  /** 같은 대기열에서 지금 나와 바로 만날 수 있는(점수 범위 안) 사람 수 (나 빼고) */
+  similar: number;
+  /** 같은 대기열이지만 아직 점수 범위 밖인 사람 중 가장 가까운 점수 차 (없으면 null) */
+  nearestGap: number | null;
+  /** 이 대기열에 새로 들어오는 사람 수 (분당, 최근 매칭 기록 + 접속 중인 사람으로 어림) */
+  arrivalsPerMin: number;
+  /** 지금까지 기다린 시간 */
+  waitedMs: number;
+  /** 랭킹전이면 범위 상한 함수 */
+  max?: WindowMax;
+  rating?: number;
+}
+
+/** 범위가 점수 차 gap 까지 넓어지려면 몇 초 더 기다려야 하나 (상한 때문에 못 넓어지면 null) */
+function secsUntilWindow(gap: number, waitedMs: number, max: WindowMax = CASUAL_MAX_WINDOW): number | null {
+  for (let s = Math.ceil(waitedMs / 1000); s <= Math.ceil(waitedMs / 1000) + 900; s += 5) {
+    const t: Ticket = { id: 'x', rating: 0, createdAt: 0 };
+    if (ratingWindow(t, s * 1000, max) >= gap) return Math.max(0, s - Math.ceil(waitedMs / 1000));
+  }
+  return null;
+}
+
+/**
+ * 예상 대기(초). 모르겠으면 null (기다리는 사람도 최근 매칭도 없을 때)
+ * - 1대1: 범위 안에 한 명이라도 있으면 곧 · 범위 밖이면 범위가 넓어질 때까지 · 아무도 없으면 새로 올 사람을 기다림
+ * - 다인전: 3명(40초 기다림) 또는 4명이 모일 때까지
+ */
+export function estimateWaitSec(i: WaitInput): number | null {
+  const lam = Math.max(0, i.arrivalsPerMin);
+  const arrive = (n: number) => (n <= 0 ? 0 : lam > 0 ? (60 * n) / lam : null);
+  const waited = i.waitedMs / 1000;
+  const round = (s: number) => Math.min(900, Math.max(5, Math.round(s / 5) * 5));
+  if (i.size === 'duel') {
+    if (i.similar >= 1) return 5;
+    const viaWindow = i.nearestGap !== null ? secsUntilWindow(i.nearestGap, i.waitedMs, i.max) : null;
+    const viaArrive = arrive(1);
+    const c = [viaWindow, viaArrive].filter((x): x is number => x !== null);
+    return c.length ? round(Math.min(...c)) : null;
+  }
+  const have = 1 + i.similar;
+  if (have >= MULTI_FULL) return 5;
+  const need3 = Math.max(0, MULTI_MIN - have);
+  const t3 = arrive(need3);
+  if (t3 === null) return null;
+  // 3명이 모여도 가장 오래 기다린 사람이 40초를 넘겨야 시작 (그 사이 4번째가 오면 바로)
+  const wait40 = Math.max(0, MULTI_WAIT_FOR_3 / 1000 - (waited + t3));
+  const t4 = arrive(MULTI_FULL - have);
+  return round(t3 + (t4 !== null ? Math.min(wait40, Math.max(0, t4 - t3)) : wait40));
+}
+
+/** 화면 표시: 약 30초 · 약 2분 · 10분 넘게 */
+export function waitLabel(sec: number | null): string {
+  if (sec === null) return '예상하기 어려워요';
+  if (sec <= 10) return '곧 잡혀요';
+  if (sec < 60) return `약 ${sec}초`;
+  if (sec >= 900) return '10분 넘게';
+  return `약 ${Math.round(sec / 60)}분`;
 }

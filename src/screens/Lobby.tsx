@@ -6,6 +6,7 @@ import { AccountChip, BottomNav, Brand, lastTab, rememberTab, SideNav, useGuestG
 import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
+import { FriendsPage, useFriendsPoll } from './Friends';
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
@@ -45,7 +46,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking';
+export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking';
 
 interface Props {
   page: LobbyPage;
@@ -385,22 +386,22 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [modal, setModal] = useState<null | 'code' | 'practice'>(null);
-  const [resume, setResume] = useState<ResumeInfo | null>(null);
-  const [openRooms, setOpenRooms] = useState<number | null>(null);
-  const [soloSave, setSoloSave] = useState(() => {
-    const s = loadSolo();
-    return s && s.data.room.status !== 'finished' ? s : null;
-  });
+  const [roomList, setRoomList] = useState<RoomInfo[] | null>(null);
+  const openRooms = roomList ? roomList.filter((x) => !x.joined).length : null;
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
   const member = account.status === 'member' && !!account.profile;
 
   useEffect(() => {
     if (invite.length === 6) gate.guard(() => setModal('code'));
     if (!online) return;
-    api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
-    api<RoomInfo[]>('rooms')
-      .then((r) => setOpenRooms(r.filter((x) => !x.joined).length))
-      .catch(() => {});
+    const loadRooms = () =>
+      api<RoomInfo[]>('rooms')
+        .then(setRoomList)
+        .catch(() => {});
+    loadRooms();
+    // 커스텀 메뉴에서는 열린 방 목록을 10초마다 새로
+    const id = tab === 'custom' ? setInterval(() => document.visibilityState === 'visible' && loadRooms(), 10_000) : 0;
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite]);
 
@@ -409,11 +410,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
   const startPractice = (days: number, daySec: number) => {
     const s = newSolo(nick() || '나', days, daySec);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
-  };
-  const doResume = () => {
-    if (!resume) return;
-    if (resume.status === 'waiting') return onWaiting(resume.roomId, resume.playerId, resume.nickname, resume.code);
-    onGame({ mode: 'multi', roomId: resume.roomId, code: resume.code, playerId: resume.playerId, nickname: resume.nickname, ui: resume.mode === 'pro' ? 'pro' : 'easy' });
   };
   const head = TAB_HEAD[tab];
 
@@ -442,51 +438,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
       </header>
 
       {online && <AdminBanner onOpen={() => go('admin')} />}
-      {(resume || soloSave) && tab !== 'more' && (
-        <div className="resume-list">
-          {resume && (
-            <div className="resume-card">
-              <span className="rc-text">
-                <b>{resume.status === 'waiting' ? '대기 중인 방' : '진행 중인 게임'}</b>
-                <small>
-                  {resume.nickname} · 코드 <code>{resume.code}</code>
-                </small>
-              </span>
-              <button className="btn sm primary" onClick={doResume}>
-                {resume.status === 'waiting' ? '대기실로' : '이어하기'}
-              </button>
-              <button className="icon-btn sm" aria-label="닫기" onClick={() => setResume(null)}>
-                <Icon name="x" />
-              </button>
-            </div>
-          )}
-          {soloSave && (
-            <div className="resume-card">
-              <span className="rc-text">
-                <b>하던 연습 게임</b>
-                <small>
-                  {soloSave.data.room.day + 1}일차 / {soloSave.data.room.total_days}일
-                </small>
-              </span>
-              <button className="btn sm primary" onClick={() => onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: soloSave.nickname, ui: profile.ui })}>
-                이어하기
-              </button>
-              <button
-                className="icon-btn sm"
-                aria-label="연습 기록 버리기"
-                title="버리기"
-                onClick={() => {
-                  saveSolo(null);
-                  setSoloSave(null);
-                }}
-              >
-                <Icon name="x" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
       {tab === 'ranked' &&
         (!online ? (
           <OfflineNote />
@@ -509,7 +460,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
                 {account.profile!.games > 0 ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승` : '랭킹전을 한 판 하면 순위에 올라가요'}
               </p>
               <ul className="rk-rules muted small">
-                <li>점수가 비슷한 사람끼리 만나요 (기다릴수록 범위가 넓어져요, 최대 ±400)</li>
+                <li>점수가 비슷한 사람끼리 만나요. 처음 2분은 ±400 안에서, 사람이 적으면 그 뒤로 더 넓혀 찾아요</li>
                 <li>중간에 기권하면 꼴찌로 계산돼요</li>
                 <li>같은 상대와는 하루 3판까지만 점수가 바뀌어요</li>
               </ul>
@@ -588,6 +539,68 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
         ) : (
           <OfflineNote />
         ))}
+      {tab === 'custom' && online && (
+        <section className="panel pad hub-rooms">
+          <div className="hr-head">
+            <h3>
+              <Icon name="door" size={18} /> 지금 열린 방
+            </h3>
+            <button className="btn sm ghost" onClick={() => gate.guard(() => go('rooms'))}>
+              전체 보기 <Icon name="right" size={14} />
+            </button>
+          </div>
+          {roomList === null && <p className="muted small">불러오는 중…</p>}
+          {roomList !== null && roomList.length === 0 && <p className="muted small">지금 열린 방이 없어요. 방을 만들고 친구에게 코드를 보내 보세요.</p>}
+          {roomList !== null && roomList.length > 0 && (
+            <ul className="hr-list">
+              {roomList.slice(0, 6).map((r) => (
+                <li key={r.id}>
+                  <button className="hr-row" onClick={() => gate.guard(() => go('rooms'))}>
+                    <span className="hr-title">
+                      {r.isPrivate && <Icon name="lock" size={13} />} <FitText>{r.title}</FitText>
+                    </span>
+                    <small className="muted">
+                      {r.totalDays}일 · 하루 {turnLabel(r.turnSeconds)}
+                    </small>
+                    <span className="hr-count">
+                      {r.players}/{r.maxPlayers}명
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {(tab === 'ranked' || tab === 'casual') && member && account.recent.length > 0 && (
+        <section className="panel pad hub-recent">
+          <div className="hr-head">
+            <h3>
+              <Icon name="clock" size={18} /> 최근 대결
+            </h3>
+            <button className="btn sm ghost" onClick={() => go('records')}>
+              기록 전체 <Icon name="right" size={14} />
+            </button>
+          </div>
+          <ul className="hr-list">
+            {account.recent.slice(0, 5).map((m) => (
+              <li key={m.room_id} className="hr-row static">
+                <span className={'hr-rank r' + m.rank}>{m.rank}등</span>
+                <small className="muted">
+                  {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                </small>
+                <span className={'hr-ret ' + (m.ret >= 0 ? 'up' : 'down')}>{pct(m.ret, 1)}</span>
+                {m.rated && m.rating_before !== null && m.rating_after !== null && (
+                  <span className={'hr-elo ' + (m.rating_after >= m.rating_before ? 'up' : 'down')}>
+                    {m.rating_after >= m.rating_before ? '+' : ''}
+                    {m.rating_after - m.rating_before}점
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {tab === 'practice' && (
         <nav className="home-actions">
@@ -660,6 +673,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
                 <Icon name="medal" /> 기록·업적 <Icon name="right" size={14} />
               </button>
             )}
+            <button className="more-row" onClick={() => go('practice')}>
+              <Icon name="target" /> 연습 (혼자 연습·튜토리얼) <Icon name="right" size={14} />
+            </button>
             <button className="more-row" onClick={() => go('companies')}>
               <Icon name="book" /> 기업 도감 <Icon name="right" size={14} />
             </button>
@@ -1122,10 +1138,96 @@ function Records({ go }: Pick<Props, 'go'>) {
   );
 }
 
+/**
+ * 재입장 안내 (배그의 '매치 재입장'처럼): 직접 나가지(기권) 않았는데 게임 밖에 있으면
+ * — 창을 닫았거나 인터넷이 끊겼거나 뒤로가기로 빠진 경우 — 로비에 들어올 때 한 번 물어봄
+ * 대결: 다시 입장 / 기권 · 대기실: 대기실로 / 나가기 · 연습: 이어하기 / 그만두기
+ */
+function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
+  const [multi, setMulti] = useState<ResumeInfo | null>(null);
+  const [solo, setSolo] = useState(() => {
+    const s = loadSolo();
+    return s && s.data.room.status !== 'finished' ? s : null;
+  });
+  const [busy, setBusy] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!online) return;
+    api<ResumeInfo | null>('resume').then(setMulti).catch(() => {});
+  }, []);
+  if (hidden) return null;
+  const close = () => setHidden(true);
+  if (multi) {
+    const playing = multi.status === 'playing';
+    return (
+      <Modal title={<><Icon name={playing ? 'play' : 'door'} size={18} /> {playing ? '진행 중인 대결이 있어요' : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
+        <p className="muted small">
+          {playing
+            ? '연결이 끊겼거나 창이 닫혀서 대결 밖에 있어요. 대결은 계속 진행되고 있어요. 다시 들어갈까요?'
+            : '대기실에 자리가 남아 있어요. 돌아가거나, 방에서 나갈 수 있어요.'}
+        </p>
+        <p className="rc-room">
+          {multi.nickname} · 코드 <code>{multi.code}</code>
+        </p>
+        <div className="modal-actions rc-actions">
+          <button
+            className="btn danger ghost"
+            disabled={busy}
+            onClick={() => {
+              if (playing && !window.confirm('기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?')) return;
+              setBusy(true);
+              api('leave', { roomId: multi.roomId })
+                .catch(() => {})
+                .finally(() => (setMulti(null), setBusy(false)));
+            }}
+          >
+            {playing ? '기권하기' : '방에서 나가기'}
+          </button>
+          <button
+            className="btn primary"
+            autoFocus
+            onClick={() =>
+              playing
+                ? onGame({ mode: 'multi', roomId: multi.roomId, code: multi.code, playerId: multi.playerId, nickname: multi.nickname, ui: multi.mode === 'pro' ? 'pro' : 'easy' })
+                : onWaiting(multi.roomId, multi.playerId, multi.nickname, multi.code)
+            }
+          >
+            {playing ? '다시 입장' : '대기실로'}
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+  if (solo)
+    return (
+      <Modal title={<><Icon name="target" size={18} /> 하던 연습 게임이 있어요</>} onClose={close}>
+        <p className="muted small">
+          연습 중에 창이 닫혔어요 ({solo.data.room.day + 1}일차 / {solo.data.room.total_days}일). 이어서 할까요?
+        </p>
+        <div className="modal-actions rc-actions">
+          <button
+            className="btn ghost"
+            onClick={() => {
+              saveSolo(null);
+              setSolo(null);
+            }}
+          >
+            그만두기
+          </button>
+          <button className="btn primary" autoFocus onClick={() => onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: solo.nickname, ui: loadUi() })}>
+            이어하기
+          </button>
+        </div>
+      </Modal>
+    );
+  return null;
+}
+
 const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
   ranked: 'ranked',
   casual: 'casual',
   custom: 'custom',
+  friends: 'friends',
   practice: 'practice',
   more: 'more',
   rooms: 'custom',
@@ -1139,6 +1241,9 @@ const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
 export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
+  // 받은 친구 신청 수 → 메뉴 배지 (회원만, 30초마다)
+  const friends = useFriendsPoll(online && account.status === 'member');
+  const badges = { friends: friends?.incoming.length ?? 0 };
   const resolved: LobbyPage = page === 'home' ? lastTab() : page;
   const active = PAGE_TAB[resolved] ?? null;
   useEffect(() => {
@@ -1174,6 +1279,19 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     case 'ranking':
       body = <RankingPage onBack={back} onLogin={() => go('login')} />;
       break;
+    case 'friends':
+      body = (
+        <div className="hub hub-friends">
+          <header className="hub-head">
+            <div>
+              <h2>친구</h2>
+              <p className="muted small">닉네임으로 친구를 추가하고 접속 상태를 봐요</p>
+            </div>
+          </header>
+          <FriendsPage onSignup={() => go('signup')} onLogin={() => go('login')} />
+        </div>
+      );
+      break;
     case 'ranked':
     case 'casual':
     case 'custom':
@@ -1194,6 +1312,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onGo={goTab}
         onProfile={() => go('me')}
         onLogin={() => go('login')}
+        badges={badges}
         footer={
           <>
             <button className="linkish-soft" onClick={() => setModal('feedback')}>
@@ -1212,7 +1331,8 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         </div>
         <div className="lobby-body">{body}</div>
       </main>
-      <BottomNav active={active} online={online} onGo={goTab} />
+      <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
+      <Reconnect onWaiting={onWaiting} onGame={onGame} />
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}

@@ -93,7 +93,10 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 금액 표시는 `won()`(=`wonShort`) 하나로: 초보 만원(끝자리까지) · 일반 원, 커스텀에서 변경
 - 아이콘은 이모지 대신 `src/components/Icon.tsx`(Lucide). 업종 `SectorIcon`, 카드 `CardIcon`, 업적 `BadgeIcon`
 - 로비 = 메뉴 틀(`src/components/LobbyNav.tsx`): PC 861px 이상 왼쪽 메뉴(1180px 미만은 아이콘 위주), 860px 이하 위 머리줄 + 아래 탭바 5칸. 주소: `/ranked` `/casual` `/custom` `/learn`(연습 메뉴 — `/practice` 는 혼자 연습 게임) `/more`(설정·더보기) `/ranking` `/records` `/companies` `/rooms` `/create` `/login` `/signup` `/me`. `/` 는 마지막에 고른 대결 메뉴(`stockduel.tab`, 처음엔 일반전). 스타일 `styles-nav.css`(맨 마지막)
-- 닉네임 칸은 로비에 없음: 회원=프로필 닉네임, 게스트는 온라인 기능을 처음 누를 때 `useGuestGate` 안내(게스트/회원 비교 → 게스트로 시작 때만 닉네임). 게스트 닉네임은 회원 닉네임과 같을 수 없음(서버 `nickFor`, 대소문자 무시). 설계서 `design/lobby-nav-friends.md` (② 친구 · ③ 초대·1대1 신청 · ④ 일반전 파티는 아직)
+- 닉네임 칸은 로비에 없음: 회원=프로필 닉네임, 게스트는 온라인 기능을 처음 누를 때 `useGuestGate` 안내(게스트/회원 비교 → 게스트로 시작 때만 닉네임). 게스트 닉네임은 회원 닉네임과 같을 수 없음(서버 `nickFor`, 대소문자 무시). 설계서 `design/lobby-nav-friends.md` (② 친구 완료 · ③ 초대·1대1 신청 · ④ 일반전 파티는 아직)
+- 친구(018, `api/_lib/social.ts`, 화면 `src/screens/Friends.tsx`, 주소 `/friends`): 회원만, 정확한 닉네임으로 신청(대소문자 무시·와일드카드 무력화), 수락·거절·끊기·차단(상대는 모름 — 차단당한 사람 신청은 겉으로 '대기 중')·차단 풀기, 친구에게만 접속 상태(profiles.last_seen 2분, 게임 중). 화면 id 는 관계 줄 id(user id 아님). 메뉴 배지 = 받은 신청 수(30초마다). 테스트 `scripts/e2e/social.mjs`(테스트 회원은 `.members.json` 에 두고 재사용)
+- 재입장(배그식): 로비에 '이어하기' 카드 없음. 직접 나가면(대결=기권, 연습=그만두기·저장 삭제) 끝. 창 닫힘·끊김·뒤로가기로 빠졌으면 로비에 들어올 때 `Reconnect` 팝업(다시 입장/기권, 대기실로/나가기, 연습 이어하기/그만두기). 게임 안 나가기 시트 = 계속하기 / 기권 / 다른 기기로 옮기기 코드
+- 매칭 대기: `queueCounts`(대기열별 인원·예상 대기·접속 수, 숫자만) · 예상 대기 `estimateWaitSec`(같은 대기열 범위 안/밖 인원, 최근 1시간 매칭 인원, 접속 수) · 25초 넘게 기다리면 사람이 기다리는 다른 대기열로 바꾸기 제안, 다인전 45초면 1대1 제안 · 랭킹전 범위는 처음 2분 ±400, 그 뒤 풀림(`rankedMax`)
 - 뉴스의 `fake`/진실은 서버에만. 화면 데이터는 `publicNews` 를 거쳐 오늘 뉴스는 감별기 쓴 사람에게만 `verdict`, 지난 뉴스는 가짜·루머에 `verdict`
 - 반응(이모지) broadcast 채널은 방 ID 를 알면 들어올 수 있음 → 받는 쪽에서 정해진 목록만 표시
 - 요청 제한은 서버 인스턴스 메모리 기준(완벽한 전역 제한은 아님)

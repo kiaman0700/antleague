@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseQueue, pickGroup, ratingWindow, RANKED_MAX_WINDOW, type Ticket } from './matching.js';
+import { parseQueue, pickGroup, ratingWindow, RANKED_MAX_WINDOW, rankedMax, type Ticket } from './matching.js';
 
 const now = 1_800_000_000_000;
 const t = (id: string, rating: number, agoSec: number): Ticket => ({ id, rating, createdAt: now - agoSec * 1000 });
@@ -39,7 +39,13 @@ describe('매칭', () => {
     const me = t('me', 1000, 300);
     expect(pickGroup(me, [me, t('a', 1000, 300)], 'multi', now)).toBeNull();
   });
-  it('랭킹전: 아무리 기다려도 점수 차 400 넘게는 안 만남', () => {
+  it('랭킹전: 처음 2분은 ±400까지, 2분 넘게 못 만나면 더 넓게 (사람이 적을 때 끝없이 기다리지 않게)', () => {
+    expect(ratingWindow(t('a', 1000, 100), now, rankedMax)).toBe(400);
+    expect(ratingWindow(t('a', 1000, 130), now, rankedMax)).toBe(750);
+    expect(pickGroup(t('me', 1600, 30), [t('x', 1000, 30)], 'duel', now, rankedMax)).toBeNull();
+    expect(pickGroup(t('me', 1600, 130), [t('x', 1000, 130)], 'duel', now, rankedMax)).not.toBeNull();
+  });
+  it('랭킹전(고정 400): 점수 차 400 넘게는 안 만남', () => {
     expect(ratingWindow(t('a', 1000, 3600), now, RANKED_MAX_WINDOW)).toBe(400);
     expect(pickGroup(t('me', 1500, 600), [t('x', 1000, 600)], 'duel', now, RANKED_MAX_WINDOW)).toBeNull();
     expect(pickGroup(t('me', 1400, 600), [t('x', 1000, 600)], 'duel', now, RANKED_MAX_WINDOW)).not.toBeNull();
@@ -51,5 +57,35 @@ describe('매칭', () => {
     expect(g?.length).toBe(4);
     const r = g!.map((x) => x.rating);
     expect(Math.max(...r) - Math.min(...r)).toBeLessThanOrEqual(100);
+  });
+});
+
+import { estimateWaitSec, waitLabel } from './matching.js';
+describe('예상 대기 시간', () => {
+  it('1대1: 범위 안에 사람이 있으면 곧', () => {
+    expect(estimateWaitSec({ size: 'duel', similar: 1, nearestGap: null, arrivalsPerMin: 0, waitedMs: 0 })).toBe(5);
+  });
+  it('1대1: 범위 밖 사람만 있으면 범위가 넓어질 때까지 (점수 차 300 → 약 40초)', () => {
+    expect(estimateWaitSec({ size: 'duel', similar: 0, nearestGap: 300, arrivalsPerMin: 0, waitedMs: 0 })).toBe(40);
+  });
+  it('1대1: 아무도 없고 최근 매칭도 없으면 모름', () => {
+    expect(estimateWaitSec({ size: 'duel', similar: 0, nearestGap: null, arrivalsPerMin: 0, waitedMs: 0 })).toBeNull();
+    expect(waitLabel(null)).toBe('예상하기 어려워요');
+  });
+  it('1대1: 분당 2명 들어오면 약 30초', () => {
+    expect(estimateWaitSec({ size: 'duel', similar: 0, nearestGap: null, arrivalsPerMin: 2, waitedMs: 0 })).toBe(30);
+  });
+  it('다인전: 4명이면 곧, 3명이면 40초 규칙까지', () => {
+    expect(estimateWaitSec({ size: 'multi', similar: 3, nearestGap: null, arrivalsPerMin: 0, waitedMs: 0 })).toBe(5);
+    expect(estimateWaitSec({ size: 'multi', similar: 2, nearestGap: null, arrivalsPerMin: 0, waitedMs: 10_000 })).toBe(30);
+  });
+  it('랭킹전 상한(처음 2분 ±400) 때문에 더 걸리는 경우도 계산', () => {
+    const s = estimateWaitSec({ size: 'duel', similar: 0, nearestGap: 600, arrivalsPerMin: 0, waitedMs: 0, max: rankedMax });
+    expect(s).toBeGreaterThanOrEqual(120);
+  });
+  it('표시 문구', () => {
+    expect(waitLabel(5)).toBe('곧 잡혀요');
+    expect(waitLabel(45)).toBe('약 45초');
+    expect(waitLabel(150)).toBe('약 3분');
   });
 });

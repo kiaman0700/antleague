@@ -4,12 +4,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { api, leaveQueueOnExit } from '../net/api';
-import { SPEED_PRESET, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
+import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { play } from '../lib/sound';
 import { loadNick } from '../session';
 
 const PREF = 'stockduel.match';
+/** 선택지 아래 작은 글씨: 설명 + 지금 기다리는 사람 수 */
+const waitTag = (base: string, n: number) => (n > 0 ? `${base} · ${n}명 대기` : base);
 const loadPref = (): { kind: QueueKind; size: QueueSize; speed: QueueSpeed } => {
   try {
     const v = JSON.parse(localStorage.getItem(PREF) ?? 'null');
@@ -49,8 +51,9 @@ interface Props {
 export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
   const [pref, setPref] = useState(loadPref);
   const [searching, setSearching] = useState(false);
-  const [info, setInfo] = useState<{ waitedSec: number; inQueue: number; window: number } | null>(null);
+  const [info, setInfo] = useState<{ waitedSec: number; inQueue: number; window: number; similar: number; online: number; etaSec: number | null } | null>(null);
   const [err, setErr] = useState('');
+  const [linking, setLinking] = useState(false);
   const matchedRef = useRef(false);
   const want = fixedKind ?? pref.kind;
   const kind: QueueKind = want === 'ranked' && !member ? 'casual' : want;
@@ -70,10 +73,12 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     return begin();
   };
   const [joining, setJoining] = useState(false);
-  const begin = async () => {
+  const begin = async (over?: { size: QueueSize; speed: QueueSpeed }) => {
     setJoining(true);
+    const size = over?.size ?? pref.size;
+    const speed = over?.speed ?? pref.speed;
     try {
-      await api('queueJoin', { queue: `${kind}_${pref.size}_${pref.speed}`, nickname: (member ? nickname : loadNick() || nickname).trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
+      await api('queueJoin', { queue: `${kind}_${size}_${speed}`, nickname: (member ? nickname : loadNick() || nickname).trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
       matchedRef.current = false;
       setLinking(false);
       setInfo(null);
@@ -84,7 +89,6 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
       setJoining(false);
     }
   };
-  const [linking, setLinking] = useState(false);
   const cancel = async () => {
     try {
       const r = await api<{ ok: boolean; pending?: boolean }>('queueLeave');
@@ -94,6 +98,49 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
       /* 연결이 끊겼어도 화면은 닫음 — 서버가 10초 뒤 대기표를 정리 */
     }
     setSearching(false);
+  };
+
+  // 대기열마다 지금 기다리는 사람 수 (사람이 적을 때 붐비는 쪽을 고르게)
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [eta, setEta] = useState<Record<string, number | null>>({});
+  const [online, setOnline] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      if (document.visibilityState !== 'visible') return;
+      api<{ counts: Record<string, number>; eta?: Record<string, number | null>; online?: number }>('queueCounts')
+        .then((r) => {
+          if (!alive) return;
+          setCounts(r.counts ?? {});
+          setEta(r.eta ?? {});
+          setOnline(r.online ?? null);
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, searching ? 5000 : 10_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [searching]);
+  const waitingIn = (size: QueueSize, speed: QueueSpeed) => counts[`${kind}_${size}_${speed}`] ?? 0;
+  const label = (size: QueueSize, speed: QueueSpeed) => `${size === 'duel' ? '1대1' : '다인전'} ${SPEED_PRESET[speed].label}`;
+  /** 오래 기다리면: 사람이 기다리는 다른 대기열(같은 랭킹전/일반전)로 바꾸기 제안 */
+  const alt = (() => {
+    if (!info || linking) return null;
+    const opts: [QueueSize, QueueSpeed][] = (['duel', 'multi'] as QueueSize[]).flatMap((z) => (['quick', 'normal'] as QueueSpeed[]).map((p) => [z, p] as [QueueSize, QueueSpeed]));
+    const others = opts.filter(([z, p]) => !(z === pref.size && p === pref.speed)).map(([z, p]) => ({ size: z, speed: p, n: waitingIn(z, p) }));
+    const busy = others.filter((o) => o.n > 0).sort((a, b) => b.n - a.n)[0];
+    if (info.waitedSec >= 25 && busy) return busy;
+    // 다인전이 45초 넘게 안 모이면 1대1 을 권함 (기다리는 사람이 없어도 먼저 들어가 있으면 다음 사람과 바로)
+    if (info.waitedSec >= 45 && pref.size === 'multi') return { size: 'duel' as QueueSize, speed: pref.speed, n: waitingIn('duel', pref.speed) };
+    return null;
+  })();
+  const switchTo = async (o: { size: QueueSize; speed: QueueSpeed }) => {
+    save({ ...pref, size: o.size, speed: o.speed });
+    setSearching(false);
+    await begin(o);
   };
 
   // 결과 화면에서 '다시 찾기'로 왔으면 바로 시작
@@ -117,7 +164,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     let alive = true;
     const tick = async () => {
       try {
-        const s = await api<{ status: string; waitedSec?: number; inQueue?: number; window?: number } & Partial<Matched>>('queueStatus');
+        const s = await api<{ status: string; waitedSec?: number; inQueue?: number; window?: number; similar?: number; online?: number; etaSec?: number | null } & Partial<Matched>>('queueStatus');
         if (!alive) return;
         if (s.status === 'matched' && s.roomId && s.playerId) {
           matchedRef.current = true;
@@ -131,7 +178,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           setErr('대기가 끝났어요. 다시 찾아 주세요.');
           return;
         }
-        setInfo({ waitedSec: s.waitedSec ?? 0, inQueue: s.inQueue ?? 1, window: s.window ?? 100 });
+        setInfo({ waitedSec: s.waitedSec ?? 0, inQueue: s.inQueue ?? 1, window: s.window ?? 100, similar: s.similar ?? 0, online: s.online ?? 0, etaSec: s.etaSec ?? null });
       } catch (e) {
         if (alive) setErr(e instanceof Error ? e.message : String(e));
       }
@@ -178,10 +225,16 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         </h3>
       )}
       {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
-      {seg(pref.size, [['duel', '1대1', '두 명'], ['multi', '다인전', '3~4명']], (v) => save({ ...pref, size: v }))}
-      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, SPEED_PRESET.quick.minutes], ['normal', SPEED_PRESET.normal.label, SPEED_PRESET.normal.minutes]], (v) => save({ ...pref, speed: v }))}
+      {seg(pref.size, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))}
+      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(pref.size, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(pref.size, 'normal'))]], (v) => save({ ...pref, speed: v }))}
       {!member && !loading && !fixedKind && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
       {err && <p className="error">{err}</p>}
+      {online !== null && (
+        <p className="mf-eta" aria-live="polite">
+          <Icon name="hourglass" size={14} /> 예상 대기 <b>{waitLabel(eta[`${kind}_${pref.size}_${pref.speed}`] ?? null)}</b>
+          {waitingIn(pref.size, pref.speed) > 0 && <small className="muted"> · {waitingIn(pref.size, pref.speed)}명 기다리는 중</small>}
+        </p>
+      )}
       <button className="btn primary xl full" onClick={start} disabled={searching || loading || joining}>
         <Icon name="search" size={18} /> {joining ? '준비 중…' : `${kind === 'ranked' ? '랭킹전' : '일반전'} 찾기`}
       </button>
@@ -197,8 +250,27 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <p className="mf-time">{info ? `${Math.floor(info.waitedSec / 60)}:${String(info.waitedSec % 60).padStart(2, '0')}` : '0:00'}</p>
             <small className="muted">
               {pref.size === 'multi' ? '4명이 모이면 바로, 3명이면 조금 기다렸다가 시작해요. ' : ''}
-              {kind === 'ranked' ? `점수 ±${info?.window ?? 100} 안에서 찾는 중 (기다릴수록 넓어져요)` : '실력이 비슷한 사람부터 찾아요'}
+              {kind === 'ranked'
+                ? (info?.waitedSec ?? 0) >= 120
+                  ? '사람이 적어서 점수 범위를 넓혀 찾는 중이에요'
+                  : `점수 ±${info?.window ?? 100} 안에서 찾는 중 (기다릴수록 넓어져요)`
+                : '실력이 비슷한 사람부터 찾아요'}
             </small>
+            {info && (
+              <p className="mf-eta in-modal">
+                <Icon name="hourglass" size={14} /> 예상 대기 <b>{waitLabel(info.etaSec)}</b>
+              </p>
+            )}
+            {info && (
+              <small className="mf-queue">
+                나 포함 {Math.max(1, info.inQueue)}명이 기다리는 중
+              </small>
+            )}
+            {alt && (
+              <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>
+                <Icon name="refresh" size={14} /> {label(alt.size, alt.speed)}으로 바꿔 찾기{alt.n > 0 ? ` · ${alt.n}명 대기 중` : ''}
+              </button>
+            )}
             {linking ? (
               <p className="mf-linking">상대를 찾았어요! 방을 만드는 중…</p>
             ) : (

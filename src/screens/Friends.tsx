@@ -1,0 +1,295 @@
+/**
+ * 친구 (회원만): 닉네임으로 신청, 받은 신청 수락·거절, 친구 목록(접속 상태), 삭제·차단, 차단 풀기
+ * 서버는 user id 를 보내지 않음 — 화면의 id 는 '친구 관계 줄'의 id
+ */
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { api } from '../net/api';
+import { useAccount } from '../net/account';
+import { Icon } from '../components/Icon';
+import { BADGES } from '../game/achievements';
+
+export interface FriendItem {
+  id: string;
+  nickname: string;
+  title: string | null;
+  rating: number;
+  status?: 'online' | 'playing' | 'offline';
+  at?: string;
+}
+export interface FriendsData {
+  friends: FriendItem[];
+  incoming: FriendItem[];
+  outgoing: FriendItem[];
+  blocked: { id: string; nickname: string }[];
+  max: number;
+}
+
+/* 친구 목록은 메뉴 배지(받은 신청 수)와 친구 화면이 함께 씀 */
+let data: FriendsData | null = null;
+const subs = new Set<() => void>();
+const emit = () => subs.forEach((f) => f());
+let inflight: Promise<void> | null = null;
+export function refreshFriends(): Promise<void> {
+  if (inflight) return inflight;
+  inflight = api<FriendsData>('friends')
+    .then((d) => {
+      data = d;
+      emit();
+    })
+    .catch(() => {})
+    .finally(() => (inflight = null));
+  return inflight;
+}
+export function clearFriends() {
+  data = null;
+  emit();
+}
+export function useFriends() {
+  return useSyncExternalStore(
+    (cb) => {
+      subs.add(cb);
+      return () => subs.delete(cb);
+    },
+    () => data,
+  );
+}
+
+/** 회원이면 30초마다(화면이 보일 때만) 친구·신청을 다시 받아 옴 → 메뉴 배지 */
+export function useFriendsPoll(member: boolean) {
+  useEffect(() => {
+    if (!member) return clearFriends();
+    refreshFriends();
+    const id = setInterval(() => document.visibilityState === 'visible' && refreshFriends(), 30_000);
+    const onVis = () => document.visibilityState === 'visible' && refreshFriends();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [member]);
+  return useFriends();
+}
+
+const STATUS: Record<string, [string, string]> = {
+  playing: ['게임 중', 'st-playing'],
+  online: ['접속 중', 'st-online'],
+  offline: ['오프라인', 'st-offline'],
+};
+const titleName = (t: string | null) => (t ? (BADGES.find((b) => b.id === t)?.name ?? null) : null);
+
+export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLogin: () => void }) {
+  const acc = useAccount();
+  const member = acc.status === 'member';
+  const d = useFriends();
+  const [nick, setNick] = useState('');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [menu, setMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (member) refreshFriends();
+  }, [member]);
+
+  const run = useCallback(async (fn: () => Promise<unknown>, ok?: string) => {
+    setErr('');
+    setMsg('');
+    setBusy(true);
+    try {
+      await fn();
+      if (ok) setMsg(ok);
+      await refreshFriends();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      setMenu(null);
+    }
+  }, []);
+
+  if (acc.status === 'loading')
+    return (
+      <section className="panel pad hub-skel" aria-busy="true">
+        <span className="muted small">내 계정을 확인하는 중…</span>
+      </section>
+    );
+  if (!member)
+    return (
+      <section className="panel pad ranked-guest">
+        <i className="rg-icon">
+          <Icon name="users" size={34} />
+        </i>
+        <h3>친구 기능은 회원만 쓸 수 있어요</h3>
+        <p className="muted">친구를 추가하면 접속 중인지 보이고, 앞으로 방 초대·1대1 신청도 할 수 있어요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+        <div className="rg-actions">
+          <button className="btn primary" onClick={onSignup}>
+            <Icon name="userPlus" /> 회원가입
+          </button>
+          <button className="btn" onClick={onLogin}>
+            로그인
+          </button>
+        </div>
+      </section>
+    );
+
+  const confirmThen = (q: string, fn: () => Promise<unknown>, ok: string) => {
+    if (window.confirm(q)) run(fn, ok);
+  };
+
+  return (
+    <div className="friends">
+      <section className="panel pad fr-add">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const n = nick.trim();
+            if (!n) return;
+            run(async () => {
+              const r = await api<{ status: string }>('friendRequest', { nickname: n });
+              setNick('');
+              setMsg(r.status === 'accepted' ? `${n} 님과 친구가 됐어요!` : `${n} 님에게 친구 신청을 보냈어요.`);
+            });
+          }}
+        >
+          <label className="field">
+            <span>닉네임으로 친구 추가 (정확히 입력)</span>
+            <div className="fr-add-row">
+              <input value={nick} maxLength={10} placeholder="친구 닉네임" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
+              <button className="btn primary" disabled={busy || !nick.trim()}>
+                <Icon name="userPlus" size={16} /> 신청
+              </button>
+            </div>
+          </label>
+        </form>
+        {msg && <p className="good-msg small">{msg}</p>}
+        {err && <p className="error small">{err}</p>}
+      </section>
+
+      {d && d.incoming.length > 0 && (
+        <section className="panel pad">
+          <h3 className="fr-h">
+            받은 신청 <span className="fr-count">{d.incoming.length}</span>
+          </h3>
+          <ul className="fr-list">
+            {d.incoming.map((f) => (
+              <li key={f.id} className="fr-row">
+                <span className="fr-av">{f.nickname.slice(0, 1)}</span>
+                <span className="fr-txt">
+                  <b>{f.nickname}</b>
+                  <small className="muted">
+                    {titleName(f.title) ? `${titleName(f.title)} · ` : ''}
+                    {f.rating}점
+                  </small>
+                </span>
+                <span className="fr-act">
+                  <button className="btn sm primary" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: true }), `${f.nickname} 님과 친구가 됐어요!`)}>
+                    수락
+                  </button>
+                  <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: false }))}>
+                    거절
+                  </button>
+                  <button className="icon-btn sm" aria-label={`${f.nickname} 차단`} title="차단" disabled={busy} onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 이 사람의 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
+                    <Icon name="eyeOff" size={16} />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="panel pad">
+        <h3 className="fr-h">
+          친구 <span className="fr-count">{d ? `${d.friends.length}/${d.max}` : ''}</span>
+        </h3>
+        {!d && <p className="muted small">불러오는 중…</p>}
+        {d && d.friends.length === 0 && (
+          <div className="empty-state small">
+            <i>
+              <Icon name="users" size={28} />
+            </i>
+            <b>아직 친구가 없어요</b>
+            <small>위에서 친구 닉네임을 입력해 신청해 보세요.</small>
+          </div>
+        )}
+        {d && d.friends.length > 0 && (
+          <ul className="fr-list">
+            {d.friends.map((f) => {
+              const [label, cls] = STATUS[f.status ?? 'offline'];
+              return (
+                <li key={f.id} className="fr-row">
+                  <span className={'fr-av ' + cls}>{f.nickname.slice(0, 1)}</span>
+                  <span className="fr-txt">
+                    <b>{f.nickname}</b>
+                    <small className="muted">
+                      <span className={'fr-dot ' + cls} aria-hidden /> {label} · {f.rating}점{titleName(f.title) ? ` · ${titleName(f.title)}` : ''}
+                    </small>
+                  </span>
+                  <span className="fr-act">
+                    <button className="icon-btn sm" aria-label={`${f.nickname} 메뉴`} aria-expanded={menu === f.id} onClick={() => setMenu(menu === f.id ? null : f.id)}>
+                      <Icon name="list" size={16} />
+                    </button>
+                    {menu === f.id && (
+                      <span className="fr-menu" role="menu">
+                        <button role="menuitem" onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>
+                          친구 끊기
+                        </button>
+                        <button role="menuitem" className="danger" onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 친구에서도 빠지고, 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
+                          차단
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="muted small fr-note">친구에게만 내 접속 상태(접속 중·게임 중)가 보여요. 아이디는 누구에게도 보이지 않아요.</p>
+      </section>
+
+      {d && d.outgoing.length > 0 && (
+        <section className="panel pad">
+          <h3 className="fr-h">보낸 신청</h3>
+          <ul className="fr-list">
+            {d.outgoing.map((f) => (
+              <li key={f.id} className="fr-row">
+                <span className="fr-av">{f.nickname.slice(0, 1)}</span>
+                <span className="fr-txt">
+                  <b>{f.nickname}</b>
+                  <small className="muted">답을 기다리는 중 · 7일 뒤 자동으로 사라져요</small>
+                </span>
+                <span className="fr-act">
+                  <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('friendRemove', { id: f.id }), '신청을 취소했어요')}>
+                    취소
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {d && d.blocked.length > 0 && (
+        <section className="panel pad">
+          <h3 className="fr-h">차단한 사람</h3>
+          <ul className="fr-list">
+            {d.blocked.map((x) => (
+              <li key={x.id} className="fr-row">
+                <span className="fr-av">{x.nickname.slice(0, 1)}</span>
+                <span className="fr-txt">
+                  <b>{x.nickname}</b>
+                </span>
+                <span className="fr-act">
+                  <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('unblock', { id: x.id }), '차단을 풀었어요')}>
+                    차단 풀기
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
