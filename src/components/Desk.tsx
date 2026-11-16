@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { GameCard } from './GameCard';
 import { CardIcon, Icon, type IconName } from './Icon';
-import { canUse, HOLD_LIMIT, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
+import { canUse, holdLimit, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
 import { STOCK_MAP } from '../game/stocks';
 import { pct, tone, wonShort } from '../lib/format';
@@ -174,20 +174,21 @@ export function CardTray({
     <div className="tray">
       <div className="tray-head">
         <b>
-          🃏 찬스 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
+          🃏 찬스 카드 <span className="count-badge">{mine.total}/{holdLimit(version)}</span>
         </b>
         <button className="btn sm" onClick={onOpen}>
           <Icon name="cart" /> 상점 · 전체
         </button>
       </div>
-      <div className="tray-cards gc-row">
+      {/* 카드는 손에 쥔 것처럼 겹쳐 두고, 마우스를 올리면 부채꼴로 촤라락 펼쳐지며 올린 카드가 위로 (터치 기기는 나란히) */}
+      <div className={'tray-cards gc-row fan' + (owned.length > 1 ? ' many' : '')} style={{ ['--n' as string]: owned.length }}>
         {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
-        {owned.map(([k, n]) => {
+        {owned.map(([k, n], i) => {
           const d = ITEM_MAP[k];
           const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : (blockReason ?? '지금은 쓸 수 없어요');
           return (
+            <div key={k} className="fan-slot" style={{ ['--i' as string]: i - (owned.length - 1) / 2 }}>
             <GameCard
-              key={k}
               kind={k}
               count={n}
               size="sm"
@@ -197,6 +198,7 @@ export function CardTray({
               action={d.passive ? undefined : { label: `${d.name} 사용하기`, disabled: !!why || busy, onClick: () => onUse(k) }}
               footer={d.passive ? <span className="tc-auto">자동</span> : undefined}
             />
+            </div>
           );
         })}
       </div>

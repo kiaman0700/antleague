@@ -44,6 +44,8 @@ export const ITEM_KINDS = ITEMS.map((i) => i.kind);
 export const START_CARDS = 2;
 export const GRANT_EVERY = 5;
 export const HOLD_LIMIT = 3;
+/** 한 사람이 가질 수 있는 카드 수: v10 부터 5장 (예전 방은 3장) */
+export const holdLimit = (version = 1) => (version >= 10 ? 5 : HOLD_LIMIT);
 export const USE_LIMIT = 2;
 export const FEE_BOMB_RATE = 0.01;
 export const FEE_BOMB_DAYS = 3;
@@ -166,7 +168,7 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
       const rng = mulberry32((seed ^ (v3 ? 0x5eed : hash(id))) + d * 7919);
       for (let i = 0; i < n; i++) {
         const kind = pool[Math.floor(rng() * pool.length)];
-        const skipped = p.total >= HOLD_LIMIT;
+        const skipped = p.total >= holdLimit(version);
         p.grants.push({ day: d, kind, skipped });
         if (!skipped) add(p, kind, 1);
       }
@@ -256,10 +258,10 @@ export function itemCost(kind: ItemKind, players: number, version = 1): number {
   return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / unit) * unit : base;
 }
 
-export function canBuy(p: PlayerItems, kind: ItemKind, cash: number, cost = ITEM_MAP[kind].cost): string | null {
+export function canBuy(p: PlayerItems, kind: ItemKind, cash: number, cost = ITEM_MAP[kind].cost, limit = HOLD_LIMIT): string | null {
   const def = ITEM_MAP[kind];
   if (!def || def.shopless) return '상점에서 살 수 없는 카드예요';
-  if (p.total >= HOLD_LIMIT) return `카드는 최대 ${HOLD_LIMIT}장까지 가질 수 있어요`;
+  if (p.total >= limit) return `카드는 최대 ${limit}장까지 가질 수 있어요`;
   if ((p.used[kind] ?? 0) + (p.inventory[kind] ?? 0) >= USE_LIMIT) return `이 카드는 한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
   if (cash < cost) return '현금이 부족해요';
   return null;

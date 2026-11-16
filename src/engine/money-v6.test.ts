@@ -139,3 +139,14 @@ describe('v9: 카드 값 (시뮬로 다시 맞춤)', () => {
     expect(itemCost('paper', 3, 8)).toBe(30_000);
   });
 });
+
+describe('v10: 카드 5장까지', () => {
+  it('v10 은 5장, 그 전 방은 3장', async () => {
+    const { holdLimit, canBuy } = await import('../game/items.js');
+    expect(holdLimit(10)).toBe(5);
+    expect(holdLimit(9)).toBe(3);
+    const p = { inventory: { scout: 1, detector: 1, analyst: 1 }, used: {}, infoUses: [], grants: [], total: 3 };
+    expect(canBuy(p, 'paper', 1e9, 1, holdLimit(9))).toMatch(/최대 3장/);
+    expect(canBuy(p, 'paper', 1e9, 1, holdLimit(10))).toBeNull();
+  });
+});

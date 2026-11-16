@@ -1741,3 +1741,46 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 .gcard:not(.dim) .gc-face[role='button'] { cursor: pointer; }
 .gcard:not(.dim) .gc-face[role='button']:active { transform: scale(0.97); }
 .gc-detail-act .btn.primary { min-width: 0; }
+/* 옵션 고르기 칸: 견본 그림이 없는 칸도 글이 가운데 오게 */
+.prefs .seg > button { justify-content: center; }
+
+/* ===== PC 카드 칸: 겹친 손패 → 마우스를 올리면 부채꼴 ===== */
+@media (hover: hover) and (pointer: fine) {
+  .tray-cards.gc-row.fan { display: block !important; position: relative; height: 178px; margin-top: 4px; }
+  .tray-cards.fan .fan-slot {
+    --w: 92px;
+    position: absolute; bottom: 0; left: 50%; width: var(--w); margin-left: calc(var(--w) / -2);
+    transform-origin: 50% 160%;
+    /* 겹친 모습: 조금씩 어긋나고 살짝 기울어짐 */
+    transform: translateX(calc(var(--i) * 18px)) rotate(calc(var(--i) * 3deg));
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0s;
+    z-index: 1;
+  }
+  /* 펼친 모습: 간격·기울기를 키워 부채꼴, 바깥 카드는 조금 아래로 */
+  .tray-cards.fan.many:hover .fan-slot {
+    transform: translateX(calc(var(--i) * 62px)) translateY(calc(var(--i) * var(--i) * 3px)) rotate(calc(var(--i) * 7deg));
+  }
+  .tray-cards.fan .fan-slot:hover { z-index: 5; }
+  .tray-cards.fan.many:hover .fan-slot:hover,
+  .tray-cards.fan:not(.many) .fan-slot:hover {
+    transform: translateX(calc(var(--i) * 62px)) translateY(-18px) rotate(0deg) scale(1.06);
+  }
+  .tray-cards.fan .fan-slot .gc-foot { position: absolute; left: 0; right: 0; top: -20px; }
+  .tray-cards.fan .gc-face { box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5); }
+}
+@media (prefers-reduced-motion: reduce) { .tray-cards.fan .fan-slot { transition: none; } }
+/* 부채꼴이 칸 폭 안에 들어오게: 펼침 간격 = (칸 폭 - 카드 폭) ÷ (장수 - 1), 최대 62px */
+@media (hover: hover) and (pointer: fine) {
+  .tray-cards.gc-row.fan { container-type: inline-size; height: 158px; }
+  .tray-cards.fan .fan-slot {
+    --w: 82px;
+    --gap: min(62px, calc((100cqw - var(--w) - 16px) / max(1, var(--n) - 1)));
+  }
+  .tray-cards.fan.many:hover .fan-slot {
+    transform: translateX(calc(var(--i) * var(--gap))) translateY(calc(var(--i) * var(--i) * 3px)) rotate(calc(var(--i) * 6deg));
+  }
+  .tray-cards.fan.many:hover .fan-slot:hover,
+  .tray-cards.fan:not(.many) .fan-slot:hover {
+    transform: translateX(calc(var(--i) * var(--gap))) translateY(-14px) rotate(0deg) scale(1.06);
+  }
+}

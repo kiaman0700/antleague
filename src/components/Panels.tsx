@@ -3,7 +3,7 @@ import { GameCard } from './GameCard';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
-import { ITEM_MAP, ITEMS, canBuy, canUse, itemCost, HOLD_LIMIT, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
+import { ITEM_MAP, ITEMS, canBuy, canUse, itemCost, holdLimit, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
@@ -307,7 +307,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
       ))}
       <div className="cards-head">
         <h4 className="sec-title">
-          내 카드 <span className="count-badge">{mine.total}/{HOLD_LIMIT}</span>
+          내 카드 <span className="count-badge">{mine.total}/{holdLimit(version)}</span>
         </h4>
         <span className="row">
           <button className="btn sm ghost" onClick={() => setGuide(true)}>
@@ -349,7 +349,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
         <div className="shop gc-grid">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
             const cost = itemCost(d.kind, players, version);
-            const why = canAct ? canBuy(mine, d.kind, cash, cost) : (blockReason ?? '지금은 살 수 없어요');
+            const why = canAct ? canBuy(mine, d.kind, cash, cost, holdLimit(version)) : (blockReason ?? '지금은 살 수 없어요');
             return (
               <GameCard
                 key={d.kind}

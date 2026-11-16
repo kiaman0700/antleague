@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, canBuy, canUse, deriveItems, drawBonus, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, TICK_MS, ticksPerDay } from '../game/intraday.js';
@@ -271,7 +271,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 9;
+export const CURRENT_RULES_VERSION = 10;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -663,7 +663,7 @@ export function validateBuyItem(d: GameData, meId: string, now: number, input: {
   if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 둘이서 할 때만 쓸 수 있어요.');
   const mine = itemsOf(d).players[meId];
   const cost = itemCost(kind, d.players.length, d.room.version ?? 1);
-  const why = canBuy(mine, kind, portfolioOf(d, meId).cash, cost);
+  const why = canBuy(mine, kind, portfolioOf(d, meId).cash, cost, holdLimit(d.room.version ?? 1));
   if (why) throw new GameError(why);
   return { player_id: meId, day: d.room.day, kind, action: 'buy', cost, payload: null };
 }
