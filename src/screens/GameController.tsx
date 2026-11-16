@@ -231,7 +231,14 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     }
     if (closing === null && !showResult && serverDay > viewDay) {
       setClosing(viewDay);
+      // 날이 바뀌면 열려 있던 창(주문·대상 고르기·가짜 뉴스·메뉴 등)은 닫음 — 지난 날 창으로 새 날에 카드가 쓰이지 않게
       setSheet(null);
+      setTargetPick(null);
+      setFakeModal(false);
+      setMenu(false);
+      setRankSheet(false);
+      setSchedSheet(false);
+      setExitAsk(false);
       play('close');
     }
   }, [serverDay, viewDay, closing, showResult, market, finished, total]);
@@ -283,6 +290,14 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const preLeft = preUntil !== null ? Math.max(0, Math.ceil((preUntil - (now + offset)) / 1000)) : 0;
   const inPre = preUntil !== null && preLeft > 0 && closing === null;
   const preReadyMe = !!meRow?.preReady;
+  // 카드를 지금 못 쓰는 이유 (버튼이 회색인 까닭을 그대로 알려 줌)
+  const cardBlock =
+    closing !== null ? '하루 결산 중이에요. 다음 날에 쓸 수 있어요'
+    : endedToday ? '장 마감을 눌렀어요. 마감을 취소하면 다시 쓸 수 있어요'
+    : remaining === 0 ? '시간이 다 됐어요. 곧 다음 날로 넘어가요'
+    : room?.status !== 'playing' ? '지금은 게임 중이 아니에요'
+    : null;
+  const cardCanAct = canAct && remaining !== 0;
 
   const tradeState = {
     // v4: 레버리지·인버스 ETF 비중 제한 — 서버 규칙(leveragedCap)과 같은 계산을 화면에서 미리
@@ -437,7 +452,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
     let payload: NonNullable<ItemRow['payload']> = { ...(given ?? {}) };
     const needsTarget = !solo && (ITEM_MAP[kind].type === 'attack' || kind === 'spy');
     if (needsTarget && !payload.target) {
-      const others = players.filter((p) => p.id !== me);
+      const others = players.filter((p) => p.id !== me && p.status !== 'left');
+      if (others.length === 0) return showToast('카드를 쓸 상대가 없어요. 모두 나갔어요.', 'warn');
       if (others.length === 1) payload = { ...payload, target: others[0].id };
       else return setTargetPick(kind);
     }
@@ -479,7 +495,10 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const preReady = () => {
     if (!inPre || preReadyMe) return;
     play('tap');
-    run('preReady', {}, () => showToast('준비 완료! 모두 누르면 장이 바로 열려요'));
+    act('preReady', {})
+      .then(() => showToast('준비 완료! 모두 누르면 장이 바로 열려요'))
+      // 시간이 막 끝난 순간이면(장이 이미 열림) 조용히 넘어감
+      .catch((e) => !/장 전 시간이 아니에요/.test(e instanceof Error ? e.message : '') && showToast(e instanceof Error ? e.message : '실패했어요', 'err'));
   };
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
   const cancelEnd = () => {
@@ -567,6 +586,20 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   }, [mobile]);
 
   // ---------- 화면 ----------
+  // 자리를 다른 기기로 옮겼거나(이어하기 코드), 방이 사라졌거나, 로그인이 바뀌었으면 — 다시 연결을 기다리지 않고 안내
+  const seatGone = session.mode === 'multi' && !!error && /참가하지 않았어요|찾을 수 없어요|잘못된 방/.test(error);
+  if (seatGone) {
+    return (
+      <div className="center-msg">
+        <Icon name="door" size={28} />
+        <p>이 기기에서는 더 이상 이 대결을 할 수 없어요</p>
+        <p className="muted small">다른 기기로 자리를 옮겼거나, 방이 사라졌거나, 다른 계정으로 로그인했어요.</p>
+        <button className="btn primary" onClick={onExit}>
+          로비로
+        </button>
+      </div>
+    );
+  }
   if (!view || !market || viewDay === null) {
     return (
       <div className="center-msg">
@@ -592,6 +625,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         <div className="center-msg">
           <div className="spinner" />
           <p className="muted">결과 집계 중…</p>
+          <ResultWaitExit onExit={onExit} />
         </div>
       );
     return (
@@ -645,8 +679,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
   const mmss2 = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   const timerText = inPre ? `장 전 ${mmss2(preLeft)}` : remaining !== null && closing === null ? mmss2(remaining) : null;
   const endLabel = inPre ? (preReadyMe ? '준비 완료함' : '준비 완료') : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
-  const preReadyCount = players.filter((p) => p.status !== 'left' && p.preReady).length;
-  const preStaying = players.filter((p) => p.status !== 'left').length;
+  // 서버와 같은 기준: 접속 중(자리 비움·기권 제외)인 사람만 셈
+  const preReadyCount = players.filter((p) => p.status === 'on' && p.preReady).length;
+  const preStaying = players.filter((p) => p.status === 'on').length;
 
   const macroChip = (label: string, k: 'rate' | 'usRate' | 'fx' | 'oil', fmt: (v: number) => string, term = label) => {
     const d = macro[k] - prevMacro[k];
@@ -755,7 +790,8 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       mine={view.myItems}
       cash={portfolio.cash}
       usedToday={usedToday}
-      canAct={canAct}
+      canAct={cardCanAct}
+      blockReason={cardBlock}
       onBuy={buyItem}
       onUse={(k) => useCard(k)}
       effectsOnMe={effectsOnMe}
@@ -797,8 +833,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                 if (!(await ask('기권하면 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?', { ok: '기권하기', danger: true }))) return;
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
-                  .catch(() => {})
-                  .finally(onExit);
+                  .then(onExit)
+                  // 기권 요청이 실패하면 나가지 않고 알려 줌 (기권한 줄 알았는데 대결이 남아 막히지 않게)
+                  .catch((e) => showToast(e instanceof Error ? `기권하지 못했어요: ${e.message}` : '기권하지 못했어요. 다시 눌러 주세요', 'err'));
               }}
             >
               <Icon name="door" size={16} /> 기권하고 나가기
@@ -888,8 +925,9 @@ export function GameController({ session, onExit, onWaiting }: Props) {
           filledToday={myOrders.filter((o) => o.day === closing && o.status === 'filled').length}
           last={closing + 1 >= total}
           onNext={nextDay}
-          autoSec={session.mode === 'multi' && closing + 1 < total ? 6 : undefined}
-          pre={(room?.rulesVersion ?? 1) >= 7 && session.mode === 'multi' && closing + 1 < total}
+          // 장 전 시간이 진행 중이면 3초만 (찌라시·예약 주문 볼 시간을 덜 잡아먹게), 아니면 6초
+          autoSec={session.mode === 'multi' && closing + 1 < total ? (room?.preUntil && room.preUntil > now + offset ? 3 : 6) : undefined}
+          pre={session.mode === 'multi' && closing + 1 < total && !!room?.preUntil && room.preUntil > now + offset}
         />
       )}
       {targetPick && (
@@ -1205,7 +1243,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
                 </div>
               ))}
               {newsPanel}
-              <CardTray version={view.room.rulesVersion ?? 1} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setTab('cards')} />
+              <CardTray version={view.room.rulesVersion ?? 1} blockReason={cardBlock} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={cardCanAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setTab('cards')} />
             </>
           )}
           {tab === 'assets' && (
@@ -1390,12 +1428,12 @@ export function GameController({ session, onExit, onWaiting }: Props) {
       {/* 큰 틀(위 줄 + 세 칸)은 고정, 조각은 편집 중에 끌어서 원하는 자리에 */}
       <DockBoard
         zones={layout.pcZones}
-        hidden={layout.pcHidden}
+        hidden={layout.pcHidden.filter((x) => x !== 'detail')}
         editing={editing}
         sizes={{ colW: layout.pcColW, flex: layout.pcFlex }}
         onChange={(pcZones, sz) => setLayout({ pcZones, pcColW: sz.colW, pcFlex: sz.flex })}
         onResize={(sz) => setLayout({ pcColW: sz.colW, pcFlex: sz.flex })}
-        onToggle={(id) => setLayout({ pcHidden: layout.pcHidden.includes(id) ? layout.pcHidden.filter((x) => x !== id) : [...layout.pcHidden, id] })}
+        onToggle={(id) => id !== 'detail' && setLayout({ pcHidden: layout.pcHidden.includes(id) ? layout.pcHidden.filter((x) => x !== id) : [...layout.pcHidden, id] })}
         render={(id) =>
           id === 'timeline' ? (
             <Timeline market={m} day={day} onSelect={selectStock} />
@@ -1426,7 +1464,7 @@ export function GameController({ session, onExit, onWaiting }: Props) {
             </section>
           ) : (
             <section className="pane p-cards">
-              <CardTray version={view.room.rulesVersion ?? 1} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={canAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
+              <CardTray version={view.room.rulesVersion ?? 1} blockReason={cardBlock} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={cardCanAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
             </section>
           )
         }
@@ -1453,3 +1491,21 @@ export function GameController({ session, onExit, onWaiting }: Props) {
 }
 
 export type { View };
+
+/** 결과를 오래 못 받으면(연결 끊김 등) 5초 뒤 로비로 갈 수 있게 */
+function ResultWaitExit({ onExit }: { onExit: () => void }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!show) return null;
+  return (
+    <>
+      <p className="muted small">연결이 느려요. 결과는 '업적'과 내 기록에 남아요.</p>
+      <button className="btn" onClick={onExit}>
+        로비로
+      </button>
+    </>
+  );
+}

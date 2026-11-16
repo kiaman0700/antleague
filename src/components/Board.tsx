@@ -168,8 +168,9 @@ export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind;
         </h3>
         <p className="muted small">{d.desc}</p>
         <div className="target-list">
+          {rows.filter((r) => !r.me && r.status !== 'left').length === 0 && <p className="muted">쓸 상대가 없어요. 모두 나갔어요.</p>}
           {rows
-            .filter((r) => !r.me)
+            .filter((r) => !r.me && r.status !== 'left')
             .map((r) => (
               <button key={r.id} className="target-row" onClick={() => onPick(r.id)}>
                 <b>{r.nickname}</b>

@@ -55,11 +55,12 @@ describe('나감·자리 비움', () => {
     expect(a).toBe(b);
     expect(buildView(d, 'p0', now, undefined, 'salt-2').marketKey).not.toBe(a);
   });
-  it('1대1에서 상대가 나가면 혼자 마감해도 바로 넘어감', () => {
+  it('1대1에서 상대가 나가면(기권) 남은 사람 승리로 바로 끝', () => {
     const d = game(2);
     d.players[1].left_game = true;
-    d.players[0].ended_day = 2;
-    expect(nextRoomState(d, now)?.day).toBe(3);
+    const next = nextRoomState(d, now);
+    expect(next?.status).toBe('finished');
+    expect(next?.day).toBe(d.room.total_days);
   });
   it('모두 자리를 비우면 시간이 다 될 때까지 기다림', () => {
     const d = game(2);

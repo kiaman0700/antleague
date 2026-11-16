@@ -49,7 +49,7 @@
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 75%);
   z-index: 0;
 }
-.lobby-shell.client > *:not(.modal-bg):not(.invite-pop):not(.mm-notice):not(.mm-pill) {
+.lobby-shell.client > *:not(.modal-bg):not(.invite-pop):not(.mm-notice):not(.mm-pill):not(.rc-pill) {
   position: relative;
   z-index: 1;
 }
@@ -1701,3 +1701,8 @@ body:has(.result) {
 .switch::after { content: ''; position: absolute; inset: -9px -4px; }
 input[type='checkbox'] { width: 20px; height: 20px; }
 label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+
+/* 재입장 팝업을 닫은 뒤에도 남는 작은 띠 */
+.rc-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border-radius: 99px; border: 1px solid rgba(139,123,255,.6); background: #1f1a40; color: #fff; font-weight: 700; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+@media (min-width: 861px) { .rc-pill { bottom: 24px; } }

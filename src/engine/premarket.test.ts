@@ -93,3 +93,34 @@ describe('v7 장 전 시간', () => {
     }
   });
 });
+
+describe('리뷰 수정: 기권·대상·찌라시 순서', () => {
+  it('상대가 모두 기권하면 남은 사람 승리로 바로 끝', () => {
+    const d = game(8, 3);
+    d.players[1] = { ...d.players[1], left_game: true, ended_day: d.room.total_days };
+    const next = nextRoomState(d, T0 - 100_000)!;
+    expect(next.status).toBe('finished');
+    expect(next.day).toBe(d.room.total_days);
+  });
+  it('3명 중 1명만 기권하면 계속', () => {
+    const d = game(8, 3);
+    d.players.push({ id: 'c', room_id: 'r', nickname: 'c', mode: 'pro', ready: true, ended_day: 1, created_at: '2', version: 0 });
+    d.players[1] = { ...d.players[1], left_game: true, ended_day: d.room.total_days };
+    expect(nextRoomState(d, T0 - 100_000)).toBeNull();
+  });
+  it('찌라시 진짜 단서 자리는 고르게 섞임 (첫·끝 자리 쏠림 없음)', () => {
+    const pos = [0, 0, 0, 0, 0];
+    let n = 0;
+    for (let s = 0; s < 400; s++) {
+      const m = marketFor(5000 + s, 10, 8, 'cd'.repeat(16));
+      for (let day = 1; day < 10; day++) {
+        const rs = preRumors(m, day, 'k' + s);
+        if (rs.length !== 3 || rs.filter((r) => r.real).length !== 1) continue;
+        pos[rs.findIndex((r) => r.real)]++;
+        n++;
+      }
+    }
+    expect(n).toBeGreaterThan(200);
+    for (let i = 0; i < 3; i++) expect(Math.abs(pos[i] / n - 1 / 3)).toBeLessThan(0.07);
+  });
+});

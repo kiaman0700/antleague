@@ -679,7 +679,9 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
   if (why) throw new GameError(why);
   let payload: ItemRow['payload'] = null;
   if (ITEM_MAP[kind].type === 'attack' || kind === 'spy') {
-    const others = d.players.filter((p) => p.id !== meId);
+    // 기권한 사람은 대상이 될 수 없음 (카드가 헛되이 쓰이지 않게)
+    const others = d.players.filter((p) => p.id !== meId && !p.left_game);
+    if (!others.length) throw new GameError('카드를 쓸 상대가 없어요. 모두 나갔어요.', 409);
     const t = (input.payload as { target?: unknown } | undefined)?.target;
     const target = typeof t === 'string' ? others.find((p) => p.id === t) : others.length === 1 ? others[0] : undefined;
     if (!target) throw new GameError('카드를 쓸 상대를 골라 주세요.');
@@ -790,6 +792,8 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
   const r = d.room;
   if (r.status !== 'playing') return null;
   // 나가지 않은 사람이 모두 마감하면 바로 (자리 비운 사람은 카운트다운으로만 기다림). 아무도 없으면 시간까지
+  // 대결에서 나머지가 모두 기권했으면 남은 한 사람의 승리로 바로 끝 (혼자 남은 날을 다 넘기지 않게)
+  if (d.players.length >= 2 && d.players.filter((p) => !p.left_game).length <= 1) return { day: r.total_days, status: 'finished', deadline: null, day_deadline: null };
   const allEnded = allStayingEnded(d);
   const timeUp = r.deadline !== null && now >= r.deadline;
   if (!allEnded && !timeUp) return null;

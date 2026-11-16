@@ -120,3 +120,13 @@ describe('v8: 카드 값 다시 매김 (예전 방은 그대로)', () => {
     expect(itemCost('fee', 2, 8)).toBe(25_000);
   });
 });
+
+describe('기권한 사람은 카드 대상이 아님', () => {
+  it('1대1 에서 상대가 기권했으면 방해 카드는 거절 (카드는 그대로)', async () => {
+    const { validateUseItem: use } = await import('./engine.js');
+    const d = game(8);
+    d.items.push({ player_id: 'a', day: 0, kind: 'freeze', action: 'buy', cost: 0, payload: null });
+    d.players[1] = { ...d.players[1], left_game: true };
+    expect(() => use(d, 'a', now, { kind: 'freeze', payload: { target: 'b' } })).toThrow(/상대가 없어요/);
+  });
+});

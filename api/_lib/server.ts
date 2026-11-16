@@ -1430,6 +1430,9 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     if (!(await maybeAdvance(fresh))) {
       const grace = graceDeadline(fresh, Date.now());
       if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
+      // (v7) 장 전: 남은 사람이 모두 준비 완료였으면 바로 장을 엶
+      const open = preAllReadyDeadline(fresh, Date.now());
+      if (open !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(open), day_deadline: iso(open) }, 'preopen');
     }
     await touchRoom(roomId);
     return { ok: true };

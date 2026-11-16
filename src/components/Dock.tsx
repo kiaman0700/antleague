@@ -239,11 +239,14 @@ export function DockBoard({ zones, hidden, editing, sizes, render, onChange, onR
           <b>{PANEL_LABEL[id]}</b>
           {off && <span className="es-off">숨김</span>}
           {drag?.id === id && drag.over && <span className="es-off">여기에 놓여요</span>}
-          <span className="es-tools">
-            <button className="es-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => onToggle(id)} aria-label={`${PANEL_LABEL[id]} ${off ? '보이기' : '숨기기'}`}>
-              <Icon name={off ? 'eyeOff' : 'eye'} size={14} />
-            </button>
-          </span>
+          {/* 차트·주문 칸은 숨길 수 없음 (사기·팔기 버튼이 여기에만 있어서) */}
+          {id !== 'detail' && (
+            <span className="es-tools">
+              <button className="es-btn" onPointerDown={(e) => e.stopPropagation()} onClick={() => onToggle(id)} aria-label={`${PANEL_LABEL[id]} ${off ? '보이기' : '숨기기'}`}>
+                <Icon name={off ? 'eyeOff' : 'eye'} size={14} />
+              </button>
+            </span>
+          )}
         </div>
         <div className="es-body">{render(id)}</div>
       </div>

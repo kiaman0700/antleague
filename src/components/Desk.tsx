@@ -156,8 +156,10 @@ export function CardTray({
   onUse,
   onOpen,
   version = 6,
+  blockReason,
 }: {
   version?: number;
+  blockReason?: string | null;
   mine: PlayerItems;
   day: number;
   totalDays: number;
@@ -182,7 +184,7 @@ export function CardTray({
         {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
         {owned.map(([k, n]) => {
           const d = ITEM_MAP[k];
-          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '지금은 쓸 수 없어요';
+          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : (blockReason ?? '지금은 쓸 수 없어요');
           return (
             <GameCard
               key={k}

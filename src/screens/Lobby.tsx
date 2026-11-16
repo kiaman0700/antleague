@@ -1148,12 +1148,22 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
   });
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [err, setErr] = useState('');
   useEffect(() => {
     if (!online) return;
     api<ResumeInfo | null>('resume').then(setMulti).catch(() => {});
   }, []);
-  if (hidden) return null;
   const close = () => setHidden(true);
+  // 팝업을 닫아도 진행 중인 대결로 돌아갈 길은 남김 (작은 띠)
+  if (hidden) {
+    if (!multi && !solo) return null;
+    const label = multi ? (multi.status === 'playing' ? '진행 중인 대결' : '들어가 있는 대기실') : '하던 연습 게임';
+    return (
+      <button className="rc-pill" onClick={() => setHidden(false)}>
+        <Icon name="play" size={14} /> {label} · 다시 보기
+      </button>
+    );
+  }
   if (multi) {
     const playing = multi.status === 'playing';
     return (
@@ -1166,6 +1176,7 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
         <p className="rc-room">
           {multi.nickname} · 코드 <code>{multi.code}</code>
         </p>
+        {err && <p className="error small">{err}</p>}
         <div className="modal-actions rc-actions">
           <button
             className="btn danger ghost"
@@ -1173,9 +1184,12 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
             onClick={async () => {
               if (playing && !(await ask('기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?', { ok: '기권하기', danger: true }))) return;
               setBusy(true);
+              setErr('');
               api('leave', { roomId: multi.roomId })
-                .catch(() => {})
-                .finally(() => (setMulti(null), setBusy(false)));
+                .then(() => setMulti(null))
+                // 실패하면 팝업을 남겨 다시 시도할 수 있게 (기권한 줄 알고 막혀 있지 않게)
+                .catch((e) => setErr(e instanceof Error ? e.message : '연결이 불안정해요. 다시 눌러 주세요.'))
+                .finally(() => setBusy(false));
             }}
           >
             {playing ? '기권하기' : '방에서 나가기'}

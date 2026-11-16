@@ -45,7 +45,7 @@ export function preRumors(m: Market, day: number, key: string): Rumor[] {
   const nReal = Math.min(sources.length, Math.round(total * 0.4));
   const out: Rumor[] = [];
   const used = new Set<string>();
-  const shuffledSrc = [...sources].sort(() => rng() - 0.5);
+  const shuffledSrc = shuffle([...sources], rng);
   for (const n of shuffledSrc.slice(0, nReal)) {
     used.add(n.sector!);
     out.push({ text: '', sector: n.sector!, tone: n.tone, real: true });
@@ -60,7 +60,16 @@ export function preRumors(m: Market, day: number, key: string): Rumor[] {
     const t = r.tone === 'good' ? GOOD : BAD;
     r.text = t[Math.floor(rng() * t.length)](SECTOR_MAP[r.sector].name);
   }
-  return out.sort(() => rng() - 0.5);
+  return shuffle(out, rng);
+}
+
+/** 고르게 섞기 (Fisher–Yates) — 자리로 진위를 짐작할 수 없게 */
+function shuffle<T>(a: T[], rng: () => number): T[] {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 /** 화면에 보낼 찌라시 — 진위는 감별기를 쓴 사람에게만 */

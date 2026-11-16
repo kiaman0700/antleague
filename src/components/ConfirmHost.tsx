@@ -44,9 +44,11 @@ export function ConfirmHost() {
     () => cur,
   );
   const okRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!req) return;
-    okRef.current?.focus();
+    // 되돌릴 수 없는 일(기권·삭제)은 실수로 Enter 를 눌러도 취소가 되게
+    (req.danger ? cancelRef : okRef).current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -62,7 +64,7 @@ export function ConfirmHost() {
       <div className="modal confirm-modal" role="alertdialog" aria-modal aria-label={req.text} onClick={(e) => e.stopPropagation()}>
         <p className="confirm-text">{req.text}</p>
         <div className="confirm-actions">
-          <button className="btn" onClick={() => req.done(false)}>
+          <button ref={cancelRef} className="btn" onClick={() => req.done(false)}>
             취소
           </button>
           <button ref={okRef} className={'btn ' + (req.danger ? 'danger' : 'primary')} onClick={() => req.done(true)}>

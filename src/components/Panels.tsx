@@ -274,6 +274,8 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect, start = S
 /* ------------------------------ 찬스 카드 ------------------------------ */
 
 interface CardsProps {
+  /** 지금 카드를 못 쓰는·못 사는 이유 */
+  blockReason?: string | null;
   /** 방 규칙 버전 (v6: 카드 값 1/10, 봉투 확률) */
   version?: number;
   solo: boolean;
@@ -291,7 +293,7 @@ interface CardsProps {
   busy?: boolean;
 }
 
-export function CardsPanel({ version = 1, solo, players = 3, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
+export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, totalDays, mine, cash, usedToday, canAct, onBuy, onUse, effectsOnMe, busy }: CardsProps) {
   const [shop, setShop] = useState(false);
   const [guide, setGuide] = useState(false);
   const owned = (Object.entries(mine.inventory) as [ItemKind, number][]).filter(([, n]) => n > 0);
@@ -326,7 +328,7 @@ export function CardsPanel({ version = 1, solo, players = 3, day, totalDays, min
         <div className="gc-grid">
           {owned.map(([k, n]) => {
             const d = ITEM_MAP[k];
-            const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : '장 마감 후·시간이 끝난 뒤에는 쓸 수 없어요';
+            const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : (blockReason ?? '지금은 쓸 수 없어요');
             return (
               <GameCard
                 key={k}
@@ -352,7 +354,7 @@ export function CardsPanel({ version = 1, solo, players = 3, day, totalDays, min
         <div className="shop gc-grid">
           {ITEMS.filter((i) => (!solo || !i.multiOnly) && !i.shopless).map((d) => {
             const cost = itemCost(d.kind, players, version);
-            const why = canAct ? canBuy(mine, d.kind, cash, cost) : '장 마감 후·시간이 끝난 뒤에는 살 수 없어요';
+            const why = canAct ? canBuy(mine, d.kind, cash, cost) : (blockReason ?? '지금은 살 수 없어요');
             return (
               <GameCard
                 key={d.kind}
