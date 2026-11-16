@@ -503,9 +503,10 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
   const [symbol, setSymbol] = useState(COMPANIES[0].symbol);
   const [t, setT] = useState<'good' | 'bad'>('good');
   useEscape(onCancel);
+  const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal aria-label="가짜 뉴스 만들기" onClick={(e) => e.stopPropagation()}>
         <h3><CardIcon kind="fake" /> 가짜 뉴스 만들기</h3>
         <p className="muted small">내일 아침 상대 화면에만 진짜 뉴스처럼 떠요. 상대가 속으면 성공!</p>
         <label className="field">

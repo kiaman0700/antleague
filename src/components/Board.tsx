@@ -1,5 +1,5 @@
 import { useEffect as useEffectT, useState as useStateT } from 'react';
-import { useEscape } from './ui';
+import { useDialogFocus, useEscape } from './ui';
 import { FitText } from './FitText';
 import { CardIcon, Icon, type IconName } from './Icon';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
@@ -162,9 +162,10 @@ export function RankList({ rows }: { rows: RankRow[] }) {
 export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind; rows: RankRow[]; onPick: (id: string) => void; onCancel: () => void }) {
   const d = ITEM_MAP[kind];
   useEscape(onCancel);
+  const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal aria-label={`${d.name} 쓸 상대 고르기`} onClick={(e) => e.stopPropagation()}>
         <h3>
           <CardIcon kind={kind} /> {d.name} — 누구에게?
         </h3>

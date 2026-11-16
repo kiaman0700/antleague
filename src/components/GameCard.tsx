@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BONUS_TABLE, ITEM_MAP, itemDesc, type ItemKind, type ItemType } from '../game/items';
 import { CardIcon } from './Icon';
+import { DialogBox } from './ui';
 
 export const CARD_TYPE: Record<ItemType, string> = { info: '정보', attack: '방해', defense: '방어', bonus: '보너스' };
 const TYPE_TIP: Record<ItemType, string> = {
@@ -109,7 +110,7 @@ export function GameCard({
       {open &&
         createPortal(
           <div className="modal-bg gc-detail-bg" onClick={() => setOpen(false)}>
-            <div className={`gc-detail t-${d.type}`} role="dialog" aria-label={d.name} onClick={(e) => e.stopPropagation()}>
+            <DialogBox className={`gc-detail t-${d.type}`} aria-label={d.name} onClick={(e) => e.stopPropagation()}>
               <GameCard kind={kind} count={count} corner={corner} desc={false} />
               <div className="gc-detail-txt">
                 <b>{d.name}</b>
@@ -138,7 +139,7 @@ export function GameCard({
                   </button>
                 </div>
               </div>
-            </div>
+            </DialogBox>
           </div>,
           document.body,
         )}

@@ -8,7 +8,7 @@
  *   Toast        화면 아래 짧은 확인 안내 (몇 초 뒤 사라지는 건 쓰는 쪽에서)
  * 모양은 styles-kit.css
  */
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 /** 불러오는 중 — inline 이면 줄 안에 작게, 아니면 칸 가운데 */
@@ -144,13 +144,20 @@ export function useEscape(onClose: () => void, on = true) {
  */
 export function useDialogFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
+  // 창을 그리는 순간(안의 autoFocus 가 초점을 가져가기 전)의 초점 자리 = 닫은 뒤 돌아갈 곳
+  const [prev] = useState(() => (typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null));
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
     const el = ref.current;
     if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
     return () => {
-      if (prev && prev.isConnected && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
+      if (prev && prev !== document.body && prev.isConnected && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
     };
-  }, []);
+  }, [prev]);
   return ref;
+}
+
+/** 창 상자: 열리면 초점이 이 상자로 오고 닫히면 돌아감 (useDialogFocus 를 쓰기 어려운 조건부 창용) */
+export function DialogBox(props: HTMLAttributes<HTMLDivElement>) {
+  const ref = useDialogFocus<HTMLDivElement>();
+  return <div ref={ref} tabIndex={-1} role="dialog" aria-modal {...props} />;
 }

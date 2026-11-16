@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
+import { useDialogFocus } from './ui';
 import { tierText } from './TierBadge';
 import { Avatar } from './Avatar';
 import { api } from '../net/api';
@@ -173,9 +174,10 @@ function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => vo
     saveNick(nick.trim());
     onStart();
   };
+  const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal guest-start" role="dialog" aria-modal aria-label="게스트로 시작하기" onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal guest-start" role="dialog" aria-modal aria-label="게스트로 시작하기" onClick={(e) => e.stopPropagation()}>
         {step === 'intro' ? (
           <>
             <h3>
