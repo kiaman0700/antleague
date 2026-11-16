@@ -196,6 +196,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [watch, setWatch] = useState<string[]>(loadWatch);
   const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
   const [exitAsk, setExitAsk] = useState(false);
+  // PC: 뉴스 크게 보기 (넓은 창)
+  const [newsBig, setNewsBig] = useState(false);
   const [rejoinCode, setRejoinCode] = useState<string | null>(null);
   // 회원은 이어하기 코드 대신 같은 아이디로 로그인
   const memberAcc = useAccount().status === 'member';
@@ -572,8 +574,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     }
     setViewDay(serverDay);
     play('news');
-    // (v7) 장 전 시간: 휴대폰은 찌라시·뉴스가 있는 뉴스 탭으로
-    if (mobile && !solo && (room?.rulesVersion ?? 1) >= 7) setTab('news');
+    // 새 날: 휴대폰은 아침 뉴스(대결은 장 전 찌라시도)가 있는 뉴스 탭으로 — 연습도 같게 (튜토리얼은 단계가 탭을 정함)
+    if (mobile && !session.tutorial && (solo || (room?.rulesVersion ?? 1) >= 7)) setTab('news');
     // 혼자 연습: 다음 날 장은 이 버튼을 눌러야 열림 (결산 보는 동안 시간이 흐르지 않게)
     if (solo) act('startDay', {}).catch(() => {});
   };
@@ -876,6 +878,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <div className="net-banner" role="alert">
           <Icon name="warn" size={14} /> {online ? '연결이 불안정해요 · 다시 연결하는 중…' : '인터넷이 끊겼어요 · 연결되면 자동으로 이어져요'}
         </div>
+      )}
+      {newsBig && !mobile && (
+        <Sheet title={<><Icon name="news" size={18} /> 오늘의 뉴스</>} onClose={() => setNewsBig(false)} wide>
+          {/* 관련 종목·업종을 누르면 그 차트로 가면서 창을 닫음 */}
+          <div className="news-big" onClickCapture={(e) => (e.target as Element).closest(".rel-chip, .rb-sec, .linkish-soft") && setTimeout(() => setNewsBig(false), 0)}>{newsPanel}</div>
+        </Sheet>
       )}
       {exitAsk && (
         <Sheet title="대결에서 나갈까요?" onClose={() => setExitAsk(false)}>
@@ -1521,6 +1529,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </section>
           ) : id === 'news' ? (
             <section className="pane p-news">
+              {/* 뉴스 칸 제목 + 크게 보기 (카드 칸 제목과 같은 모양) */}
+              <div className="news-bar">
+                <b><Icon name="news" size={15} /> 뉴스</b>
+                <button className="btn sm ghost" onClick={() => setNewsBig(true)}>
+                  <Icon name="grid" size={14} /> 크게 보기
+                </button>
+              </div>
               <div className="news-scroll">
                 {effectsOnMe.map((t, k) => (
                   <div key={k} className="effect-banner">

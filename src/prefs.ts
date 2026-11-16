@@ -44,7 +44,7 @@ export interface Layout {
   mToastXY: { x: number; y: number } | null;
 }
 export const DEFAULT_LAYOUT: Layout = {
-  mTabs: ['list', 'detail', 'news', 'assets', 'cards'],
+  mTabs: ['news', 'list', 'detail', 'assets', 'cards'], // 뉴스가 게임의 핵심이라 맨 앞
   mStart: 'news',
   mHeader: [
     { id: 'ticker', on: true },

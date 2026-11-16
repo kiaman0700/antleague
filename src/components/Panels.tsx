@@ -269,10 +269,11 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           <CardIcon kind="detector" size={15} /> 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
         </div>
       )}
-      {/* 새로 들어온 기사를 맨 위로 */}
-      {[...today].sort((a, b) => Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
-        <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '')}>
+      {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}
+      {[...today].sort((a, b) => Number(b.at !== undefined) - Number(a.at !== undefined) || (b.at ?? 0) - (a.at ?? 0) || Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
+        <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
           <div className="news-meta">
+            {n.at !== undefined && <span className="breaking-badge"><Icon name="flame" size={11} /> 장중 속보</span>}
             {isFresh(n) && <span className="new-badge">NEW</span>}
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (
