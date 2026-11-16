@@ -703,10 +703,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             )}
           </section>
           <section className="panel pad">
-            <div className="field">
-              <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
-              <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
-            </div>
+            <h3>화면 모드</h3>
+            <p className="muted small more-sub">게임 중에도 바꿀 수 있어요</p>
+            <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
           </section>
           <SoundSetting />
           <div className="more-menus">

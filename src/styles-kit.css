@@ -39,3 +39,20 @@
 .ui-title h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 800; }
 .ui-title h3 > svg, .ui-title h3 > .ico { color: var(--kit-accent-text); }
 .ui-title-right { color: var(--muted, #9aa0b4); font-size: 13px; }
+
+/* 칸 제목 통일: 로비·상세 화면·대기실·결과의 칸(panel) 맨 위 제목은 모두 같은 크기·굵기·아이콘 색·아래 간격 */
+:is(.lobby-shell, .lobby, .waiting, .result) .panel > h3:first-child,
+:is(.lobby-shell, .lobby, .waiting, .result) .panel > .ui-title:first-child h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+:is(.lobby-shell, .lobby, .waiting, .result) .panel > h3:first-child > :is(svg, .ico) {
+  color: var(--kit-accent-text);
+  flex: 0 0 auto;
+}
+.more-page .more-sub { margin: -6px 0 12px; }
