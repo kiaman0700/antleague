@@ -86,6 +86,7 @@ const fieldCls = (s: Avail | 'match' | 'mismatch') => 'field' + (s === 'ok' || s
 
 /* ================= 로그인 · 회원가입 · 비밀번호 찾기 ================= */
 export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: () => void; onDone: () => void; initialTab?: 'login' | 'signup' }) {
+  const acc = useAccount();
   const [tab, setTab] = useState<'login' | 'signup' | 'reset'>(initialTab);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -158,6 +159,26 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
     <div className="lobby page">
       <PageHead title={tab === 'signup' ? '가입 완료!' : '비밀번호를 바꿨어요'} onBack={onDone} />
       <RecoveryCode code={recovery} onDone={onDone} />
+    </div>
+  );
+
+  // 이미 회원으로 로그인한 채 들어오면: 가입 양식을 다 채운 뒤에야 '이미 가입' 오류를 보지 않게 먼저 알려 줌
+  if (acc.status === 'member' && acc.profile && !busy) return (
+    <div className="lobby page account">
+      <PageHead title="로그인" onBack={onBack} />
+      <section className="panel pad">
+        <EmptyState
+          icon="check"
+          title={`${acc.profile.nickname} 회원으로 로그인돼 있어요`}
+          desc="다른 아이디로 들어가려면 먼저 로그아웃하세요."
+          action={
+            <div className="row" style={{ justifyContent: 'center', gap: 8 }}>
+              <button className="btn ghost" onClick={() => void logout()}>로그아웃</button>
+              <button className="btn primary" onClick={onDone}>홈으로</button>
+            </div>
+          }
+        />
+      </section>
     </div>
   );
 
