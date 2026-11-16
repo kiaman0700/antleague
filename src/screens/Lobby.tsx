@@ -1141,14 +1141,21 @@ function Records({ go }: Pick<Props, 'go'>) {
   }, [histTry]);
 
   const list = history ?? [];
+  // 내 기준 전적: 판 수 · 1위 · 무승부, 판마다 내 순위와 수익률 (다른 사람 이름만 잔뜩 보이지 않게)
   const record = useMemo(() => {
-    const wins: Record<string, number> = {};
+    let wins = 0;
     let draws = 0;
-    for (const h of list) {
-      if (h.winner_nickname) wins[h.winner_nickname] = (wins[h.winner_nickname] ?? 0) + 1;
-      else draws++;
-    }
-    return { wins: Object.entries(wins).sort((a, b) => b[1] - a[1]), draws };
+    const rows = list.map((h) => {
+      const meR = h.results.find((r) => r.nickname === h.me) ?? null;
+      const draw = !h.winner_nickname;
+      const won = !draw && h.winner_nickname === h.me;
+      if (won) wins++;
+      if (draw) draws++;
+      // 1위는 서버가 정한 승자(기권 규칙 포함) 기준, 나머지 순위는 수익률 순
+      const rank = won ? 1 : meR ? Math.max(2, h.results.filter((r) => r.ret > meR.ret).length + 1) : null;
+      return { h, meR, draw, won, rank };
+    });
+    return { wins, draws, games: list.length, rows };
   }, [list]);
   const myBadges = useMemo(() => {
     const count: Record<string, number> = {};
@@ -1170,29 +1177,18 @@ function Records({ go }: Pick<Props, 'go'>) {
       {list.length > 0 && (
         <section className="panel pad">
           <h3>최근 전적</h3>
-          <div className="record">
-            {record.wins.map(([n, w]) => (
-              <div key={n} className="record-item">
-                <span>{n}</span>
-                <b>{w}승</b>
-              </div>
-            ))}
-            {record.draws > 0 && (
-              <div className="record-item">
-                <span>무승부</span>
-                <b>{record.draws}</b>
-              </div>
-            )}
+          <div className="rec-sum">
+            <div><b>{record.games}</b><small>판</small></div>
+            <div><b className="rec-gold">{record.wins}</b><small>1위</small></div>
+            <div><b>{record.games - record.draws > 0 ? Math.round((record.wins / (record.games - record.draws)) * 100) : 0}%</b><small>승률{record.draws ? ` · 무승부 ${record.draws}` : ''}</small></div>
           </div>
-          <ul className="recent">
-            {list.slice(0, 10).map((h) => (
-              <li key={h.id}>
-                <span className="date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
-                {h.results.map((r, i) => (
-                  <span key={i} className={r.nickname === h.winner_nickname ? 'winner' : ''}>
-                    {r.nickname} {pct(r.ret, 1)}
-                  </span>
-                ))}
+          <ul className="rec-list">
+            {record.rows.slice(0, 10).map(({ h, meR, draw, won, rank }) => (
+              <li key={h.id} className={won ? 'won' : ''}>
+                <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
+                <span className={'rec-rank' + (won ? ' r1' : draw ? ' draw' : '')}>{draw ? '무승부' : rank ? `${rank}위` : '-'}</span>
+                <span className="rec-who muted">{h.results.length}명 대결{!won && h.winner_nickname ? ` · 승자 ${h.winner_nickname}` : ''}</span>
+                <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>
               </li>
             ))}
           </ul>

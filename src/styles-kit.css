@@ -212,3 +212,19 @@
 @media (max-width: 420px) {
   .rank-board li { grid-template-columns: 26px 30px minmax(0, 1fr) auto; gap: 8px; }
 }
+
+/* 업적 화면 '최근 전적': 내 기준 요약 숫자 + 판마다 내 순위·수익률 */
+.rec-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: rgba(255,255,255,.06); border-radius: 12px; overflow: hidden; margin: 8px 0 12px; }
+.rec-sum > div { background: rgba(10,10,20,.55); padding: 12px 8px 10px; display: grid; gap: 2px; text-align: center; }
+.rec-sum b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rec-sum small { font-size: 12px; color: var(--muted); }
+.rec-gold { color: var(--accent-text); }
+.rec-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.rec-list li { display: grid; grid-template-columns: 46px 56px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.rec-list li:last-child { border-bottom: 0; }
+.rec-date { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rec-rank { justify-self: start; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.06); font-weight: 800; font-size: 12px; white-space: nowrap; }
+.rec-rank.r1 { background: var(--accent-soft); color: var(--accent-text); }
+.rec-rank.draw { color: var(--muted); }
+.rec-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-ret { font-variant-numeric: tabular-nums; }
