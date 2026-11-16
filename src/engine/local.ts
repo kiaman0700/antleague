@@ -134,6 +134,17 @@ export function makeDemo(nickname: string): SoloSave {
   d.orders.push({ id: 'demo-o1', player_id: 'me', day: 4, symbol: 'NANO', side: 'buy', qty: 5, limit_price: Math.round((nanoOpen * 0.95) / 50) * 50, fee: 0.0015, status: 'open', created_at: new Date(frozenAt - 60_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 2, symbol: 'CORE', side: 'buy', qty: 4, price: 80_000, fee: 0.0015, id: 'demo1', created_at: new Date(Date.now() - 3600_000).toISOString() });
   d.trades.push({ player_id: 'me', day: 3, symbol: 'NXRA', side: 'buy', qty: 1, price: 250_000, fee: 0.0015, id: 'demo2', created_at: new Date(Date.now() - 1800_000).toISOString() });
+  // 찬스 카드 5장을 꽉 채워 둠 (손패 부채꼴·카드 모양을 미리 볼 수 있게) — 저장 안 되는 견본 게임이라 값은 0
+  const kinds = ['paper', 'analyst', 'scout', 'detector', 'bonus'] as const;
+  // 무료로 받은 카드는 기록이 아니라 규칙으로 계산되므로, 지금 손에 든 카드를 화면 데이터로 확인
+  const inv = buildView(d, 'me', frozenAt).myItems;
+  const have = new Set(Object.entries(inv.inventory).filter(([, n]) => (n ?? 0) > 0).map(([k]) => k));
+  let total = inv.total;
+  for (const k of kinds) {
+    if (have.has(k) || total >= 5) continue;
+    d.items.push({ id: 'demo-c-' + k, player_id: 'me', day: 0, kind: k, action: 'buy', cost: 0, payload: null, created_at: new Date(frozenAt - 7200_000).toISOString() });
+    total++;
+  }
   return { ...s, demo: true, frozenAt };
 }
 

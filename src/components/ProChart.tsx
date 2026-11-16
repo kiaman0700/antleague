@@ -655,9 +655,7 @@ export function ProChart({
         {Array.from({ length: totalDays }, (_, d) => d)
           .filter(
             (d) =>
-              d % dayStep === 0 && visible(d) && x(d) > padL && x(d) < W - padR &&
-              // '지금' 표시와 겹치는 눈금 글자는 숨김
-              !(unit?.now && Math.abs(x(d) - (x(unit.now.i) + slot / 2)) < 70),
+              d % dayStep === 0 && visible(d) && x(d) > padL && x(d) < W - padR,
           )
           .map((d) => (
             <text
@@ -677,9 +675,10 @@ export function ProChart({
           const lx = Math.min(W - padR - tw / 2, Math.max(padL + tw / 2, nx));
           return (
             <g className="now-mark" aria-hidden>
-              <line x1={nx} x2={nx} y1={padT} y2={H - padB} />
-              <rect x={lx - tw / 2} y={H - padB + 2} width={tw} height={21} rx={10.5} />
-              <text x={lx} y={H - padB + 17} textAnchor="middle">
+              {/* 아래 시간 눈금을 가리지 않게 '지금' 이름표는 차트 맨 위 점선 꼭대기에 */}
+              <line x1={nx} x2={nx} y1={padT + 20} y2={H - padB} />
+              <rect x={lx - tw / 2} y={padT - 2} width={tw} height={21} rx={10.5} />
+              <text x={lx} y={padT + 13} textAnchor="middle">
                 {unit.now.label}
               </text>
             </g>
