@@ -462,7 +462,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     }
     if (e.crowded) {
       // 몰아치기로 무효가 된 공격: 쓴 사람에게만 다음 날 알림 (당한 사람에게는 아무 일도 없음)
-      if (e.from === meId && r.day > e.usedDay) base.notices.push({ key, text: `${nick(e.to)}님은 그날 이미 다른 사람의 방해를 받아서 내 ${josa(name, '은', '는')} 효과가 없었어요`, kind: 'warn' });
+      if (e.from === meId && r.day > e.usedDay) base.notices.push({ key, text: `${josa(nick(e.to), '은', '는')} 그날 이미 다른 사람의 방해를 받아서 내 ${josa(name, '은', '는')} 효과가 없었어요`, kind: 'warn' });
       return;
     }
     if (e.to === meId) {
