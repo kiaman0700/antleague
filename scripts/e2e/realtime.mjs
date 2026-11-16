@@ -12,14 +12,16 @@ ok('시작', (await A({ action: 'start', roomId })).s === 200);
 
 const state = async (P = A) => (await P({ action: 'state', roomId })).b;
 let s = await state();
-ok('장중 데이터가 있음 (1분 = 12칸)', s.live && s.live.n === 12, JSON.stringify({ tick: s.live?.tick, n: s.live?.n }));
+// 칸 길이: 새 방(v11)은 1초 → 1분 = 60칸 (예전 5초 방은 12칸)
+const tickMs = s.live?.tickMs ?? 5000;
+ok('장중 데이터가 있음 (1분 = 60칸, 1초 칸)', s.live && tickMs === 1000 && s.live.n === 60, JSON.stringify({ tick: s.live?.tick, n: s.live?.n, tickMs }));
 const lens = Object.values(s.live.krw).map((a) => a.length);
 ok('모든 종목이 지금 칸까지만', lens.every((l) => l === s.live.tick + 1), `tick=${s.live.tick} lens=${[...new Set(lens)]}`);
 
 await sleep(12_000);
 const s2 = await state();
 ok('시간이 지나면 칸이 늘어남', s2.live.tick > s.live.tick, `${s.live.tick} → ${s2.live.tick}`);
-const expectTick = Math.min(12, Math.max(0, Math.floor((s2.serverNow - s2.live.startAt) / 5000)));
+const expectTick = Math.min(s2.live.n, Math.max(0, Math.floor((s2.serverNow - s2.live.startAt) / (s2.live.tickMs ?? 5000))));
 ok('칸 번호 = 서버 시각 기준', s2.live.tick === expectTick, `${s2.live.tick} vs ${expectTick}`);
 ok('미래 칸은 없음', Object.values(s2.live.krw).every((a) => a.length === s2.live.tick + 1));
 

@@ -18,6 +18,6 @@ export function withLive(m: Market, live: LiveView | null | undefined): Market {
     usd: mapBars(m.usd, live.usd),
     index: m.index.map((b, i) => (i === day ? merge(b, live.index) : b)),
     usIndex: m.usIndex.map((b, i) => (i === day ? merge(b, live.usIndex) : b)),
-    live: { day, tick: live.tick, n: live.n, startAt: live.startAt, endAt: live.endAt },
+    live: { day, tick: live.tick, n: live.n, startAt: live.startAt, endAt: live.endAt, tickMs: live.tickMs },
   };
 }

@@ -17,9 +17,17 @@ import { CAP_WEIGHT, COMPANIES, etfMembers, SECTOR_MAP, STOCK_MAP } from './stoc
 export const TICK_MS = 5000;
 
 
+/**
+ * 한 칸 길이(ms): v11 부터 1초 (하루 3분까지). 하루가 더 길면 칸 수가 180개를 넘지 않게 2~4초 —
+ * 화면으로 보내는 장중 가격이 너무 커지지 않게. 그 전 방은 5초 그대로
+ */
+export function tickMsFor(version: number | null | undefined, turnSeconds: number) {
+  if ((version ?? 1) < 11) return TICK_MS;
+  return Math.max(1, Math.ceil(turnSeconds / 180)) * 1000;
+}
 /** 하루 제한 시간(초)에 들어가는 칸 수 */
-export function ticksPerDay(turnSeconds: number) {
-  return Math.max(1, Math.round((turnSeconds * 1000) / TICK_MS));
+export function ticksPerDay(turnSeconds: number, tickMs = TICK_MS) {
+  return Math.max(1, Math.round((turnSeconds * 1000) / tickMs));
 }
 
 /** 장중 속보가 공개되는 칸 (at = 하루 중 위치 0~1) */

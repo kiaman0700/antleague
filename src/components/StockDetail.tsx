@@ -71,7 +71,7 @@ export function StockDetail(props: Props) {
   // 장중 봉 간격(5초 칸 몇 개를 한 봉으로): 5초·30초·1분 — 이 기기에 기억
   const [liveK, setLiveK] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem("stockduel.liveK")) || 0;
+      return Number(localStorage.getItem("stockduel.liveSec")) || 0;
     } catch {
       return 0;
     }
@@ -185,20 +185,25 @@ export function StockDetail(props: Props) {
 
   const liveChart = (big: boolean) => {
     if (!live) return null;
-    const opts = LIVE_K.filter(([k]) => Math.ceil(live.n / k) >= 4);
-    const k = opts.some(([v]) => v === liveK) ? liveK : autoK(live.n);
+    // 봉 간격(초)을 칸 수로: 칸 길이(v11 1초, 예전 5초)로 나눠떨어지는 간격만, 봉이 4개 이상 나오는 것만
+    const tickSec = (live.tickMs ?? 5000) / 1000;
+    const daySec = live.n * tickSec;
+    const opts = LIVE_SEC.filter(([s]) => s % tickSec === 0 && Math.ceil(daySec / s) >= 4).map(([s, l]) => [s / tickSec, l, s] as const);
+    const want = opts.find(([, , s]) => s === liveK);
+    // 기본: 봉이 10개 이상 나오는 가장 넓은 간격
+    const k = want ? want[0] : ([...opts].reverse().find(([kk]) => Math.ceil(live.n / kk) >= 10)?.[0] ?? opts[0]?.[0] ?? 1);
     return (
       <>
         {opts.length > 1 && (
           <div className="pc-seg live-k" role="group" aria-label="봉 간격">
-            {opts.map(([v, l]) => (
+            {opts.map(([v, l, s]) => (
               <button
                 key={v}
                 className={k === v ? "on" : ""}
                 onClick={() => {
-                  setLiveK(v);
+                  setLiveK(s);
                   try {
-                    localStorage.setItem("stockduel.liveK", String(v));
+                    localStorage.setItem("stockduel.liveSec", String(s));
                   } catch {
                     /* 무시 */
                   }
@@ -230,15 +235,16 @@ export function StockDetail(props: Props) {
           tall={big || tallChart}
           onExpand={big ? undefined : () => setFull(true)}
           unit={{
-            axis: (i) => clock(i * k * 5),
+            axis: (i) => clock(i * k * tickSec),
             tip: (i) =>
-              `${clock(i * k * 5)} ~ ${clock((i + 1) * k * 5)} (장 시작 뒤)`,
+              `${clock(i * k * tickSec)} ~ ${clock((i + 1) * k * tickSec)} (장 시작 뒤)`,
             ranges: [
-              [Math.max(4, Math.round(12 / k) * 2), "최근"],
+              // 최근 약 2분
+              [Math.max(4, Math.round(120 / (k * tickSec))), "최근"],
               [null, "오늘 전체"],
             ],
             drawKey: `stockduel.draw.${symbol}.d${day}`,
-            now: { tick: live.tick, perBar: k, startAt: live.startAt, n: live.n },
+            now: { tick: live.tick, perBar: k, startAt: live.startAt, n: live.n, tickSec },
           }}
         />
       </>
@@ -984,16 +990,14 @@ export function TradePanel({
   );
 }
 
-/** 장중 봉 간격 선택지: [5초 칸 수, 이름] */
-const LIVE_K: [number, string][] = [
-  [1, "5초"],
-  [6, "30초"],
-  [12, "1분"],
+/** 장중 봉 간격 선택지: [초, 이름] — 칸 길이로 나눠떨어지는 것만 보여 줌 */
+const LIVE_SEC: [number, string][] = [
+  [1, "1초"],
+  [5, "5초"],
+  [15, "15초"],
+  [30, "30초"],
+  [60, "1분"],
 ];
-/** 기본 간격: 오늘 장 길이에 맞춰 봉이 10개 이상 나오는 가장 넓은 간격 */
-function autoK(n: number) {
-  return [...LIVE_K].reverse().find(([k]) => Math.ceil(n / k) >= 10)?.[0] ?? 1;
-}
 /** 장 시작부터 지난 시간 → 0:30 */
 function clock(sec: number) {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;

@@ -82,7 +82,7 @@ export interface Market {
   /** 시장 규칙 버전: 1 = 처음 규칙, 2 = 지수 시총 가중·공급망·미국장→다음 날 한국·장세 */
   version?: number;
   /** 화면 전용: 오늘 장중 가격이 합쳐져 있으면 그 날·칸 (오늘 막대의 close = 지금 가격) */
-  live?: { day: number; tick: number; n: number; startAt: number; endAt: number };
+  live?: { day: number; tick: number; n: number; startAt: number; endAt: number; tickMs?: number };
 }
 
 export type EventKind = 'fomc' | 'bok' | 'earnings' | 'expiry' | 'dividend';

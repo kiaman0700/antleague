@@ -269,8 +269,10 @@ async function touchRoom(roomId: string) {
 async function insertSecret(row: { room_id: string; seed: number; password_hash: string | null }) {
   const sb = db();
   let sec = await sb.from('room_secrets').insert({ ...row, rules_version: CURRENT_RULES_VERSION, salt: randomBytes(16).toString('hex') });
-  if (sec.error && /salt/.test(sec.error.message)) sec = await sb.from('room_secrets').insert({ ...row, rules_version: 3 });
-  if (sec.error && /rules_version/.test(sec.error.message)) sec = await sb.from('room_secrets').insert(row);
+  // 칸이 아예 없을 때(마이그레이션 전)만 내려서 저장. 제한(check) 위반 같은 다른 오류는 몰래 예전 규칙으로 바꾸지 않고 오류로
+  const missing = (msg: string, col: string) => msg.includes(col) && /does not exist|could not find|schema cache/i.test(msg);
+  if (sec.error && missing(sec.error.message, 'salt')) sec = await sb.from('room_secrets').insert({ ...row, rules_version: 3 });
+  if (sec.error && missing(sec.error.message, 'rules_version')) sec = await sb.from('room_secrets').insert(row);
   must(sec, 'secret');
 }
 

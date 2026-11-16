@@ -65,6 +65,8 @@ export function useLiveView(roomId: string | null): LiveView {
   const keyRef = useRef<string | undefined>(undefined);
   const busy = useRef(false);
   const again = useRef(false);
+  /** 1초 가격 방에서 장이 열려 있는지 (빠르게 새로 받기) */
+  const fastRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!roomId) return;
@@ -83,6 +85,7 @@ export function useLiveView(roomId: string | null): LiveView {
         keyRef.current = v.marketKey;
       }
       setView(v);
+      fastRef.current = !!v.live && (v.live.tickMs ?? 5000) <= 1000;
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -99,7 +102,16 @@ export function useLiveView(roomId: string | null): LiveView {
     if (!roomId) return;
     keyRef.current = undefined;
     refresh();
-    const poll = setInterval(refresh, 2500);
+    // 1초 가격 방(v11)에서 장이 열려 있으면 1초마다, 아니면 2.5초마다 새로 받음
+    let poll = 0;
+    const loop = () => {
+      const ms = fastRef.current ? 1000 : 2500;
+      poll = window.setTimeout(() => {
+        refresh();
+        loop();
+      }, ms);
+    };
+    loop();
     // 다른 앱·탭에 갔다 돌아오면 바로 새로 받기 (자리 비움 표시도 곧바로 풀림)
     const onVisible = () => document.visibilityState === 'visible' && refresh();
     document.addEventListener('visibilitychange', onVisible);
@@ -119,7 +131,7 @@ export function useLiveView(roomId: string | null): LiveView {
         .subscribe();
     }
     return () => {
-      clearInterval(poll);
+      window.clearTimeout(poll);
       window.clearTimeout(t);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onVisible);

@@ -8,7 +8,7 @@
 import { activeEffects, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
-import { dayTicks, indexTicks, releaseTick, TICK_MS, ticksPerDay } from '../game/intraday.js';
+import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
 import { mulberry32, seeded } from '../lib/rng.js';
 import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
@@ -175,12 +175,15 @@ export interface LiveView {
  * 카운트다운으로 마감이 당겨져도 칸 속도는 그대로(남은 흐름은 마감 때 한꺼번에 확정)
  */
 export function dayClock(r: RoomRow, now: number) {
-  const n = ticksPerDay(r.turn_seconds > 0 ? r.turn_seconds : 180);
+  const turn = r.turn_seconds > 0 ? r.turn_seconds : 180;
+  // 한 칸 길이: v11 부터 1초(긴 날은 2~4초), 그 전 방은 5초
+  const tickMs = tickMsFor(r.version, turn);
+  const n = ticksPerDay(turn, tickMs);
   const base = r.day_deadline ?? r.deadline;
-  if (base == null) return { n, tick: 0, startAt: now, endAt: now + n * TICK_MS };
-  const startAt = base - n * TICK_MS;
-  const tick = Math.min(n, Math.max(0, Math.floor((now - startAt) / TICK_MS)));
-  return { n, tick, startAt, endAt: base };
+  if (base == null) return { n, tick: 0, startAt: now, endAt: now + n * tickMs, tickMs };
+  const startAt = base - n * tickMs;
+  const tick = Math.min(n, Math.max(0, Math.floor((now - startAt) / tickMs)));
+  return { n, tick, startAt, endAt: base, tickMs };
 }
 
 /** 지금 칸의 가격 (원화, 또는 미국 주식 달러) — 거래·예약 기준 */
@@ -196,7 +199,7 @@ function livePriceMap(d: GameData, m: Market, now: number) {
   return out;
 }
 
-const tickOf = (startAt: number, iso: string | undefined) => (iso ? Math.max(0, Math.floor((new Date(iso).getTime() - startAt) / TICK_MS)) : 0);
+const tickOf = (startAt: number, iso: string | undefined, tickMs: number) => (iso ? Math.max(0, Math.floor((new Date(iso).getTime() - startAt) / tickMs)) : 0);
 
 export class GameError extends Error {
   constructor(
@@ -271,7 +274,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 10;
+export const CURRENT_RULES_VERSION = 11;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -478,7 +481,9 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   // 상대의 순위·구간은 30초(6칸) 단위 가격으로만 → 칸마다 바뀌는 값으로 정확한 재산을 좁혀 가지 못하게
   const coarse = open ? (() => {
     const c = dayClock(r, now);
-    return livePriceMap(d, m, c.startAt + Math.floor(c.tick / RANK_EVERY_TICKS) * RANK_EVERY_TICKS * TICK_MS);
+    // 30초 단위 (칸 길이와 상관없이)
+    const every = Math.max(1, Math.round((RANK_EVERY_TICKS * 5000) / c.tickMs));
+    return livePriceMap(d, m, c.startAt + Math.floor(c.tick / every) * every * c.tickMs);
   })() : prices;
   const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), p.id === meId ? prices : coarse))]));
   const rankEq = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), coarse))]));
@@ -589,7 +594,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       krw[s.symbol] = upto(dayTicks(m, s.symbol, day, clock.n));
       if (m.usd[s.symbol]) usd[s.symbol] = upto(dayTicks(m, s.symbol, day, clock.n, 'usd'));
     }
-    base.live = { day, tick: clock.tick, n: clock.n, startAt: clock.startAt, endAt: clock.endAt, tickMs: TICK_MS, krw, usd, index: upto(indexTicks(m, 'kr', day, clock.n)), usIndex: upto(indexTicks(m, 'us', day, clock.n)) };
+    base.live = { day, tick: clock.tick, n: clock.n, startAt: clock.startAt, endAt: clock.endAt, tickMs: clock.tickMs, krw, usd, index: upto(indexTicks(m, 'kr', day, clock.n)), usIndex: upto(indexTicks(m, 'us', day, clock.n)) };
   }
 
   if (finished) {
@@ -821,7 +826,7 @@ export function preAllReadyDeadline(d: GameData, now: number): number | null {
   if (!inPremarket(r, now)) return null;
   const staying = d.players.filter((p) => !p.left_game && isActive(p, now));
   if (!staying.length || !staying.every((p) => (p.pre_day ?? -1) >= r.day)) return null;
-  return now + ticksPerDay(r.turn_seconds) * TICK_MS;
+  return now + r.turn_seconds * 1000;
 }
 
 export function finalResults(d: GameData) {
@@ -915,7 +920,7 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
   for (const o of open) {
     const isUS = STOCK_MAP[o.symbol].currency === 'USD';
     const ticks = dayTicks(m, o.symbol, day, clock.n, isUS ? 'usd' : 'krw');
-    const from = Math.min(clock.n, tickOf(clock.startAt, o.created_at) + 1);
+    const from = Math.min(clock.n, tickOf(clock.startAt, o.created_at, clock.tickMs) + 1);
     let hitAt = -1;
     for (let k = from; k <= Math.min(upto, clock.n); k++) {
       if (o.side === 'buy' ? ticks[k] <= o.limit_price : ticks[k] >= o.limit_price) {
@@ -935,7 +940,7 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
       continue;
     }
     // 체결 시각 = 가격이 닿은 칸의 시각 (거래 순서가 맞게)
-    const trade: Trade = { player_id: o.player_id, day, symbol: o.symbol, side: o.side, qty: o.qty, price, fee: o.fee, created_at: new Date(clock.startAt + hitAt * TICK_MS + extra.length).toISOString() };
+    const trade: Trade = { player_id: o.player_id, day, symbol: o.symbol, side: o.side, qty: o.qty, price, fee: o.fee, created_at: new Date(clock.startAt + hitAt * clock.tickMs + extra.length).toISOString() };
     extra.push(trade);
     out.push({ id: o.id!, status: 'filled', trade });
   }
