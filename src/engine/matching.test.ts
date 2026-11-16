@@ -89,3 +89,41 @@ describe('예상 대기 시간', () => {
     expect(waitLabel(150)).toBe('약 3분');
   });
 });
+
+describe('파티·랭킹전 분리', () => {
+  const tp = (id: string, rating: number, agoSec: number, party: string | null) => ({ id, rating, createdAt: now - agoSec * 1000, party });
+  it('파티 2명 + 혼자 2명 = 4인 방, 파티는 같이 들어감', () => {
+    const me = tp('me', 1000, 0, 'P');
+    const g = pickGroup(me, [tp('mate', 1000, 0, 'P'), tp('a', 1000, 0, null), tp('b', 1000, 0, null)], 'multi', now);
+    expect(g?.map((x) => x.id).sort()).toEqual(['a', 'b', 'mate', 'me']);
+  });
+  it('파티가 낀 판은 3명으로 시작하지 않음 (오래 기다려도)', () => {
+    const me = tp('me', 1000, 300, 'P');
+    expect(pickGroup(me, [tp('mate', 1000, 300, 'P'), tp('a', 1000, 300, null)], 'multi', now)).toBeNull();
+  });
+  it('파티 둘이면 2+2', () => {
+    const me = tp('me', 1000, 0, 'P');
+    const g = pickGroup(me, [tp('mate', 1000, 0, 'P'), tp('x', 1000, 0, 'Q'), tp('y', 1000, 0, 'Q')], 'multi', now);
+    expect(g?.length).toBe(4);
+  });
+  it('3명 이상 파티는 매칭 안 됨', () => {
+    const me = tp('me', 1000, 0, 'P');
+    expect(pickGroup(me, [tp('m2', 1000, 0, 'P'), tp('m3', 1000, 0, 'P'), tp('a', 1000, 0, null)], 'multi', now)).toBeNull();
+  });
+  it('파티 다른 사람 중 한 명만 쏙 빼 가지 않음 (혼자 자리 하나 남으면 파티는 건너뜀)', () => {
+    const me = tp('me', 1000, 0, null);
+    const g = pickGroup(me, [tp('a', 1000, 0, null), tp('b', 1000, 0, null), tp('x', 1000, 0, 'Q'), tp('y', 1000, 0, 'Q')], 'multi', now);
+    // me+a+b = 3, 파티(2)는 넘쳐서 못 들어감 → 4명이 안 되고 3명 규칙(40초)도 아직 → null
+    expect(g === null || !g.some((t) => t.id === 'x') || g.some((t) => t.id === 'y')).toBe(true);
+  });
+  it('1대1 에는 파티로 못 들어감', () => {
+    const me = tp('me', 1000, 0, 'P');
+    expect(pickGroup(me, [tp('mate', 1000, 0, 'P'), tp('a', 1000, 0, null)], 'duel', now)).toBeNull();
+  });
+  it('랭킹전: 친구·같은 인터넷(forbid)끼리는 같은 판에 넣지 않음', () => {
+    const me = t('me', 1000, 0);
+    const forbid = (a: Ticket, b: Ticket) => [a.id, b.id].sort().join() === 'friend,me';
+    expect(pickGroup(me, [t('friend', 1000, 0)], 'duel', now, rankedMax, forbid)).toBeNull();
+    expect(pickGroup(me, [t('friend', 1000, 0), t('other', 1050, 0)], 'duel', now, rankedMax, forbid)?.map((x) => x.id)).toEqual(['me', 'other']);
+  });
+});

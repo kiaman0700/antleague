@@ -34,6 +34,8 @@ export interface Ticket {
   id: string;
   rating: number;
   createdAt: number;
+  /** 같은 파티면 같은 값 (일반전 다인전만) */
+  party?: string | null;
 }
 
 /** 랭킹전은 처음 2분 동안 점수 차 400까지만. 사람이 적어 2분 넘게 못 만나면 범위 제한을 풀어 줌
@@ -58,19 +60,52 @@ export const compatible = (a: Ticket, b: Ticket, now: number, max: WindowMax = C
  * me 를 포함한 한 판 인원을 고름. 못 고르면 null
  * 다인전은 고른 사람끼리 '모두 서로' 범위 안이어야 함 (1000점과 1400점이 1200점을 사이에 두고 만나지 않게)
  */
-export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: number, max: WindowMax = CASUAL_MAX_WINDOW): Ticket[] | null {
-  const cand = waiting
-    .filter((t) => t.id !== me.id && compatible(me, t, now, max))
-    .sort((a, b) => Math.abs(a.rating - me.rating) - Math.abs(b.rating - me.rating) || a.createdAt - b.createdAt);
-  if (size === 'duel') return cand.length ? [me, cand[0]] : null;
-  const group = [me];
-  for (const t of cand) {
-    if (group.length >= MULTI_FULL) break;
-    if (group.every((g) => compatible(g, t, now, max))) group.push(t);
+/** 파티 최대 인원 (일반전 다인전만) — 3명 파티가 1명을 괴롭히는 판이 없게 2명까지 */
+export const PARTY_MAX = 2;
+
+/**
+ * me 를 포함한 한 판 인원을 고름. 못 고르면 null
+ * - 다인전은 고른 사람끼리 '모두 서로' 범위 안 (1000점과 1400점이 1200점을 사이에 두고 만나지 않게)
+ * - 파티(party 가 같은 표들)는 한 덩어리로 같이 들어감. 파티가 낀 판은 4명일 때만 (2+2 또는 2+1+1)
+ * - forbid(a, b) 가 true 인 두 사람은 같은 판에 넣지 않음 (랭킹전: 친구끼리·같은 인터넷)
+ */
+export function pickGroup(me: Ticket, waiting: Ticket[], size: QueueSize, now: number, max: WindowMax = CASUAL_MAX_WINDOW, forbid?: (a: Ticket, b: Ticket) => boolean): Ticket[] | null {
+  const all = [me, ...waiting.filter((t) => t.id !== me.id)];
+  // 파티별로 묶기 (파티 없는 사람은 혼자 한 덩어리)
+  const units = new Map<string, Ticket[]>();
+  for (const t of all) {
+    const k = t.party ? 'p:' + t.party : 's:' + t.id;
+    units.set(k, [...(units.get(k) ?? []), t]);
   }
-  if (group.length >= MULTI_FULL) return group;
-  if (group.length >= MULTI_MIN) {
-    const g3 = group.slice(0, MULTI_MIN);
+  type Unit = { members: Ticket[]; rating: number; createdAt: number; id: string };
+  const asUnit = (ms: Ticket[]): Unit => ({ members: ms, rating: Math.round(ms.reduce((x, t) => x + t.rating, 0) / ms.length), createdAt: Math.min(...ms.map((t) => t.createdAt)), id: ms[0].id });
+  const myKey = me.party ? 'p:' + me.party : 's:' + me.id;
+  const mine = asUnit(units.get(myKey)!);
+  if (mine.members.length > PARTY_MAX) return null;
+  // 1대1 에는 파티가 없음 (친구와는 '1대1 신청')
+  if (size === 'duel' && mine.members.length > 1) return null;
+  const okPair = (a: Unit, b: Unit) => compatible(a, b, now, max) && !(forbid && a.members.some((x) => b.members.some((y) => forbid(x, y))));
+  const cand = [...units.entries()]
+    .filter(([k, ms]) => k !== myKey && ms.length <= PARTY_MAX && (size === 'multi' || ms.length === 1))
+    .map(([, ms]) => asUnit(ms))
+    .filter((u) => okPair(mine, u))
+    .sort((a, b) => Math.abs(a.rating - me.rating) - Math.abs(b.rating - me.rating) || a.createdAt - b.createdAt);
+  if (size === 'duel') return cand.length ? [me, cand[0].members[0]] : null;
+  const group: Unit[] = [mine];
+  let total = mine.members.length;
+  for (const u of cand) {
+    if (total >= MULTI_FULL) break;
+    if (total + u.members.length > MULTI_FULL) continue;
+    if (group.every((g) => okPair(g, u))) {
+      group.push(u);
+      total += u.members.length;
+    }
+  }
+  const flat = group.flatMap((u) => u.members);
+  if (total >= MULTI_FULL) return flat;
+  // 3명 판은 파티 없이 혼자인 사람들끼리만, 40초 넘게 기다렸을 때
+  if (total >= MULTI_MIN && group.every((u) => u.members.length === 1)) {
+    const g3 = flat.slice(0, MULTI_MIN);
     const oldest = Math.min(...g3.map((t) => t.createdAt));
     if (now - oldest >= MULTI_WAIT_FOR_3) return g3;
   }

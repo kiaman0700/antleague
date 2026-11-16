@@ -46,15 +46,19 @@ interface Props {
   onNeedNick: () => void;
   onLogin: () => void;
   onMatched: (m: Matched) => void;
+  /** 일반전 파티 (2명이면 다인전으로만, 파티장만 찾기 시작, 파티원은 자동으로 따라감) */
+  party?: { isLeader: boolean; searching: boolean; size: number } | null;
 }
 
-export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
+export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, onMatched, party }: Props) {
   const [pref, setPref] = useState(loadPref);
   const [searching, setSearching] = useState(false);
   const [info, setInfo] = useState<{ waitedSec: number; inQueue: number; window: number; similar: number; online: number; etaSec: number | null } | null>(null);
   const [err, setErr] = useState('');
   const [linking, setLinking] = useState(false);
   const matchedRef = useRef(false);
+  const inParty = !!party && party.size > 1;
+  const sizeEff: QueueSize = inParty ? 'multi' : pref.size;
   const want = fixedKind ?? pref.kind;
   const kind: QueueKind = want === 'ranked' && !member ? 'casual' : want;
   const save = (p: typeof pref) => {
@@ -75,7 +79,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   const [joining, setJoining] = useState(false);
   const begin = async (over?: { size: QueueSize; speed: QueueSpeed }) => {
     setJoining(true);
-    const size = over?.size ?? pref.size;
+    const size = over?.size ?? sizeEff;
     const speed = over?.speed ?? pref.speed;
     try {
       await api('queueJoin', { queue: `${kind}_${size}_${speed}`, nickname: (member ? nickname : loadNick() || nickname).trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
@@ -128,13 +132,13 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   const label = (size: QueueSize, speed: QueueSpeed) => `${size === 'duel' ? '1대1' : '다인전'} ${SPEED_PRESET[speed].label}`;
   /** 오래 기다리면: 사람이 기다리는 다른 대기열(같은 랭킹전/일반전)로 바꾸기 제안 */
   const alt = (() => {
-    if (!info || linking) return null;
+    if (!info || linking || inParty) return null;
     const opts: [QueueSize, QueueSpeed][] = (['duel', 'multi'] as QueueSize[]).flatMap((z) => (['quick', 'normal'] as QueueSpeed[]).map((p) => [z, p] as [QueueSize, QueueSpeed]));
-    const others = opts.filter(([z, p]) => !(z === pref.size && p === pref.speed)).map(([z, p]) => ({ size: z, speed: p, n: waitingIn(z, p) }));
+    const others = opts.filter(([z, p]) => !(z === sizeEff && p === pref.speed)).map(([z, p]) => ({ size: z, speed: p, n: waitingIn(z, p) }));
     const busy = others.filter((o) => o.n > 0).sort((a, b) => b.n - a.n)[0];
     if (info.waitedSec >= 25 && busy) return busy;
     // 다인전이 45초 넘게 안 모이면 1대1 을 권함 (기다리는 사람이 없어도 먼저 들어가 있으면 다음 사람과 바로)
-    if (info.waitedSec >= 45 && pref.size === 'multi') return { size: 'duel' as QueueSize, speed: pref.speed, n: waitingIn('duel', pref.speed) };
+    if (info.waitedSec >= 45 && sizeEff === 'multi') return { size: 'duel' as QueueSize, speed: pref.speed, n: waitingIn('duel', pref.speed) };
     return null;
   })();
   const switchTo = async (o: { size: QueueSize; speed: QueueSpeed }) => {
@@ -142,6 +146,16 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     setSearching(false);
     await begin(o);
   };
+
+  // 파티원: 파티장이 찾기 시작하면 내 화면도 '찾는 중'으로 (내 대기표는 서버가 이미 만들어 둠)
+  useEffect(() => {
+    if (inParty && party!.searching && !searching && !matchedRef.current) {
+      matchedRef.current = false;
+      setInfo(null);
+      setSearching(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inParty, party?.searching]);
 
   // 결과 화면에서 '다시 찾기'로 왔으면 바로 시작
   useEffect(() => {
@@ -225,18 +239,19 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         </h3>
       )}
       {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
-      {seg(pref.size, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))}
-      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(pref.size, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(pref.size, 'normal'))]], (v) => save({ ...pref, speed: v }))}
+      {inParty ? <p className="muted small mf-note">파티는 <b>다인전</b>(4명 방)으로 같이 찾아요.</p> : seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))}
+      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(sizeEff, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(sizeEff, 'normal'))]], (v) => save({ ...pref, speed: v }))}
       {!member && !loading && !fixedKind && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
       {err && <p className="error">{err}</p>}
       {online !== null && (
         <p className="mf-eta" aria-live="polite">
-          <Icon name="hourglass" size={14} /> 예상 대기 <b>{waitLabel(eta[`${kind}_${pref.size}_${pref.speed}`] ?? null)}</b>
-          {waitingIn(pref.size, pref.speed) > 0 && <small className="muted"> · {waitingIn(pref.size, pref.speed)}명 기다리는 중</small>}
+          <Icon name="hourglass" size={14} /> 예상 대기 <b>{waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}</b>
+          {waitingIn(sizeEff, pref.speed) > 0 && <small className="muted"> · {waitingIn(sizeEff, pref.speed)}명 기다리는 중</small>}
         </p>
       )}
-      <button className="btn primary xl full" onClick={start} disabled={searching || loading || joining}>
-        <Icon name="search" size={18} /> {joining ? '준비 중…' : `${kind === 'ranked' ? '랭킹전' : '일반전'} 찾기`}
+      {inParty && kind === 'ranked' && <p className="muted small mf-note">파티 중에는 랭킹전을 찾을 수 없어요. 친구끼리 점수를 주고받지 못하게, 랭킹전은 혼자만 찾아요.</p>}
+      <button className="btn primary xl full" onClick={start} disabled={searching || loading || joining || (inParty && (!party!.isLeader || kind === 'ranked'))}>
+        <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
       </button>
 
       {searching && (
@@ -245,11 +260,11 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <div className="mf-spin" aria-hidden />
             <h3>상대를 찾고 있어요</h3>
             <p className="muted">
-              {kind === 'ranked' ? '랭킹전' : '일반전'} · {pref.size === 'duel' ? '1대1' : '다인전(3~4명)'} · {SPEED_PRESET[pref.speed].label} ({SPEED_PRESET[pref.speed].minutes})
+              {kind === 'ranked' ? '랭킹전' : '일반전'} · {sizeEff === 'duel' ? '1대1' : '다인전(3~4명)'} · {SPEED_PRESET[pref.speed].label} ({SPEED_PRESET[pref.speed].minutes})
             </p>
             <p className="mf-time">{info ? `${Math.floor(info.waitedSec / 60)}:${String(info.waitedSec % 60).padStart(2, '0')}` : '0:00'}</p>
             <small className="muted">
-              {pref.size === 'multi' ? '4명이 모이면 바로, 3명이면 조금 기다렸다가 시작해요. ' : ''}
+              {sizeEff === 'multi' ? '4명이 모이면 바로, 3명이면 조금 기다렸다가 시작해요. ' : ''}
               {kind === 'ranked'
                 ? (info?.waitedSec ?? 0) >= 120
                   ? '사람이 적어서 점수 범위를 넓혀 찾는 중이에요'

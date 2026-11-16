@@ -11,7 +11,7 @@ import { play } from '../lib/sound';
 
 export interface IncomingInvite {
   id: string;
-  kind: 'room' | 'duel';
+  kind: 'room' | 'duel' | 'party';
   from: string;
   title: string | null;
   speed: 'quick' | 'normal' | null;
@@ -38,7 +38,7 @@ export function pokeInvites() {
 
 const secsLeft = (iso: string, now: number) => Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 1000));
 
-export function InviteCenter({ member, onWaiting, onGame }: { member: boolean; onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void; onGame: (s: Session) => void }) {
+export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: boolean; onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void; onGame: (s: Session) => void; onParty?: () => void }) {
   const [incoming, setIncoming] = useState<IncomingInvite[]>([]);
   const [duel, setDuel] = useState<SentDuel | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -118,7 +118,8 @@ export function InviteCenter({ member, onWaiting, onGame }: { member: boolean; o
       const r = await api<{ kind: string; roomId: string; playerId: string; code: string; nickname: string }>('inviteRespond', { id: inv.id, accept, mode: loadUi() });
       setIncoming((xs) => xs.filter((x) => x.id !== inv.id));
       if (!accept) return;
-      if (r.kind === 'room') onWaiting(r.roomId, r.playerId, r.nickname, r.code);
+      if (r.kind === 'party') onParty?.();
+      else if (r.kind === 'room') onWaiting(r.roomId, r.playerId, r.nickname, r.code);
       else onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname: r.nickname, ui: loadUi() as UiMode });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -137,10 +138,10 @@ export function InviteCenter({ member, onWaiting, onGame }: { member: boolean; o
         <div className="modal-bg">
           <div className="modal invite-pop" role="dialog" aria-modal aria-label="친구 초대">
             <h3>
-              <Icon name={inv.kind === 'duel' ? 'users' : 'door'} size={18} /> {inv.kind === 'duel' ? '1대1 대결 신청' : '방 초대'}
+              <Icon name={inv.kind === 'room' ? 'door' : 'users'} size={18} /> {inv.kind === 'duel' ? '1대1 대결 신청' : inv.kind === 'party' ? '파티 초대' : '방 초대'}
             </h3>
             <p>
-              <b>{inv.from}</b> 님이 {inv.kind === 'duel' ? '1대1 대결을 신청했어요.' : <>'<b>{inv.title}</b>' 방에 초대했어요.</>}
+              <b>{inv.from}</b> 님이 {inv.kind === 'duel' ? '1대1 대결을 신청했어요.' : inv.kind === 'party' ? '파티에 불렀어요. 일반전 다인전을 같이 찾아요.' : <>'<b>{inv.title}</b>' 방에 초대했어요.</>}
             </p>
             {inv.kind === 'duel' && inv.speed && (
               <p className="muted small">
@@ -157,7 +158,7 @@ export function InviteCenter({ member, onWaiting, onGame }: { member: boolean; o
                 <Icon name="x" />
               </button>
               <button className="btn primary" disabled={busy} autoFocus onClick={() => respond(inv, true)}>
-                {inv.kind === 'duel' ? '수락하고 시작' : '입장'}
+                {inv.kind === 'duel' ? '수락하고 시작' : inv.kind === 'party' ? '파티 들어가기' : '입장'}
               </button>
             </div>
           </div>

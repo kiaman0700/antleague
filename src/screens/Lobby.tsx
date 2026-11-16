@@ -8,6 +8,7 @@ import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
+import { PartyPanel, useParty } from '../components/PartyPanel';
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BADGES, titleOf } from '../game/achievements';
@@ -413,6 +414,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   const head = TAB_HEAD[tab];
+  // 파티 상태 (회원, 랭킹전·일반전 메뉴에서만 확인)
+  const { party, reload: reloadParty } = useParty(online && member && (tab === 'casual' || tab === 'ranked'));
 
   const finder = (kind: 'ranked' | 'casual') => (
     <MatchFinder
@@ -426,6 +429,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
       onNeedNick={() => gate.guard(() => {})}
       onLogin={() => go('login')}
       onMatched={(m) => onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: profile.ui })}
+      party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length } : null}
     />
   );
 
@@ -494,7 +498,10 @@ function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { 
       {tab === 'casual' &&
         (online ? (
           <div className="hub-grid">
-            {finder('casual')}
+            <div className="hub-col">
+              {finder('casual')}
+              {member && <PartyPanel party={party} reload={reloadParty} />}
+            </div>
             <section className="panel pad rank-card">
               <h3>
                 <Icon name="info" size={18} /> 일반전은 이렇게
@@ -1334,7 +1341,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       </main>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} />
-      {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} />}
+      {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}

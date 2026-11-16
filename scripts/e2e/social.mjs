@@ -49,6 +49,8 @@ async function member(tag) {
   const f = (await U({ action: 'friends' })).b;
   for (const x of [...(f?.friends ?? []), ...(f?.outgoing ?? []), ...(f?.incoming ?? [])]) await U({ action: 'friendRemove', id: x.id });
   for (const x of f?.blocked ?? []) await U({ action: 'unblock', id: x.id });
+  await U({ action: 'partyLeave' });
+  await U({ action: 'queueLeave' });
   // 지난 실행에서 남은 방·대결에서 나가기
   for (let i = 0; i < 5; i++) {
     const r = (await U({ action: 'resume' })).b;
@@ -146,6 +148,71 @@ const busy = await A({ action: 'challenge', friendId: abId, speed: 'quick' });
 ok('대결 중에는 또 신청 불가', busy.s === 409);
 await A({ action: 'leave', roomId: accDuel.b.roomId });
 await B({ action: 'leave', roomId: accDuel.b.roomId });
+
+// ---- 일반전 파티 (2명, 다인전만) ----
+const pi = await A({ action: 'partyInvite', friendId: abId });
+ok('A 가 B 를 파티에 부름', pi.s === 200, pi.b?.error ?? '');
+const notFriendParty = await C({ action: 'partyInvite', friendId: abId });
+ok('친구 아닌 C 는 남의 관계로 파티 초대 불가', notFriendParty.s === 404 || notFriendParty.s === 403, String(notFriendParty.s));
+const pInv = (await B({ action: 'invites' })).b.incoming.find((x) => x.kind === 'party');
+ok('B 에게 파티 초대가 보임', !!pInv && pInv.from === nA, JSON.stringify(pInv));
+const pj = await B({ action: 'inviteRespond', id: pInv.id, accept: true });
+ok('B 파티 들어감', pj.s === 200 && pj.b.kind === 'party', JSON.stringify(pj.b));
+const pa = (await A({ action: 'party' })).b.party;
+ok('파티 2명 · A 가 파티장', pa?.members.length === 2 && pa.isLeader && pa.members.some((m) => m.nickname === nB), JSON.stringify(pa));
+ok('파티 응답에 user id 없음', !JSON.stringify(pa).includes(users.B.uid) && !JSON.stringify(pa).includes(users.A.uid));
+const pFull = await A({ action: 'partyInvite', friendId: abId });
+ok('파티는 2명까지', pFull.s === 409);
+const bSolo = await B({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+ok('파티원은 혼자 찾기 시작 불가', bSolo.s === 409, bSolo.b?.error);
+const pRanked = await A({ action: 'queueJoin', queue: 'ranked_multi_quick', mode: 'easy' });
+ok('파티로 랭킹전 불가', pRanked.s === 409, pRanked.b?.error);
+const pDuel = await A({ action: 'queueJoin', queue: 'casual_duel_quick', mode: 'easy' });
+ok('파티로 1대1 불가', pDuel.s === 409, pDuel.b?.error);
+const G2 = await user();
+for (let i = 0; i < 5; i++) {
+  const r = (await G2({ action: 'resume' })).b;
+  if (!r?.roomId) break;
+  await G2({ action: 'leave', roomId: r.roomId });
+}
+await G2({ action: 'queueLeave' });
+const cj = await C({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+const gj = await G2({ action: 'queueJoin', queue: 'casual_multi_quick', nickname: '혼자' + rnd.slice(0, 3), mode: 'easy' });
+ok('혼자 두 명도 같은 대기열에', cj.s === 200 && gj.s === 200, JSON.stringify([cj.b, gj.b]));
+const pq = await A({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+ok('파티장이 일반전 다인전 찾기 → 파티원도 같이 대기', pq.s === 200 && pq.b.party === true, JSON.stringify(pq.b));
+ok('파티원 화면에도 찾는 중', (await B({ action: 'party' })).b.party?.searching === true);
+const four = [A, B, C, G2];
+const got = new Array(4).fill(null);
+for (let i = 0; i < 20 && got.some((x) => !x); i++) {
+  for (let k = 0; k < 4; k++) if (!got[k]) {
+    const st = (await four[k]({ action: 'queueStatus' })).b;
+    if (st?.status === 'matched') got[k] = st;
+  }
+  await new Promise((r) => setTimeout(r, 800));
+}
+ok('파티 2 + 혼자 2 → 4명이 한 방', got.every((x) => x && x.roomId === got[0].roomId), JSON.stringify(await Promise.all(four.map(async (U) => (await U({ action: 'queueStatus' })).b))));
+if (got[0]) {
+  const pv = (await A({ action: 'state', roomId: got[0].roomId })).b;
+  ok('4인 방 · 일반전 · 진행 중', pv.players.length === 4 && pv.room.ranked === false && pv.room.status === 'playing', JSON.stringify(pv.room));
+  for (const U of four) await U({ action: 'leave', roomId: got[0].roomId });
+}
+await A({ action: 'partyLeave' });
+ok('파티장이 나가면 파티 없어짐', (await B({ action: 'party' })).b.party === null);
+
+// ---- 랭킹전: 친구끼리는 같은 판에 안 들어감 ----
+await A({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
+await B({ action: 'queueJoin', queue: 'ranked_duel_normal', mode: 'easy' });
+let rmatched = false;
+for (let i = 0; i < 4; i++) {
+  const x = (await A({ action: 'queueStatus' })).b;
+  const y = (await B({ action: 'queueStatus' })).b;
+  if (x?.status === 'matched' || y?.status === 'matched') rmatched = true;
+  await new Promise((r) => setTimeout(r, 1200));
+}
+ok('랭킹전: 친구끼리는 매칭 안 됨', !rmatched);
+await A({ action: 'queueLeave' });
+await B({ action: 'queueLeave' });
 
 const again = await A({ action: 'friendRequest', nickname: nB });
 ok('이미 친구면 다시 신청 불가', again.s === 409);
