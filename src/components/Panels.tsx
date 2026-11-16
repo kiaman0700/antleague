@@ -355,8 +355,8 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect, start = S
         </div>
         {portfolio.itemSpend > 0 && <small className="muted">카드 구입에 쓴 돈 {wonShort(portfolio.itemSpend)}</small>}
       </div>
-      <h4 className="sec-title">{easy ? '가진 주식' : '보유 종목'}</h4>
-      {entries.length === 0 && <p className="empty">{easy ? '아직 산 주식이 없어요. 종목을 골라 사 보세요!' : '보유 종목 없음'}</p>}
+      <h4 className="sec-title"><Icon name="briefcase" /> {easy ? '가진 주식' : '보유 종목'}</h4>
+      {entries.length === 0 && <EmptyState compact icon="briefcase" title={easy ? '아직 산 주식이 없어요' : '보유 종목 없음'} desc={easy ? '종목을 골라 사 보세요.' : undefined} />}
       {entries
         .sort((a, b) => b[1].qty * prices[b[0]] - a[1].qty * prices[a[0]])
         .map(([sym, h]) => {

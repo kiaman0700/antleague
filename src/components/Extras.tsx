@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
+import { EmptyState } from './ui';
 import type { OrderRow } from '../engine/engine';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
@@ -74,7 +75,7 @@ export function OrdersAndDividends({
   return (
     <div className="orders-div">
       <h4 className="sec-title"><Icon name="hourglass" /> 예약 주문</h4>
-      {open.length === 0 && recent.length === 0 && <p className="empty small">예약 주문이 없어요. 종목 화면에서 걸 수 있어요.</p>}
+      {open.length === 0 && recent.length === 0 && <EmptyState compact icon="hourglass" title="예약 주문이 없어요" desc="종목 화면의 사기·팔기에서 걸 수 있어요." />}
       {open.map((o) => (
         <div key={o.id} className={'oo-row ' + o.side}>
           <button className="linkish-soft" onClick={() => onSelect(o.symbol)}>
