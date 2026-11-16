@@ -396,8 +396,8 @@
   }
 }
 .tk.tk-pinned {
-  background: linear-gradient(160deg, rgba(247, 197, 72, 0.1), var(--surface) 70%);
-  border-color: rgba(247, 197, 72, 0.28);
+  background: linear-gradient(160deg, rgba(139, 123, 255, 0.1), var(--surface) 70%);
+  border-color: rgba(139, 123, 255, 0.28);
 }
 .tk-pin {
   position: absolute;
@@ -540,13 +540,13 @@
   color: #e4dbff;
 }
 .sched-chip.today {
-  border-color: rgba(247, 197, 72, 0.55);
-  background: linear-gradient(135deg, rgba(247, 197, 72, 0.12), var(--surface));
+  border-color: rgba(139, 123, 255, 0.55);
+  background: linear-gradient(135deg, rgba(139, 123, 255, 0.12), var(--surface));
   color: var(--text);
 }
 .sched-chip.today b {
   background: var(--gold);
-  color: #1a1300;
+  color: #ffffff;
 }
 .sched-all {
   padding: 0 12px;
@@ -575,7 +575,7 @@
 
 /* 시장 시트: 고정 버튼 */
 .mtile.mtile-pinned {
-  border-color: rgba(247, 197, 72, 0.55);
+  border-color: rgba(139, 123, 255, 0.55);
 }
 .mt-top {
   display: flex;
@@ -677,9 +677,9 @@
   padding: 6px 14px;
   border: 0;
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffd36a, #f5b83d);
-  color: #1a1300;
-  box-shadow: 0 6px 18px rgba(247, 197, 72, 0.22);
+  background: linear-gradient(180deg, #a597ff, #8b7bff);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(139, 123, 255, 0.22);
   transition: transform 0.08s;
 }
 .m-end2:active:not(:disabled) {
@@ -717,7 +717,7 @@
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, rgba(247, 197, 72, 0.5), var(--gold));
+  background: linear-gradient(90deg, rgba(139, 123, 255, 0.5), var(--gold));
   transition: width 0.4s ease;
 }
 

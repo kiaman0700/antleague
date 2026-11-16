@@ -178,21 +178,21 @@
   fill: #3b4357;
 }
 .chart .drawn line {
-  stroke: #f7c548;
+  stroke: #8b7bff;
   stroke-width: 1.6;
 }
 .chart .drawn circle {
-  fill: #f7c548;
+  fill: #8b7bff;
 }
 .chart .drawn-tag rect {
-  fill: rgba(247, 197, 72, 0.85);
+  fill: rgba(139, 123, 255, 0.85);
 }
 .chart .drawn-tag text {
-  fill: #1a1300;
+  fill: #ffffff;
 }
 .chart .pending-pt {
   fill: none;
-  stroke: #f7c548;
+  stroke: #8b7bff;
   stroke-width: 2;
 }
 .pc-tip {

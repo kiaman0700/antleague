@@ -122,8 +122,8 @@
   line-height: 1.35;
 }
 .tile.primary {
-  background: linear-gradient(160deg, rgba(255, 211, 106, 0.2), rgba(245, 184, 61, 0.06));
-  border-color: rgba(247, 197, 72, 0.55);
+  background: linear-gradient(160deg, rgba(255, 211, 106, 0.2), rgba(139, 123, 255, 0.06));
+  border-color: rgba(139, 123, 255, 0.55);
 }
 .tile.primary small {
   color: var(--gold);

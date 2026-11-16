@@ -57,8 +57,8 @@ h4 .ico {
   color: var(--text-2);
 }
 .rank-badge.r1 {
-  background: linear-gradient(180deg, #ffe08a, #f5b83d);
-  color: #1a1300;
+  background: linear-gradient(180deg, #c9c1ff, #8b7bff);
+  color: #ffffff;
 }
 .rank-badge.r2 {
   background: linear-gradient(180deg, #e6e9ef, #b7bdc8);
@@ -166,7 +166,7 @@ h4 .ico {
 }
 .icon-btn.on {
   color: var(--gold);
-  border-color: rgba(247, 197, 72, 0.5);
+  border-color: rgba(139, 123, 255, 0.5);
 }
 .icon-btn:disabled {
   opacity: 0.35;
@@ -222,7 +222,7 @@ h4 .ico {
   fill: var(--gold);
 }
 .chip.pinned-chip {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
 }
 
 /* 장중 차트 속보 표시 */
@@ -333,7 +333,7 @@ h4 .ico {
 }
 .tile:hover:not(:disabled),
 .tile:focus-visible {
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
   background: var(--surface-2);
 }
 /* 이어하기 카드: 평소엔 차분하게(왼쪽 색 띠만), 올리면 강조 */
@@ -343,7 +343,7 @@ h4 .ico {
   box-shadow: inset 3px 0 0 var(--gold);
 }
 .resume-card:hover {
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
 }
 /* 고정한 업종 칩은 별 아이콘으로만 표시 (테두리 강조 없음) */
 .chip.pinned-chip {
@@ -355,7 +355,7 @@ h4 .ico {
 .mode-pick button:hover:not(.on),
 .sg-item:hover:not(.on),
 .room-row:hover:not(:disabled) {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
 }
 
 /* ============ 아이콘 색 ============ */
@@ -455,7 +455,7 @@ h4 .ico {
 /* 커스텀 카드는 버튼을 감싼 상자라 따로: 올리면 다른 카드처럼 노란 테두리 */
 .mp-custom:hover:not(.on),
 .mp-custom:focus-within:not(.on) {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
 }
 
 /* ============ 호버 강조 통일: 누를 수 있는 건 모두 마우스를 올리면 바뀜 ============ */
@@ -479,7 +479,7 @@ h4 .ico {
 }
 /* 정렬 선택 상자 */
 .sortbar select:hover {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
   color: var(--text);
 }
 /* 관심 별 */
@@ -489,14 +489,14 @@ h4 .ico {
 /* 업종 태그(누르면 그 업종으로) */
 button.tag:hover,
 .tag.linkish:hover {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
   color: var(--text);
 }
 /* 주문 방식(지금 가격/예약), 수량 −/+ 등 테두리 있는 버튼 */
 .order-kind button:hover:not(.on),
 .steppers button:hover:not(:disabled),
 .quick button:hover:not(:disabled) {
-  border-color: rgba(247, 197, 72, 0.45);
+  border-color: rgba(139, 123, 255, 0.45);
   background: var(--surface-2);
 }
 
@@ -514,7 +514,7 @@ button.tag:hover,
   margin-bottom: 8px;
   background: rgba(21, 25, 34, 0.96);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(247, 197, 72, 0.5);
+  border: 1px solid rgba(139, 123, 255, 0.5);
   border-radius: 14px;
 }
 .eb-text {
@@ -549,7 +549,7 @@ button.tag:hover,
 }
 .edit-slot {
   position: relative;
-  outline: 2px dashed rgba(247, 197, 72, 0.55);
+  outline: 2px dashed rgba(139, 123, 255, 0.55);
   outline-offset: 2px;
   border-radius: 12px;
   min-width: 0;
@@ -566,7 +566,7 @@ button.tag:hover,
   padding: 4px 6px 4px 10px;
   margin-bottom: 4px;
   border-radius: 10px;
-  background: rgba(247, 197, 72, 0.14);
+  background: rgba(139, 123, 255, 0.14);
   font-size: 12px;
 }
 .es-bar b {
@@ -595,7 +595,7 @@ button.tag:hover,
   color: var(--text);
 }
 .es-btn:hover {
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
   color: var(--gold);
 }
 /* PC 칸: 편집 틀이 칸 높이를 그대로 채우게 */
@@ -645,7 +645,7 @@ button.tag:hover,
   height: 22px;
   border-radius: 6px;
   background: var(--gold);
-  color: #1a1300;
+  color: #ffffff;
 }
 .nav-move i.dis {
   opacity: 0.25;
@@ -726,7 +726,7 @@ button.tag:hover,
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .sl-arrow:hover {
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
   color: var(--gold);
 }
 .sl-arrow.l {
@@ -745,7 +745,7 @@ button.tag:hover,
 }
 .sl-item.movable .chip {
   border-style: dashed;
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
 }
 .sl-item.dragging {
   opacity: 0.55;
@@ -864,12 +864,12 @@ button.tag:hover,
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
-  color: #1a1300;
+  color: #ffffff;
   background: var(--gold);
   flex-shrink: 0;
 }
 .news-tag .ico {
-  color: #1a1300;
+  color: #ffffff;
 }
 .m-page .sname b {
   font-size: 15px;
@@ -909,7 +909,7 @@ button.tag:hover,
 /* ============ 새 뉴스·속보 강조 (1분) ============ */
 .news-card.fresh {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 0 1px rgba(247, 197, 72, 0.35), 0 0 18px rgba(247, 197, 72, 0.18);
+  box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.35), 0 0 18px rgba(139, 123, 255, 0.18);
   animation: fresh-in 0.5s ease-out;
 }
 @keyframes fresh-in {
@@ -922,7 +922,7 @@ button.tag:hover,
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #1a1300;
+  color: #ffffff;
   background: var(--gold);
   border-radius: 6px;
   padding: 1px 6px;
@@ -964,7 +964,7 @@ button.tag:hover,
 }
 .dd-btn:hover,
 .dropdown.open .dd-btn {
-  border-color: rgba(247, 197, 72, 0.5);
+  border-color: rgba(139, 123, 255, 0.5);
   color: var(--text);
 }
 .dd-caret {
@@ -1101,7 +1101,7 @@ button.tag:hover,
   overflow: hidden;
 }
 .co-card.open {
-  border-color: rgba(247, 197, 72, 0.5);
+  border-color: rgba(139, 123, 255, 0.5);
 }
 .co-head {
   width: 100%;
@@ -1272,11 +1272,11 @@ button.tag:hover,
   min-height: 60px;
 }
 .dock-zone.can-drop {
-  outline-color: rgba(247, 197, 72, 0.45);
+  outline-color: rgba(139, 123, 255, 0.45);
 }
 .dock-zone.over {
   outline-color: var(--gold);
-  background: rgba(247, 197, 72, 0.05);
+  background: rgba(139, 123, 255, 0.05);
 }
 .dock-empty {
   flex: 1;
@@ -1290,7 +1290,7 @@ button.tag:hover,
   background: rgba(255, 255, 255, 0.02);
 }
 .dock-panel.editing {
-  outline: 2px dashed rgba(247, 197, 72, 0.55);
+  outline: 2px dashed rgba(139, 123, 255, 0.55);
   outline-offset: 2px;
   border-radius: 12px;
 }
@@ -1313,7 +1313,7 @@ button.tag:hover,
   flex: 0 0 4px;
   border-radius: 4px;
   background: var(--gold);
-  box-shadow: 0 0 10px rgba(247, 197, 72, 0.6);
+  box-shadow: 0 0 10px rgba(139, 123, 255, 0.6);
 }
 .drop-line.v {
   flex: 0 0 4px;
@@ -1434,7 +1434,7 @@ button.tag:hover,
 .tut-spot {
   position: fixed;
   border-radius: 14px;
-  box-shadow: 0 0 0 9999px rgba(5, 6, 10, 0.55), 0 0 0 2px var(--gold), 0 0 22px rgba(247, 197, 72, 0.5);
+  box-shadow: 0 0 0 9999px rgba(5, 6, 10, 0.55), 0 0 0 2px var(--gold), 0 0 22px rgba(139, 123, 255, 0.5);
   transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s;
 }
 .tut-bubble {
@@ -1460,7 +1460,7 @@ button.tag:hover,
 .tut-step {
   font-size: 11px;
   font-weight: 800;
-  color: #1a1300;
+  color: #ffffff;
   background: var(--gold);
   border-radius: 99px;
   padding: 2px 8px;
@@ -1542,7 +1542,7 @@ button.tag:hover,
 .dock-rs i {
   display: block;
   border-radius: 3px;
-  background: rgba(247, 197, 72, 0.45);
+  background: rgba(139, 123, 255, 0.45);
   transition: background 0.15s, transform 0.15s;
 }
 .dock-rs:hover i,
@@ -2024,8 +2024,8 @@ button.tag:hover,
   border-radius: 10px;
   font-size: 12px;
   color: var(--gold);
-  background: rgba(247, 197, 72, 0.08);
-  border: 1px solid rgba(247, 197, 72, 0.3);
+  background: rgba(139, 123, 255, 0.08);
+  border: 1px solid rgba(139, 123, 255, 0.3);
 }
 
 /* ============ 아주 작은 휴대폰(≤360px): 숫자가 잘리거나 버튼에 가리지 않게 ============ */
@@ -2119,7 +2119,7 @@ button.tag:hover,
 }
 .admin-banner.has {
   border-color: var(--gold);
-  background: rgba(247, 197, 72, 0.1);
+  background: rgba(139, 123, 255, 0.1);
 }
 .admin-banner.has b {
   color: var(--gold);
@@ -2289,7 +2289,7 @@ button.tag:hover,
   place-items: center;
   font-weight: 800;
   color: #10131a;
-  background: linear-gradient(135deg, #ffe08a, #f5b83d);
+  background: linear-gradient(135deg, #c9c1ff, #8b7bff);
   flex: 0 0 auto;
 }
 .acc-txt {
@@ -2572,7 +2572,7 @@ button.tag:hover,
 .match-finder {
   display: grid;
   gap: 8px;
-  border-color: rgba(247, 197, 72, 0.35);
+  border-color: rgba(139, 123, 255, 0.35);
 }
 .match-finder h3 {
   display: flex;
@@ -2630,7 +2630,7 @@ button.tag:hover,
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 4px solid rgba(247, 197, 72, 0.25);
+  border: 4px solid rgba(139, 123, 255, 0.25);
   border-top-color: var(--gold);
   animation: spin 0.9s linear infinite;
 }
@@ -2648,7 +2648,7 @@ button.tag:hover,
   padding: 10px 16px;
   border-radius: 12px;
   border: 1px solid var(--gold);
-  background: rgba(247, 197, 72, 0.08);
+  background: rgba(139, 123, 255, 0.08);
   max-width: 420px;
   font-variant-numeric: tabular-nums;
 }
@@ -2709,7 +2709,7 @@ button.tag:hover,
   white-space: nowrap;
 }
 .mode-pick.compact .mp-row > button:not(.mp-gear):hover {
-  border-color: rgba(247, 197, 72, 0.6);
+  border-color: rgba(139, 123, 255, 0.6);
 }
 .mode-pick.compact .mp-row > button.on {
   border-color: var(--gold);
@@ -2837,11 +2837,11 @@ button.tag:hover,
   min-width: 38px;
 }
 .mp-custom-pill.on .mp-gear.icon-btn {
-  border-left-color: rgba(247, 197, 72, 0.45);
+  border-left-color: rgba(139, 123, 255, 0.45);
   color: var(--gold);
 }
 .mode-pick.compact .mp-custom-pill .mp-gear.icon-btn:hover {
-  background: rgba(247, 197, 72, 0.12);
+  background: rgba(139, 123, 255, 0.12);
 }
 .mode-pick.compact .mp-custom-pill > button:not(.mp-gear) {
   display: inline-flex;

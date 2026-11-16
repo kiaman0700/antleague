@@ -3,8 +3,8 @@
 /* 보유 종목 고정 영역 */
 .pinned {
   margin: 12px 12px 4px;
-  background: linear-gradient(135deg, rgba(247, 197, 72, 0.08), rgba(247, 197, 72, 0.02));
-  border: 1px solid rgba(247, 197, 72, 0.22);
+  background: linear-gradient(135deg, rgba(139, 123, 255, 0.08), rgba(139, 123, 255, 0.02));
+  border: 1px solid rgba(139, 123, 255, 0.22);
   border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
