@@ -161,6 +161,10 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
       {inv && (
         <div className="modal-bg">
           <div className="modal invite-pop" role="dialog" aria-modal aria-label="친구 초대">
+            {/* 닫기(답하지 않고 이 창만 닫음)는 늘 쓰는 자리인 오른쪽 위에 — 거절·수락 사이에 있으면 헷갈림 */}
+            <button className="icon-btn ip-close" aria-label="나중에 (이 창만 닫기)" title="나중에 (이 창만 닫기)" onClick={() => setDismissed((d) => new Set(d).add(inv.id))}>
+              <Icon name="x" />
+            </button>
             <h3>
               <Icon name={inv.kind === 'room' ? 'door' : 'users'} size={18} /> {inv.kind === 'duel' ? '1대1 대결 신청' : inv.kind === 'party' ? '파티 초대' : '방 초대'}
             </h3>
@@ -177,9 +181,6 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
             <div className="modal-actions">
               <button className="btn ghost" disabled={busy} onClick={() => respond(inv, false)}>
                 거절
-              </button>
-              <button className="icon-btn" aria-label="나중에" title="나중에 (이 창만 닫기)" onClick={() => setDismissed((d) => new Set(d).add(inv.id))}>
-                <Icon name="x" />
               </button>
               <button className="btn primary" disabled={busy} autoFocus onClick={() => respond(inv, true)}>
                 {inv.kind === 'duel' ? '수락하고 시작' : inv.kind === 'party' ? '파티 들어가기' : '입장'}
