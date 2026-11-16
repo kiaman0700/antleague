@@ -464,7 +464,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             튜토리얼 하기
           </button>
           <button
-            className="linkish-soft"
+            className="btn ghost"
             onClick={() => {
               markTutorialSeen();
               setNudge(false);
