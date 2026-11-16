@@ -9,6 +9,7 @@ import { GRANT_EVERY, START_CARDS } from '../game/items';
 import { Sheet } from '../components/PrefsPanel';
 import { useAccount } from '../net/account';
 import { refreshFriends, useFriends } from './Friends';
+import { setFlash } from '../lib/flash';
 
 /** 대기실에서 친구 초대 (회원만): 접속 중인 친구가 위로, 초대하면 5분 동안 비밀번호 없이 들어올 수 있음 */
 function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => void }) {
@@ -153,7 +154,10 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   const leave = async () => {
     if (isHost && view.players.length > 1 && !(await ask('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?', { ok: '나가기' }))) return;
     if (isHost && view.players.length <= 1 && !(await ask('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?', { ok: '나가기' }))) return;
-    api('leave', { roomId }).catch(() => {}).finally(onLeave);
+    api('leave', { roomId })
+      .then(() => setFlash(isHost && view.players.length <= 1 ? '방을 닫았어요' : '방에서 나왔어요'))
+      .catch(() => {})
+      .finally(onLeave);
   };
   const readyCount = view.players.filter((p) => p.ready || p.id === room.hostId).length;
 

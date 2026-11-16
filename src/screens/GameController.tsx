@@ -1094,6 +1094,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               if (!yes) return;
               soloQuit.current = true;
               saveSolo(null);
+              setFlash('연습을 그만뒀어요');
               onExit();
             });
           } else onExit();
