@@ -238,6 +238,10 @@ export function StockDetail(props: Props) {
               [null, "오늘 전체"],
             ],
             drawKey: `stockduel.draw.${symbol}.d${day}`,
+            now: {
+              i: Math.max(0, Math.ceil(live.tick / k) - 1),
+              label: `지금 ${clock(live.tick * 5)} · 남은 ${clock(Math.max(0, live.n - live.tick) * 5)}`,
+            },
           }}
         />
       </>

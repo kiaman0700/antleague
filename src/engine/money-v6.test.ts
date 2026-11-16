@@ -130,3 +130,12 @@ describe('기권한 사람은 카드 대상이 아님', () => {
     expect(() => use(d, 'a', now, { kind: 'freeze', payload: { target: 'b' } })).toThrow(/상대가 없어요/);
   });
 });
+
+describe('v9: 카드 값 (시뮬로 다시 맞춤)', () => {
+  it('내일 신문 4.5만, 거래 정지 2만(1대1 3만), v8 방은 그대로', () => {
+    expect(itemCost('paper', 3, 9)).toBe(45_000);
+    expect(itemCost('freeze', 4, 9)).toBe(20_000);
+    expect(itemCost('freeze', 2, 9)).toBe(30_000);
+    expect(itemCost('paper', 3, 8)).toBe(30_000);
+  });
+});

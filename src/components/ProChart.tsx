@@ -62,6 +62,8 @@ interface Props {
     tip: (i: number) => string;
     ranges: [number | null, string][];
     drawKey: string;
+    /** 장중: 지금 위치(봉 번호)와 아래에 크게 보여 줄 글 (예: 지금 1:15 · 남은 1:45) */
+    now?: { i: number; label: string };
   };
 }
 
@@ -653,7 +655,9 @@ export function ProChart({
         {Array.from({ length: totalDays }, (_, d) => d)
           .filter(
             (d) =>
-              d % dayStep === 0 && visible(d) && x(d) > padL && x(d) < W - padR,
+              d % dayStep === 0 && visible(d) && x(d) > padL && x(d) < W - padR &&
+              // '지금' 표시와 겹치는 눈금 글자는 숨김
+              !(unit?.now && Math.abs(x(d) - (x(unit.now.i) + slot / 2)) < 70),
           )
           .map((d) => (
             <text
@@ -667,6 +671,20 @@ export function ProChart({
             </text>
           ))}
 
+        {unit?.now && visible(unit.now.i) && (() => {
+          const nx = Math.min(W - padR - 2, Math.max(padL + 2, x(unit.now.i) + slot / 2));
+          const tw = unit.now.label.length * 7.6 + 18;
+          const lx = Math.min(W - padR - tw / 2, Math.max(padL + tw / 2, nx));
+          return (
+            <g className="now-mark" aria-hidden>
+              <line x1={nx} x2={nx} y1={padT} y2={H - padB} />
+              <rect x={lx - tw / 2} y={H - padB + 2} width={tw} height={21} rx={10.5} />
+              <text x={lx} y={H - padB + 17} textAnchor="middle">
+                {unit.now.label}
+              </text>
+            </g>
+          );
+        })()}
         <g clipPath={`url(#clip-${symbol})`}>
           {/* 아직 오지 않은 날 */}
           {lastIdx < totalDays - 1 && (

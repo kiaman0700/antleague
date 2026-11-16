@@ -1708,3 +1708,24 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 @media (min-width: 861px) { .rc-pill { bottom: 64px; } }
 
 .left-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: rgba(255,93,115,.14); color: #ff8a9a; margin-left: 4px; }
+
+/* ===== PC 화면 편집: 이름표·손잡이를 칸 위 테두리에 띄움 → 편집 중에도 칸 크기가 실제 레이아웃과 같음 ===== */
+.dock-panel.editing { position: relative; }
+.dock-panel.editing > .es-bar {
+  position: absolute; top: -12px; left: 10px; z-index: 8; margin: 0; width: auto; max-width: calc(100% - 20px);
+  height: 24px; padding: 0 4px 0 8px; gap: 6px; font-size: 11.5px; border-radius: 99px;
+  background: #1f1a40; border: 1px solid rgba(139, 123, 255, 0.6); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+.dock-panel.editing > .es-bar.dock-handle { cursor: grab; }
+.dock-panel.editing > .es-bar .es-btn { width: 22px; height: 22px; border-radius: 99px; }
+.dock-panel.editing > .es-bar .es-off { font-size: 10.5px; }
+/* 편집 중: 칸 위에 띄운 이름표가 칸의 스크롤 영역에 잘리지 않게 (스크롤은 안쪽에서) */
+.dock-panel.editing { overflow: visible !important; }
+.dock-panel.editing > .es-body { overflow: auto; border-radius: 12px; }
+/* 견본 알림은 옵션·창(모달 50~60) 아래에 — 창을 열면 가리지 않게 */
+.toast.sample, .toast.sample.movable { z-index: 45; }
+
+/* 장중 차트: 지금 위치와 남은 시간 */
+.chart .now-mark line { stroke: #f5b83d; stroke-width: 1.2; stroke-dasharray: 3 3; }
+.chart .now-mark rect { fill: #f5b83d; }
+.chart .now-mark text { fill: #1a1406; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }

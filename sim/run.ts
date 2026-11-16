@@ -242,8 +242,7 @@ if (run('cards')) {
       rows.push([`${ITEM_MAP[kind].name} (${man(itemCost(kind, 2, SIM_V))})`, (uses / n).toFixed(2), man(gain / u), man((gain + spend) / u), man(dmg / u), ITEM_MAP[kind].type === 'attack' ? pct(bad / u) : '-', `${pct(winB / n)} → ${pct(winV / n)}`]);
     }
     table(['카드 (1장 값)', '판당 추가 사용', '1장당 순이익(값 포함)', '1장당 총이익(값 빼고)', '1장당 상대들 손해', '막힘/반사', '쓴 사람 승률'], rows);
-    console.log('※ 기준 판은 똑같은 봇끼리라 대부분 비김(0.5승) — 작은 금액 차이도 승률을 크게 흔듦. 카드 가치는 '순이익' 칸으로 볼 것
-');
+    console.log('※ 기준 판은 똑같은 봇끼리라 대부분 비김(0.5승) — 작은 금액 차이도 승률을 크게 흔듦. 카드 가치는 순이익 칸으로 볼 것\n');
   }
 
   // 방해 카드는 상대 전략에 따라 효과가 다름

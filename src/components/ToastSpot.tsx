@@ -56,24 +56,56 @@ export function ToastSpot({ toast, editing, pos, xy, onMove }: Props) {
     const H = window.innerHeight;
     const sw = W - r.width - 24;
     const sh = H - r.height - 24;
-    const SNAP = 16; // 이만큼(px) 가까우면 붙음
-    const snap = (v: number, span: number) => {
-      for (const t of [0, 0.5, 1]) if (span > 0 && Math.abs(v - t) * span < SNAP) return { v: t, hit: t as number | null };
-      return { v, hit: null as number | null };
+    const SNAP = 10; // 이만큼(px) 가까우면 붙음
+    const w = r.width;
+    const h = r.height;
+    // 맞춤 기준선 (발표 프로그램의 스마트 가이드처럼):
+    //  - 화면: 양 끝(여백 12px)·¼·½·¾ 선 — 알림의 가장자리 또는 가운데가 그 선에 맞음
+    //  - 다른 칸(종목 목록·차트·뉴스·카드·점수줄 등): 그 칸의 왼쪽·가운데·오른쪽 / 위·가운데·아래
+    type Line = { pos: number; edge: 'start' | 'center' | 'end' };
+    const xs: Line[] = [
+      { pos: 12, edge: 'start' },
+      { pos: W - 12, edge: 'end' },
+      ...[0.25, 0.5, 0.75].map((f) => ({ pos: W * f, edge: 'center' as const })),
+    ];
+    const ys: Line[] = [
+      { pos: 12, edge: 'start' },
+      { pos: H - 12, edge: 'end' },
+      ...[0.25, 0.5, 0.75].map((f) => ({ pos: H * f, edge: 'center' as const })),
+    ];
+    for (const n of document.querySelectorAll<HTMLElement>('.dock-panel, .desk-score, .hud, .m-top, .m-page, .bottom-nav, .edit-slot')) {
+      const b = n.getBoundingClientRect();
+      if (!b.width || !b.height) continue;
+      xs.push({ pos: b.left, edge: 'start' }, { pos: b.left + b.width / 2, edge: 'center' }, { pos: b.right, edge: 'end' });
+      ys.push({ pos: b.top, edge: 'start' }, { pos: b.top + b.height / 2, edge: 'center' }, { pos: b.bottom, edge: 'end' });
+    }
+    // 기준선에 알림의 어느 부분을 맞출지: 시작 선엔 알림의 시작, 끝 선엔 알림의 끝, 가운데 선엔 가운데 (+ 칸 가장자리는 알림 시작·끝 모두 후보)
+    const fit = (raw: number, size: number, lines: Line[]) => {
+      let best: { at: number; line: number; d: number } | null = null;
+      for (const l of lines) {
+        const cands = l.edge === 'center' ? [l.pos - size / 2] : [l.pos, l.pos - size];
+        for (const at of cands) {
+          const d = Math.abs(at - raw);
+          if (d < SNAP && (!best || d < best.d)) best = { at, line: l.pos, d };
+        }
+      }
+      return best;
     };
     const calc = (ev: PointerEvent) => {
-      // 왼쪽 위 좌표 → 비율 (화면 가장자리 12px 여백, toastStyle 과 같은 식)
-      const raw = { x: sw > 0 ? clamp01((ev.clientX - gx - 12) / sw) : 0.5, y: sh > 0 ? clamp01((ev.clientY - gy - 12) / sh) : 0 };
-      const sx = snap(raw.x, sw);
-      const sy = snap(raw.y, sh);
-      return { p: { x: sx.v, y: sy.v }, hx: sx.hit, hy: sy.hit };
+      // 알림 왼쪽 위 좌표(px) → 기준선에 붙이기 → 비율 (toastStyle 과 같은 식: 왼쪽 = 12 + x × (W - 24 - 폭))
+      let L = Math.min(W - 12 - w, Math.max(12, ev.clientX - gx));
+      let T = Math.min(H - 12 - h, Math.max(12, ev.clientY - gy));
+      const fx = fit(L, w, xs);
+      const fy = fit(T, h, ys);
+      if (fx) L = fx.at;
+      if (fy) T = fy.at;
+      return { p: { x: sw > 0 ? clamp01((L - 12) / sw) : 0.5, y: sh > 0 ? clamp01((T - 12) / sh) : 0 }, hx: fx?.line ?? null, hy: fy?.line ?? null };
     };
-    // 보조선: 붙은 기준(왼쪽 끝·가운데·오른쪽 끝 / 위·가운데·아래)에 선을 그음
-    const lineAt = (axis: 'x' | 'y', t: number | null) => {
+    // 보조선: 붙은 기준선 위치에 선을 그음
+    const lineAt = (axis: 'x' | 'y', pos: number | null) => {
       const g = axis === 'x' ? vRef.current : hRef.current;
       if (!g) return;
-      if (t === null) return void (g.style.display = 'none');
-      const pos = axis === 'x' ? (t === 0 ? 12 : t === 1 ? W - 12 : W / 2) : t === 0 ? 12 : t === 1 ? H - 12 : H / 2;
+      if (pos === null) return void (g.style.display = 'none');
       g.style.display = 'block';
       if (axis === 'x') g.style.left = pos + 'px';
       else g.style.top = pos + 'px';

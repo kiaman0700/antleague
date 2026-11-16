@@ -237,10 +237,16 @@ export const PRICE_V8: Partial<Record<ItemKind, number>> = {
   shield: 15_000,
   mirror: 30_000,
 };
+/**
+ * (v9) 시뮬로 다시 맞춤: v8 에서 내일 신문(3만)이 너무 싸서 정보 카드 쓰는 쪽이 4인 47%, 방해 카드가 싸서 몰아 쓰는 쪽이 51% →
+ * 내일 신문 4.5만, 방해 카드 값 올림 → 4인 정보 42%·방해 33%·뉴스 30%·레버리지 26% (기대 25%)
+ */
+export const PRICE_V9: Partial<Record<ItemKind, number>> = { ...PRICE_V8, paper: 45_000, freeze: 20_000, blackout: 15_000, fake: 15_000, fee: 20_000 };
 export function itemCost(kind: ItemKind, players: number, version = 1): number {
   const d = ITEM_MAP[kind];
-  if (version >= 8 && PRICE_V8[kind] != null) {
-    const base = PRICE_V8[kind]!;
+  const table = version >= 9 ? PRICE_V9 : PRICE_V8;
+  if (version >= 8 && table[kind] != null) {
+    const base = table[kind]!;
     return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / 5_000) * 5_000 : base;
   }
   // v6: 시작 돈이 1/10 이라 카드 값도 1/10
