@@ -26,6 +26,8 @@ export interface RankRow {
   /** 상대 수익률 구간(%) — 상대의 정확한 재산은 보이지 않음 */
   band?: [number, number] | null;
   rank?: number;
+  /** 회원(로그인) — 이름 옆 인증 표시 */
+  verified?: boolean;
 }
 
 /** 수익률 구간 글자: [4,6] → "+4~6%", [-2,0] → "-2~0%" */
@@ -39,7 +41,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number): RankRow[] {
   return players
-    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank }))
+    .map((p) => ({ id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -53,7 +55,10 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
           <span className="rk">{rankBadge(i)}</span>
           <span className="rn">
             <b>
-              <FitText>{r.nickname}</FitText>
+              <FitText>
+                {r.nickname}
+                {r.verified && <Icon name="check" size={11} className="verified" />}
+              </FitText>
             </b>
             {r.band ? (
               <small className={tone(r.band[0] + r.band[1])} title="상대의 정확한 재산은 보이지 않아요 (수익률 구간)">
@@ -126,6 +131,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
             <b>
               <FitText>
                 {r.nickname}
+                {r.verified && <Icon name="check" size={12} className="verified" />}
                 {r.me && <em> (나)</em>}
               </FitText>
             </b>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
+import { MatchFinder } from '../components/MatchFinder';
 import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
@@ -547,8 +548,21 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         </div>
       </section>
 
+      {online && (
+        <MatchFinder
+          member={account.status === 'member'}
+          nickname={account.profile?.nickname ?? profile.nick}
+          nickOk={account.status === 'member' || profile.ok}
+          ui={profile.ui}
+          onNeedNick={() => (setNickErr(true), nickRef.current?.focus())}
+          onLogin={() => go('login')}
+          onMatched={(m) => onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: profile.ui })}
+        />
+      )}
+
+      <h3 className="home-sub">친구와 · 혼자</h3>
       <nav className="home-actions">
-        <button className="tile primary" disabled={!online} onClick={need(() => go('rooms'))}>
+        <button className="tile" disabled={!online} onClick={need(() => go('rooms'))}>
           <i><Icon name="search" size={24} /></i>
           <b>방 찾기</b>
           <small>{!online ? '온라인 설정 필요' : openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
@@ -556,7 +570,7 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         <button className="tile" disabled={!online} onClick={need(() => go('create'))}>
           <i><Icon name="plus" size={24} /></i>
           <b>방 만들기</b>
-          <small>인원·길이·시간 설정</small>
+          <small>친구와 · 설정 직접 (점수 없음)</small>
         </button>
         <button className="tile" disabled={!online} onClick={need(() => setModal('code'))}>
           <i><Icon name="key" size={24} /></i>

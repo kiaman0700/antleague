@@ -19,6 +19,7 @@ import { DockBoard } from '../components/Dock';
 import { ToastSpot } from '../components/ToastSpot';
 import { TradeJump } from '../components/TradeJump';
 import { FeedbackSheet } from '../components/FeedbackSheet';
+import { FIND_AGAIN } from '../components/MatchFinder';
 import { withLive } from '../game/live';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
@@ -567,6 +568,16 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         final={view.final}
         onExit={onExit}
         nextCode={view.room.nextCode ?? null}
+        matchKind={view.room.kind}
+        ranked={!!view.room.ranked}
+        onFindAgain={() => {
+          try {
+            localStorage.setItem(FIND_AGAIN, '1');
+          } catch {
+            /* 무시 */
+          }
+          onExit();
+        }}
         onRematch={
           session.mode === 'multi' && onWaiting
             ? async () => {

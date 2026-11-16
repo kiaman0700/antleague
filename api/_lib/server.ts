@@ -113,6 +113,7 @@ import {
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
 import { accountAct, getProfile, recordMatch, resetPassword } from './accounts.js';
+import { parseQueue, pickGroup, queueName, SPEED_PRESET } from '../../src/engine/matching.js';
 import type { Trade } from '../../src/game/portfolio.js';
 
 export interface ApiResult {
@@ -197,6 +198,8 @@ async function loadGame(roomId: string): Promise<GameData> {
       max_players: r.max_players,
       is_private: r.is_private,
       next_code: r.next_code ?? null,
+      kind: r.kind ?? 'custom',
+      ranked: !!r.ranked,
     } as RoomRow,
     players: must(pl, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
@@ -354,7 +357,7 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     const fin = finalResults(fresh);
     await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
     try {
-      await recordMatch(db(), d.room.id, fin.results);
+      await recordMatch(db(), d.room.id, fin.results, !!d.room.ranked);
     } catch (e) {
       console.error('[api] rank', e instanceof Error ? e.message : e);
     }
@@ -675,6 +678,98 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page });
       if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
       return { ok: true };
+    }
+
+    /* ---------- 매칭 ---------- */
+    case 'queueJoin': {
+      rateLimit(uid + ':queue', 20, 600_000);
+      const q = parseQueue(b.queue);
+      if (!q) throw new GameError('대결 종류를 골라 주세요.');
+      const prof = await getProfile(sb, uid);
+      if (q.kind === 'ranked' && !prof) throw new GameError('랭킹전은 로그인한 회원만 할 수 있어요.', 403);
+      const nickname = prof ? prof.nickname : cleanNickname(b.nickname);
+      const mode = cleanMode(b.mode);
+      // 진행 중인 대결이 있으면 먼저 끝내거나 기권하게 (두 판을 동시에 하지 않게)
+      const playing = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid).eq('rooms.status', 'playing'), 'playing') as unknown as { left_game: boolean }[];
+      if (playing.some((p) => !p.left_game)) throw new GameError('진행 중인 대결이 있어요. 홈의 이어하기로 돌아가거나 기권한 뒤에 찾아 주세요.', 409);
+      const now = new Date().toISOString();
+      const row = { user_id: uid, queue: queueName(q), rating: prof?.rating ?? 1000, nickname, mode, claim: null, room_id: null, player_id: null, created_at: now, last_poll: now };
+      const res = await sb.from('match_tickets').upsert(row, { onConflict: 'user_id' });
+      if (res.error) throw new GameError(/match_tickets/.test(res.error.message) ? '아직 준비 중인 기능이에요.' : '대기열에 들어가지 못했어요.', 503);
+      return { ok: true };
+    }
+
+    case 'queueLeave': {
+      await sb.from('match_tickets').delete().eq('user_id', uid).is('room_id', null);
+      return { ok: true };
+    }
+
+    case 'queueStatus': {
+      const mine = (await sb.from('match_tickets').select('*').eq('user_id', uid).maybeSingle()).data as {
+        id: string; queue: string; rating: number; nickname: string; mode: string; claim: string | null; room_id: string | null; player_id: string | null; created_at: string;
+      } | null;
+      if (!mine) return { status: 'none' };
+      if (mine.room_id && mine.player_id) {
+        const room = (await sb.from('rooms').select('code').eq('id', mine.room_id).maybeSingle()).data as { code: string } | null;
+        await sb.from('match_tickets').delete().eq('id', mine.id);
+        return { status: 'matched', roomId: mine.room_id, playerId: mine.player_id, code: room?.code ?? '', nickname: mine.nickname, mode: mine.mode };
+      }
+      const nowMs = Date.now();
+      await sb.from('match_tickets').update({ last_poll: new Date(nowMs).toISOString() }).eq('id', mine.id);
+      // 오래 응답 없는 대기표(창을 닫은 사람)는 버림
+      await sb.from('match_tickets').delete().is('room_id', null).lt('last_poll', new Date(nowMs - 20_000).toISOString());
+      const q = parseQueue(mine.queue)!;
+      const waiting = ((await sb.from('match_tickets').select('id, user_id, rating, nickname, mode, created_at').eq('queue', mine.queue).is('room_id', null).is('claim', null).order('created_at').limit(50)).data ?? []) as {
+        id: string; user_id: string; rating: number; nickname: string; mode: string; created_at: string;
+      }[];
+      const toT = (t: { id: string; rating: number; created_at: string }) => ({ id: t.id, rating: t.rating, createdAt: new Date(t.created_at).getTime() });
+      const meT = toT(mine);
+      const group = mine.claim ? null : pickGroup(meT, waiting.map(toT), q.size, nowMs);
+      if (group) {
+        // 고른 사람들을 한꺼번에 '잡기' — 다른 사람이 동시에 잡았으면 놓아주고 다음 번에
+        const batch = randomBytes(16).toString('hex').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+        const ids = group.map((g) => g.id);
+        const got = must(await sb.from('match_tickets').update({ claim: batch }).in('id', ids).is('claim', null).is('room_id', null).select('id'), 'claim') as { id: string }[];
+        if (got.length !== ids.length) {
+          await sb.from('match_tickets').update({ claim: null }).eq('claim', batch);
+        } else {
+          try {
+            const members = ids.map((id) => waiting.find((w) => w.id === id) ?? { id: mine.id, user_id: uid, rating: mine.rating, nickname: mine.nickname, mode: mine.mode, created_at: mine.created_at });
+            // 닉네임이 겹치면 뒤에 숫자를 붙임 (방 안에서는 유일해야 함)
+            const used = new Set<string>();
+            for (const m of members) {
+              let n = m.nickname;
+              for (let k = 2; used.has(n); k++) n = (m.nickname.slice(0, 8) + k).slice(0, 10);
+              used.add(n);
+              m.nickname = n;
+            }
+            const preset = SPEED_PRESET[q.speed];
+            const title = `${q.kind === 'ranked' ? '랭킹전' : '일반전'} · ${q.size === 'duel' ? '1대1' : `${members.length}인`} · ${preset.label}`;
+            let room: { id: string; code: string } | null = null;
+            for (let i = 0; i < 5 && !room; i++) {
+              const res = await sb.from('rooms').insert({ code: newCode(), total_days: preset.days, turn_seconds: preset.turnSeconds, title, max_players: members.length, is_private: true, kind: 'match', ranked: q.kind === 'ranked' }).select('id, code').single();
+              if (!res.error) room = res.data;
+              else if (!/duplicate/i.test(res.error.message)) must(res, 'match room');
+            }
+            if (!room) throw new GameError('방을 만들지 못했어요.', 500);
+            await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
+            const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
+            const deadline = iso(Date.now() + (preset.turnSeconds + 5) * 1000);
+            must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
+            for (const m of members) {
+              const p = ins.find((x) => x.user_id === m.user_id);
+              await sb.from('match_tickets').update({ room_id: room.id, player_id: p?.id ?? null }).eq('id', m.id);
+            }
+            const meP = ins.find((x) => x.user_id === uid)!;
+            await sb.from('match_tickets').delete().eq('id', mine.id);
+            return { status: 'matched', roomId: room.id, playerId: meP.id, code: room.code, nickname: members.find((m) => m.user_id === uid)!.nickname, mode: mine.mode };
+          } catch (e) {
+            await sb.from('match_tickets').update({ claim: null }).eq('claim', batch);
+            throw e;
+          }
+        }
+      }
+      return { status: 'waiting', waitedSec: Math.round((nowMs - meT.createdAt) / 1000), inQueue: waiting.length, window: Math.min(1000, 100 + 50 * Math.floor((nowMs - meT.createdAt) / 10_000)) };
     }
 
     case 'kick': {

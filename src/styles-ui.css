@@ -2567,3 +2567,101 @@ button.tag:hover,
     max-width: 160px;
   }
 }
+
+/* ============ 대결 찾기 (매칭) ============ */
+.match-finder {
+  display: grid;
+  gap: 8px;
+  border-color: rgba(247, 197, 72, 0.35);
+}
+.match-finder h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+}
+.mf-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.mf-seg button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.mf-seg button small {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.mf-seg button.on small {
+  color: inherit;
+  opacity: 0.85;
+}
+.mf-note {
+  margin: 2px 0;
+}
+.home-sub {
+  margin: 14px 4px 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.mf-bg {
+  z-index: 120;
+}
+.mf-modal {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  max-width: 360px;
+}
+.mf-time {
+  font-size: 34px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  color: var(--gold);
+}
+.mf-spin {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 4px solid rgba(247, 197, 72, 0.25);
+  border-top-color: var(--gold);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rating-change {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px auto;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--gold);
+  background: rgba(247, 197, 72, 0.08);
+  max-width: 420px;
+  font-variant-numeric: tabular-nums;
+}
+.rating-change em {
+  font-style: normal;
+  font-weight: 800;
+}
+.rank-chip .verified,
+.rank-row .verified {
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+/* 대결 찾기는 작은 화면에서도 설명(약 10분 등)을 보여 줌 */
+.mf-seg button small {
+  display: block !important;
+}

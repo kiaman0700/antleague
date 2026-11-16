@@ -1,3 +1,4 @@
+import { api } from '../net/api';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
@@ -20,12 +21,28 @@ interface Props {
   /** 한 판 더(같은 사람들과) — 누가 이미 만들었으면 nextCode 가 있음 */
   nextCode?: string | null;
   onRematch?: () => Promise<void>;
+  /** 매칭으로 만든 방 (다시 찾기) · 랭킹전 */
+  matchKind?: 'custom' | 'match';
+  ranked?: boolean;
+  onFindAgain?: () => void;
 }
 
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit, nextCode, onRematch }: Props) {
+export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain }: Props) {
+  // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
+  const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null } | null>(null);
+  useEffect(() => {
+    if (session.mode !== 'multi' || !session.roomId) return;
+    let n = 0;
+    const load = () =>
+      api<typeof rating>('myMatch', { roomId: session.roomId })
+        .then((r) => (r ? setRating(r) : n++ < 5 && setTimeout(load, 1500)))
+        .catch(() => {});
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [rematching, setRematching] = useState(false);
   const [rematchErr, setRematchErr] = useState('');
   const rematch = async () => {
@@ -334,8 +351,35 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         </div>
       </div>
 
+      {rankedGame && (
+        <div className="rating-change">
+          {rating?.rated && rating.rating_before !== null && rating.rating_after !== null ? (
+            <>
+              <span>랭킹 점수</span>
+              <b>
+                {rating.rating_before} → {rating.rating_after}
+              </b>
+              <em className={rating.rating_after >= rating.rating_before ? 'up' : 'down'}>
+                {rating.rating_after >= rating.rating_before ? '+' : ''}
+                {rating.rating_after - rating.rating_before}
+              </em>
+            </>
+          ) : (
+            <span className="muted">랭킹 점수를 반영하는 중…</span>
+          )}
+        </div>
+      )}
       <div className="center-actions">
-        {onRematch ? (
+        {matchKind === 'match' && onFindAgain ? (
+          <>
+            <button className="btn primary xl" onClick={onFindAgain}>
+              같은 조건으로 다시 찾기
+            </button>
+            <button className="btn ghost" onClick={onExit}>
+              로비로
+            </button>
+          </>
+        ) : onRematch ? (
           <>
             {nextCode && <p className="rematch-note">다시 하기 방이 열렸어요! 같은 설정으로 바로 붙어요</p>}
             <button className="btn primary xl" onClick={rematch} disabled={rematching}>

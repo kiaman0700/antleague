@@ -199,7 +199,7 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
  * 끝난 대결의 결과를 회원 기록·랭킹에 반영 (한 판에 한 번 — match_players 기본키로 중복 막음).
  * results 는 1등부터, nickname 은 그 방 안에서 유일
  */
-export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number }[]) {
+export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number }[], ranked = false) {
   const ps = ((await sb.from('players').select('user_id, nickname').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string }[];
   if (ps.length < 2) return;
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
@@ -213,7 +213,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   });
   const retOf = new Map(results.map((r) => [byNick.get(r.nickname) ?? '', r.ret]));
   const members = profs.filter((p) => rankOf.has(p.user_id));
-  const rated = members.length >= 2;
+  // 점수는 랭킹전(매칭)에서만. 친구 방·일반전은 전적만 남김
+  const rated = ranked && members.length >= 2;
   // 회원끼리 쌍마다 Elo (K=32 를 상대 수로 나눔). 게스트와의 결과는 점수에 넣지 않음
   const delta = new Map<string, number>();
   if (rated) {

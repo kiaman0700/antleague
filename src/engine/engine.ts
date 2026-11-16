@@ -39,6 +39,9 @@ export interface RoomRow {
   is_private?: boolean;
   /** 한 판 더: 끝난 방에서 만든 새 방 코드 */
   next_code?: string | null;
+  /** 매칭으로 만든 방 / 랭킹전 (016) */
+  kind?: 'custom' | 'match';
+  ranked?: boolean;
 }
 
 export const MAX_PLAYERS = 6;
@@ -116,7 +119,7 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number; ranked?: boolean; kind?: 'custom' | 'match' };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
@@ -417,7 +420,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
-    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1 },
+    room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '주식 대결', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1, ranked: !!r.ranked, kind: r.kind ?? 'custom' },
     serverNow: now,
     meId,
     players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: START_CASH, tradeCount: 0, verified: !!verified?.has(p.id), status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
