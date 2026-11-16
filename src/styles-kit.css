@@ -192,3 +192,10 @@
   .me-card .me-rank small { text-align: right; }
 }
 .me-info .title-tag, .me-info [class*="badge"] { white-space: nowrap; }
+
+/* 휴대폰 시장 칸: 이름·등락 글자 10px → 11px (초보도 읽기 쉽게) */
+.tk small, .tk em { font-size: 11px; }
+/* 시장 칸이 바뀔 때: 완전히 투명했다 나타나지 않고 살짝만 (움직임이 느려지는 순간에도 숫자가 늘 읽히게) */
+@keyframes tk-in2 { from { opacity: 0.45; transform: translateY(3px); } }
+.tk-body { animation-name: tk-in2; }
+@media (prefers-reduced-motion: reduce) { .tk-body { animation: none; } }
