@@ -190,7 +190,12 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
   const shownRank = shortRank ? [...stockRank.slice(0, 5), ...stockRank.slice(-5)] : stockRank;
   // 창(탭) 제목: 라우터는 '게임 중'으로 두므로 결과 화면에선 '결과'
   useEffect(() => {
+    const prev = document.title;
     document.title = '결과 · 개미리그';
+    // 같은 주소에서 한 판 더(연습) 하면 라우터가 제목을 안 바꾸므로 나갈 때 되돌림
+    return () => {
+      document.title = prev;
+    };
   }, []);
 
   return (

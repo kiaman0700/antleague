@@ -648,6 +648,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         searchRef.current?.querySelector('input')?.focus();
       }
       if (typing) return;
+      // 화면 편집 중 Esc = '완료' (열린 창이 있으면 그 창만 닫힘)
+      if (e.key === 'Escape' && editingRef.current && !session.demo && !document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open')) {
+        setEditing(false);
+        return;
+      }
       if (e.key === 'Enter' && !editingRef.current && !(e.target as HTMLElement)?.closest('button, a, [role=button], [tabindex], .modal-bg, .sheet-bg')) {
         e.preventDefault();
         setSheet('buy');

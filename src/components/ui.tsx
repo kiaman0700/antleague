@@ -8,7 +8,7 @@
  *   Toast        화면 아래 짧은 확인 안내 (몇 초 뒤 사라지는 건 쓰는 쪽에서)
  * 모양은 styles-kit.css
  */
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 /** 불러오는 중 — inline 이면 줄 안에 작게, 아니면 칸 가운데 */
@@ -124,3 +124,15 @@ export function Toast({ text, tone }: { text: string; tone?: 'error' }) {
 
 /** 카드를 나란히 놓을 칸 수: 마지막 줄에 하나만 남지 않게 (1~3 → 그대로, 4 → 2, 5 이상 → 3) */
 export const balancedCols = (n: number) => (n <= 3 ? Math.max(1, n) : n === 4 ? 2 : 3);
+
+/** 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만 */
+export function useEscape(onClose: () => void, on = true) {
+  const ref = useRef(onClose);
+  ref.current = onClose;
+  useEffect(() => {
+    if (!on) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ref.current();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [on]);
+}

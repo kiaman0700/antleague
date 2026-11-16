@@ -1,4 +1,5 @@
 import { useEffect as useEffectT, useState as useStateT } from 'react';
+import { useEscape } from './ui';
 import { FitText } from './FitText';
 import { CardIcon, Icon, type IconName } from './Icon';
 /** 여럿이 할 때 순위표, 카드 대상 고르기, 시장 지표 그리드 */
@@ -160,6 +161,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
 /** 방해·염탐 카드를 누구에게 쓸지 */
 export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind; rows: RankRow[]; onPick: (id: string) => void; onCancel: () => void }) {
   const d = ITEM_MAP[kind];
+  useEscape(onCancel);
   return (
     <div className="modal-bg" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>

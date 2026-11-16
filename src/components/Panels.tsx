@@ -10,7 +10,7 @@ import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
-import { EmptyState } from './ui';
+import { EmptyState, useEscape } from './ui';
 
 /* ------------------------------ 뉴스 ------------------------------ */
 
@@ -502,6 +502,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
 export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (symbol: string, tone: 'good' | 'bad') => void }) {
   const [symbol, setSymbol] = useState(COMPANIES[0].symbol);
   const [t, setT] = useState<'good' | 'bad'>('good');
+  useEscape(onCancel);
   return (
     <div className="modal-bg" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -682,9 +683,10 @@ const STEPS = [
 export function Tutorial({ onDone }: { onDone: () => void }) {
   const [i, setI] = useState(0);
   const s = STEPS[i];
+  useEscape(onDone);
   return (
     <div className="modal-bg strong">
-      <div className="modal tutorial">
+      <div className="modal tutorial" role="dialog" aria-modal aria-label="게임 방법">
         <div className="dots">
           {STEPS.map((_, k) => (
             <i key={k} className={k === i ? 'on' : ''} />
