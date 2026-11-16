@@ -552,7 +552,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
           <button
             className="btn sm"
-            disabled={!cur || pw.length < 8 || pw !== pw2}
+            disabled={!cur || pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) || pw !== pw2}
             onClick={() =>
               act(async () => {
                 await api('changePassword', { current: cur, password: pw });
@@ -567,6 +567,19 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
             비밀번호 바꾸기
           </button>
         </div>
+        {(pw || pw2) && (
+          <p className="small pw-hint" aria-live="polite">
+            {pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) ? (
+              <span className="error">새 비밀번호는 8자 이상, 영어와 숫자를 함께 써 주세요</span>
+            ) : pw2 && pw !== pw2 ? (
+              <span className="error">새 비밀번호 두 칸이 서로 달라요</span>
+            ) : !cur ? (
+              <span className="muted">지금 비밀번호도 적어 주세요</span>
+            ) : pw === pw2 ? (
+              <span className="ok-msg">바꿀 준비가 됐어요</span>
+            ) : null}
+          </p>
+        )}
         <button
           className="btn sm ghost"
           disabled={!cur}
