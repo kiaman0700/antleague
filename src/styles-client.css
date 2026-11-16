@@ -908,3 +908,197 @@ body:has(.result) {
   font-weight: 800;
   color: #fff6d6;
 }
+
+/* ============ 기업 공부: 투자 기초 · 퀴즈 ============ */
+.study-tabs {
+  margin: 4px 0 6px;
+}
+.study-basics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.study-card .sc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.study-card .sc-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.sc-num {
+  font-family: var(--mono);
+  font-weight: 800;
+  color: #ffe08a;
+  font-size: 12px;
+}
+.study-card p {
+  margin: 0 0 8px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.study-card .sc-tip {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(245, 184, 61, 0.08);
+  color: var(--text);
+  font-size: 13px;
+}
+.quiz,
+.quiz-done {
+  max-width: 640px;
+}
+.quiz-done {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+}
+.qz-top {
+  display: flex;
+  justify-content: space-between;
+}
+.quiz h3 {
+  margin: 8px 0 12px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.qz-options {
+  display: grid;
+  gap: 8px;
+}
+.qz-opt {
+  min-height: 48px;
+  padding: 10px 14px;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+.qz-opt:hover:not(:disabled) {
+  border-color: rgba(245, 184, 61, 0.55);
+}
+.qz-opt.right {
+  border-color: var(--green);
+  background: rgba(61, 220, 132, 0.12);
+}
+.qz-opt.wrong {
+  border-color: var(--down);
+  background: rgba(255, 99, 99, 0.1);
+}
+.qz-opt.dim {
+  opacity: 0.5;
+}
+.qz-why {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  gap: 8px;
+  line-height: 1.5;
+}
+.qz-why.right b {
+  color: var(--green);
+}
+.qz-why.wrong b {
+  color: var(--down);
+}
+.qz-why .btn {
+  justify-self: end;
+}
+
+/* 운영자 의견함 (위 메뉴 고정) */
+.cl-admin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 99, 99, 0.35);
+  background: rgba(255, 99, 99, 0.06);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cl-admin.has {
+  border-color: rgba(255, 99, 99, 0.75);
+  background: rgba(255, 99, 99, 0.14);
+}
+.cl-admin.compact {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  justify-content: center;
+}
+.cl-admin .ln-badge {
+  top: -6px;
+  right: -6px;
+}
+.lt-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 랭킹 티어 배지 */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tier-badge .tier-emblem {
+  flex: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+.tier-badge .tb-txt {
+  display: grid;
+  line-height: 1.15;
+  text-align: left;
+}
+.tier-badge .tb-txt b {
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.tier-badge .tb-txt small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.tier-badge.t-unplaced .tb-txt b {
+  color: var(--text-2);
+}
+.rk-big .tier-badge .tb-txt b {
+  font-size: 22px;
+}
+.rk-big .tier-badge .tb-txt small {
+  font-size: 13px;
+}
+.rating-change .tier-badge {
+  margin: 0 6px;
+}
+.me-rank .tier-badge {
+  justify-content: center;
+}
+.rank-board li .tier-badge {
+  margin-left: auto;
+}
+.rk-big .tier-badge .tb-txt b {
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+.rk-big .tier-badge.t-unplaced .tb-txt b {
+  color: var(--text);
+}

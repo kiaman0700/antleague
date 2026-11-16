@@ -8,12 +8,15 @@ import { refreshAccount, useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
 import { pokeInvites } from '../components/InviteCenter';
 import { BADGES } from '../game/achievements';
+import { tierShort } from '../components/TierBadge';
 
 export interface FriendItem {
   id: string;
   nickname: string;
   title: string | null;
   rating: number;
+  /** 랭킹전 판 수 (2판까지 배치 — 티어 대신 '배치 중') */
+  ranked?: number;
   status?: 'online' | 'playing' | 'offline';
   at?: string;
 }
@@ -183,7 +186,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <b>{f.nickname}</b>
                   <small className="muted">
                     {titleName(f.title) ? `${titleName(f.title)} · ` : ''}
-                    {f.rating}점
+                    {tierShort(f.rating, f.ranked)}
                   </small>
                 </span>
                 <span className="fr-act">
@@ -227,7 +230,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <span className="fr-txt">
                     <b>{f.nickname}</b>
                     <small className="muted">
-                      <span className={'fr-dot ' + cls} aria-hidden /> {label} · {f.rating}점{titleName(f.title) ? ` · ${titleName(f.title)}` : ''}
+                      <span className={'fr-dot ' + cls} aria-hidden /> {label} · {tierShort(f.rating, f.ranked)}{titleName(f.title) ? ` · ${titleName(f.title)}` : ''}
                     </small>
                   </span>
                   <span className="fr-act">

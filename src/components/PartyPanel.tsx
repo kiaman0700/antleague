@@ -6,12 +6,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
+import { tierShort } from './TierBadge';
 import { Icon } from './Icon';
 import { refreshFriends, useFriends } from '../screens/Friends';
 
 export interface PartyState {
   isLeader: boolean;
-  members: { nickname: string; rating: number; leader: boolean; me: boolean }[];
+  members: { nickname: string; rating: number; ranked?: number; leader: boolean; me: boolean }[];
   searching: boolean;
   queue: string | null;
 }
@@ -88,7 +89,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
               <span className="fr-av">{m.nickname.slice(0, 1)}</span>
               <b>{m.nickname}</b>
               {m.leader && <em className="party-leader">파티장</em>}
-              <small className="muted">{m.rating}점</small>
+              <small className="muted">{tierShort(m.rating, m.ranked)}</small>
             </li>
           ))}
           {!full && <li className="party-empty muted small">초대한 친구가 수락하면 여기에 들어와요</li>}

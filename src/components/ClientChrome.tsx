@@ -10,6 +10,7 @@ import { api } from '../net/api';
 import { refreshFriends, useFriends } from '../screens/Friends';
 import { pokeInvites } from './InviteCenter';
 import type { PartyState } from './PartyPanel';
+import { tierShort } from './TierBadge';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string][] = [
@@ -20,8 +21,8 @@ const MAIN: [NavTab, string][] = [
 ];
 const SUB: [NavTab, string, IconName][] = [
   ['ranking', '랭킹', 'crown'],
-  ['records', '기록', 'medal'],
-  ['companies', '도감', 'book'],
+  ['records', '업적', 'medal'],
+  ['companies', '기업 공부', 'book'],
   ['more', '설정', 'settings'],
 ];
 
@@ -36,6 +37,8 @@ export function TopBar({
   socialBadge,
   onSocial,
   socialOpen,
+  adminUnread,
+  onAdmin,
 }: {
   active: NavTab | null;
   account: AccountState;
@@ -47,6 +50,9 @@ export function TopBar({
   socialBadge: number;
   onSocial: () => void;
   socialOpen: boolean;
+  /** 운영자 계정이면 의견함 (안 읽은 수). 운영자가 아니면 undefined */
+  adminUnread?: number;
+  onAdmin?: () => void;
 }) {
   return (
     <header className="cl-top">
@@ -73,6 +79,7 @@ export function TopBar({
         ))}
       </nav>
       <div className="cl-right">
+        {adminUnread !== undefined && onAdmin && <AdminInboxButton unread={adminUnread} onClick={onAdmin} />}
         <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} />
         {online && (
           <button className={'cl-social-btn' + (socialOpen ? ' on' : '')} onClick={onSocial} aria-label="친구·파티" title="친구·파티">
@@ -186,8 +193,8 @@ export function SocialPanel({
               )}
             </div>
             <div className="cs-slots">
-              {(party?.members ?? [{ nickname: account.profile?.nickname ?? '나', rating: account.profile?.rating ?? 1000, leader: true, me: true }]).map((m, i) => (
-                <div key={i} className={'cs-slot filled' + (m.me ? ' me' : '')} title={`${m.nickname} · ${m.rating}점`}>
+              {(party?.members ?? [{ nickname: account.profile?.nickname ?? '나', rating: account.profile?.rating ?? 1000, ranked: account.profile?.ranked_games ?? 0, leader: true, me: true }]).map((m, i) => (
+                <div key={i} className={'cs-slot filled' + (m.me ? ' me' : '')} title={`${m.nickname} · ${tierShort(m.rating, m.ranked)}`}>
                   <span className="cs-av">{m.nickname.slice(0, 1)}</span>
                   <small>{m.nickname}</small>
                   {m.leader && inParty && <em>파티장</em>}
@@ -232,7 +239,7 @@ export function SocialPanel({
                       </span>
                       <span className="cs-name">
                         <b>{f.nickname}</b>
-                        <small>{f.status === 'playing' ? '게임 중' : f.status === 'online' ? '로비' : '오프라인'} · {f.rating}점</small>
+                        <small>{f.status === 'playing' ? '게임 중' : f.status === 'online' ? '로비' : '오프라인'} · {tierShort(f.rating, f.ranked)}</small>
                       </span>
                       {f.status === 'online' && (
                         <span className="cs-act">
@@ -276,5 +283,16 @@ export function SocialPanel({
       )}
       {note && <div className="cs-note" role="status">{note}</div>}
     </aside>
+  );
+}
+
+/** 운영자 전용 의견함 버튼 (위 메뉴에 고정, 안 읽은 의견 수) */
+export function AdminInboxButton({ unread, onClick, compact }: { unread: number; onClick: () => void; compact?: boolean }) {
+  return (
+    <button className={'cl-admin' + (unread > 0 ? ' has' : '') + (compact ? ' compact' : '')} onClick={onClick} title="의견함 (운영자)" aria-label={`의견함, 안 읽은 의견 ${unread}개`}>
+      <Icon name="bell" size={17} />
+      {!compact && <span>의견함</span>}
+      {unread > 0 && <i className="ln-badge">{unread > 99 ? '99+' : unread}</i>}
+    </button>
   );
 }

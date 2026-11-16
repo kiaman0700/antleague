@@ -3,6 +3,8 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { useEffect, useState } from 'react';
+import { TierBadge } from '../components/TierBadge';
+import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { api } from '../net/api';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
@@ -358,9 +360,9 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <small className="muted">아이디 {p.username}</small>
         </div>
         <button className="me-rank" onClick={onRanking}>
-          <small>랭킹 점수</small>
-          <b>{p.rating}</b>
-          <small>{p.rankPos ? `${p.rankPos}위` : '첫 대결 후 순위'}</small>
+          <small>랭크</small>
+          <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} />
+          <small>{p.rankPos ? `${p.rankPos}위` : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
         </button>
       </section>
 
@@ -438,7 +440,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
                   {r.rank}위 / {r.players}명
                 </b>
                 <span className={r.ret >= 0 ? 'up' : 'down'}>{pct(r.ret, 1)}</span>
-                {r.rated && r.rating_after !== null && r.rating_before !== null ? (
+                {r.rated && r.rating_after !== null && r.rating_before !== null && isPlaced(p.ranked_games) ? (
                   <span className={r.rating_after >= r.rating_before ? 'up' : 'down'}>
                     {r.rating_after >= r.rating_before ? '+' : ''}
                     {r.rating_after - r.rating_before}점
@@ -451,7 +453,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           </ul>
         )}
         <button className="btn sm ghost" onClick={onRecords}>
-          전체 기록 보기
+          업적·전적 전체 보기
         </button>
       </section>
 
@@ -492,7 +494,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <Icon name="key" size={14} /> 복구 코드 새로 받기
         </button>
         <small className="muted">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
-        <p className="muted small">탈퇴는 홈 → 기록·업적 → 내 데이터 지우기에서 할 수 있어요.</p>
+        <p className="muted small">탈퇴는 홈 → 업적 → 내 데이터 지우기에서 할 수 있어요.</p>
       </section>
     </div>
   );
@@ -509,7 +511,7 @@ interface RankRowT {
 }
 export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
   const acc = useAccount();
-  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number } | null } | null>(null);
+  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number } | null } | null>(null);
   const [err, setErr] = useState(false);
   useEffect(() => {
     api<typeof data>('ranking')
@@ -531,8 +533,8 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
       {data?.me && (
         <section className="panel pad my-rank">
           <b>{data.me.nickname}</b>
-          <span>{data.me.rank ? `${data.me.rank}위` : '아직 순위 없음 (회원과 대결을 끝내면 올라가요)'}</span>
-          <b className="pts">{data.me.rating}점</b>
+          <span>{data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 (랭킹전 배치 ${data.me.ranked_games ?? 0}/${PLACEMENT_GAMES}판)`}</span>
+          <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
         </section>
       )}
       {err && <p className="error">랭킹을 불러오지 못했어요. 인터넷을 확인해 주세요.</p>}
@@ -543,7 +545,7 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
             <Icon name="trophy" size={32} />
           </i>
           <b>아직 랭킹이 비어 있어요</b>
-          <small>회원끼리 첫 대결을 끝내면 순위가 생겨요.</small>
+          <small>랭킹전 배치 {PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.</small>
         </div>
       )}
       {data && data.top.length > 0 && (
@@ -565,7 +567,7 @@ export function RankingPage({ onBack, onLogin }: { onBack: () => void; onLogin: 
                 <span className="rb-stat muted">
                   {r.games}판 · {r.wins}승
                 </span>
-                <b className="rb-pts">{r.rating}</b>
+                <TierBadge rating={r.rating} rankedGames={PLACEMENT_GAMES} size={24} />
               </li>
             );
           })}

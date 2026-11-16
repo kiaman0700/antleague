@@ -6,6 +6,7 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
+import { tierText } from './TierBadge';
 import { api } from '../net/api';
 import { loadNick, saveNick } from '../session';
 import type { AccountState } from '../net/account';
@@ -22,8 +23,8 @@ const MAIN: [NavTab, string, IconName][] = [
 ];
 const SUB: [NavTab, string, IconName][] = [
   ['ranking', '랭킹', 'crown'],
-  ['records', '기록·업적', 'medal'],
-  ['companies', '기업 도감', 'book'],
+  ['records', '업적', 'medal'],
+  ['companies', '기업 공부', 'book'],
   ['more', '설정·더보기', 'settings'],
 ];
 
@@ -91,7 +92,7 @@ export function AccountChip({ account, online, onProfile, onLogin, compact }: { 
         <span className="acc-av">{account.profile.nickname.slice(0, 1)}</span>
         <span className="acc-txt">
           <b>{account.profile.nickname}</b>
-          <small>{account.profile.rating}점 · 마이프로필</small>
+          <small>{tierText(account.profile.rating, account.profile.ranked_games)}</small>
         </span>
       </button>
     );

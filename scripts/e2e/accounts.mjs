@@ -117,7 +117,7 @@ const mb = (await B({ action: 'myMatch', roomId })).b;
 ok('친구 방(커스텀)은 전적만 — 랭킹 점수는 그대로', ma?.rated === false && mb?.rated === false && ma.rating_after === ma.rating_before, JSON.stringify([ma, mb]));
 const rank = (await A({ action: 'ranking' })).b;
 ok('랭킹에 아이디는 안 나옴', !JSON.stringify(rank).includes(ua), '');
-ok('내 순위 표시', typeof rank.me?.rank === 'number');
+ok('랭킹전 배치 전에는 순위 없음 (커스텀 방은 배치에 안 셈)', rank.me && rank.me.rank === null && rank.me.ranked_games === 0, JSON.stringify(rank.me));
 const pa = (await A({ action: 'profile' })).b.profile;
 ok('전적 1판', pa.games === 1);
 

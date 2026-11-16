@@ -14,6 +14,8 @@ export interface MyProfile {
   nickname: string;
   title: string | null;
   rating: number;
+  /** 랭킹전 판 수 (2판까지 배치) */
+  ranked_games?: number;
   games: number;
   wins: number;
   best_ret: number | null;

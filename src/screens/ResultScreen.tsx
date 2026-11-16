@@ -1,4 +1,6 @@
 import { api } from '../net/api';
+import { TierBadge } from '../components/TierBadge';
+import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
@@ -32,7 +34,7 @@ const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i +
 
 export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain }: Props) {
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
-  const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null } | null>(null);
+  const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);
   useEffect(() => {
     if (session.mode !== 'multi' || !session.roomId) return;
@@ -355,16 +357,28 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       {rankedGame && (
         <div className="rating-change">
           {rating?.rated && rating.rating_before !== null && rating.rating_after !== null ? (
-            <>
-              <span>랭킹 점수</span>
-              <b>
-                {rating.rating_before} → {rating.rating_after}
-              </b>
-              <em className={rating.rating_after >= rating.rating_before ? 'up' : 'down'}>
-                {rating.rating_after >= rating.rating_before ? '+' : ''}
-                {rating.rating_after - rating.rating_before}
-              </em>
-            </>
+            !isPlaced(rating.ranked_games) ? (
+              // 배치 중: 점수는 숨김
+              <span>
+                배치 <b>{rating.ranked_games ?? 0}/{PLACEMENT_GAMES}</b> 완료 · 한 판 더 하면 티어가 정해져요
+              </span>
+            ) : (rating.ranked_games ?? 0) === PLACEMENT_GAMES ? (
+              <>
+                <span>배치 완료!</span>
+                <TierBadge rating={rating.rating_after} rankedGames={PLACEMENT_GAMES} size={40} />
+              </>
+            ) : (
+              <>
+                <TierBadge rating={rating.rating_after} rankedGames={PLACEMENT_GAMES} size={34} />
+                <em className={rating.rating_after >= rating.rating_before ? 'up' : 'down'}>
+                  {rating.rating_after >= rating.rating_before ? '+' : ''}
+                  {rating.rating_after - rating.rating_before}점
+                </em>
+                {tierOf(rating.rating_after).label !== tierOf(rating.rating_before).label && (
+                  <b className={rating.rating_after > rating.rating_before ? 'up' : 'down'}>{rating.rating_after > rating.rating_before ? '승급!' : '강등'}</b>
+                )}
+              </>
+            )
           ) : rating ? (
             <span className="muted">이번 판은 랭킹 점수에 반영되지 않았어요</span>
           ) : ratingGone ? (

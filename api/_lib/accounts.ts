@@ -10,6 +10,7 @@ import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { BADGES } from '../../src/game/achievements.js';
+import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 const USERNAME_RE = /^[a-z0-9_]{4,16}$/;
@@ -24,6 +25,8 @@ export interface Profile {
   games: number;
   wins: number;
   best_ret: number | null;
+  /** 랭킹전으로 점수가 반영된 판 수 (2판까지는 배치) */
+  ranked_games?: number;
 }
 
 const hash = (v: string) => {
@@ -57,7 +60,8 @@ export function cleanNewPassword(v: unknown): string {
 }
 
 export async function getProfile(sb: SupabaseClient, uid: string): Promise<Profile | null> {
-  const r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret').eq('user_id', uid).maybeSingle();
+  let r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games').eq('user_id', uid).maybeSingle();
+  if (r.error && /ranked_games/.test(r.error.message)) r = (await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret').eq('user_id', uid).maybeSingle()) as typeof r; // 022 전
   if (r.error) return null; // 015 전이면 회원 기능 없음
   return (r.data as Profile | null) ?? null;
 }
@@ -165,11 +169,12 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     case 'profile': {
       const p = await getProfile(sb, uid);
       if (!p) return { profile: null };
-      const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gt('games', 0).gt('rating', p.rating);
+      const placed = isPlaced(p.ranked_games);
+      const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', p.rating);
       const recent = ((await sb.from('match_players').select('room_id, rank, players, ret, rated, rating_before, rating_after, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)).data ?? []) as unknown[];
       const badges = await earnedBadges(sb, uid);
       const { user_id: _u, ...pub } = p;
-      return { profile: { ...pub, rankPos: p.games > 0 ? (above.count ?? 0) + 1 : null }, recent, badges };
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed ? (above.count ?? 0) + 1 : null }, recent, badges };
     }
 
     case 'updateProfile': {
@@ -217,7 +222,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     }
 
     case 'ranking': {
-      const top = ((await sb.from('profiles').select('nickname, title, rating, games, wins').gt('games', 0).order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100)).data ?? []) as {
+      // 랭킹에는 배치(랭킹전 2판)를 마친 회원만
+      const top = ((await sb.from('profiles').select('nickname, title, rating, games, wins').gte('ranked_games', PLACEMENT_GAMES).order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100)).data ?? []) as {
         nickname: string;
         title: string | null;
         rating: number;
@@ -225,10 +231,10 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         wins: number;
       }[];
       const me = await getProfile(sb, uid);
-      let mine: { rank: number | null; rating: number; nickname: string; games: number } | null = null;
+      let mine: { rank: number | null; rating: number; nickname: string; games: number; ranked_games: number } | null = null;
       if (me) {
-        const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gt('games', 0).gt('rating', me.rating);
-        mine = { rank: me.games > 0 ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games };
+        const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating);
+        mine = { rank: isPlaced(me.ranked_games) ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games, ranked_games: me.ranked_games ?? 0 };
       }
       return { top: top.map((t, i) => ({ rank: i + 1, ...t })), me: mine };
     }
@@ -275,7 +281,9 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     case 'myMatch': {
       if (typeof b.roomId !== 'string') return null;
       const r = await sb.from('match_players').select('rank, players, rated, rating_before, rating_after').eq('room_id', b.roomId).eq('user_id', uid).maybeSingle();
-      return r.data ?? null;
+      if (!r.data) return null;
+      const me = await getProfile(sb, uid);
+      return { ...r.data, ranked_games: me?.ranked_games ?? 0 };
     }
   }
   throw new GameError('알 수 없는 요청이에요.');
@@ -335,7 +343,9 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   const ps = ((await sb.from('players').select('user_id, nickname, left_game').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string; left_game: boolean | null }[];
   if (ps.length < 2) return;
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
-  const profs = ((await sb.from('profiles').select('user_id, rating, games, wins, best_ret').in('user_id', uids)).data ?? []) as Profile[];
+  let pq = await sb.from('profiles').select('user_id, rating, games, wins, best_ret, ranked_games').in('user_id', uids);
+  if (pq.error) pq = (await sb.from('profiles').select('user_id, rating, games, wins, best_ret').in('user_id', uids)) as typeof pq;
+  const profs = (pq.data ?? []) as Profile[];
   if (!profs.length) return;
   const byNick = new Map(ps.map((p) => [p.nickname, p.user_id]));
   const quit = new Set(ps.filter((p) => p.left_game && p.user_id).map((p) => p.user_id!));
@@ -363,6 +373,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const pairCount = new Map<string, number>();
     for (const us of byRoom.values()) for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) pairCount.set(pairKey(us[i], us[j]), (pairCount.get(pairKey(us[i], us[j])) ?? 0) + 1);
     delta = eloDeltas(members, eloRank, (a, b) => pairWeight(pairCount.get(pairKey(a, b)) ?? 0));
+    // 배치(랭킹전 2판) 중인 사람은 점수가 크게 움직여 빨리 제 실력 자리로 (상대 점수 차에 따라 오르내리는 건 Elo 가 이미 반영)
+    for (const m of members) if (!isPlaced(m.ranked_games)) delta.set(m.user_id, Math.round((delta.get(m.user_id) ?? 0) * PLACEMENT_MULT));
   }
   for (const p of members) {
     const rank = rankOf.get(p.user_id)!;
@@ -376,7 +388,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
       .select('user_id');
     if (ins.error || !ins.data?.length) continue; // 이미 반영된 판
     // 점수·전적은 DB 안에서 한 번에 더함 (두 판이 동시에 끝나도 값이 덮어써지지 않게)
-    const rpc = await sb.rpc('apply_rating', { p_user: p.user_id, p_delta: d, p_win: rank === 1 && !quit.has(p.user_id), p_ret: ret });
+    let rpc = await sb.rpc('apply_rating2', { p_user: p.user_id, p_delta: d, p_win: rank === 1 && !quit.has(p.user_id), p_ret: ret, p_ranked: rated });
+    if (rpc.error) rpc = await sb.rpc('apply_rating', { p_user: p.user_id, p_delta: d, p_win: rank === 1 && !quit.has(p.user_id), p_ret: ret });
     if (rpc.error)
       await sb
         .from('profiles')

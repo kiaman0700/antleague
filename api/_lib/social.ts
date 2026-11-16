@@ -79,7 +79,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       const blockedSet = new Set(blocks.map((x) => x.blocked));
       const ids = [...new Set([...rows.map(otherOf), ...blocks.map((x) => x.blocked)])];
       const profs = ids.length
-        ? (((await sb.from('profiles').select('user_id, nickname, title, rating, last_seen').in('user_id', ids)).data ?? []) as { user_id: string; nickname: string; title: string | null; rating: number; last_seen: string | null }[])
+        ? (((await sb.from('profiles').select('user_id, nickname, title, rating, last_seen, ranked_games').in('user_id', ids)).data ?? []) as { user_id: string; nickname: string; title: string | null; rating: number; last_seen: string | null; ranked_games?: number }[])
         : [];
       const P = new Map(profs.map((p) => [p.user_id, p]));
       // 친구의 '게임 중' 여부 (친구에게만)
@@ -97,7 +97,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       };
       const card = (r: FRow) => {
         const p = P.get(otherOf(r));
-        return { id: r.id, nickname: p?.nickname ?? '알 수 없음', title: p?.title ?? null, rating: p?.rating ?? 1000 };
+        return { id: r.id, nickname: p?.nickname ?? '알 수 없음', title: p?.title ?? null, rating: p?.rating ?? 1000, ranked: p?.ranked_games ?? 0 };
       };
       const friends = rows
         .filter((r) => r.status === 'accepted' && P.has(otherOf(r)))

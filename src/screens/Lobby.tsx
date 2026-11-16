@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { MatchFinder } from '../components/MatchFinder';
+import { TierBadge } from '../components/TierBadge';
+import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
-import { SocialPanel, TopBar } from '../components/ClientChrome';
+import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 import { Companies } from './Companies';
-import { Admin, AdminBanner } from './Admin';
+import { Admin } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
@@ -322,7 +324,7 @@ function Privacy({ onClose }: { onClose: () => void }) {
         <p>게임 진행과 결과·기록 보여 주기에만 써요. 광고나 다른 곳에 넘기지 않아요. 서버는 Supabase(데이터베이스)와 Vercel(웹 호스팅)을 써요.</p>
         <h4>지우기</h4>
         <p>
-          홈 → <b>기록·업적</b> → <b>내 데이터 지우기</b>에서 언제든 모두 지울 수 있어요. 끝난 게임의 순위표에는 닉네임과 수익률만 남아요.
+          홈 → <b>업적</b> → <b>내 데이터 지우기</b>에서 언제든 모두 지울 수 있어요. 끝난 게임의 순위표에는 닉네임과 수익률만 남아요.
         </p>
         <h4>문의</h4>
         <p>
@@ -441,7 +443,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         </div>
       </header>
 
-      {online && <AdminBanner onOpen={() => go('admin')} />}
       {tab === 'ranked' &&
         (!online ? (
           <OfflineNote />
@@ -457,13 +458,15 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="crown" size={18} /> 내 랭킹
               </h3>
               <div className="rk-big">
-                <b>{account.profile!.rating}</b>
-                <span>점</span>
+                <TierBadge rating={account.profile!.rating} rankedGames={account.profile!.ranked_games} size={56} />
               </div>
               <p className="muted small">
-                {account.profile!.games > 0 ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승` : '랭킹전을 한 판 하면 순위에 올라가요'}
+                {isPlaced(account.profile!.ranked_games)
+                  ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승`
+                  : `배치 ${account.profile!.ranked_games ?? 0}/${PLACEMENT_GAMES}판 — 배치를 마치면 결과에 따라 티어가 정해져요. 배치 중에는 점수가 크게 움직여요`}
               </p>
               <ul className="rk-rules muted small">
+                <li>이기면 점수가 오르고 지면 내려가요. 나보다 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
                 <li>점수가 비슷한 사람끼리 만나요. 처음 2분은 ±400 안에서, 사람이 적으면 그 뒤로 더 넓혀 찾아요</li>
                 <li>중간에 기권하면 꼴찌로 계산돼요</li>
                 <li>같은 상대와 몇 번이든 만날 수 있어요. 점수는 하루 3판까지 그대로, 6판까지 절반만 바뀌어요</li>
@@ -586,7 +589,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <Icon name="clock" size={18} /> 최근 대결
             </h3>
             <button className="btn sm ghost" onClick={() => go('records')}>
-              기록 전체 <Icon name="right" size={14} />
+              업적·전적 전체 <Icon name="right" size={14} />
             </button>
           </div>
           <ul className="hr-list">
@@ -597,7 +600,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                   {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                 </small>
                 <span className={'hr-ret ' + (m.ret >= 0 ? 'up' : 'down')}>{pct(m.ret, 1)}</span>
-                {m.rated && m.rating_before !== null && m.rating_after !== null && (
+                {m.rated && m.rating_before !== null && m.rating_after !== null && isPlaced(account.profile?.ranked_games) && (
                   <span className={'hr-elo ' + (m.rating_after >= m.rating_before ? 'up' : 'down')}>
                     {m.rating_after >= m.rating_before ? '+' : ''}
                     {m.rating_after - m.rating_before}점
@@ -628,7 +631,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           </button>
           <button className="tile" onClick={() => go('companies')}>
             <i><Icon name="book" size={24} /></i>
-            <b>기업 도감</b>
+            <b>기업 공부</b>
             <small>종목·업종 알아보기</small>
           </button>
         </nav>
@@ -677,14 +680,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             )}
             {online && (
               <button className="more-row" onClick={() => go('records')}>
-                <Icon name="medal" /> 기록·업적 <Icon name="right" size={14} />
+                <Icon name="medal" /> 업적 <Icon name="right" size={14} />
               </button>
             )}
             <button className="more-row" onClick={() => go('practice')}>
               <Icon name="target" /> 연습 (혼자 연습·튜토리얼) <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => go('companies')}>
-              <Icon name="book" /> 기업 도감 <Icon name="right" size={14} />
+              <Icon name="book" /> 기업 공부 <Icon name="right" size={14} />
             </button>
             <button className="more-row" onClick={() => go('tutorial')}>
               <Icon name="play" /> 튜토리얼 <Icon name="right" size={14} />
@@ -1084,7 +1087,7 @@ function Records({ go }: Pick<Props, 'go'>) {
 
   return (
     <div className="lobby page">
-      <PageHead title="기록·업적" onBack={() => go('home')} />
+      <PageHead title="업적" onBack={() => go('home')} />
       {history === null && <p className="muted small center">불러오는 중…</p>}
       {history !== null && list.length === 0 && (
         <div className="empty-state">
@@ -1249,6 +1252,30 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
   const [socialOpen, setSocialOpen] = useState(false);
+  // 운영자면 위 메뉴에 의견함 + 안 읽은 수 (30초마다, 운영자 확인은 서버가)
+  const [adminUnread, setAdminUnread] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!online || account.status !== 'member') return setAdminUnread(undefined);
+    let alive = true;
+    let admin = false;
+    const tick = () =>
+      admin && document.visibilityState === 'visible'
+        ? api<{ unread: number }>('adminUnread')
+            .then((r) => alive && setAdminUnread(r.unread))
+            .catch(() => {})
+        : undefined;
+    api<{ isAdmin: boolean }>('me')
+      .then((m) => {
+        admin = !!m.isAdmin;
+        if (admin) tick();
+      })
+      .catch(() => {});
+    const id = setInterval(tick, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [account.status]);
   // 받은 친구 신청 수 → 메뉴 배지 (회원만, 30초마다)
   const friends = useFriendsPoll(online && account.status === 'member');
   // 파티 상태는 어느 메뉴에 있든 확인 — 파티장이 찾기를 시작하면 파티원은 일반전 화면으로 데려가 같이 찾음
@@ -1339,12 +1366,17 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         socialBadge={badges.friends}
         socialOpen={socialOpen}
         onSocial={() => setSocialOpen((v) => !v)}
+        adminUnread={adminUnread}
+        onAdmin={() => go('admin')}
       />
       <div className="cl-body">
         <main className="lobby-main">
           <div className="lobby-topbar">
             <Brand />
-            <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
+            <span className="lt-right">
+              {adminUnread !== undefined && <AdminInboxButton unread={adminUnread} onClick={() => go('admin')} compact />}
+              <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
+            </span>
           </div>
           <div className="lobby-body">{body}</div>
           <footer className="cl-foot">

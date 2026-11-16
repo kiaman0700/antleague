@@ -1033,6 +1033,11 @@ async function adminAct(action: string, b: Body) {
     const unread = await sb.from('feedback').select('id', { count: 'exact', head: true }).is('read_at', null);
     return { rows, unread: unread.count ?? 0 };
   }
+  if (action === 'adminUnread') {
+    // 위 메뉴 의견함 배지: 안 읽은 의견 수만
+    const unread = await sb.from('feedback').select('id', { count: 'exact', head: true }).is('read_at', null);
+    return { unread: unread.count ?? 0 };
+  }
   if (action === 'adminMarkRead') {
     const ids = Array.isArray(b.ids) ? (b.ids as unknown[]).filter((x): x is number => Number.isInteger(x)).slice(0, 200) : [];
     const read = b.read !== false;
@@ -1309,13 +1314,13 @@ async function partyAct(action: string, b: Body, uid: string): Promise<unknown> 
       rateLimit(uid + ':party', 60, 60_000);
       const p = await partyOf(uid);
       if (!p) return { party: null };
-      const profs = (((await sb.from('profiles').select('user_id, nickname, rating').in('user_id', p.members)).data ?? []) as { user_id: string; nickname: string; rating: number }[]);
+      const profs = (((await sb.from('profiles').select('user_id, nickname, rating, ranked_games').in('user_id', p.members)).data ?? []) as { user_id: string; nickname: string; rating: number; ranked_games?: number }[]);
       const tickets = (((await sb.from('match_tickets').select('user_id, room_id, queue').eq('party_id', p.id)).data ?? []) as { user_id: string; room_id: string | null; queue: string }[]);
       const searching = tickets.length > 0 && tickets.every((t) => !t.room_id);
       return {
         party: {
           isLeader: p.leader === uid,
-          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, leader: u === p.leader, me: u === uid })),
+          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, ranked: profs.find((x) => x.user_id === u)?.ranked_games ?? 0, leader: u === p.leader, me: u === uid })),
           searching,
           queue: tickets[0]?.queue ?? null,
         },
