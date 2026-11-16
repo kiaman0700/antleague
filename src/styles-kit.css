@@ -228,3 +228,6 @@
 .rec-rank.draw { color: var(--muted); }
 .rec-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-ret { font-variant-numeric: tabular-nums; }
+
+/* PC 대결: 오른쪽 아래 이모지 버튼이 단축키 안내(Esc 닫기)를 가리지 않게 안내 글을 왼쪽으로 */
+.desk:has(.react-wrap) .kbd-hint { padding-right: 76px; }
