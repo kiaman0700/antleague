@@ -372,3 +372,16 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .news-card.fresh { box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.35) !important; }
 .score-card.champ { box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.5) !important; }
 .vs-card.me { box-shadow: 0 0 0 1px #8b7bff !important; }
+
+/* ===== 글꼴 통일 (2026-11-17) =====
+   - 버튼·입력칸도 사이트 자간(-0.01em)을 따름 (브라우저 기본값이 'normal' 이라 버튼 글자만 넓었음)
+   - 크기를 따로 안 정한 small 은 12px 로 고정 (부모 크기에 따라 13.3px·10px 등으로 들쭉날쭉하던 것)
+   - 굵기는 400·500·600·700·800 만 (900 → 800) */
+button, input, select, textarea { letter-spacing: inherit; }
+textarea { font: inherit; color: inherit; }
+small { font-size: 12px; }
+/* AI 티 나는 장식: 배경 보라 빛 번짐·VS 글자 빛 → 없앰 (단색 배경) */
+body { background: var(--bg) !important; }
+.vs-x { text-shadow: none !important; }
+/* 패널 제목(h3) 크기·굵기 통일: 16px / 800 (예전엔 화면마다 16·17px, 700·800 이 섞여 있었음) */
+.hr-head h3, .more-page .more-links .more-h, .more-page .more-menus .more-links .more-h { font-size: 16px; font-weight: 800; }
