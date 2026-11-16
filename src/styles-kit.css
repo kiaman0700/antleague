@@ -348,3 +348,27 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .news-cats .chip.on { background: #6b58ee; border-color: #6b58ee; }
 /* 흰 글자가 얹힌 작은 보라 표시(일정 '오늘', 아래 탭 숫자 배지): 배경을 조금 진하게 */
 .sched-chip.today b, .nav-count:not(.hot), .tut-step { background-color: #6b58ee !important; }
+
+/* ===== AI 티 나는 장식 빼기 (2026-11-17, frontend-design 스킬의 'AI 생성 디자인에 흔한 특징' 기준) =====
+   1) 글자 그라데이션 → 단색  2) 꾸밈용 차트 무늬·빛나는 밑줄 → 없앰
+   3) 버튼·카드 둘레 보라 빛 번짐 → 없앰 (그림자는 어둡고 짧게)  */
+.lobby-shell.client .hub-head h2,
+.result .banner h1,
+.result .banner.lose h1,
+.hero h1 em {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--text) !important;
+}
+@media (min-width: 861px) {
+  .lobby-shell.client .hub-head { background: none !important; }
+  .lobby-shell.client .hub-head::after { background: var(--line) !important; }
+}
+.cl-tab.on::after { box-shadow: none !important; }
+.btn.primary, .end-turn, .m-end, .m-end2, .desk .desk-score:has(.rank-strip) > .end-turn { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important; }
+.lobby-shell.client .match-finder .mf-seg button.on { box-shadow: none !important; }
+.news-card.fresh { box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.35) !important; }
+.score-card.champ { box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.5) !important; }
+.vs-card.me { box-shadow: 0 0 0 1px #8b7bff !important; }

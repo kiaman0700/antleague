@@ -98,10 +98,9 @@ export function StudyBasics() {
   ];
   return (
     <div className="study-basics">
-      {lessons.map((l, i) => (
+      {lessons.map((l) => (
         <section key={l.title} className="panel pad study-card">
           <div className="sc-head">
-            <span className="sc-num">{String(i + 1).padStart(2, '0')}</span>
             <Icon name={l.icon} size={18} />
             <h3>{l.title}</h3>
           </div>

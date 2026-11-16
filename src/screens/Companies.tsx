@@ -215,10 +215,9 @@ export function Companies({ onBack }: { onBack: () => void }) {
         <>
           <p className="muted small">{CARD_RULES_TEXT}</p>
           <div className="study-basics card-tips">
-            {CARD_TIPS.map((t, i) => (
+            {CARD_TIPS.map((t) => (
               <section key={t.title} className="panel pad study-card">
                 <div className="sc-head">
-                  <span className="sc-num">{String(i + 1).padStart(2, "0")}</span>
                   <Icon name={t.icon} size={18} />
                   <h3>{t.title}</h3>
                 </div>

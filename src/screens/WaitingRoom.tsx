@@ -168,7 +168,6 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <Icon name="back" size={18} />
         </button>
         <div className="wr-title">
-          <small>대기실</small>
           <h2 className="room-title">
             {room.isPrivate && (
               <span title="비밀방">
