@@ -203,16 +203,23 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const memberAcc = useAccount().status === 'member';
   // 결과 화면: 파티로 한 판 했으면 파티 상태를 살짝 봄(peek — 아직 '돌아옴'으로 치지 않음) → '파티로 돌아가기'·파티장이 다시 찾는 중 알림
   const [partyAfter, setPartyAfter] = useState<{ isLeader: boolean; searching: boolean } | null>(null);
-  const resultShown = showResult && session.mode === 'multi' && memberAcc;
+  // 파티는 매칭 판에서만 → 그 판의 결과 화면에서만 확인
+  const resultShown = showResult && session.mode === 'multi' && memberAcc && view?.room.kind === 'match';
   useEffect(() => {
     if (!resultShown) return;
     let alive = true;
     const peek = () =>
       api<{ party: { isLeader: boolean; searching: boolean; members: unknown[] } | null }>('party', { peek: true })
-        .then((r) => alive && setPartyAfter(r.party && r.party.members.length > 1 ? { isLeader: r.party.isLeader, searching: r.party.searching } : null))
+        .then((r) => {
+          if (!alive) return;
+          const inParty = !!r.party && r.party.members.length > 1;
+          setPartyAfter(inParty ? { isLeader: r.party!.isLeader, searching: r.party!.searching } : null);
+          // 파티가 아니면 더 물어볼 필요 없음 (결과 화면에 오래 있어도 요청이 쌓이지 않게)
+          if (!inParty) clearInterval(id);
+        })
         .catch(() => {});
+    const id = setInterval(() => peek(), 4000);
     peek();
-    const id = setInterval(peek, 4000);
     return () => {
       alive = false;
       clearInterval(id);
