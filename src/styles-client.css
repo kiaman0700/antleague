@@ -1805,3 +1805,19 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
   .tray-cards.fan .gc-face { transition: box-shadow 0.3s ease; }
   .tray-cards.fan .fan-slot:hover .gc-face { box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--tc) 60%, transparent); }
 }
+
+/* ===== 손패: 올린 카드는 위로 올라오고, 양옆 카드는 비켜남 (옆 카드를 가리지 않게) ===== */
+@media (hover: hover) and (pointer: fine) {
+  .tray-cards.fan .fan-slot { --push: 0px; }
+  /* 올린 카드보다 오른쪽 카드는 오른쪽으로, 왼쪽 카드는 왼쪽으로 */
+  .tray-cards.fan.many .fan-slot:hover ~ .fan-slot { --push: 22px; }
+  .tray-cards.fan.many .fan-slot:has(~ .fan-slot:hover) { --push: -22px; }
+  .tray-cards.fan.many:hover .fan-slot {
+    transform: translateX(calc(var(--i) * var(--gap) + var(--push))) translateY(calc(var(--i) * var(--i) * 3px)) rotate(calc(var(--i) * 6deg));
+  }
+  /* 올린 카드: 옆으로 커지지 않고 위로만 쑥 (기울기도 바로) */
+  .tray-cards.fan.many:hover .fan-slot:hover,
+  .tray-cards.fan:not(.many) .fan-slot:hover {
+    transform: translateX(calc(var(--i) * var(--gap))) translateY(-30px) rotate(0deg) scale(1.03);
+  }
+}
