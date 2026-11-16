@@ -201,6 +201,23 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [rejoinCode, setRejoinCode] = useState<string | null>(null);
   // 회원은 이어하기 코드 대신 같은 아이디로 로그인
   const memberAcc = useAccount().status === 'member';
+  // 결과 화면: 파티로 한 판 했으면 파티 상태를 살짝 봄(peek — 아직 '돌아옴'으로 치지 않음) → '파티로 돌아가기'·파티장이 다시 찾는 중 알림
+  const [partyAfter, setPartyAfter] = useState<{ isLeader: boolean; searching: boolean } | null>(null);
+  const resultShown = showResult && session.mode === 'multi' && memberAcc;
+  useEffect(() => {
+    if (!resultShown) return;
+    let alive = true;
+    const peek = () =>
+      api<{ party: { isLeader: boolean; searching: boolean; members: unknown[] } | null }>('party', { peek: true })
+        .then((r) => alive && setPartyAfter(r.party && r.party.members.length > 1 ? { isLeader: r.party.isLeader, searching: r.party.searching } : null))
+        .catch(() => {});
+    peek();
+    const id = setInterval(peek, 4000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [resultShown]);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   useEffect(() => {
@@ -695,6 +712,15 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         nextCode={view.room.nextCode ?? null}
         matchKind={view.room.kind}
         dayInfo={{ days: view.room.totalDays, daySec: view.room.turnSeconds }}
+        party={view.room.kind === 'match' ? partyAfter : null}
+        onBackToParty={() => {
+          try {
+            localStorage.setItem('stockduel.tab', 'casual');
+          } catch {
+            /* 무시 */
+          }
+          onExit();
+        }}
         ranked={!!view.room.ranked}
         onFindAgain={() => {
           try {

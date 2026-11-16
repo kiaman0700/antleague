@@ -42,7 +42,7 @@ interface Props {
   /** (예전) 매칭되면 — 이제는 로비 틀이 매칭 결과를 받아 게임으로 이동 */
   onMatched?: (m: Matched) => void;
   /** 일반전 파티 (2명이면 다인전으로만, 파티장만 찾기 시작, 파티원은 자동으로 따라감) */
-  party?: { isLeader: boolean; searching: boolean; size: number; queue?: string | null } | null;
+  party?: { isLeader: boolean; searching: boolean; size: number; queue?: string | null; waiting?: boolean } | null;
 }
 
 const parseQueueName = (q: string) => {
@@ -261,8 +261,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           </div>
         </div>
       ) : (
-        <button className="btn primary xl full" onClick={start} disabled={loading || joining || (inParty && (!party!.isLeader || kind === 'ranked'))}>
-          <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
+        <button className="btn primary xl full" onClick={start} disabled={loading || joining || (inParty && (!party!.isLeader || kind === 'ranked' || !!party!.waiting))}>
+          <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : inParty && party!.waiting ? '파티원이 돌아오길 기다리는 중' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
         </button>
       )}
     </section>

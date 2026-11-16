@@ -16,7 +16,7 @@ import { refreshFriends, useFriends } from '../screens/Friends';
 
 export interface PartyState {
   isLeader: boolean;
-  members: { nickname: string; rating: number; ranked?: number; avatar?: string; leader: boolean; me: boolean }[];
+  members: { nickname: string; rating: number; ranked?: number; avatar?: string; leader: boolean; me: boolean; back?: boolean }[];
   searching: boolean;
   queue: string | null;
 }
@@ -95,6 +95,9 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
               <b>{m.nickname}</b>
               {m.leader && <em className="party-leader">파티장</em>}
               <small className="muted">{tierShort(m.rating, m.ranked)}</small>
+              {/* 판이 끝난 뒤 파티로 돌아왔는지 (롤처럼 모두 돌아와야 다시 찾기) */}
+              {!m.me && m.back === false && <em className="party-away">아직 안 돌아옴</em>}
+              {!m.me && m.back === true && party.members.length > 1 && <em className="party-back"><Icon name="check" size={11} /> 돌아옴</em>}
             </li>
           ))}
           {!full && <li className="party-empty muted small">초대한 친구가 수락하면 여기에 들어와요</li>}

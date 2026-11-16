@@ -278,3 +278,8 @@
 .news-big .news-headline { font-size: 19px; }
 .news-big .news-card { padding: 16px 18px; }
 .news-big .news-cats { position: sticky; top: 0; }
+
+/* 파티 칸: 파티원이 파티로 돌아왔는지 */
+.party-away, .party-back { font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-left: auto; white-space: nowrap; }
+.party-away { color: var(--muted); background: rgba(255,255,255,.06); }
+.party-back { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); display: inline-flex; align-items: center; gap: 3px; }

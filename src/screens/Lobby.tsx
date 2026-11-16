@@ -441,7 +441,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       ui={profile.ui}
       onNeedNick={() => gate.guard(() => {})}
       onLogin={() => go('login')}
-      party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length, queue: party.queue } : null}
+      party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length, queue: party.queue, waiting: party.members.some((m) => !m.me && m.back === false) } : null}
     />
   );
 

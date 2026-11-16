@@ -725,6 +725,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const seenRows = (((await sb.from('profiles').select('user_id, last_seen').in('user_id', party.members)).data ?? []) as { user_id: string; last_seen: string | null }[]);
         if (seenRows.some((r) => r.user_id !== uid && (!r.last_seen || Date.now() - new Date(r.last_seen).getTime() > 75_000)))
           throw new GameError('파티원이 지금 접속해 있지 않아요. 친구가 들어오면 다시 찾아 주세요.', 409);
+        // 판이 끝나고 파티원이 아직 결과 화면에 있으면 기다림 (롤처럼 모두 파티로 돌아온 뒤 찾기). 030 전이면 건너뜀
+        const lob = await sb.from('party_members').select('user_id, lobby_at').eq('party_id', party.id);
+        if (!lob.error && ((lob.data ?? []) as { user_id: string; lobby_at: string | null }[]).some((r) => r.user_id !== uid && (!r.lobby_at || Date.now() - new Date(r.lobby_at).getTime() > PARTY_BACK_MS)))
+          throw new GameError('파티원이 아직 파티로 돌아오지 않았어요. 모두 돌아오면 찾을 수 있어요.', 409);
         // 파티원 중 누가 이미 다른 대결에 잡혀 있으면 덮어쓰지 않음
         const curT = (((await sb.from('match_tickets').select('user_id, claim, room_id, party_id').in('user_id', party.members)).data ?? []) as { user_id: string; claim: string | null; room_id: string | null; party_id: string | null }[]);
         if (curT.some((t) => t.claim && !t.room_id)) throw new GameError('지금 상대를 연결하고 있어요. 잠시만 기다려 주세요.', 409);
@@ -1305,6 +1309,8 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
 
 /* ---------- 일반전 파티 (회원, 최대 2명, 일반전 다인전만 같이 찾기) ---------- */
 const PARTY_INVITE_MS = 2 * 60_000;
+/** 파티원이 로비(파티 칸)에 돌아와 있다고 보는 시간 — 로비는 3초마다 파티 정보를 받음 */
+const PARTY_BACK_MS = 15_000;
 const PARTY_ACTIONS = ['party', 'partyInvite', 'partyLeave'];
 
 /** 내 파티: 파티 id · 파티장 · 구성원 user id (없으면 null). 018~020 전이면 null */
@@ -1339,13 +1345,22 @@ async function partyAct(action: string, b: Body, uid: string): Promise<unknown> 
       rateLimit(uid + ':party', 60, 60_000);
       const p = await partyOf(uid);
       if (!p) return { party: null };
+      // 로비(파티 칸)에서 부른 것이면 '돌아옴' 시각을 남김. 결과 화면에서 살짝 보는 것(peek)은 남기지 않음
+      if (b.peek !== true) await sb.from('party_members').update({ lobby_at: new Date().toISOString() }).eq('party_id', p.id).eq('user_id', uid);
+      const backRows = await sb.from('party_members').select('user_id, lobby_at').eq('party_id', p.id);
+      // 030 적용 전이면 칸이 없음 → 모두 돌아온 것으로 (예전처럼 동작)
+      const backOf = (u: string): boolean => {
+        if (backRows.error) return true;
+        const at = ((backRows.data ?? []) as { user_id: string; lobby_at: string | null }[]).find((x) => x.user_id === u)?.lobby_at;
+        return !!at && Date.now() - new Date(at).getTime() < PARTY_BACK_MS;
+      };
       const profs = (((await sb.from('profiles').select('user_id, nickname, rating, ranked_games, avatar').in('user_id', p.members)).data ?? []) as { user_id: string; nickname: string; rating: number; ranked_games?: number; avatar?: string }[]);
       const tickets = (((await sb.from('match_tickets').select('user_id, room_id, queue').eq('party_id', p.id)).data ?? []) as { user_id: string; room_id: string | null; queue: string }[]);
       const searching = tickets.length > 0 && tickets.every((t) => !t.room_id);
       return {
         party: {
           isLeader: p.leader === uid,
-          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, ranked: profs.find((x) => x.user_id === u)?.ranked_games ?? 0, avatar: profs.find((x) => x.user_id === u)?.avatar ?? 'default', leader: u === p.leader, me: u === uid })),
+          members: p.members.map((u) => ({ nickname: profs.find((x) => x.user_id === u)?.nickname ?? '친구', rating: profs.find((x) => x.user_id === u)?.rating ?? 1000, ranked: profs.find((x) => x.user_id === u)?.ranked_games ?? 0, avatar: profs.find((x) => x.user_id === u)?.avatar ?? 'default', leader: u === p.leader, me: u === uid, back: u === uid ? b.peek !== true : backOf(u) })),
           searching,
           queue: tickets[0]?.queue ?? null,
         },

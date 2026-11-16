@@ -31,6 +31,9 @@ interface Props {
   onFindAgain?: () => void;
   /** 판 정보 (한 판 더 버튼에 모드·설정을 보여 주려고) */
   dayInfo?: { days: number; daySec: number };
+  /** 파티로 한 판 했으면: 파티장인지·파티장이 다시 찾는 중인지 */
+  party?: { isLeader: boolean; searching: boolean } | null;
+  onBackToParty?: () => void;
   /** (연습) 같은 설정으로 한 판 더 */
   onReplay?: () => void;
 }
@@ -38,7 +41,7 @@ interface Props {
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo }: Props) {
+export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);
@@ -430,7 +433,19 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         </div>
       )}
       <div className="center-actions">
-        {matchKind === 'match' && onFindAgain ? (
+        {matchKind === 'match' && party && onBackToParty ? (
+          // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기
+          <>
+            {!party.isLeader && party.searching && <p className="rematch-note">파티장이 다시 찾고 있어요 · 파티로 가면 같이 찾아요</p>}
+            <button className="btn primary xl again-btn" onClick={onBackToParty}>
+              <b>파티로 돌아가기</b>
+              <small>{party.isLeader ? '모두 돌아오면 다시 찾을 수 있어요' : '파티장이 다시 찾기를 눌러요'}</small>
+            </button>
+            <button className="btn ghost" onClick={onExit}>
+              로비로
+            </button>
+          </>
+        ) : matchKind === 'match' && onFindAgain ? (
           <>
             <button className="btn primary xl again-btn" onClick={onFindAgain}>
               <b>{(rankedGame ? '랭킹전' : '일반전') + ' ' + (final.players.length > 2 ? '다인전' : '1대1')} 다시 찾기</b>

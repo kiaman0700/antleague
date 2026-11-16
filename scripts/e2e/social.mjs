@@ -191,6 +191,18 @@ const gj = await G2({ action: 'queueJoin', queue: 'casual_multi_quick', nickname
 await G2({ action: 'queueStatus' });
 await C({ action: 'queueStatus' });
 ok('혼자 두 명도 같은 대기열에', cj.s === 200 && gj.s === 200, JSON.stringify([cj.b, gj.b]));
+// 롤처럼: 파티원이 아직 결과 화면(peek 만)이면 파티장 찾기 거절, 로비로 돌아오면 찾기 가능
+await B({ action: 'party', peek: true });
+const notBack = await A({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
+ok('파티원이 아직 안 돌아오면 파티장 찾기 거절', notBack.s === 409 && /돌아오지/.test(notBack.b?.error ?? ''), notBack.b?.error);
+const pa2 = (await A({ action: 'party' })).b.party;
+ok('파티장 화면: 파티원 아직 안 돌아옴', pa2?.members.find((m) => !m.me)?.back === false, JSON.stringify(pa2?.members));
+await B({ action: 'party' }); // 파티원이 로비로 돌아옴
+const pa3 = (await A({ action: 'party' })).b.party;
+ok('파티원이 로비로 오면 돌아옴', pa3?.members.find((m) => !m.me)?.back === true, JSON.stringify(pa3?.members));
+ok('돌아옴 정보에도 user id 없음', !JSON.stringify(pa3).includes(users.B.uid));
+await C({ action: 'queueStatus' });
+await G2({ action: 'queueStatus' });
 const pq = await A({ action: 'queueJoin', queue: 'casual_multi_quick', mode: 'easy' });
 await B({ action: 'queueStatus' });
 await C({ action: 'queueStatus' });
