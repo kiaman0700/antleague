@@ -1,11 +1,20 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Loading } from './components/ui';
 import { consumeMatched, useMatch } from './net/matchStore';
 import { loadSolo, newSolo } from './engine/local';
 import { api } from './net/api';
 import { supabase } from './lib/supabase';
 import { useRouter, type Route } from './router';
-import { GameController } from './screens/GameController';
+// 게임 화면(차트·엔진 등 큼)은 따로 불러옴 → 첫 화면(로비)이 빨리 뜸. 로비가 뜬 뒤 미리 받아 둬서 게임에 들어갈 땐 기다림 없음
+const loadGame = () => import('./screens/GameController');
+const GameControllerLazy = lazy(() => loadGame().then((m) => ({ default: m.GameController })));
+function GameController(props: React.ComponentProps<typeof GameControllerLazy>) {
+  return (
+    <Suspense fallback={<div className="center-msg"><Loading /></div>}>
+      <GameControllerLazy {...props} />
+    </Suspense>
+  );
+}
 import { Lobby, type ResumeInfo } from './screens/Lobby';
 import { WaitingRoom } from './screens/WaitingRoom';
 import { loadNick, loadUi, type UiMode } from './session';
@@ -36,6 +45,11 @@ export default function App() {
   const { route, navigate } = useRouter();
   // 연습 '같은 설정으로 한 판 더' 때 게임 화면을 새로 그리기 위한 번호
   const [replay, setReplay] = useState(0);
+  // 로비가 뜨고 잠시 뒤 게임 화면 코드를 미리 받아 둠 (한가할 때)
+  useEffect(() => {
+    const t = setTimeout(() => void loadGame().catch(() => {}), 1500);
+    return () => clearTimeout(t);
+  }, []);
   // 매칭이 잡히면 어느 화면(로비·튜토리얼·화면 편집·연습)에 있든 바로 그 게임으로
   const match = useMatch();
   useEffect(() => {
