@@ -7,6 +7,7 @@ import { api, leaveQueueOnExit } from '../net/api';
 import { SPEED_PRESET, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { play } from '../lib/sound';
+import { loadNick } from '../session';
 
 const PREF = 'stockduel.match';
 const loadPref = (): { kind: QueueKind; size: QueueSize; speed: QueueSpeed } => {
@@ -33,6 +34,10 @@ interface Props {
   member: boolean;
   /** 계정 상태를 아직 모름 (게스트 안내를 잠깐 보였다 숨기지 않게) */
   loading?: boolean;
+  /** 메뉴에서 랭킹전/일반전을 이미 골랐으면 고정 (종류 고르는 칸을 숨김) */
+  fixedKind?: QueueKind;
+  /** 찾기 전에 확인할 것 (게스트 닉네임 안내 등). 확인되면 go() 를 부름 */
+  guard?: (go: () => void) => void;
   nickname: string;
   nickOk: boolean;
   ui: string;
@@ -41,13 +46,14 @@ interface Props {
   onMatched: (m: Matched) => void;
 }
 
-export function MatchFinder({ member, loading, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
+export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, onMatched }: Props) {
   const [pref, setPref] = useState(loadPref);
   const [searching, setSearching] = useState(false);
   const [info, setInfo] = useState<{ waitedSec: number; inQueue: number; window: number } | null>(null);
   const [err, setErr] = useState('');
   const matchedRef = useRef(false);
-  const kind: QueueKind = pref.kind === 'ranked' && !member ? 'casual' : pref.kind;
+  const want = fixedKind ?? pref.kind;
+  const kind: QueueKind = want === 'ranked' && !member ? 'casual' : want;
   const save = (p: typeof pref) => {
     setPref(p);
     try {
@@ -59,15 +65,23 @@ export function MatchFinder({ member, loading, nickname, nickOk, ui, onNeedNick,
 
   const start = async () => {
     setErr('');
+    if (guard && !member) return guard(() => void begin());
     if (!member && !nickOk) return onNeedNick();
+    return begin();
+  };
+  const [joining, setJoining] = useState(false);
+  const begin = async () => {
+    setJoining(true);
     try {
-      await api('queueJoin', { queue: `${kind}_${pref.size}_${pref.speed}`, nickname: nickname.trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
+      await api('queueJoin', { queue: `${kind}_${pref.size}_${pref.speed}`, nickname: (member ? nickname : loadNick() || nickname).trim(), mode: ui === 'pro' ? 'pro' : 'easy' });
       matchedRef.current = false;
       setLinking(false);
       setInfo(null);
       setSearching(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setJoining(false);
     }
   };
   const [linking, setLinking] = useState(false);
@@ -85,7 +99,9 @@ export function MatchFinder({ member, loading, nickname, nickOk, ui, onNeedNick,
   // 결과 화면에서 '다시 찾기'로 왔으면 바로 시작
   useEffect(() => {
     try {
-      if (localStorage.getItem(FIND_AGAIN)) {
+      const again = localStorage.getItem(FIND_AGAIN);
+      // 결과 화면에서 고른 종류의 메뉴에서만 시작 (다른 메뉴에서 엉뚱한 대기열로 들어가지 않게)
+      if (again && (!fixedKind || again === fixedKind || again === '1')) {
         localStorage.removeItem(FIND_AGAIN);
         start();
       }
@@ -156,16 +172,18 @@ export function MatchFinder({ member, loading, nickname, nickOk, ui, onNeedNick,
 
   return (
     <section className="panel pad match-finder">
-      <h3>
-        <Icon name="users" size={18} /> 대결 찾기
-      </h3>
-      {seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
+      {!fixedKind && (
+        <h3>
+          <Icon name="users" size={18} /> 대결 찾기
+        </h3>
+      )}
+      {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
       {seg(pref.size, [['duel', '1대1', '두 명'], ['multi', '다인전', '3~4명']], (v) => save({ ...pref, size: v }))}
       {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, SPEED_PRESET.quick.minutes], ['normal', SPEED_PRESET.normal.label, SPEED_PRESET.normal.minutes]], (v) => save({ ...pref, speed: v }))}
-      {!member && !loading && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
+      {!member && !loading && !fixedKind && <p className="muted small mf-note">게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button></p>}
       {err && <p className="error">{err}</p>}
-      <button className="btn primary xl full" onClick={start} disabled={searching || loading}>
-        <Icon name="search" size={18} /> {kind === 'ranked' ? '랭킹전' : '일반전'} 찾기
+      <button className="btn primary xl full" onClick={start} disabled={searching || loading || joining}>
+        <Icon name="search" size={18} /> {joining ? '준비 중…' : `${kind === 'ranked' ? '랭킹전' : '일반전'} 찾기`}
       </button>
 
       {searching && (

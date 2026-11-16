@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { MatchFinder } from '../components/MatchFinder';
+import { AccountChip, BottomNav, Brand, lastTab, rememberTab, SideNav, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { Companies } from './Companies';
 import { Admin, AdminBanner } from './Admin';
 import { LoginPage, MyProfilePage, RankingPage } from './Account';
@@ -44,7 +45,7 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'me' | 'ranking';
+export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking';
 
 interface Props {
   page: LobbyPage;
@@ -184,31 +185,15 @@ function PageHead({ title, onBack, right }: { title: string; onBack: () => void;
   );
 }
 
-/** 닉네임이 없을 때만 보이는 입력 칸 (주소로 바로 들어온 경우) */
-function NickGate({ profile }: { profile: ReturnType<typeof useProfile> }) {
-  const [shown] = useState(() => !profile.ok);
-  if (!shown) return null;
-  return (
-    <div className="panel pad nick-gate">
-      <label className="field">
-        <span>먼저 닉네임을 정해 주세요</span>
-        <input value={profile.nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => profile.setNick(e.target.value)} />
-      </label>
-    </div>
-  );
-}
-
 type Rejoined = { roomId: string; playerId: string; code: string; status: string; nickname: string; mode: string };
 
 function CodeJoin({
   initial,
-  profile,
   onJoined,
   onRejoin,
   onClose,
 }: {
   initial: string;
-  profile: ReturnType<typeof useProfile>;
   onJoined: (r: Joined) => void;
   onRejoin: (r: Rejoined) => void;
   onClose: () => void;
@@ -233,10 +218,9 @@ function CodeJoin({
       }
       return;
     }
-    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
     setBusy(true);
     try {
-      onJoined(await api<Joined>('join', { code, nickname: profile.nick.trim(), mode: profile.ui }));
+      onJoined(await api<Joined>('join', { code, nickname: loadNick().trim(), mode: loadUi() }));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -274,10 +258,9 @@ function CodeJoin({
   );
 }
 
-function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<typeof useProfile>; onStart: (days: number, daySec: number) => void; onClose: () => void }) {
+function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: number) => void; onClose: () => void }) {
   const [days, setDays] = useState(20);
   const [daySec, setDaySec] = useState<number>(DEFAULT_SOLO_DAY);
-  const [err, setErr] = useState('');
   return (
     <Modal title={<><Icon name="target" size={18} /> 혼자 연습하기</>} onClose={onClose}>
       <p className="muted small">혼자서 같은 규칙으로 연습해요. 장중에 가격이 실시간으로 움직이고, 다 정했으면 "장 마감"으로 남은 시간을 건너뛸 수 있어요. 이 기기에 저장돼요.</p>
@@ -303,12 +286,11 @@ function PracticeStart({ profile, onStart, onClose }: { profile: ReturnType<type
           ))}
         </div>
       </div>
-      {err && <p className="error">{err}</p>}
       <div className="modal-actions">
         <button className="btn ghost" onClick={onClose}>
           취소
         </button>
-        <button className="btn primary" onClick={() => (profile.ok ? onStart(days, daySec) : setErr('닉네임을 먼저 1~10자로 정해 주세요.'))}>
+        <button className="btn primary" onClick={() => onStart(days, daySec)}>
           시작하기
         </button>
       </div>
@@ -385,42 +367,47 @@ function HowTo({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ================= 홈 ================= */
+/* ================= 메뉴별 화면 (랭킹전·일반전·커스텀·연습·더보기) ================= */
 
-function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
+type HubTab = 'ranked' | 'casual' | 'custom' | 'practice' | 'more';
+type FrameModal = null | 'howto' | 'privacy' | 'feedback';
+
+const TAB_HEAD: Record<HubTab, { title: string; desc: string }> = {
+  ranked: { title: '랭킹전', desc: '실력이 비슷한 회원끼리 · 이기면 점수가 올라요' },
+  casual: { title: '일반전', desc: '부담 없이 한 판 · 점수 변화 없음' },
+  custom: { title: '커스텀', desc: '친구와 방을 만들어 규칙을 직접 정해요' },
+  practice: { title: '연습', desc: '혼자 연습하고 규칙을 익혀요' },
+  more: { title: '설정·더보기', desc: '내 계정 · 화면 모드 · 도움말' },
+};
+
+function Hub({ tab, go, onWaiting, onGame, openModal }: Omit<Props, 'page'> & { tab: HubTab; openModal: (m: FrameModal) => void }) {
   const account = useAccount();
   const profile = useProfile();
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'howto' | 'prefs' | 'privacy' | 'feedback'>(null);
-  const prefs = usePrefs();
-  const [nickErr, setNickErr] = useState(false);
+  const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
+  const [modal, setModal] = useState<null | 'code' | 'practice'>(null);
   const [resume, setResume] = useState<ResumeInfo | null>(null);
   const [openRooms, setOpenRooms] = useState<number | null>(null);
   const [soloSave, setSoloSave] = useState(() => {
     const s = loadSolo();
     return s && s.data.room.status !== 'finished' ? s : null;
   });
-  const nickRef = useRef<HTMLInputElement>(null);
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
+  const member = account.status === 'member' && !!account.profile;
 
   useEffect(() => {
-    if (invite.length === 6) setModal('code');
+    if (invite.length === 6) gate.guard(() => setModal('code'));
     if (!online) return;
     api<ResumeInfo | null>('resume').then(setResume).catch(() => {});
     api<RoomInfo[]>('rooms')
       .then((r) => setOpenRooms(r.filter((x) => !x.joined).length))
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invite]);
 
-  /** 닉네임이 있어야 하는 행동 */
-  const need = (fn: () => void) => () => {
-    if (profile.ok) return fn();
-    setNickErr(true);
-    nickRef.current?.focus();
-  };
-
-  const joined = (r: Joined) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+  const nick = () => (member ? account.profile!.nickname : loadNick().trim());
+  const joined = (r: Joined) => onWaiting(r.roomId, r.playerId, nick(), r.code);
   const startPractice = (days: number, daySec: number) => {
-    const s = newSolo(profile.nick.trim(), days, daySec);
+    const s = newSolo(nick() || '나', days, daySec);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   const doResume = () => {
@@ -428,50 +415,34 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
     if (resume.status === 'waiting') return onWaiting(resume.roomId, resume.playerId, resume.nickname, resume.code);
     onGame({ mode: 'multi', roomId: resume.roomId, code: resume.code, playerId: resume.playerId, nickname: resume.nickname, ui: resume.mode === 'pro' ? 'pro' : 'easy' });
   };
+  const head = TAB_HEAD[tab];
+
+  const finder = (kind: 'ranked' | 'casual') => (
+    <MatchFinder
+      member={member}
+      loading={account.status === 'loading'}
+      fixedKind={kind}
+      guard={gate.guard}
+      nickname={account.profile?.nickname ?? loadNick()}
+      nickOk={member || profile.ok}
+      ui={profile.ui}
+      onNeedNick={() => gate.guard(() => {})}
+      onLogin={() => go('login')}
+      onMatched={(m) => onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: profile.ui })}
+    />
+  );
 
   return (
-    <div className="lobby home">
-      <header className="hero compact">
-        <div className="hero-mark">
-          <svg viewBox="0 0 64 64" width="44" height="44" aria-hidden>
-            <rect width="64" height="64" rx="18" fill="url(#hg)" />
-            <path d="M14 42 L26 30 L34 36 L50 20" stroke="#0b0d12" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="50" cy="20" r="4" fill="#0b0d12" />
-            <defs>
-              <linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#ffe08a" />
-                <stop offset="1" stopColor="#f5b83d" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
+    <div className={'hub hub-' + tab}>
+      <header className="hub-head">
         <div>
-          <h1>
-            주식 <em>대결</em>
-          </h1>
-          <p className="sub">같은 시장, 같은 뉴스. 누가 더 벌까?</p>
+          <h2>{head.title}</h2>
+          <p className="muted small">{head.desc}</p>
         </div>
-        {online && (
-          <div className="hero-acc">
-            {account.status === 'member' && account.profile ? (
-              <button className="acc-chip" onClick={() => go('me')} aria-label="마이프로필">
-                <span className="acc-av">{account.profile.nickname.slice(0, 1)}</span>
-                <span className="acc-txt">
-                  <b>{account.profile.nickname}</b>
-                  <small>{account.profile.rating}점 · 마이프로필</small>
-                </span>
-              </button>
-            ) : account.status === 'guest' ? (
-              <button className="btn sm primary" onClick={() => go('login')}>
-                <Icon name="userPlus" size={14} /> 로그인
-              </button>
-            ) : null}
-          </div>
-        )}
       </header>
 
       {online && <AdminBanner onOpen={() => go('admin')} />}
-      {(resume || soloSave) && (
+      {(resume || soloSave) && tab !== 'more' && (
         <div className="resume-list">
           {resume && (
             <div className="resume-card">
@@ -516,129 +487,210 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
         </div>
       )}
 
-      <div className="home-left">
-      <section className="panel pad profile">
-        {account.status === 'member' && account.profile ? (
-          <div className="field">
-            <span>닉네임</span>
-            <div className="nick-member">
-              <b>{account.profile.nickname}</b>
-              <span className="muted small">회원 · 수정은 마이프로필에서</span>
-              <button className="btn sm ghost" onClick={() => go('me')}>
-                마이프로필
+      {tab === 'ranked' &&
+        (!online ? (
+          <OfflineNote />
+        ) : account.status === 'loading' ? (
+          <section className="panel pad hub-skel" aria-busy="true">
+            <span className="muted small">내 계정을 확인하는 중…</span>
+          </section>
+        ) : member ? (
+          <div className="hub-grid">
+            {finder('ranked')}
+            <section className="panel pad rank-card">
+              <h3>
+                <Icon name="crown" size={18} /> 내 랭킹
+              </h3>
+              <div className="rk-big">
+                <b>{account.profile!.rating}</b>
+                <span>점</span>
+              </div>
+              <p className="muted small">
+                {account.profile!.games > 0 ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승` : '랭킹전을 한 판 하면 순위에 올라가요'}
+              </p>
+              <ul className="rk-rules muted small">
+                <li>점수가 비슷한 사람끼리 만나요 (기다릴수록 범위가 넓어져요, 최대 ±400)</li>
+                <li>중간에 기권하면 꼴찌로 계산돼요</li>
+                <li>같은 상대와는 하루 3판까지만 점수가 바뀌어요</li>
+              </ul>
+              <button className="btn sm ghost" onClick={() => go('ranking')}>
+                <Icon name="trophy" /> 전체 랭킹 보기
               </button>
-            </div>
-          </div>
-        ) : online && account.status === 'loading' ? (
-          <div className="field">
-            <span>닉네임</span>
-            <div className="nick-member nick-loading" aria-busy="true">
-              <span className="muted small">내 계정을 확인하는 중…</span>
-            </div>
+            </section>
           </div>
         ) : (
-        <label className={'field' + (nickErr && !profile.ok ? ' invalid' : '')}>
-          <span>닉네임 {account.status === 'guest' && <small className="muted">· 게스트 (랭킹에는 안 올라가요)</small>}</span>
-          <input
-            ref={nickRef}
-            value={profile.nick}
-            maxLength={10}
-            placeholder="예: 개미왕"
-            onChange={(e) => {
-              profile.setNick(e.target.value);
-              setNickErr(false);
-            }}
-          />
-          {nickErr && !profile.ok && <small className="error">닉네임을 1~10자로 입력해 주세요.</small>}
-        </label>
-        )}
-        <div className="field">
-          <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
-          <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
-        </div>
-      </section>
+          <section className="panel pad ranked-guest">
+            <i className="rg-icon">
+              <Icon name="trophy" size={34} />
+            </i>
+            <h3>랭킹전은 회원만 할 수 있어요</h3>
+            <p className="muted">실력이 비슷한 회원끼리 겨루고, 이기면 랭킹 점수가 올라요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+            <div className="rg-actions">
+              <button className="btn primary" onClick={() => go('signup')}>
+                <Icon name="userPlus" /> 회원가입
+              </button>
+              <button className="btn" onClick={() => go('login')}>
+                로그인
+              </button>
+            </div>
+            <button className="linkish-soft" onClick={() => go('casual')}>
+              먼저 일반전으로 해 볼래요 →
+            </button>
+          </section>
+        ))}
 
-      {online && (
-        <MatchFinder
-          member={account.status === 'member'}
-          loading={account.status === 'loading'}
-          nickname={account.profile?.nickname ?? profile.nick}
-          nickOk={account.status === 'member' || profile.ok}
-          ui={profile.ui}
-          onNeedNick={() => (setNickErr(true), nickRef.current?.focus())}
-          onLogin={() => go('login')}
-          onMatched={(m) => onGame({ mode: 'multi', roomId: m.roomId, code: m.code, playerId: m.playerId, nickname: m.nickname, ui: profile.ui })}
-        />
-      )}
+      {tab === 'casual' &&
+        (online ? (
+          <div className="hub-grid">
+            {finder('casual')}
+            <section className="panel pad rank-card">
+              <h3>
+                <Icon name="info" size={18} /> 일반전은 이렇게
+              </h3>
+              <ul className="rk-rules muted small">
+                <li>
+                  <b>1대1</b>은 두 명, <b>다인전</b>은 3~4명이 같은 시장에서 겨뤄요
+                </li>
+                <li>
+                  <b>신속</b>은 10일 · 하루 1분 (약 10분), <b>일반</b>은 20일 · 하루 1분 30초 (약 20~30분)
+                </li>
+                <li>매칭되면 바로 시작해요. 랭킹 점수는 바뀌지 않아요</li>
+                <li>친구와 규칙을 정해서 하려면 '커스텀'에서 방을 만드세요</li>
+              </ul>
+              <button className="btn sm ghost" onClick={() => go('custom')}>
+                <Icon name="door" /> 커스텀 방으로
+              </button>
+            </section>
+          </div>
+        ) : (
+          <OfflineNote />
+        ))}
 
-      </div>
+      {tab === 'custom' &&
+        (online ? (
+          <nav className="home-actions three">
+            <button className="tile" onClick={() => gate.guard(() => go('create'))}>
+              <i><Icon name="plus" size={24} /></i>
+              <b>방 만들기</b>
+              <small>인원·길이·시간을 직접 · 점수 없음</small>
+            </button>
+            <button className="tile" onClick={() => gate.guard(() => go('rooms'))}>
+              <i><Icon name="search" size={24} /></i>
+              <b>방 찾기</b>
+              <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
+            </button>
+            <button className="tile" onClick={() => gate.guard(() => setModal('code'))}>
+              <i><Icon name="key" size={24} /></i>
+              <b>코드로 입장</b>
+              <small>친구에게 받은 6자리 코드</small>
+            </button>
+          </nav>
+        ) : (
+          <OfflineNote />
+        ))}
 
-      <div className="home-right">
-      <h3 className="home-sub">친구와 · 혼자</h3>
-      <nav className="home-actions">
-        <button className="tile" disabled={!online} onClick={need(() => go('rooms'))}>
-          <i><Icon name="search" size={24} /></i>
-          <b>방 찾기</b>
-          <small>{!online ? '온라인 설정 필요' : openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '지금 열린 방이 없어요'}</small>
-        </button>
-        <button className="tile" disabled={!online} onClick={need(() => go('create'))}>
-          <i><Icon name="plus" size={24} /></i>
-          <b>방 만들기</b>
-          <small>친구와 · 설정 직접 (점수 없음)</small>
-        </button>
-        <button className="tile" disabled={!online} onClick={need(() => setModal('code'))}>
-          <i><Icon name="key" size={24} /></i>
-          <b>코드로 입장</b>
-          <small>초대 코드 6자리</small>
-        </button>
-        <button className="tile" onClick={need(() => setModal('practice'))}>
-          <i><Icon name="target" size={24} /></i>
-          <b>혼자 연습</b>
-          <small>나만의 속도로</small>
-        </button>
-      </nav>
-
-      <div className="home-links">
-        <button className="btn ghost sm" onClick={() => go('tutorial')}>
-          <Icon name="play" /> 튜토리얼
-        </button>
-        <button className="btn ghost sm" onClick={() => go('ranking')}>
-          <Icon name="trophy" /> 랭킹
-        </button>
-        <button className="btn ghost sm" onClick={() => go('companies')}>
-          <Icon name="book" /> 기업 도감
-        </button>
-        <button className="btn ghost sm" onClick={() => setModal('howto')}>
-          <Icon name="help" /> 게임 방법
-        </button>
-        {online && (
-          <button className="btn ghost sm" onClick={() => go('records')}>
-            <Icon name="trophy" /> 기록·업적
+      {tab === 'practice' && (
+        <nav className="home-actions">
+          <button className="tile" onClick={() => setModal('practice')}>
+            <i><Icon name="target" size={24} /></i>
+            <b>혼자 연습</b>
+            <small>나만의 속도로 · 이 기기에 저장</small>
           </button>
-        )}
-      </div>
-      </div>
-      <p className="home-foot">
-        <button className="linkish-soft" onClick={() => setModal('feedback')}>
-          의견·버그 보내기
-        </button>
-        <span className="muted"> · </span>
-        <button className="linkish-soft" onClick={() => setModal('privacy')}>
-          개인정보 처리 안내
-        </button>
-      </p>
-
-      {modal === 'code' && <CodeJoin initial={invite} profile={profile} onJoined={joined} onRejoin={(r) => rejoined(r, onWaiting, onGame)} onClose={() => setModal(null)} />}
-      {modal === 'practice' && <PracticeStart profile={profile} onStart={startPractice} onClose={() => setModal(null)} />}
-      {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
-      {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
-      {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
-      {modal === 'prefs' && (
-        <Sheet title={<><Icon name="sliders" size={18} /> 내 화면 설정</>} onClose={() => setModal(null)}>
-          <PrefsPanel ui={profile.ui} />
-        </Sheet>
+          <button className="tile" onClick={() => go('tutorial')}>
+            <i><Icon name="play" size={24} /></i>
+            <b>튜토리얼</b>
+            <small>연습봇과 한 단계씩</small>
+          </button>
+          <button className="tile" onClick={() => openModal('howto')}>
+            <i><Icon name="help" size={24} /></i>
+            <b>게임 방법</b>
+            <small>1분 만에 규칙 보기</small>
+          </button>
+          <button className="tile" onClick={() => go('companies')}>
+            <i><Icon name="book" size={24} /></i>
+            <b>기업 도감</b>
+            <small>종목·업종 알아보기</small>
+          </button>
+        </nav>
       )}
+
+      {tab === 'more' && (
+        <div className="more-page">
+          <section className="panel pad">
+            <h3>내 계정</h3>
+            {member ? (
+              <div className="more-acc">
+                <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} />
+              </div>
+            ) : account.status === 'loading' ? (
+              <p className="muted small">내 계정을 확인하는 중…</p>
+            ) : (
+              <>
+                <label className={'field' + (profile.nick && !profile.ok ? ' invalid' : '')}>
+                  <span>게스트 닉네임 · 랭킹에는 안 올라가요</span>
+                  <input value={profile.nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => profile.setNick(e.target.value)} />
+                </label>
+                {online && (
+                  <div className="rg-actions">
+                    <button className="btn sm primary" onClick={() => go('signup')}>
+                      <Icon name="userPlus" /> 회원가입
+                    </button>
+                    <button className="btn sm" onClick={() => go('login')}>
+                      로그인
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+          <section className="panel pad">
+            <div className="field">
+              <span>화면 모드 · 게임 중에도 바꿀 수 있어요</span>
+              <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
+            </div>
+          </section>
+          <section className="panel pad more-links">
+            {online && (
+              <button className="more-row" onClick={() => go('ranking')}>
+                <Icon name="crown" /> 랭킹 <Icon name="right" size={14} />
+              </button>
+            )}
+            {online && (
+              <button className="more-row" onClick={() => go('records')}>
+                <Icon name="medal" /> 기록·업적 <Icon name="right" size={14} />
+              </button>
+            )}
+            <button className="more-row" onClick={() => go('companies')}>
+              <Icon name="book" /> 기업 도감 <Icon name="right" size={14} />
+            </button>
+            <button className="more-row" onClick={() => go('tutorial')}>
+              <Icon name="play" /> 튜토리얼 <Icon name="right" size={14} />
+            </button>
+            <button className="more-row" onClick={() => openModal('howto')}>
+              <Icon name="help" /> 게임 방법 <Icon name="right" size={14} />
+            </button>
+            <button className="more-row" onClick={() => openModal('feedback')}>
+              <Icon name="bell" /> 의견·버그 보내기 <Icon name="right" size={14} />
+            </button>
+            <button className="more-row" onClick={() => openModal('privacy')}>
+              <Icon name="lock" /> 개인정보 처리 안내 <Icon name="right" size={14} />
+            </button>
+          </section>
+        </div>
+      )}
+
+      {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onRejoin={(r) => rejoined(r, onWaiting, onGame)} onClose={() => setModal(null)} />}
+      {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
+      {gate.el}
     </div>
+  );
+}
+
+function OfflineNote() {
+  return (
+    <section className="panel pad">
+      <p className="muted">온라인 설정이 없어 이 기능을 쓸 수 없어요. '연습'에서 혼자 할 수 있어요.</p>
+    </section>
   );
 }
 
@@ -646,6 +698,8 @@ function Home({ go, onWaiting, onGame }: Omit<Props, 'page'>) {
 
 function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const profile = useProfile();
+  const account = useAccount();
+  const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [rooms, setRooms] = useState<RoomInfo[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -673,16 +727,16 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const enter = async (room: RoomInfo, pw?: string) => {
     setErr('');
     setPwErr('');
-    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
     if (room.isPrivate && !room.joined && pw === undefined) {
       setPwInput('');
       return setPwRoom(room);
     }
     setBusy(true);
     try {
-      const r = await api<Joined>('joinRoom', { roomId: room.id, nickname: profile.nick.trim(), mode: profile.ui, password: pw });
+      const nick = account.profile?.nickname ?? loadNick().trim();
+      const r = await api<Joined>('joinRoom', { roomId: room.id, nickname: nick, mode: profile.ui, password: pw });
       setPwRoom(null);
-      onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+      onWaiting(r.roomId, r.playerId, nick, r.code);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (pw !== undefined) setPwErr(msg);
@@ -696,14 +750,13 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
     <div className="lobby page">
       <PageHead
         title="방 찾기"
-        onBack={() => go('home')}
+        onBack={() => go('custom')}
         right={
           <button className="icon-btn" aria-label="새로고침" title="새로고침" onClick={load}>
             <Icon name="refresh" size={18} />
           </button>
         }
       />
-      <NickGate profile={profile} />
 
       <div className="chip-row">
         {(
@@ -718,7 +771,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           </button>
         ))}
         <span className="grow" />
-        <button className="chip" onClick={() => setCodeOpen(true)}>
+        <button className="chip" onClick={() => gate.guard(() => setCodeOpen(true))}>
           <Icon name="key" /> 코드로 입장
         </button>
       </div>
@@ -733,13 +786,13 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
             <b>{loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}</b>
             {loadErr && <small>인터넷 연결을 확인해 주세요. 6초마다 다시 시도해요.</small>}
             <small>직접 방을 만들고 친구를 불러 보세요.</small>
-            <button className="btn primary" onClick={() => go('create')}>
+            <button className="btn primary" onClick={() => gate.guard(() => go('create'))}>
               <Icon name="plus" /> 방 만들기
             </button>
           </div>
         )}
         {shown.map((r) => (
-          <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => enter(r)}>
+          <button key={r.id} className={'room-row' + (r.joined ? ' joined' : '')} disabled={busy} onClick={() => gate.guard(() => enter(r))}>
             <span className="rr-main">
               <b>
                 {r.isPrivate && (
@@ -796,12 +849,12 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
       {codeOpen && (
         <CodeJoin
           initial=""
-          profile={profile}
-          onJoined={(r) => onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code)}
+          onJoined={(r) => onWaiting(r.roomId, r.playerId, account.profile?.nickname ?? loadNick().trim(), r.code)}
           onRejoin={(r) => rejoined(r, onWaiting)}
           onClose={() => setCodeOpen(false)}
         />
       )}
+      {gate.el}
     </div>
   );
 }
@@ -810,6 +863,8 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
 function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const profile = useProfile();
+  const account = useAccount();
+  const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [title, setTitle] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [days, setDays] = useState(20);
@@ -821,14 +876,15 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
   const pwOk = !isPrivate || (password.length >= 4 && password.length <= 20);
   const est = estimateMinutes(days, turnSec);
-  const create = async () => {
+  const create = () => gate.guard(() => void doCreate());
+  const doCreate = async () => {
     setErr('');
-    if (!profile.ok) return setErr('닉네임을 먼저 1~10자로 정해 주세요.');
     if (!pwOk) return setErr('비밀번호는 4~20자로 정해 주세요.');
     setBusy(true);
     try {
+      const nick = account.profile?.nickname ?? loadNick().trim();
       const r = await api<Joined>('create', {
-        nickname: profile.nick.trim(),
+        nickname: nick,
         mode: profile.ui,
         totalDays: days,
         turnSeconds: turnSec,
@@ -837,7 +893,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         isPrivate,
         password: isPrivate ? password : undefined,
       });
-      onWaiting(r.roomId, r.playerId, profile.nick.trim(), r.code);
+      onWaiting(r.roomId, r.playerId, nick, r.code);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -847,14 +903,13 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
   return (
     <div className="lobby page create">
-      <PageHead title="방 만들기" onBack={() => go('home')} />
-      <NickGate profile={profile} />
+      <PageHead title="방 만들기" onBack={() => go('custom')} />
 
       <section className="panel pad">
         <h3 className="sec-h">기본</h3>
         <label className="field">
           <span>방 제목</span>
-          <input value={title} maxLength={20} placeholder={`${profile.nick.trim() || '나'}의 방`} onChange={(e) => setTitle(e.target.value)} />
+          <input value={title} maxLength={20} placeholder={`${account.profile?.nickname ?? (profile.nick.trim() || '나')}의 방`} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <div className="field">
           <span>인원 (방장 포함)</span>
@@ -929,6 +984,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           {busy ? '만드는 중…' : '방 만들기'}
         </button>
       </div>
+      {gate.el}
     </div>
   );
 }
@@ -1066,14 +1122,100 @@ function Records({ go }: Pick<Props, 'go'>) {
   );
 }
 
+const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
+  ranked: 'ranked',
+  casual: 'casual',
+  custom: 'custom',
+  practice: 'practice',
+  more: 'more',
+  rooms: 'custom',
+  create: 'custom',
+  ranking: 'ranking',
+  records: 'records',
+  companies: 'companies',
+};
+
+/** 로비 틀: 왼쪽 메뉴(PC) / 아래 탭바(모바일) + 고른 화면 */
 export function Lobby({ page, go, onWaiting, onGame }: Props) {
-  if (page === 'rooms') return <Rooms go={go} onWaiting={onWaiting} />;
-  if (page === 'create') return <Create go={go} onWaiting={onWaiting} />;
-  if (page === 'records') return <Records go={go} />;
-  if (page === 'companies') return <Companies onBack={() => go('home')} />;
-  if (page === 'admin') return <Admin onBack={() => go('home')} />;
-  if (page === 'login') return <LoginPage onBack={() => go('home')} onDone={() => go('me')} />;
-  if (page === 'me') return <MyProfilePage onBack={() => go('home')} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
-  if (page === 'ranking') return <RankingPage onBack={() => go('home')} onLogin={() => go('login')} />;
-  return <Home go={go} onWaiting={onWaiting} onGame={onGame} />;
+  const account = useAccount();
+  const [modal, setModal] = useState<FrameModal>(null);
+  const resolved: LobbyPage = page === 'home' ? lastTab() : page;
+  const active = PAGE_TAB[resolved] ?? null;
+  useEffect(() => {
+    if (active) rememberTab(active);
+  }, [active]);
+  const goTab = (t: NavTab) => go(t as LobbyPage);
+  const back = () => go('home');
+
+  let body: ReactNode;
+  switch (resolved) {
+    case 'rooms':
+      body = <Rooms go={go} onWaiting={onWaiting} />;
+      break;
+    case 'create':
+      body = <Create go={go} onWaiting={onWaiting} />;
+      break;
+    case 'records':
+      body = <Records go={go} />;
+      break;
+    case 'companies':
+      body = <Companies onBack={back} />;
+      break;
+    case 'admin':
+      body = <Admin onBack={back} />;
+      break;
+    case 'login':
+    case 'signup':
+      body = <LoginPage key={resolved} initialTab={resolved === 'signup' ? 'signup' : 'login'} onBack={back} onDone={() => go('me')} />;
+      break;
+    case 'me':
+      body = <MyProfilePage onBack={back} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
+      break;
+    case 'ranking':
+      body = <RankingPage onBack={back} onLogin={() => go('login')} />;
+      break;
+    case 'ranked':
+    case 'casual':
+    case 'custom':
+    case 'practice':
+    case 'more':
+      body = <Hub key={resolved} tab={resolved} go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} />;
+      break;
+    default:
+      body = <Hub key="casual" tab="casual" go={go} onWaiting={onWaiting} onGame={onGame} openModal={setModal} />;
+  }
+
+  return (
+    <div className="lobby-shell">
+      <SideNav
+        active={active}
+        account={account}
+        online={online}
+        onGo={goTab}
+        onProfile={() => go('me')}
+        onLogin={() => go('login')}
+        footer={
+          <>
+            <button className="linkish-soft" onClick={() => setModal('feedback')}>
+              의견·버그 보내기
+            </button>
+            <button className="linkish-soft" onClick={() => setModal('privacy')}>
+              개인정보 처리 안내
+            </button>
+          </>
+        }
+      />
+      <main className="lobby-main">
+        <div className="lobby-topbar">
+          <Brand />
+          <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
+        </div>
+        <div className="lobby-body">{body}</div>
+      </main>
+      <BottomNav active={active} online={online} onGo={goTab} />
+      {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
+      {modal === 'privacy' && <Privacy onClose={() => setModal(null)} />}
+      {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
+    </div>
+  );
 }

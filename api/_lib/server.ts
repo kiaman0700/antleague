@@ -112,7 +112,7 @@ import {
   MAX_PLAYERS,
 } from '../../src/engine/engine.js';
 import type { ItemRow } from '../../src/game/items.js';
-import { accountAct, getProfile, loginEmail, recordMatch, resetPassword } from './accounts.js';
+import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
 import { CASUAL_MAX_WINDOW, parseQueue, pickGroup, queueName, RANKED_MAX_WINDOW, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import type { Trade } from '../../src/game/portfolio.js';
 
@@ -254,9 +254,13 @@ async function insertSecret(row: { room_id: string; seed: number; password_hash:
 }
 
 /** 회원이면 프로필 닉네임, 아니면 입력한 닉네임 */
+/** 게임에서 쓸 닉네임: 회원은 프로필 닉네임(입력값 무시), 게스트는 입력값 — 단 회원이 쓰는 닉네임은 못 씀(사칭 방지) */
 async function nickFor(uid: string, raw: unknown) {
   const p = await getProfile(db(), uid);
-  return p ? p.nickname : cleanNickname(raw);
+  if (p) return p.nickname;
+  const n = cleanNickname(raw);
+  if (!(await nicknameFree(db(), n))) throw new GameError('회원이 쓰는 닉네임이에요. 게스트 닉네임을 다른 것으로 바꿔 주세요.', 409);
+  return n;
 }
 
 /** 이 방에서 회원(프로필 있음)인 플레이어들 — 화면엔 '회원 표시'만 (user_id 는 보내지 않음). 1분 캐시 */
@@ -654,7 +658,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (!q) throw new GameError('대결 종류를 골라 주세요.');
       const prof = await getProfile(sb, uid);
       if (q.kind === 'ranked' && !prof) throw new GameError('랭킹전은 로그인한 회원만 할 수 있어요.', 403);
-      const nickname = prof ? prof.nickname : cleanNickname(b.nickname);
+      const nickname = prof ? prof.nickname : await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       // 진행 중인 대결·대기실이 있으면 먼저 끝내거나 나가게 (두 판을 동시에 하지 않게)
       const seats = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { left_game: boolean; rooms: { status: string } }[];

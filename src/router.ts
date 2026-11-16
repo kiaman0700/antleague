@@ -12,7 +12,8 @@ export type Route =
 export function pathOf(r: Route): string {
   switch (r.kind) {
     case 'lobby':
-      return !r.page || r.page === 'home' ? '/' : '/' + r.page;
+      // 연습 메뉴는 /learn (/practice 는 혼자 연습 게임 화면)
+      return !r.page || r.page === 'home' ? '/' : r.page === 'practice' ? '/learn' : '/' + r.page;
     case 'waiting':
       return `/room/${r.code}`;
     case 'game':
@@ -29,7 +30,7 @@ const TITLES: Record<Route['kind'], string> = {
   resolve: '주식 대결',
 };
 
-const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking' };
+const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking' };
 /** 주소만으로 열 수 있는 화면(로비 페이지)인지 */
 function routeFromPath(path: string): Route {
   const page = LOBBY_PAGES[path.replace(/\/+$/, '') || '/'];

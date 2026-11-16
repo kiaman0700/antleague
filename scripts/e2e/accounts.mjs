@@ -56,6 +56,11 @@ const av = (await G0({ action: 'checkAvailable', username: ua, nickname: 'A' + r
 ok('이미 쓰는 아이디·닉네임은 taken', av.username === 'taken' && av.nickname === 'taken', JSON.stringify(av));
 const av2 = (await G0({ action: 'checkAvailable', username: 'free' + rnd, nickname: '새' + rnd })).b;
 ok('빈 아이디·닉네임은 ok', av2.username === 'ok' && av2.nickname === 'ok', JSON.stringify(av2));
+// 게스트는 회원 닉네임을 못 씀 (사칭 방지) — 방 만들기·매칭 모두
+const impC = await G0({ action: 'create', nickname: 'A' + rnd, mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '사칭' });
+ok('게스트가 회원 닉네임으로 방 만들기 거절', impC.s === 409, impC.b?.error);
+const impQ = await G0({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: 'a' + rnd.toUpperCase(), mode: 'easy' });
+ok('게스트가 회원 닉네임(대소문자만 다름)으로 매칭 거절', impQ.s === 409, impQ.b?.error);
 const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
 ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
 const samePw = await G0({ action: 'signup', username: 'pwtest' + rnd, password: 'pwtest' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true });

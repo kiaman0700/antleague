@@ -80,8 +80,8 @@ function useAvailability(field: 'username' | 'nickname', value: string, on: bool
 const fieldCls = (s: Avail | 'match' | 'mismatch') => 'field' + (s === 'ok' || s === 'match' ? ' good' : s === 'taken' || s === 'invalid' || s === 'mismatch' ? ' bad' : '');
 
 /* ================= 로그인 · 회원가입 · 비밀번호 찾기 ================= */
-export function LoginPage({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
-  const [tab, setTab] = useState<'login' | 'signup' | 'reset'>('login');
+export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: () => void; onDone: () => void; initialTab?: 'login' | 'signup' }) {
+  const [tab, setTab] = useState<'login' | 'signup' | 'reset'>(initialTab);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');

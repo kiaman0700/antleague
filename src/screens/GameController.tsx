@@ -572,7 +572,10 @@ export function GameController({ session, onExit, onWaiting }: Props) {
         ranked={!!view.room.ranked}
         onFindAgain={() => {
           try {
-            localStorage.setItem(FIND_AGAIN, '1');
+            // 같은 종류(랭킹전/일반전) 메뉴로 돌아가서 바로 다시 찾기
+            const kind = view.room.ranked ? 'ranked' : 'casual';
+            localStorage.setItem(FIND_AGAIN, kind);
+            localStorage.setItem('stockduel.tab', kind);
           } catch {
             /* 무시 */
           }

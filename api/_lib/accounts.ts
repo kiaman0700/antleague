@@ -62,7 +62,7 @@ export async function getProfile(sb: SupabaseClient, uid: string): Promise<Profi
   return (r.data as Profile | null) ?? null;
 }
 
-async function nicknameFree(sb: SupabaseClient, nickname: string, exceptUid?: string) {
+export async function nicknameFree(sb: SupabaseClient, nickname: string, exceptUid?: string) {
   const r = await sb.from('profiles').select('user_id').ilike('nickname', nickname.replace(/[%_\\]/g, (c) => '\\' + c));
   const rows = (r.data ?? []) as { user_id: string }[];
   return !rows.some((x) => x.user_id !== exceptUid);

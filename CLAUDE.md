@@ -92,7 +92,8 @@ main 에 푸시하면 자동 배포되는지는 Vercel 대시보드에서 확인
 - 화면 모드: 초보/일반/커스텀. 커스텀 설정은 `src/prefs.ts`(이 기기 localStorage, `effective()` 로 적용값). 화면 편집 = `/customize`(저장 안 되는 가상 게임 `makeDemo`) 또는 게임 중 조절 버튼 → `EditSlot` 으로 순서·보이기
 - 금액 표시는 `won()`(=`wonShort`) 하나로: 초보 만원(끝자리까지) · 일반 원, 커스텀에서 변경
 - 아이콘은 이모지 대신 `src/components/Icon.tsx`(Lucide). 업종 `SectorIcon`, 카드 `CardIcon`, 업적 `BadgeIcon`
-- 로비 주소: `/`(홈) · `/rooms`(방 찾기) · `/create`(방 만들기) · `/records`(기록·업적)
+- 로비 = 메뉴 틀(`src/components/LobbyNav.tsx`): PC 861px 이상 왼쪽 메뉴(1180px 미만은 아이콘 위주), 860px 이하 위 머리줄 + 아래 탭바 5칸. 주소: `/ranked` `/casual` `/custom` `/learn`(연습 메뉴 — `/practice` 는 혼자 연습 게임) `/more`(설정·더보기) `/ranking` `/records` `/companies` `/rooms` `/create` `/login` `/signup` `/me`. `/` 는 마지막에 고른 대결 메뉴(`stockduel.tab`, 처음엔 일반전). 스타일 `styles-nav.css`(맨 마지막)
+- 닉네임 칸은 로비에 없음: 회원=프로필 닉네임, 게스트는 온라인 기능을 처음 누를 때 `useGuestGate` 안내(게스트/회원 비교 → 게스트로 시작 때만 닉네임). 게스트 닉네임은 회원 닉네임과 같을 수 없음(서버 `nickFor`, 대소문자 무시). 설계서 `design/lobby-nav-friends.md` (② 친구 · ③ 초대·1대1 신청 · ④ 일반전 파티는 아직)
 - 뉴스의 `fake`/진실은 서버에만. 화면 데이터는 `publicNews` 를 거쳐 오늘 뉴스는 감별기 쓴 사람에게만 `verdict`, 지난 뉴스는 가짜·루머에 `verdict`
 - 반응(이모지) broadcast 채널은 방 ID 를 알면 들어올 수 있음 → 받는 쪽에서 정해진 목록만 표시
 - 요청 제한은 서버 인스턴스 메모리 기준(완벽한 전역 제한은 아님)
