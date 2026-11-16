@@ -94,6 +94,13 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
   // 보기: 전체 / 찌라시 / n일차 (날이 바뀌면 다시 전체로)
   const [cat, setCat] = useState<'all' | 'rumor' | number>('all');
   useEffect(() => setCat('all'), [day]);
+  // 날짜 칩 줄: 오늘 칩이 줄 가운데에 오게 (긴 게임에서 오늘이 오른쪽 밖에 숨지 않게 — 그 줄만 옆으로 움직임)
+  const catsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = catsRef.current;
+    const chip = box?.querySelector<HTMLElement>('.nc-today');
+    if (box && chip) box.scrollLeft = Math.max(0, chip.offsetLeft - box.offsetLeft - box.clientWidth / 2 + chip.offsetWidth / 2);
+  }, [day, totalDays]);
   const today = news.filter((n) => n.day === day);
   const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
   const hasRumors = !!rumors && rumors.length > 0;
@@ -123,7 +130,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         <button role="tab" aria-selected={cat === 'all'} className={'chip sm nc-fixed' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
           전체
         </button>
-        <div className="nc-scroll">
+        <div className="nc-scroll" ref={catsRef}>
           <button role="tab" aria-selected={cat === 'rumor'} className={'chip sm' + (cat === 'rumor' ? ' on' : '')} disabled={!hasRumors} onClick={() => setCat('rumor')} title={hasRumors ? '오늘 장 전 찌라시' : '오늘은 찌라시가 없어요'}>
             찌라시{dot(cat === 'rumor' ? 0 : unreadRumors)}
           </button>
