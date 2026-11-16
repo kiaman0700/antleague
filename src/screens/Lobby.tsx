@@ -1588,7 +1588,7 @@ function SoundSetting() {
           <b>효과음</b>
           <small className="muted">마감·체결·매칭 소리</small>
         </span>
-        <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} onClick={() => (setMuted(!m), setM(!m))}>
+        <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} aria-label="효과음" onClick={() => (setMuted(!m), setM(!m))}>
           <i />
         </button>
       </div>
