@@ -13,7 +13,7 @@ export interface Badge {
 }
 
 export const BADGES: Badge[] = [
-  { id: 'comeback', emoji: '🔥', name: '대역전극', desc: '중반까지 1등이 아니다가 역전 우승', rarity: 3 },
+  { id: 'comeback', emoji: '🔥', name: '대역전극', desc: '중반까지 1위가 아니다가 역전 우승', rarity: 3 },
   { id: 'limit_up', emoji: '🚀', name: '상한가 사냥꾼', desc: '가진 종목이 하루에 +29% 넘게(상한가) 오름', rarity: 3 },
   { id: 'zen', emoji: '🐢', name: '존버의 미학', desc: '거래 5회 이하로 승리 (연습: 플러스 수익)', rarity: 3 },
   { id: 'crash_winner', emoji: '🐻', name: '폭락장의 승자', desc: '지수가 3% 넘게 빠진 날 인버스 ETF를 들고 있었음', rarity: 2 },
@@ -21,7 +21,7 @@ export const BADGES: Badge[] = [
   { id: 'bottom', emoji: '🎯', name: '저점 매수의 신', desc: '그 종목의 게임 중 최저가 3% 안에서 매수', rarity: 2 },
   { id: 'big_win', emoji: '🎰', name: '한 방', desc: '한 종목으로 시작 돈의 10% 넘게 수익', rarity: 2 },
   { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2 },
-  { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 1등', rarity: 1 },
+  { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 1위', rarity: 1 },
   { id: 'beat_market', emoji: '📈', name: '시장을 이긴 자', desc: '종합지수보다 높은 수익률', rarity: 1 },
   { id: 'dividend', emoji: '💰', name: '배당 부자', desc: '배당금을 시작 돈의 1% 넘게 받음', rarity: 1 },
   { id: 'global', emoji: '🌎', name: '글로벌 투자자', desc: '국내·미국 주식을 동시에 보유', rarity: 1 },
