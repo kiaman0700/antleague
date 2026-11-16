@@ -106,7 +106,7 @@ async function pollAll(us, max = 15) {
   const roomId = ma.roomId;
   const v = (await A({ action: 'state', roomId })).b;
   ok('랭킹전 방', v.room.ranked === true && v.players.every((p) => p.verified), JSON.stringify(v.room));
-  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 5 });
+  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   for (let d = 0; d < 10; d++) {
     await A({ action: 'preReady', roomId });
     await B({ action: 'preReady', roomId });
@@ -134,7 +134,7 @@ async function pollAll(us, max = 15) {
   const [mc] = await pollAll([C, D]);
   const roomId = mc.roomId;
   // D 는 몰빵 → 재산이 C(현금)보다 낮아질 수도 있지만, C 가 기권하면 C 가 꼴찌
-  await D({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 10 });
+  await D({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   await C({ action: 'leave', roomId });
   for (let d = 0; d < 12; d++) {
     await D({ action: 'preReady', roomId });

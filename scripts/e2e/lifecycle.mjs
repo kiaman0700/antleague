@@ -48,7 +48,7 @@ async function room(players, opts = {}) {
 {
   const { us: [A, B, C], roomId, ids } = await room(3);
   await A({ action: 'start', roomId });
-  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 4 });
+  await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   const s = (await A({ action: 'state', roomId })).b;
   const b = s.players.find((p) => p.id === ids[1]);
   ok('상대 재산은 대략값(구간 가운데)만', b.equity % 10000 === 0 && !!b.band, String(b.equity));

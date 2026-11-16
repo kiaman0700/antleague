@@ -45,8 +45,9 @@ for (const [P, sym] of [
   [B, 'NEOT'],
   [C, 'KIDX'],
 ]) {
-  const t = await P({ action: 'trade', roomId, symbol: sym, side: 'buy', qty: 5 });
-  ok('거래 ' + sym, t.s === 200);
+  // 시작 가격이 판마다 절반~두 배라 비싼 종목 5주는 시작 돈을 넘을 수 있음 → 1주
+  const t = await P({ action: 'trade', roomId, symbol: sym, side: 'buy', qty: 1 });
+  ok('거래 ' + sym, t.s === 200, t.b?.error);
 }
 await A({ action: 'endTurn', roomId });
 await B({ action: 'endTurn', roomId });
