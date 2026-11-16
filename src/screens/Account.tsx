@@ -188,7 +188,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
 
         <label className={tab === 'signup' ? fieldCls(uAvail) : 'field'}>
           <span>아이디</span>
-          <input value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} maxLength={16} autoComplete="username" autoCapitalize="none" placeholder="영어 소문자·숫자·_ 4~16자" />
+          <input value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, '').toLowerCase())} maxLength={16} autoComplete="username" autoCapitalize="none" placeholder="영어 소문자·숫자·_ 4~16자" />
           {tab === 'signup' && <AvailMsg st={uAvail} what="아이디" invalid="영어 소문자·숫자·밑줄(_)로 4~16자로 써 주세요" />}
         </label>
         {tab === 'signup' && (

@@ -17,10 +17,12 @@ const env = Object.fromEntries(
     .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
     .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 );
-const OLD = env.SUPABASE_DB_URL;
-const NEW = env.NEW_SUPABASE_DB_URL;
-if (!OLD || !NEW) {
-  console.error('.env.local 에 SUPABASE_DB_URL(예전)과 NEW_SUPABASE_DB_URL(새 서울 프로젝트)이 모두 있어야 해요.');
+// 두 가지 방식 모두 됨: (예전=SUPABASE_DB_URL, 새=NEW_SUPABASE_DB_URL) 또는 (예전=OLD_SUPABASE_DB_URL, 새=SUPABASE_DB_URL)
+const OLD = env.OLD_SUPABASE_DB_URL ?? (env.NEW_SUPABASE_DB_URL ? env.SUPABASE_DB_URL : undefined);
+const NEW = env.NEW_SUPABASE_DB_URL ?? env.SUPABASE_DB_URL;
+const [cmd0] = process.argv.slice(2);
+if (!NEW || (!OLD && cmd0 !== 'schema')) {
+  console.error('.env.local 에 예전 DB 주소(OLD_SUPABASE_DB_URL)와 새 DB 주소(SUPABASE_DB_URL)가 있어야 해요.');
   process.exit(1);
 }
 if (OLD === NEW) {
