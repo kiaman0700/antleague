@@ -144,6 +144,8 @@ interface Props {
 export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props) {
   const s = TUTORIAL_STEPS[step];
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // 카드 자세히 창처럼 위에 뜬 창이 있으면 그 창(의 버튼)을 가리지 않게 말풍선을 비켜 둠
+  const [avoid, setAvoid] = useState<{ top: number; bottom: number } | null>(null);
 
   // 비출 곳 위치를 계속 따라감 (화면이 바뀌거나 스크롤돼도)
   useEffect(() => {
@@ -152,6 +154,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
       const el = s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0);
       const r = el?.getBoundingClientRect() ?? null;
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
+      const m = document.querySelector('.gc-detail')?.getBoundingClientRect();
+      setAvoid((p) => (m ? (p && p.top === m.top && p.bottom === m.bottom ? p : { top: m.top, bottom: m.bottom }) : null));
     };
     find();
     // 단계가 바뀌면 강조할 곳을 화면 안으로 (스크롤 칸 안에 숨어 있어도 보이게)
@@ -182,7 +186,13 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
   const below = rect ? H - rect.bottom >= NEED : true;
   const above = rect ? rect.top >= NEED : false;
   const leftPc = rect ? Math.min(Math.max(12, rect.left), window.innerWidth - 392) : 12;
-  const bubbleStyle: React.CSSProperties = rect
+  const avoidStyle: React.CSSProperties | null = avoid
+    ? // 위 창 위쪽에 자리가 있으면 위에, 아니면 아래에 (가로는 화면 폭에 맞춤)
+      avoid.top >= H - avoid.bottom
+      ? { bottom: H - avoid.top + 12, left: 12, right: 12, margin: '0 auto' }
+      : { top: avoid.bottom + 12, left: 12, right: 12, margin: '0 auto' }
+    : null;
+  const bubbleStyle: React.CSSProperties = avoidStyle ? avoidStyle : rect
     ? ctx.mobile
       ? below
         ? { top: rect.bottom + 12, left: 12, right: 12 }
