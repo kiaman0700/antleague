@@ -1005,4 +1005,6 @@ html[data-device='pc'] .news-cats .nc-scroll { cursor: grab; }
 .nav-move { top: -6px; }
 .nav-move { top: -13px; }
 /* '진행 중인 대결 · 다시 보기' 띠가 떠 있으면 맨 아래 안내 줄이 그 뒤에 가리지 않게 아래 여백 */
-.lobby-shell:has(> .rc-pill) .cl-foot { padding-bottom: 64px; }
+/* '진행 중인 대결 · 다시 보기' 띠: PC 는 오른쪽 아래 구석 (가운데 아래 고정 버튼·위 제목과 겹치지 않게), 휴대폰은 아래 탭 바로 위 */
+@media (min-width: 861px) { .rc-pill { left: auto; right: 24px; bottom: 24px !important; transform: none; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5); } }
+@media (max-width: 860px) { .lobby-shell:has(> .rc-pill) .cl-foot { padding-bottom: 64px; } }
