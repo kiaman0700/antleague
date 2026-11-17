@@ -125,12 +125,15 @@ export function TopBar({
           </button>
         ))}
         <span className="cl-sep" aria-hidden />
-        {SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records')).map(([k, label, icon]) => (
-          <button key={k} className={'cl-sub' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)} title={label}>
-            <Icon name={icon} size={17} />
-            <span>{label}</span>
-          </button>
-        ))}
+        {/* 보조 메뉴는 한 묶음으로 (대결 메뉴와 구분) */}
+        <span className="cl-subs">
+          {SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records')).map(([k, label, icon]) => (
+            <button key={k} className={'cl-sub' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)} title={label}>
+              <Icon name={icon} size={16} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </span>
       </nav>
       <div className="cl-right">
         {adminUnread !== undefined && onAdmin && <AdminInboxButton unread={adminUnread} onClick={onAdmin} />}

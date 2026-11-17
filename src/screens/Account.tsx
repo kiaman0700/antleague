@@ -527,6 +527,13 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <p className="muted small">아직 끝낸 대결이 없어요. 친구와 대결을 끝내면 여기에 쌓여요.</p>
         ) : (
           <ul className="me-recent">
+            {/* 칸 이름 (날짜 · 순위/인원 · 수익률 · 점수) */}
+            <li className="me-recent-head" aria-hidden>
+              <span>날짜</span>
+              <span>순위 / 인원</span>
+              <span>수익률</span>
+              <span>점수</span>
+            </li>
             {acc.recent.map((r) => (
               <li key={r.room_id}>
                 <span className="date">{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>

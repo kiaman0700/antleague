@@ -1024,3 +1024,13 @@ html[data-device='pc'] .news-cats .nc-scroll { cursor: grab; }
 ul.me-recent li { display: grid; grid-template-columns: 44px minmax(84px, auto) minmax(56px, auto) 1fr; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 ul.me-recent li:last-child { border-bottom: 0; }
 ul.me-recent li > :last-child { justify-self: end; text-align: right; }
+ul.me-recent li.me-recent-head { padding: 0 0 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* PC 메뉴바 구분감 (2026-11-18): 대결 메뉴(탭) | 보조 메뉴 묶음(옅은 배경) | 오른쪽 내 것(미션·프로필·친구) */
+.cl-subs { align-self: center; display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); }
+.cl-subs .cl-sub { height: 32px; padding: 0 10px; border-radius: 7px; }
+.cl-subs .cl-sub:hover { background: rgba(255, 255, 255, 0.06); }
+.cl-subs .cl-sub.on { background: rgba(139, 123, 255, 0.16); }
+@media (min-width: 1080px) and (max-width: 1279px) { .cl-subs .cl-sub span { display: inline !important; } .cl-subs .cl-sub { padding: 0 8px; } }
+.cl-right .cl-social-btn { height: 40px; min-width: 40px; border-radius: 10px; }
+.cl-subs { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.1); }
