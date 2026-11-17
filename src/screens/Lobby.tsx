@@ -1264,12 +1264,14 @@ function Records({ go }: Pick<Props, 'go'>) {
       const draw = !h.winner_nickname;
       const won = !draw && h.winner_nickname === h.me;
       // 비긴 판에서 나보다 높은 사람이 없으면 공동 1위 (프로필의 1등과 같은 기준: 공동 1위 포함)
-      const tiedTop = draw && !!meR && !h.results.some((r) => r.ret > meR.ret);
+      // 기권·거래 0회(매칭)는 서버가 맨 뒤로 보냄 → 공동 1위가 될 수 없고, 순위는 서버가 정한 차례 그대로 (프로필의 순위와 같게)
+      const back = (r: { left?: boolean; idle?: boolean }) => !!(r.left || r.idle);
+      const tiedTop = draw && !!meR && !back(meR) && !h.results.some((r) => !back(r) && r.ret > meR.ret);
       if (won || tiedTop) wins++;
       if (draw) draws++;
       // 1위는 서버가 정한 승자(기권 규칙 포함) 기준, 나머지 순위는 수익률 순
-      const rank = won || tiedTop ? 1 : meR ? Math.max(2, h.results.filter((r) => r.ret > meR.ret).length + 1) : null;
-      return { h, meR, draw, won, rank };
+      const rank = won || tiedTop ? 1 : meR ? (back(meR) ? h.results.indexOf(meR) + 1 : Math.max(2, h.results.filter((r) => !back(r) && r.ret > meR.ret).length + 1)) : null;
+      return { h, meR, draw, won, rank, tiedTop };
     });
     return { wins, draws, games: list.length, rows };
   }, [list]);
@@ -1304,18 +1306,18 @@ function Records({ go }: Pick<Props, 'go'>) {
           </div>
           {/* 롤·배그 전적처럼 한 줄 카드 — 누르면 그 판의 상세(참가자별 순위·수익률·재산·업적)가 펼쳐짐 */}
           <ul className="mr-list">
-            {record.rows.slice(0, 20).map(({ h, meR, draw, won, rank }) => {
+            {record.rows.slice(0, 20).map(({ h, meR, draw, won, rank, tiedTop }) => {
               const open = openId === h.id;
               const kindName = h.results.length === 1 ? '오늘의 도전' : h.kind ? matchKindName(h.kind, h.ranked, h.results.length) : h.results.some((r) => r.bot) ? '봇전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`;
               return (
                 <li key={h.id} className="mr-item">
-                  <button className={'mr-row' + (won || (draw && rank === 1) ? ' win' : '') + (open ? ' open' : '')} onClick={() => setOpenId(open ? null : h.id)} aria-expanded={open}>
+                  <button className={'mr-row' + (won || tiedTop ? ' win' : '') + (open ? ' open' : '')} onClick={() => setOpenId(open ? null : h.id)} aria-expanded={open}>
                     <span className="mr-mode">
                       <b>{kindName}</b>
                       <small>{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small>
                     </span>
                     <span className="mr-rank">
-                      <b>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</b>
+                      <b>{tiedTop ? '공동 1위' : draw && !(meR && (meR.left || meR.idle)) ? '무승부' : rank ? `${rank}위` : '-'}</b>
                       <small>/ {h.results.length}명</small>
                     </span>
                     <span className={'mr-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</span>
@@ -1399,7 +1401,7 @@ function Records({ go }: Pick<Props, 'go'>) {
  * — 창을 닫았거나 인터넷이 끊겼거나 뒤로가기로 빠진 경우 — 로비에 들어올 때 한 번 물어봄
  * 대결: 다시 입장 / 기권 · 대기실: 대기실로 / 나가기 · 연습: 이어하기 / 그만두기
  */
-function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
+function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGame'> & { quiet?: boolean }) {
   const [multi, setMulti] = useState<ResumeInfo | null>(null);
   const [solo, setSolo] = useState(() => {
     const s = loadSolo();
@@ -1408,7 +1410,12 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
   const [busy, setBusy] = useState(false);
   const gotResume = useRef(false);
   // 초대 링크(?room=)로 왔으면 '코드로 입장' 창이 먼저 — 이 팝업은 작은 띠로만 (두 창이 겹치지 않게)
-  const [hidden, setHidden] = useState(() => new URLSearchParams(location.search).has('room'));
+  // 로그인·가입 화면에서도 작은 띠로만 — 입력하러 온 칸을 팝업이 가리지 않게
+  const [hidden, setHidden] = useState(() => new URLSearchParams(location.search).has('room') || !!quiet);
+  // 로그인·가입(게스트 기록 가져오기 포함) 화면에 있는 동안은 팝업 대신 작은 띠 — 입력하러 온 칸을 가리지 않게
+  useEffect(() => {
+    if (quiet) setHidden(true);
+  }, [quiet]);
   const [err, setErr] = useState('');
   // 기권·방 나가기가 끝났다는 짧은 확인 (창이 그냥 닫히면 됐는지 알 수 없어서)
   const [done, setDone] = useState('');
@@ -1789,7 +1796,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         )}
       </div>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
-      <Reconnect onWaiting={onWaiting} onGame={onGame} />
+      <Reconnect onWaiting={onWaiting} onGame={onGame} quiet={resolved === 'login' || resolved === 'signup'} />
       <FlashNote />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}

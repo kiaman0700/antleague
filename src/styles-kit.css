@@ -1242,3 +1242,5 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 @media (max-width: 960px) { .aov-grid.even { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .aov-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } .aov-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); } .aov-table { min-width: 420px; } }
 .aov-blist li { grid-template-columns: minmax(84px, 120px) minmax(0, 1fr) 76px; }
+.mr-rank, .mr-rank b, .mr-rank small { white-space: nowrap; }
+@media (max-width: 480px) { .mr-rank b { font-size: 15px; } }
