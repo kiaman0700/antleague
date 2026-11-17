@@ -25,23 +25,30 @@ export interface PartyState {
 export function useParty(member: boolean) {
   const [party, setParty] = useState<PartyState | null>(null);
   const lastAt = useRef(0);
-  const load = useCallback(() => {
+  const inParty = useRef(false);
+  const load = useCallback((force?: unknown) => {
+    const since = Date.now() - lastAt.current;
     // 창이 뒤에 있어도 10초마다는 확인 — 로비에 있는 파티원이 다른 탭을 봐도 '돌아옴'(15초)이 풀려 파티장 찾기를 막지 않게
-    if (!member || (document.visibilityState !== 'visible' && Date.now() - lastAt.current < 10_000)) return Promise.resolve();
+    if (!member || (document.visibilityState !== 'visible' && since < 10_000)) return Promise.resolve();
+    // 파티가 없으면 12초마다만 (3초마다 묻던 것 — 초대·수락은 그 자리에서 바로 다시 불러옴)
+    if (force !== true && !inParty.current && since < 12_000) return Promise.resolve();
     lastAt.current = Date.now();
     return api<{ party: PartyState | null }>('party')
-      .then((r) => setParty(r.party))
+      .then((r) => {
+        inParty.current = !!r.party;
+        setParty(r.party);
+      })
       .catch((e) => {
         if ((e as { status?: number })?.status === 403) void refreshAccount();
       });
   }, [member]);
   useEffect(() => {
     if (!member) return setParty(null);
-    load();
+    load(true);
     const id = setInterval(load, 3000);
     return () => clearInterval(id);
   }, [member, load]);
-  return { party, reload: load };
+  return { party, reload: useCallback(() => load(true), [load]) };
 }
 
 export function PartyPanel({ party, reload }: { party: PartyState | null; reload: () => Promise<void> }) {
