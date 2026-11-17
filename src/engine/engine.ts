@@ -853,6 +853,10 @@ export function finalResults(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
   const prices = priceMap(m, d.room.total_days - 1, true);
   const players = sortedPlayers(d);
+  // 매칭(랭킹전·일반전)에서 끝까지 거래를 한 번도 안 한 사람은 기권처럼 순위 맨 뒤 — 시장이 떨어지는 판에서
+  // 아무것도 안 하고 1위·점수·업적을 받던 빈틈 (사용자 결정 2026-11-17). 봇전·연습·커스텀·친구 방은 그대로
+  const idleRule = d.room.kind === 'match';
+  const isIdle = (p: PlayerRow) => idleRule && !p.left_game && !d.trades.some((t) => t.player_id === p.id);
   const badges = computeAchievements({
     market: m,
     seed: d.room.seed,
@@ -863,16 +867,19 @@ export function finalResults(d: GameData) {
       spends: spendsOf(d, p.id),
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
       bot: p.bot_level ?? null,
-      left: !!p.left_game,
+      // 거래 0회(매칭)도 업적 계산에선 기권처럼 (1위 업적 등을 받지 않게)
+      left: !!p.left_game || isIdle(p),
     })),
   });
   const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
-    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game };
+    const idle = isIdle(p);
+    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game, ...(idle ? { idle: true } : {}) };
   });
-  // 기권한 사람은 재산과 상관없이 뒤로 (끝까지 한 사람끼리는 재산 순)
-  const ranked = [...results].sort((a, b) => Number(a.left) - Number(b.left) || b.equity - a.equity);
-  const stay = ranked.filter((r) => !r.left);
+  // 기권한 사람 → 거래 0회(매칭)인 사람 순으로 뒤로 (끝까지 거래한 사람끼리는 재산 순)
+  const back = (r: { left: boolean; idle?: boolean }) => (r.left ? 2 : r.idle ? 1 : 0);
+  const ranked = [...results].sort((a, b) => back(a) - back(b) || b.equity - a.equity);
+  const stay = ranked.filter((r) => !r.left && !r.idle);
   const winner = ranked.length >= 2 && stay.length >= 1 && (stay.length === 1 || stay[0].equity !== stay[1].equity) ? stay[0].nickname : null;
   return { results: ranked, winner, badges };
 }

@@ -99,21 +99,22 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       // 날마다 용돈 봉투로 받거나 잃은 돈 (하이라이트에서 그날 변화의 이유로 씀)
       const bonusOn: Record<number, number> = {};
       for (const r of final.items) if (r.player_id === p.id && r.action === 'use' && r.kind === 'bonus' && typeof r.payload?.amount === 'number') bonusOn[r.day] = (bonusOn[r.day] ?? 0) + r.payload.amount;
-      return { id: p.id, nickname: p.nickname, left: !!p.left, bonusOn, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
+      // 매칭(랭킹전·일반전)에서 거래 0회 = 기권처럼 순위 맨 뒤 (서버 finalResults 와 같은 규칙)
+      const idle = matchKind === 'match' && !p.left && trades.length === 0;
+      return { id: p.id, nickname: p.nickname, left: !!p.left, idle, bonusOn, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
-  }, [final, session.playerId, market, last, START_CASH]);
+  }, [final, session.playerId, market, last, START_CASH, matchKind]);
 
-  // 기권한 사람은 재산과 상관없이 뒤로 — 상대가 기권하면 남은 사람이 이김
-  const ranked = [...results].sort((a, b) => Number(a.left) - Number(b.left) || b.equity - a.equity);
-  const stay = ranked.filter((r) => !r.left);
+  // 기권한 사람 → 거래 0회(매칭)인 사람 순으로 재산과 상관없이 뒤로 — 상대가 기권하면 남은 사람이 이김
+  const back = (r: { left: boolean; idle: boolean }) => (r.left ? 2 : r.idle ? 1 : 0);
+  const ranked = [...results].sort((a, b) => back(a) - back(b) || b.equity - a.equity);
+  const stay = ranked.filter((r) => back(r) === 0);
   const winner = ranked.length >= 2 && stay.length >= 1 && (stay.length === 1 || stay[0].equity !== stay[1].equity) ? stay[0] : null;
-  // 같은 재산이면 같은 순위 (비기면 둘 다 1위)
+  // 같은 재산이면 같은 순위 (비기면 둘 다 1위). 뒤로 간 사람은 앞 무리 뒤에서 재산 순
   const rankOf = (id: string) => {
     const me = ranked.find((r) => r.id === id);
     if (!me) return 0;
-    // 기권한 사람은 끝까지 한 사람들 뒤
-    if (me.left) return ranked.filter((r) => !r.left).length + ranked.filter((r) => r.left && r.equity > me.equity).length;
-    return ranked.filter((r) => !r.left && r.equity > me.equity).length;
+    return ranked.filter((r) => back(r) < back(me) || (back(r) === back(me) && r.equity > me.equity)).length;
   };
 
   const played = useRef(false);
@@ -241,9 +242,13 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
               {/* 내가 기권했으면 '상대가 기권해서 이겼어요'가 아니라 내 기권을 알려 줌 */}
               {ranked.find((r) => r.id === session.playerId)?.left
                 ? `기권해서 이 판은 마지막 순위예요 · 나는 ${rankOf(session.playerId) + 1}위`
+                : ranked.find((r) => r.id === session.playerId)?.idle
+                ? `거래를 한 번도 안 해서 순위 맨 뒤예요 · 나는 ${rankOf(session.playerId) + 1}위`
                 : <>
-                    {ranked.slice(1).every((r) => r.left)
-                      ? ranked.length > 2 ? '다른 사람들이 모두 기권해서 이겼어요' : '상대가 기권해서 이겼어요'
+                    {ranked.slice(1).every((r) => back(r) > 0)
+                      ? ranked.length > 2
+                        ? ranked.slice(1).every((r) => r.left) ? '다른 사람들이 모두 기권해서 이겼어요' : '다른 사람들이 기권했거나 거래를 안 해서 이겼어요'
+                        : ranked[1].idle ? '상대가 거래를 한 번도 안 해서 이겼어요' : '상대가 기권해서 이겼어요'
                       : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
                     · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
                   </>}

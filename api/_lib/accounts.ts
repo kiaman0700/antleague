@@ -387,7 +387,7 @@ export function eloDeltas(
   return delta;
 }
 
-export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number }[], ranked = false) {
+export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number; idle?: boolean }[], ranked = false) {
   const ps = ((await sb.from('players').select('user_id, nickname, left_game').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string; left_game: boolean | null }[];
   if (ps.length < 2) return;
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
@@ -397,6 +397,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   if (!profs.length) return;
   const byNick = new Map(ps.map((p) => [p.nickname, p.user_id]));
   const quit = new Set(ps.filter((p) => p.left_game && p.user_id).map((p) => p.user_id!));
+  // 매칭에서 거래 0회인 사람도 기권처럼 꼴찌·승리 없음 (finalResults 의 idle — 사용자 결정 2026-11-17)
+  for (const r of results) if (r.idle) { const u = ps.find((p) => p.nickname === r.nickname)?.user_id; if (u) quit.add(u); }
   const rankOf = new Map<string, number>();
   results.forEach((r, i) => {
     const u = byNick.get(r.nickname);
@@ -405,7 +407,8 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   const retOf = new Map(results.map((r) => [byNick.get(r.nickname) ?? '', r.ret]));
   const members = profs.filter((p) => rankOf.has(p.user_id));
   // 점수는 랭킹전(매칭)에서만. 친구 방·일반전은 전적만 남김
-  const rated = ranked && members.length >= 2;
+  // 모두 기권했거나 거래 0회면 점수는 그대로 (전적만)
+  const rated = ranked && members.length >= 2 && members.some((m) => !quit.has(m.user_id));
   let delta = new Map<string, number>();
   if (rated) {
     // 랭킹전: 기권한 사람은 재산과 상관없이 꼴찌 (끝까지 한 사람끼리의 순서는 그대로)

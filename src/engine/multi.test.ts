@@ -112,3 +112,27 @@ describe('조사', () => {
     expect(josa('📵 정보 차단', '을', '를')).toBe('📵 정보 차단을');
   });
 });
+
+describe('매칭에서 거래 0회 = 꼴찌 (2026-11-17 사용자 결정)', () => {
+  const fin = (kind: 'match' | 'custom', trade: string[]) => {
+    const d = game3(10);
+    d.room = { ...d.room, day: 10, status: 'finished', kind };
+    // 거래한 사람은 일부러 손해(비싸게 1주) — 그래도 거래 안 한 사람보다 앞서야 함
+    for (const id of trade) d.trades.push({ player_id: id, day: 0, symbol: 'CORE', side: 'buy', qty: 1, price: 900_000, fee: 900 });
+    return finalResults(d);
+  };
+  it('매칭: 거래한 사람이 손해를 봤어도 거래 0회인 사람보다 앞, 1위는 거래한 사람', () => {
+    const f = fin('match', ['A'.toLowerCase()]);
+    expect(f.results[0].nickname).toBe('A');
+    expect(f.winner).toBe('A');
+    expect(f.results.filter((r) => r.idle).map((r) => r.nickname).sort()).toEqual(['B', 'C']);
+  });
+  it('매칭: 모두 거래 0회면 1위 없음', () => {
+    expect(fin('match', []).winner).toBeNull();
+  });
+  it('커스텀 방은 그대로 재산 순 (거래 0회도 1위 가능)', () => {
+    const f = fin('custom', ['a']);
+    expect(f.results.some((r) => r.idle)).toBe(false);
+    expect(f.results[0].nickname).not.toBe('A');
+  });
+});

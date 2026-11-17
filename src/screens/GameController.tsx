@@ -15,7 +15,7 @@ import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
-import { isLeveraged, josa, LEVERAGE_CAP, type View } from '../engine/engine';
+import { isLeveraged, josa, LEVERAGE_CAP, preSeconds, PREMARKET_VERSION, type View } from '../engine/engine';
 import { loadSolo, saveSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
 import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
@@ -586,6 +586,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     }
     play('tap');
     run('endTurn', {}, () => {});
+    // 매칭(랭킹전·일반전)에서 아직 거래가 0회면 마감할 때마다 알림 — 끝까지 0회면 순위 맨 뒤 (서버 finalResults)
+    if (view?.room.kind === 'match' && view.myTrades.length === 0)
+      showToast('아직 거래가 0회예요. 매칭에서는 끝까지 한 번도 거래하지 않으면 꼴찌가 돼요', 'warn');
   };
   // 장 마감 취소: 다음 날로 넘어가기 전(시간이 남아 있을 때)이면 언제든
   const preReady = () => {
@@ -1044,8 +1047,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           last={closing + 1 >= total}
           onNext={nextDay}
           // 장 전 시간이 진행 중이면 3초만 (찌라시·예약 주문 볼 시간을 덜 잡아먹게), 아니면 6초
-          // 마지막 날은 1분 뒤 결과 화면으로 (예전엔 버튼을 눌러야 해서 결산 팝업에 멈춰 있었음 — 사용자 요청 2026-11-17)
-          autoSec={session.mode === 'multi' ? (closing + 1 >= total ? 60 : room?.preUntil && room.preUntil > now + offset ? 3 : 6) : undefined}
+          // 자동으로 넘어가는 시간은 판 설정에 비례 (사용자 요청 2026-11-17): 장 전 시간이 있으면 그 20%, 없으면 하루 시간의 8% (3~8초).
+          // 마지막 날은 1분 뒤 결과 화면으로 (예전엔 버튼을 눌러야 해서 결산 팝업에 멈춰 있었음)
+          autoSec={session.mode === 'multi' ? (closing + 1 >= total ? 60 : closeAutoSec(room?.turnSeconds ?? 60, room?.rulesVersion ?? 1)) : undefined}
           pre={session.mode === 'multi' && closing + 1 < total && !!room?.preUntil && room.preUntil > now + offset}
         />
       )}
@@ -1642,4 +1646,10 @@ function ResultWaitExit({ onExit }: { onExit: () => void }) {
       </button>
     </>
   );
+}
+
+/** 하루 마감 결산 팝업이 저절로 넘어가는 시간(초): 장 전 시간의 20% (v7+), 없으면 하루 시간의 8% — 3~8초 */
+function closeAutoSec(turnSeconds: number, version: number) {
+  const base = version >= PREMARKET_VERSION ? preSeconds(turnSeconds) * 0.2 : turnSeconds * 0.08;
+  return Math.max(3, Math.min(8, Math.round(base)));
 }

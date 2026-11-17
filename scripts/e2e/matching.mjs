@@ -118,6 +118,8 @@ async function pollAll(us, max = 15) {
   const fb = (await B({ action: 'myMatch', roomId })).b;
   ok('랭킹전은 점수 반영 (합 0)', fa?.rated && fb?.rated && fa.rating_after - fa.rating_before === -(fb.rating_after - fb.rating_before) && fa.rating_after !== fa.rating_before, JSON.stringify([fa, fb]));
   ok('배치 중이라 점수가 크게 움직임 (같은 점수끼리 ±40)', Math.abs(fa.rating_after - fa.rating_before) === 40, JSON.stringify(fa));
+  // 매칭에서 끝까지 거래 0회 = 꼴찌 (재산과 상관없이) — A 는 거래 안 함, B 는 2주 삼
+  ok('거래 0회(A)는 재산과 상관없이 꼴찌 → 점수 내려감', fa.rank === 2 && fa.rating_after < fa.rating_before && fb.rank === 1, JSON.stringify([fa, fb]));
   const pa = (await A({ action: 'profile' })).b.profile;
   const rk = (await A({ action: 'ranking' })).b;
   ok('랭킹전 1판 → 배치 1/2 · 랭킹에는 아직 없음', pa.ranked_games === 1 && !rk.top.some((r) => r.nickname === pa.nickname) && rk.me.rank === null, JSON.stringify([pa.ranked_games, rk.me]));

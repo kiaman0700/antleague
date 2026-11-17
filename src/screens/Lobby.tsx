@@ -637,7 +637,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <ul className="rk-rules muted small">
                   <li>이기면 오르고 지면 내려가요. 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
                   <li>점수가 비슷한 사람끼리 만나요. 사람이 적으면 2분 뒤부터 더 넓게 찾아요</li>
-                  <li>중간에 기권하면 꼴찌로 계산돼요</li>
+                  <li>중간에 기권하거나, 끝까지 거래를 한 번도 안 하면 꼴찌로 계산돼요</li>
                 </ul>
               </details>
               <button className="btn sm ghost" onClick={() => go('ranking')}>
