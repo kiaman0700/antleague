@@ -81,12 +81,13 @@ export function useMissions(enabled = true, room?: string) {
   return { info, err, reload };
 }
 
+/** 갱신까지 남은 시간 (게임에서 흔한 '갱신까지 3시간 12분' 꼴) */
 const left = (endsAt: number) => {
   const ms = Math.max(0, endsAt - Date.now());
-  const h = Math.floor(ms / 3_600_000);
-  if (h >= 24) return `${Math.floor(h / 24)}일 뒤`;
-  if (h >= 1) return `${h}시간 뒤`;
-  return `${Math.max(1, Math.ceil(ms / 60_000))}분 뒤`;
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${Math.max(1, m)}분`;
 };
 
 function Row({ m }: { m: MissionItem }) {
@@ -150,9 +151,9 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
   if (!info.today.list.length)
     return (
       <section className="panel pad missions" aria-label="미션">
-        <h3>오늘의 미션</h3>
+        <h3>일일 미션</h3>
         <div className="ms-guest">
-          <p className="muted small">회원이 되면 매일 미션 3개·이번 주 미션을 깨고 레벨을 올릴 수 있어요. 레벨에 따라 프로필 사진·칭호가 열려요.</p>
+          <p className="muted small">회원이 되면 일일 미션·주간 미션을 깨고 레벨을 올릴 수 있어요. 레벨에 따라 프로필 사진·칭호가 열려요.</p>
           {onSignup && (
             <button className="btn sm" onClick={onSignup}>
               회원가입
@@ -165,17 +166,12 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
     <section className="panel pad missions" aria-label="미션">
       <div className="ms-head">
         <h3>
-          오늘의 미션 <small className="muted">{doneN}/{info.today.list.length}</small>
+          일일 미션 <small className="muted">{doneN}/{info.today.list.length}</small>
         </h3>
-        <small className="muted">{left(info.today.endsAt)} 새 미션</small>
+        <small className="muted">갱신까지 {left(info.today.endsAt)}</small>
       </div>
-      {info.member && (noLevel ? (
-          <p className="ms-today muted small">
-            오늘 받은 경험치 · 미션 <b>{info.todayXp}</b>/{info.cap} · 대결 <b>{info.gameToday ?? 0}</b>/{info.gameCap ?? 600}
-          </p>
-        ) : (
-          <LevelBar info={info} />
-        ))}
+      {/* 미션 칸에는 미션만 — 경험치 상한·규칙 설명은 빼고(사용자 요청 2026-11-17), 레벨 막대는 noLevel 이 아닐 때만 */}
+      {info.member && !noLevel && <LevelBar info={info} />}
       {info.thisGame && (
         <p className="ms-gain">
           이번 판 경험치 <b>+{info.thisGame.xp + info.thisGame.firstWin}</b>
@@ -193,17 +189,15 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         ))}
       </ul>
       <div className="ms-head ms-week">
-        <h4>이번 주 미션</h4>
-        <small className="muted">{left(info.week.endsAt)} 바뀜</small>
+        <h4>주간 미션</h4>
+        <small className="muted">갱신까지 {left(info.week.endsAt)}</small>
       </div>
       <ul className="ms-list">
         {info.week.list.map((m) => (
           <Row key={m.id} m={m} />
         ))}
       </ul>
-      {info.member ? (
-        info.todayXp >= info.cap && <p className="muted small">오늘 받을 수 있는 경험치({info.cap})를 다 받았어요. 내일 또 만나요.</p>
-      ) : (
+      {!info.member && (
         <div className="ms-guest">
           <p className="muted small">회원이 되면 미션으로 경험치가 쌓이고, 레벨에 따라 프로필 사진·칭호가 열려요.</p>
           {onSignup && (
@@ -213,7 +207,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
           )}
         </div>
       )}
-      <p className="ms-note muted small">대결·봇전·오늘의 도전을 끝까지 하면(거래 1번 이상) 미션이 확인되고 판 경험치도 받아요. 랭킹전·일반전 40(1위 +30) · 봇전 10~20 · 오늘의 도전 20 · 오늘 첫 승 +50 · 새 업적 +20. 커스텀 방은 경험치가 없어요.</p>
+      <p className="ms-note muted small">대결·봇전·오늘의 도전을 끝까지 하면(거래 1번 이상) 미션이 확인돼요.</p>
     </section>
   );
 }
@@ -232,7 +226,7 @@ export function MissionsButton({ onSignup, compact }: { onSignup?: () => void; c
   return (
     <HoverPop
       className={'msb' + (compact ? ' compact' : '') + (list.length && done === list.length ? ' all' : '')}
-      label={list.length ? `오늘의 미션 ${done}/${list.length} 완료` : '오늘의 미션'}
+      label={list.length ? `일일 미션 ${done}/${list.length} 완료` : '일일 미션'}
       onOpen={m.reload}
       button={
         <>
