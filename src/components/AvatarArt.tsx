@@ -51,6 +51,26 @@ function Back({ back }: { back?: AvatarLook['back'] }) {
           <path d="M55 44 H61 V38" />
         </g>
       );
+    case 'peak':
+      return (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 44 L10 36 L16 38 L24 22 L30 25 L38 6" stroke="#fff" strokeOpacity="0.35" strokeWidth="2.6" />
+          <path d="M38 6 L44 20 L50 18 L62 46" stroke="#ff6b6b" strokeOpacity="0.8" strokeWidth="2.6" />
+          <circle cx="38" cy="6" r="2.6" fill="#ffd34d" stroke="none" />
+        </g>
+      );
+    case 'dizzy':
+      return (
+        <g fill="#ffd34d">
+          {[
+            [12, 12],
+            [52, 10],
+            [56, 26],
+          ].map(([x, y], i) => (
+            <path key={i} d={`M${x} ${y - 4} l1.2 2.8 3 0.3 -2.3 2 0.7 3 -2.6 -1.6 -2.6 1.6 0.7 -3 -2.3 -2 3 -0.3 Z`} />
+          ))}
+        </g>
+      );
     case 'coins':
       return (
         <g>
@@ -234,7 +254,37 @@ function Face({ face }: { face?: AvatarLook['face'] }) {
   const L = 24.5;
   const R = 39.5;
   let eyes: ReactNode;
-  if (face === 'cool')
+  if (face === 'sad')
+    eyes = (
+      <g>
+        <ellipse cx={L} cy={y} rx="4.4" ry="5" fill="#fff" />
+        <ellipse cx={R} cy={y} rx="4.4" ry="5" fill="#fff" />
+        <ellipse cx={L} cy={y + 1.6} rx="2.7" ry="3" fill={INK} />
+        <ellipse cx={R} cy={y + 1.6} rx="2.7" ry="3" fill={INK} />
+        <path d={`M${L - 5} ${y - 6} l8 -2.5 M${R + 5} ${y - 6} l-8 -2.5`} stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+        <path d={`M${L - 2} ${y + 6} C${L - 4} ${y + 10} ${L - 4} ${y + 13} ${L - 2} ${y + 13.5} C${L} ${y + 13} ${L} ${y + 10} ${L - 2} ${y + 6} Z`} fill="#7ec8ff" />
+      </g>
+    );
+  else if (face === 'dizzy')
+    eyes = (
+      <g fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round">
+        {[L, R].map((x) => (
+          <path key={x} d={`M${x} ${y} m-0.5 0 a1 1 0 1 1 1.5 1 a2.4 2.4 0 1 1 -3.6 -2 a3.8 3.8 0 1 1 5.6 3.2`} />
+        ))}
+      </g>
+    );
+  else if (face === 'sweat' || face === 'shock')
+    eyes = (
+      <g>
+        <ellipse cx={L} cy={y} rx="5" ry="5.8" fill="#fff" />
+        <ellipse cx={R} cy={y} rx="5" ry="5.8" fill="#fff" />
+        <circle cx={L} cy={y} r="1.8" fill={INK} />
+        <circle cx={R} cy={y} r="1.8" fill={INK} />
+        {face === 'sweat' && <path d="M50 17 C47 22 47 25 50 25.5 C53 25 53 22 50 17 Z" fill="#7ec8ff" stroke={INK} strokeWidth="0.6" />}
+        {face === 'shock' && <path d={`M${L - 5} ${y - 9} l7 1.5 M${R + 5} ${y - 9} l-7 1.5`} stroke={INK} strokeWidth="1.8" strokeLinecap="round" />}
+      </g>
+    );
+  else if (face === 'cool')
     eyes = (
       <g>
         <path d={`M${L - 7} ${y - 4} H${R + 7}`} stroke={INK} strokeWidth="2" strokeLinecap="round" />
@@ -304,7 +354,13 @@ function Face({ face }: { face?: AvatarLook['face'] }) {
           <ellipse cx="46" cy="37" rx="3.4" ry="2.2" />
         </g>
       )}
-      {face === 'brave' ? (
+      {face === 'sad' ? (
+        <path d="M27.5 41 Q32 37.5 36.5 41" fill="none" stroke="#fff" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
+      ) : face === 'shock' ? (
+        <ellipse cx="32" cy="40" rx="2.6" ry="3.2" fill="#fff" />
+      ) : face === 'dizzy' || face === 'sweat' ? (
+        <path d="M26.5 40 q1.4 -1.6 2.8 0 t2.8 0 t2.8 0 t2.8 0" fill="none" stroke="#fff" strokeOpacity="0.9" strokeWidth="1.8" strokeLinecap="round" />
+      ) : face === 'brave' ? (
         <path d="M27.5 38.5 Q32 41.5 36.5 38.5 Z" fill="#fff" stroke="#fff" strokeWidth="1.2" strokeLinejoin="round" />
       ) : (
         <path d="M27.5 38.5 Q32 42.5 36.5 38.5" fill="none" stroke="#fff" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round" />
@@ -368,6 +424,16 @@ function Hat({ hat }: { hat?: AvatarLook['hat'] }) {
             <ellipse key={a} cx="32" cy="5.5" rx="3" ry="4.2" fill="#ffd34d" transform={`rotate(${a} 32 9.5)`} />
           ))}
           <circle cx="32" cy="9.5" r="2.6" fill="#e8475a" />
+        </g>
+      );
+      break;
+    case 'bandage':
+      el = (
+        <g transform="translate(0 5) rotate(-18 24 20)" strokeLinejoin="round">
+          <rect x="16" y="17" width="16" height="6" rx="2.4" fill="#f2d2b0" stroke={INK} strokeWidth="0.9" />
+          <rect x="21" y="17" width="6" height="6" fill="#e2b48c" />
+          <circle cx="23" cy="19" r="0.6" fill="#a87a50" />
+          <circle cx="25" cy="21" r="0.6" fill="#a87a50" />
         </g>
       );
       break;
@@ -515,6 +581,40 @@ function Prop({ prop }: { prop?: AvatarLook['prop'] }) {
           <path d="M42 45 l3 3 M45 45 l-3 3 M49 45 l3 3 M52 45 l-3 3" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
           <path d="M43 51 H51" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
           <Hand x={39} y={56} />
+        </g>
+      );
+    case 'wallet':
+      return (
+        <g strokeLinejoin="round">
+          <path d="M38 44 H56 V58 H38 Z" fill="#8a5a3a" stroke={INK} strokeWidth="1" />
+          <path d="M38 44 L42 39 H56 V44" fill="#6e4428" stroke={INK} strokeWidth="1" />
+          <rect x="49" y="49" width="8" height="5" rx="1.4" fill="#6e4428" stroke={INK} strokeWidth="0.8" />
+          <circle cx="51.5" cy="51.5" r="0.9" fill={GOLD} />
+          <g transform="translate(46 33)">
+            <path d="M0 0 C-3 -3 -6 -1 -4 1 C-6 3 -3 5 0 2 C3 5 6 3 4 1 C6 -1 3 -3 0 0 Z" fill="#d8d0c0" stroke={INK} strokeWidth="0.6" />
+          </g>
+          <path d="M43 31 q1 -2 2 0 M49 29 q1 -2 2 0" fill="none" stroke="#fff" strokeOpacity="0.5" strokeWidth="0.8" />
+          <Hand x={38} y={56} />
+        </g>
+      );
+    case 'fakeNews':
+      return (
+        <g strokeLinejoin="round">
+          <g transform="rotate(-10 47 50)">
+            <rect x="37" y="40" width="20" height="18" rx="1.2" fill="#f4f1ea" stroke={INK} strokeWidth="0.9" />
+            <rect x="39" y="42" width="16" height="4.2" fill="#2563eb" />
+            <text x="47" y="45.6" textAnchor="middle" fontSize="3.6" fontWeight="900" fill="#fff">
+              찌라시
+            </text>
+            <path d="M39 49 H55 M39 52 H50 M39 55 H53" stroke="#9a9a9a" strokeWidth="1.2" />
+            <g transform="rotate(-18 48 52)">
+              <rect x="40.5" y="48.5" width="15" height="7" rx="1.2" fill="none" stroke="#e8475a" strokeWidth="1.4" />
+              <text x="48" y="54" textAnchor="middle" fontSize="5" fontWeight="900" fill="#e8475a">
+                가짜
+              </text>
+            </g>
+          </g>
+          <Hand x={38} y={57} />
         </g>
       );
     case 'newspaper':

@@ -10,6 +10,8 @@ export interface Badge {
   desc: string;
   /** 1 흔함 · 2 드묾 · 3 전설 */
   rarity: 1 | 2 | 3;
+  /** 웃픈 업적 (안 좋은 경험으로 받음, 설계서 design/achievements-v2.md) */
+  funny?: true;
 }
 
 export const BADGES: Badge[] = [
@@ -55,12 +57,27 @@ export const BADGES: Badge[] = [
   { id: 'detective', emoji: '🔍', name: '루머 감별사', desc: '루머 감별기를 3번 이상 씀', rarity: 1 },
   { id: 'first_card', emoji: '🎴', name: '첫 카드', desc: '찬스 카드를 처음 씀', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
+  // 웃픈 업적 (2026-11-17 사용자 요청: 안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
+  { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
+  { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '그 종목의 게임 중 최고가 3% 안에서 매수', rarity: 1, funny: true },
+  { id: 'punching_bag', emoji: '🩹', name: '동네북', desc: '한 판에 방해 카드를 3번 넘게 맞음', rarity: 2, funny: true },
+  { id: 'fooled', emoji: '🙈', name: '찌라시에 속은 개미', desc: '거짓 호재 찌라시가 난 날 그 종목을 사서 손해', rarity: 1, funny: true },
+  { id: 'last_place', emoji: '🕳️', name: '바닥 체험', desc: '3명 이상 판에서 꼴찌', rarity: 1, funny: true },
+  { id: 'limit_down', emoji: '🧊', name: '하한가 직격', desc: '가진 종목이 하루에 −29% 넘게(하한가) 떨어짐', rarity: 2, funny: true },
+  { id: 'paper_hands', emoji: '😭', name: '팔고 나니 급등', desc: '판 종목이 그 뒤 판 값보다 15% 넘게 오름', rarity: 1, funny: true },
+  { id: 'fee_donor', emoji: '🧾', name: '수수료 기부왕', desc: '거래 30번 넘게 하고 마이너스 마감', rarity: 1, funny: true },
+  { id: 'lev_burn', emoji: '🥵', name: '레버리지의 쓴맛', desc: '레버리지·인버스 ETF로 10% 넘게 손해 보고 팖', rarity: 1, funny: true },
+  { id: 'choke', emoji: '🫠', name: '다 잡은 승리', desc: '중반까지 1위였는데 우승을 놓침', rarity: 2, funny: true },
 ];
+
+/** 사진만 주는 업적 (칭호로는 못 고름). 그 밖은 모두 칭호를 줌. 사진은 avatars.ts 에 그 업적 사진이 있을 때만 */
+export const AVATAR_ONLY = new Set(['lv5', 'lv10', 'lv15', 'dividend', 'global', 'limit_order']);
+export const givesTitle = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !AVATAR_ONLY.has(id);
 export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
 
 /** 획득한 배지 중 가장 귀한 것이 칭호 */
 export function titleOf(ids: string[]): Badge | null {
-  return BADGES.find((b) => ids.includes(b.id)) ?? null;
+  return BADGES.find((b) => ids.includes(b.id) && !AVATAR_ONLY.has(b.id)) ?? null;
 }
 
 export interface AchievementInput {
@@ -163,6 +180,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
         if (streak[s] >= 7) got.add('diamond');
         const prev = d === 0 ? m.base[s] : m.bars[s][d - 1].close;
         if (!STOCK_MAP[s].etf && m.bars[s][d].close / prev - 1 >= 0.29) got.add('limit_up');
+        if (!STOCK_MAP[s].etf && m.bars[s][d].close / prev - 1 <= -0.29) got.add('limit_down');
       }
       const idxPrev = d === 0 ? KR_INDEX_BASE : m.index[d - 1].close;
       if (hold.KINV && m.index[d].close / idxPrev - 1 <= -0.03) got.add('crash_winner');
@@ -184,6 +202,26 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
       const hasUS = syms.some((s) => STOCK_MAP[s].currency === 'USD');
       const hasKR = syms.some((s) => STOCK_MAP[s].currency === 'KRW' && !STOCK_MAP[s].etf);
       if (hasUS && hasKR) got.add('global');
+    }
+    // ---- 웃픈 업적 (design/achievements-v2.md) ----
+    if (traded && ret <= -0.2) got.add('big_loss');
+    if (p.trades.length > 30 && ret < 0) got.add('fee_donor');
+    if (ids.length >= 3 && rank === ids.length - 1 && finalEq(p.id) < finalEq(byFinal[ids.length - 2])) got.add('last_place');
+    const maxPrice = (sym: string) => Math.max(...m.bars[sym].map((b) => Math.max(b.high, b.open, b.close)));
+    if (p.trades.some((t) => t.side === 'buy' && t.price >= maxPrice(t.symbol) * 0.97)) got.add('buy_high');
+    if (items.effects.filter((e) => e.to === p.id && e.from !== p.id && !e.blocked && !e.crowded).length > 3) got.add('punching_bag');
+    // 판 뒤 그 종목이 판 값보다 15% 넘게 오름 (판 날 다음 날부터 마지막 날까지 종가 중 가장 높은 것)
+    if (p.trades.some((t) => t.side === 'sell' && m.bars[t.symbol].slice(t.day + 1).some((b) => b.close >= t.price * 1.15))) got.add('paper_hands');
+    // 거짓 호재 찌라시(헤드라인은 호재, 실제는 악재)가 난 날 그 종목을 사서 손해 (판 값 또는 마지막 날 종가)
+    for (const t of p.trades) {
+      if (t.side !== 'buy' || !m.news.some((n) => n.rumor && n.symbol === t.symbol && n.day === t.day && n.tone === 'good' && n.realTone === 'bad')) continue;
+      const sold = p.trades.find((x) => x.side === 'sell' && x.symbol === t.symbol && x.day >= t.day && (x.created_at ?? '') >= (t.created_at ?? ''));
+      if ((sold ? sold.price : m.bars[t.symbol][last].close) < t.price) got.add('fooled');
+    }
+    if (pfEnd.closed.some((c) => (STOCK_MAP[c.symbol]?.etf?.lev ?? 1) !== 1 && c.pnlPct <= -0.1)) got.add('lev_burn');
+    if (!solo && winner !== p.id) {
+      const mid = Math.floor(m.totalDays / 2);
+      if (ids.every((x) => x === p.id || hist[x][mid] < hist[p.id][mid])) got.add('choke');
     }
     out[p.id] = BADGES.filter((b) => got.has(b.id)).map((b) => b.id);
   }

@@ -6,11 +6,11 @@
  */
 export interface AvatarLook {
   char: 'ant';
-  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap';
-  face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses';
+  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap' | 'bandage';
+  face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses' | 'sad' | 'dizzy' | 'sweat' | 'shock';
   outfit?: 'suit' | 'cape' | 'medal' | 'robe';
-  prop?: 'trophy' | 'moneybag' | 'globe' | 'hourglass' | 'cards' | 'diamond' | 'target' | 'shield' | 'robot' | 'newspaper' | 'umbrella' | 'rocket' | 'phone';
-  back?: 'rays' | 'chartUp' | 'chartV' | 'chartDown' | 'coins' | 'sparkles' | 'flames' | 'phoenix' | 'rain' | 'confetti' | 'zen' | 'cross' | 'globe' | 'clock' | 'news' | 'circuit';
+  prop?: 'trophy' | 'moneybag' | 'globe' | 'hourglass' | 'cards' | 'diamond' | 'target' | 'shield' | 'robot' | 'newspaper' | 'umbrella' | 'rocket' | 'phone' | 'wallet' | 'fakeNews';
+  back?: 'rays' | 'chartUp' | 'chartV' | 'chartDown' | 'coins' | 'sparkles' | 'flames' | 'phoenix' | 'rain' | 'confetti' | 'zen' | 'cross' | 'globe' | 'clock' | 'news' | 'circuit' | 'peak' | 'dizzy';
 }
 export interface AvatarDef {
   id: string;
@@ -51,6 +51,11 @@ export const AVATARS: AvatarDef[] = [
   { id: 'scoop', name: '사건 해결사', look: ant({ face: 'wink', hat: 'newsCap', prop: 'newspaper', back: 'news' }), bg: '#7a4ab0', need: 'news_jump' },
   { id: 'umbrella', name: '하락장 생존자', look: ant({ prop: 'umbrella', back: 'rain' }), bg: '#3a7a7a', need: 'bear_proof' },
   { id: 'sniper', name: '명중', look: ant({ face: 'wink', prop: 'target', back: 'cross' }), bg: '#7a2f2f', need: 'sniper' },
+  // 웃픈 업적 (design/achievements-v2.md)
+  { id: 'broke', name: '깡통 계좌', look: ant({ face: 'sad', prop: 'wallet', back: 'chartDown' }), bg: '#5a5f6b', need: 'big_loss' },
+  { id: 'peak', name: '꼭지에서 산 개미', look: ant({ face: 'sweat', back: 'peak' }), bg: '#8a4a6b', need: 'buy_high' },
+  { id: 'bruised', name: '동네북', look: ant({ face: 'dizzy', hat: 'bandage', back: 'dizzy' }), bg: '#7a5a3a', need: 'punching_bag' },
+  { id: 'fooled', name: '찌라시에 속은 개미', look: ant({ face: 'shock', prop: 'fakeNews', back: 'news' }), bg: '#3f6b8a', need: 'fooled' },
   // 레벨 (경험치) — 개미가 자라남
   { id: 'sprout', name: '새싹 개미', look: ant({ hat: 'sprout' }), bg: '#4a9a3a', need: 'lv5' },
   { id: 'star', name: '꽃핀 개미', look: ant({ hat: 'flower', back: 'sparkles' }), bg: '#c9a020', need: 'lv10' },

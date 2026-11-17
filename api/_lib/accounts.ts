@@ -9,7 +9,7 @@
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
-import { BADGES } from '../../src/game/achievements.js';
+import { givesTitle } from '../../src/game/achievements.js';
 import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
 import { levelBadges } from '../../src/game/missions.js';
@@ -228,7 +228,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         else {
           const t = typeof b.title === 'string' ? b.title : '';
           const earned = await earnedBadges(sb, uid);
-          if (!BADGES.some((x) => x.id === t) || !earned[t]) throw new GameError('얻은 업적만 대표 칭호로 고를 수 있어요.');
+          if (!givesTitle(t) || !earned[t]) throw new GameError('칭호를 주는 업적을 얻어야 고를 수 있어요.');
           patch.title = t;
         }
       }

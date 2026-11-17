@@ -23,7 +23,8 @@ import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
-import { BADGES, titleOf } from '../game/achievements';
+import { BADGES, givesTitle, titleOf } from '../game/achievements';
+import { AVATARS } from '../game/avatars';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
@@ -1295,15 +1296,7 @@ function Records({ go }: Pick<Props, 'go'>) {
           <h3>
             <Icon name="medal" /> 업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{BADGES.length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>
-          <div className="badge-grid">
-            {BADGES.map((b) => (
-              <div key={b.id} className={'bg-cell r' + b.rarity + (myBadges[b.id] ? ' got' : '')} title={b.desc}>
-                <i>{myBadges[b.id] ? <BadgeIcon id={b.id} /> : <Icon name="lock" size={20} />}</i>
-                <b>{b.name}</b>
-                <small>{myBadges[b.id] ? '×' + myBadges[b.id] : b.desc}</small>
-              </div>
-            ))}
-          </div>
+          <BadgeShelf mine={myBadges} />
         </section>
       )}
       {/* 되돌릴 수 없는 '모두 지우기'는 맨 아래 (실수로 누르기 쉬운 가운데 자리에서 옮김) */}
@@ -1724,5 +1717,57 @@ function SoundSetting() {
         </button>
       </div>
     </section>
+  );
+}
+
+/**
+ * 업적 목록 (설계서 design/achievements-v2.md): 딴 것만 이름·설명·보상, 못 딴 건 '???' 칸으로 개수만.
+ * 귀한 순서(전설 → 희귀 → 일반, 같은 등급은 많이 딴 순), 웃픈 업적은 따로
+ */
+function BadgeShelf({ mine }: { mine: Record<string, number> }) {
+  const got = BADGES.map((b, i) => ({ b, i, n: mine[b.id] ?? 0 })).filter((x) => x.n > 0);
+  type G = (typeof got)[number];
+  const sortFn = (x: G, y: G) => y.b.rarity - x.b.rarity || y.n - x.n || x.i - y.i;
+  const normal = got.filter((x) => !x.b.funny).sort(sortFn);
+  const funny = got.filter((x) => x.b.funny).sort(sortFn);
+  const hidden = BADGES.length - got.length;
+  const reward = (id: string) => {
+    const pic = AVATARS.some((a) => a.need === id);
+    const title = givesTitle(id);
+    return pic && title ? '칭호 · 사진' : pic ? '사진' : '칭호';
+  };
+  const cell = ({ b, n }: G) => (
+    <div key={b.id} className={'bg-cell got r' + b.rarity + (b.funny ? ' funny' : '')} title={b.desc}>
+      <i>
+        <BadgeIcon id={b.id} />
+      </i>
+      <b>{b.name}</b>
+      <small>{b.desc}</small>
+      <small className="bg-reward">
+        {reward(b.id)} · ×{n}
+      </small>
+    </div>
+  );
+  return (
+    <>
+      {normal.length > 0 && <div className="badge-grid">{normal.map(cell)}</div>}
+      {funny.length > 0 && (
+        <>
+          <h4 className="deco-sub">웃픈 업적</h4>
+          <div className="badge-grid">{funny.map(cell)}</div>
+        </>
+      )}
+      {hidden > 0 && (
+        <div className="badge-grid bg-hidden-row">
+          {Array.from({ length: Math.min(hidden, 6) }, (_, i) => (
+            <div key={i} className="bg-cell hidden" aria-hidden>
+              <i>?</i>
+              <b>???</b>
+            </div>
+          ))}
+        </div>
+      )}
+      {hidden > 0 && <p className="muted small deco-hidden">아직 못 찾은 업적 {hidden}개 — 무엇인지는 깨야 알 수 있어요. 좋은 일만 업적이 되는 건 아니에요.</p>}
+    </>
   );
 }

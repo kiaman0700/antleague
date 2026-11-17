@@ -743,3 +743,35 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .pfc-acts .btn { flex: 1; }
 .acc-chip.guest .acc-txt b { color: #c8c8c8; }
 .pf-av svg { display: block; }
+
+/* ---- 마이프로필 꾸미기 (사진 | 칭호 같은 모양, 2026-11-17) ---- */
+.me-nick { display: inline-flex; align-items: center; gap: 6px; }
+.me-nick-btn { width: 28px; height: 28px; color: #9a9a9a; }
+.me-nick-btn:hover { color: #f2f2f2; }
+.me-nick-edit { display: grid; gap: 6px; max-width: 360px; }
+.me-nick-edit .row-input input { min-width: 0; }
+.me-deco-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.me-deco-head h3 { margin: 0; }
+.me-deco-tabs { display: inline-flex; gap: 4px; background: #111; border-radius: 12px; padding: 4px; }
+.me-deco-tabs button { height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: #c8c8c8; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.me-deco-tabs button.on { background: #2e2e2e; color: #f2f2f2; }
+.deco-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.deco-cell { display: grid; justify-items: center; align-content: start; gap: 4px; padding: 12px 6px 10px; min-height: 120px; border-radius: 12px; border: 1px solid #2e2e2e; background: #1c1c1c; color: #f2f2f2; font: inherit; cursor: pointer; text-align: center; }
+.deco-cell:hover:not(:disabled) { border-color: #4a4a4a; background: #242424; }
+.deco-cell:disabled { cursor: default; }
+.deco-cell.on { border-color: #6b58ee; box-shadow: inset 0 0 0 1px #6b58ee; background: #211d38; }
+.deco-cell b { font-size: 13px; font-weight: 700; line-height: 1.25; word-break: keep-all; }
+.deco-cell small { font-size: 12px; color: #9a9a9a; line-height: 1.25; word-break: keep-all; }
+.deco-cell.title i { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: #242424; color: #c8c8c8; }
+.deco-cell.title.r3 i { background: #3a2e10; color: #ffcc3d; }
+.deco-cell.title.r2 i { background: #241f45; color: #b9b0ff; }
+.deco-cell.title.funny i { background: #3a2418; color: #ff9a5a; }
+.deco-sub { margin: 16px 0 8px; font-size: 13px; color: #c8c8c8; }
+.deco-note { margin: 0 0 10px; }
+.deco-hidden { margin: 10px 0 0; }
+.bg-cell .bg-reward { color: #b9b0ff; }
+.bg-cell.funny { border-color: #5a3a24; }
+.bg-cell.funny i { color: #ff9a5a; }
+.bg-cell.hidden { opacity: 0.55; }
+.bg-cell.hidden i { font-style: normal; font-weight: 800; font-size: 18px; color: #6b6b6b; }
+.bg-hidden-row { margin-top: 8px; }

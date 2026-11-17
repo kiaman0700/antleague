@@ -1,6 +1,6 @@
 import { startCashFor } from '../game/portfolio.js';
 import { describe, expect, it } from 'vitest';
-import { BADGES, computeAchievements } from '../game/achievements.js';
+import { BADGES, computeAchievements, givesTitle, titleOf } from '../game/achievements.js';
 import { generateMarket } from '../game/market.js';
 import { computePortfolio } from '../game/portfolio.js';
 import { dayTicks } from '../game/intraday.js';
@@ -137,8 +137,80 @@ describe('업적', () => {
   it('업적 id 는 겹치지 않고, 귀한 것부터 순서대로 (칭호는 가장 앞의 것)', () => {
     const ids = BADGES.map((b) => b.id);
     expect(new Set(ids).size).toBe(ids.length);
-    const r = BADGES.map((b) => b.rarity);
+    // 웃픈 업적은 맨 뒤 묶음 (칭호로 저절로 고르지 않게), 그 앞은 귀한 순서
+    const normal = BADGES.filter((b) => !b.funny);
+    const r = normal.map((b) => b.rarity);
     expect([...r].sort((a, b) => b - a)).toEqual(r);
-    expect(BADGES.length).toBeGreaterThanOrEqual(35);
+    expect(BADGES.findIndex((b) => b.funny)).toBe(normal.length);
+    expect(BADGES.length).toBeGreaterThanOrEqual(50);
+  });
+  it('보상: 사진만 주는 업적은 칭호가 아님, 웃픈 업적은 대표 칭호로 저절로 안 고름', () => {
+    expect(givesTitle('lv5')).toBe(false);
+    expect(givesTitle('winner')).toBe(true);
+    expect(givesTitle('big_loss')).toBe(true);
+    expect(givesTitle('nope')).toBe(false);
+    expect(titleOf(['lv5', 'big_loss', 'plus'])?.id).toBe('plus');
+  });
+});
+
+describe('웃픈 업적 (design/achievements-v2.md)', () => {
+  const m = generateMarket(SEED, 10);
+  const start = startCashFor(m.version);
+  const T = (id: string, day: number, symbol: string, side: 'buy' | 'sell', qty: number, price: number, at = '') => ({ player_id: id, day, symbol, side, qty, price, fee: 0.001, created_at: at || String(day).padStart(3, '0') });
+  const run = (players: { id: string; trades: ReturnType<typeof T>[] }[]) =>
+    computeAchievements({ market: m, seed: SEED, items: [], players: players.map((p) => ({ ...p, spends: [], filledOrders: 0 })) });
+
+  it('깡통 계좌: −20% 아래, 바닥 체험: 3명 이상 꼴찌', () => {
+    const px = m.bars.CORE[0].open;
+    const qty = Math.floor((start * 0.9) / (px * 3));
+    // 실제 값의 3배에 사서 큰 손해
+    const res = run([
+      { id: 'a', trades: [T('a', 0, 'CORE', 'buy', qty, px * 3)] },
+      { id: 'b', trades: [] },
+      { id: 'c', trades: [] },
+    ]);
+    expect(res.a).toEqual(expect.arrayContaining(['big_loss', 'last_place']));
+    expect(res.b).not.toContain('last_place');
+    // 2명 판 꼴찌는 아님
+    expect(run([{ id: 'a', trades: [T('a', 0, 'CORE', 'buy', qty, px * 3)] }, { id: 'b', trades: [] }]).a).not.toContain('last_place');
+  });
+  it('꼭지에서 산 개미: 게임 중 최고가 근처에서 매수 (최저가 근처는 아님)', () => {
+    const hi = Math.max(...m.bars.CORE.map((b) => b.high));
+    const lo = Math.min(...m.bars.CORE.map((b) => b.low));
+    expect(run([{ id: 'a', trades: [T('a', 0, 'CORE', 'buy', 1, hi)] }]).a).toContain('buy_high');
+    expect(run([{ id: 'a', trades: [T('a', 0, 'CORE', 'buy', 1, lo)] }]).a).not.toContain('buy_high');
+  });
+  it('팔고 나니 급등: 판 뒤 종가가 판 값보다 15% 넘게', () => {
+    const p0 = m.bars.CORE[0].open;
+    const later = Math.max(...m.bars.CORE.slice(2).map((b) => b.close));
+    const res = run([{ id: 'a', trades: [T('a', 0, 'CORE', 'buy', 1, p0), T('a', 1, 'CORE', 'sell', 1, later / 1.2)] }]);
+    expect(res.a).toContain('paper_hands');
+    const res2 = run([{ id: 'a', trades: [T('a', 0, 'CORE', 'buy', 1, p0), T('a', 1, 'CORE', 'sell', 1, later * 2)] }]);
+    expect(res2.a).not.toContain('paper_hands');
+  });
+  it('수수료 기부왕: 거래 30번 넘게 + 마이너스', () => {
+    const px = m.bars.CORE[0].open;
+    const trades = Array.from({ length: 32 }, (_, i) => T('a', 0, 'CORE', i % 2 ? 'sell' : 'buy', 1, i % 2 ? px * 0.9 : px, String(i).padStart(3, '0')));
+    expect(run([{ id: 'a', trades }]).a).toContain('fee_donor');
+    expect(run([{ id: 'a', trades: trades.slice(0, 10) }]).a).not.toContain('fee_donor');
+  });
+  it('레버리지의 쓴맛: 레버리지 ETF를 10% 넘게 손해 보고 팖', () => {
+    const px = m.bars.KLEV[0].open;
+    expect(run([{ id: 'a', trades: [T('a', 0, 'KLEV', 'buy', 1, px), T('a', 1, 'KLEV', 'sell', 1, px * 0.8)] }]).a).toContain('lev_burn');
+    expect(run([{ id: 'a', trades: [T('a', 0, 'KIDX', 'buy', 1, px), T('a', 1, 'KIDX', 'sell', 1, px * 0.8)] }]).a).not.toContain('lev_burn');
+  });
+  it('찌라시에 속은 개미: 거짓 호재 찌라시 날 사서 손해', () => {
+    // 거짓 호재 찌라시가 있는 시장 찾기
+    let seed = SEED;
+    let mm = generateMarket(seed, 10);
+    const fake = () => mm.news.find((n) => n.rumor && n.symbol && n.tone === 'good' && n.realTone === 'bad');
+    for (let i = 1; i < 300 && !fake(); i++) mm = generateMarket((seed = SEED + i), 10);
+    const n = fake()!;
+    expect(n).toBeTruthy();
+    const px = mm.bars[n.symbol!][n.day].open;
+    const r = computeAchievements({ market: mm, seed, items: [], players: [{ id: 'a', trades: [T('a', n.day, n.symbol!, 'buy', 1, px * 5)], spends: [], filledOrders: 0 }] });
+    expect(r.a).toContain('fooled');
+    const r2 = computeAchievements({ market: mm, seed, items: [], players: [{ id: 'a', trades: [T('a', n.day, n.symbol!, 'buy', 1, px * 0.01)], spends: [], filledOrders: 0 }] });
+    expect(r2.a).not.toContain('fooled');
   });
 });

@@ -13,7 +13,7 @@ import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
-import { BADGES, titleOf } from '../game/achievements';
+import { BADGES, givesTitle, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct, tone } from '../lib/format';
@@ -368,7 +368,9 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [cur, setCur] = useState('');
-  const [pickAv, setPickAv] = useState(false);
+  // 꾸미기: 사진 | 칭호 (같은 모양 칸), 닉네임은 이름 옆 연필로 바로 고침
+  const [deco, setDeco] = useState<'avatar' | 'title'>('avatar');
+  const [editNick, setEditNick] = useState(false);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [recovery, setRecovery] = useState<string | null>(null);
@@ -405,7 +407,6 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       setErr(e instanceof Error ? e.message : String(e));
     }
   };
-  const earned = BADGES.filter((b) => acc.badges[b.id]);
   const title = p.title ? BADGES.find((b) => b.id === p.title) : titleOf(Object.keys(acc.badges));
 
   if (recovery) return (
@@ -427,16 +428,52 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         }
       />
       <section className="panel pad me-card">
-        <button className="me-avatar-btn" onClick={() => setPickAv((v) => !v)} title="프로필 사진 바꾸기" aria-label="프로필 사진 바꾸기">
+        <button className="me-avatar-btn" onClick={() => (setDeco('avatar'), document.getElementById('me-deco')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))} title="프로필 사진 바꾸기" aria-label="프로필 사진 바꾸기">
           <Avatar id={p.avatar} name={p.nickname} size={64} />
           <span className="me-av-edit">
             <Icon name="settings" size={12} />
           </span>
         </button>
         <div className="me-info">
-          <b>
-            {p.nickname} <Icon name="check" size={14} className="verified" />
-          </b>
+          {editNick ? (
+            <div className="me-nick-edit">
+              <div className="row-input">
+                <input
+                  autoFocus
+                  value={nick}
+                  onChange={(e) => setNick(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && (setEditNick(false), setNick(''))}
+                  maxLength={10}
+                  aria-label="새 닉네임"
+                  aria-invalid={nickAvail === 'taken' || nickAvail === 'invalid'}
+                />
+                <button
+                  className="btn sm primary"
+                  disabled={!nick.trim() || nick.trim() === p.nickname || nickAvail === 'taken' || nickAvail === 'invalid'}
+                  onClick={() => act(() => api('updateProfile', { nickname: nick.trim() }), '닉네임을 바꿨어요. 다음 게임부터 적용돼요').then(() => (setEditNick(false), setNick('')))}
+                >
+                  저장
+                </button>
+                <button className="btn sm ghost" onClick={() => (setEditNick(false), setNick(''))}>
+                  취소
+                </button>
+              </div>
+              {nickCheck ? (
+                <div className="nick-avail" aria-live="polite">
+                  <AvailMsg st={nickAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
+                </div>
+              ) : (
+                <small className="muted">게임·랭킹에 보이는 이름이에요. 다른 회원과 같은 닉네임은 못 써요.</small>
+              )}
+            </div>
+          ) : (
+            <b className="me-nick">
+              {p.nickname} <Icon name="check" size={14} className="verified" />
+              <button className="icon-btn sm me-nick-btn" onClick={() => (setEditNick(true), setNick(p.nickname))} aria-label="닉네임 바꾸기" title="닉네임 바꾸기">
+                <Icon name="edit" size={14} />
+              </button>
+            </b>
+          )}
           {title && (
             <span className="title-tag">
               <BadgeIcon id={title.id} size={13} /> {title.name}
@@ -451,44 +488,6 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <small>{p.rankPos ? `${p.rankPos}위` : isPlaced(p.ranked_games) ? '랭킹 보기' : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
         </button>
       </section>
-
-      {pickAv && (
-        <section className="panel pad av-picker">
-          <h3>
-            프로필 사진 <small className="muted">업적을 깨면 사진이 더 열려요</small>
-          </h3>
-          <div className="av-grid">
-            {AVATARS.map((a) => {
-              const open = canUseAvatar(a.id, Object.keys(acc.badges));
-              const on = (p.avatar ?? 'default') === a.id;
-              const need = a.need ? BADGES.find((b) => b.id === a.need) : null;
-              return (
-                <button
-                  key={a.id}
-                  className={'av-opt' + (on ? ' on' : '') + (open ? '' : ' locked')}
-                  disabled={on}
-                  aria-label={open ? `${a.name} 사진으로 바꾸기` : `잠긴 사진: 업적 ${need?.name ?? ''}을 깨면 열려요`}
-                  onClick={() =>
-                    open
-                      ? act(() => api('updateProfile', { avatar: a.id }), '프로필 사진을 바꿨어요')
-                      : (setMsg(''), setErr(`잠긴 사진이에요. 업적 '${need?.name ?? ''}'을(를) 깨면 열려요 — ${need?.desc ?? ''}`))
-                  }
-                >
-                  <Avatar id={a.id} name={p.nickname} size={52} />
-                  {!open && (
-                    <span className="av-lock">
-                      <Icon name="lock" size={14} />
-                    </span>
-                  )}
-                  <small>{open ? a.name : need?.name ?? '잠김'}</small>
-                </button>
-              );
-            })}
-          </div>
-          {err && <p className="error small">{err}</p>}
-          {msg && <p className="ok-msg small">{msg}</p>}
-        </section>
-      )}
 
       <section className="panel pad me-stats">
         <div>
@@ -512,48 +511,23 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       {msg && <p className="ok-msg">{msg}</p>}
       {err && <p className="error">{err}</p>}
 
-      <section className="panel pad">
-        <h3>닉네임</h3>
-        <div className="row-input">
-          <input value={nick} onChange={(e) => setNick(e.target.value)} maxLength={10} aria-label="닉네임" aria-invalid={nickAvail === 'taken' || nickAvail === 'invalid'} />
-          <button className="btn sm primary" disabled={!nick.trim() || nick.trim() === p.nickname || nickAvail === 'taken' || nickAvail === 'invalid'} onClick={() => act(() => api('updateProfile', { nickname: nick.trim() }), '닉네임을 바꿨어요. 다음 게임부터 적용돼요')}>
-            바꾸기
-          </button>
-        </div>
-        {nickCheck ? (
-          <div className="nick-avail" aria-live="polite">
-            <AvailMsg st={nickAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
+      <section className="panel pad me-deco" id="me-deco">
+        <div className="me-deco-head">
+          <h3>꾸미기</h3>
+          <div className="seg me-deco-tabs" role="tablist" aria-label="꾸미기">
+            <button role="tab" aria-selected={deco === 'avatar'} className={deco === 'avatar' ? 'on' : ''} onClick={() => setDeco('avatar')}>
+              프로필 사진
+            </button>
+            <button role="tab" aria-selected={deco === 'title'} className={deco === 'title' ? 'on' : ''} onClick={() => setDeco('title')}>
+              칭호
+            </button>
           </div>
-        ) : null}
-        <small className="muted">게임·랭킹에 보이는 이름이에요. 다른 회원과 같은 닉네임은 쓸 수 없어요.</small>
-      </section>
-
-      <section className="panel pad">
-        <h3>
-          <Icon name="medal" /> 업적 · 대표 칭호
-        </h3>
-        <p className="muted small">얻은 업적 중 하나를 대표 칭호로 고르면 랭킹에 함께 보여요.</p>
-        <div className="badge-grid">
-          {BADGES.map((b) => {
-            const got = acc.badges[b.id];
-            const on = p.title === b.id;
-            return (
-              <button
-                key={b.id}
-                className={'bg-cell r' + b.rarity + (got ? ' got' : '') + (on ? ' on' : '')}
-                title={b.desc}
-                disabled={!got}
-                aria-pressed={on}
-                onClick={() => act(() => api('updateProfile', { title: on ? null : b.id }), on ? '대표 칭호를 뺐어요' : `대표 칭호를 '${b.name}'(으)로 정했어요`)}
-              >
-                <i>{got ? <BadgeIcon id={b.id} /> : <Icon name="lock" size={20} />}</i>
-                <b>{b.name}</b>
-                <small>{got ? (on ? '대표 칭호' : '×' + got) : b.desc}</small>
-              </button>
-            );
-          })}
         </div>
-        {earned.length === 0 && <p className="muted small">아직 얻은 업적이 없어요. 대결을 끝내면 업적이 쌓여요.</p>}
+        {deco === 'avatar' ? (
+          <DecoAvatars current={p.avatar ?? 'default'} nickname={p.nickname} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { avatar: id }), `프로필 사진을 '${name}'(으)로 바꿨어요`)} />
+        ) : (
+          <DecoTitles current={p.title} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { title: id }), id ? `대표 칭호를 '${name}'(으)로 정했어요` : '대표 칭호를 뺐어요')} />
+        )}
       </section>
 
       <section className="panel pad">
@@ -719,5 +693,69 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
       <DailyRankPanel />
       <TierLadder mine={data?.me ? { rating: data.me.rating, rankedGames: data.me.ranked_games } : undefined} />
     </div>
+  );
+}
+
+/** 꾸미기 · 프로필 사진: 얻은 것만 (못 딴 건 숨기고 개수만) — 칭호 칸과 같은 모양 */
+function DecoAvatars({ current, nickname, badges, onPick }: { current: string; nickname: string; badges: Record<string, number>; onPick: (id: string, name: string) => void }) {
+  const mine = Object.keys(badges);
+  const open = AVATARS.filter((a) => canUseAvatar(a.id, mine));
+  const hidden = AVATARS.length - open.length;
+  return (
+    <>
+      <div className="deco-grid">
+        {open.map((a) => {
+          const on = current === a.id;
+          const from = a.need ? BADGES.find((b) => b.id === a.need) : null;
+          return (
+            <button key={a.id} className={'deco-cell' + (on ? ' on' : '')} aria-pressed={on} disabled={on} onClick={() => onPick(a.id, a.name)}>
+              <Avatar id={a.id} name={nickname} size={56} />
+              <b>{a.name}</b>
+              <small>{on ? '지금 사진' : from ? `업적 '${from.name}'` : '기본'}</small>
+            </button>
+          );
+        })}
+      </div>
+      {hidden > 0 && <p className="muted small deco-hidden">아직 숨은 사진 {hidden}개 — 업적을 깨면 하나씩 나타나요.</p>}
+    </>
+  );
+}
+
+const RARITY_LABEL = { 3: '전설', 2: '희귀', 1: '일반' } as const;
+/** 꾸미기 · 칭호: 얻은 것만, 귀한 순서(전설 → 희귀 → 일반) · 같은 등급은 많이 딴 순 · 웃픈 칭호는 따로 맨 뒤 */
+function DecoTitles({ current, badges, onPick }: { current: string | null; badges: Record<string, number>; onPick: (id: string | null, name: string) => void }) {
+  const got = BADGES.map((b, i) => ({ b, i, n: badges[b.id] ?? 0 })).filter((x) => x.n > 0 && givesTitle(x.b.id));
+  type G = (typeof got)[number];
+  const sortFn = (x: G, y: G) => y.b.rarity - x.b.rarity || y.n - x.n || x.i - y.i;
+  const normal = got.filter((x) => !x.b.funny).sort(sortFn);
+  const funny = got.filter((x) => x.b.funny).sort(sortFn);
+  const total = BADGES.filter((b) => givesTitle(b.id)).length;
+  const cell = ({ b, n }: G) => {
+    const on = current === b.id;
+    return (
+      <button key={b.id} className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : b.id, b.name)}>
+        <i>
+          <BadgeIcon id={b.id} size={22} />
+        </i>
+        <b>{b.name}</b>
+        <small>
+          {on ? '대표 칭호' : b.funny ? '웃픈 칭호' : RARITY_LABEL[b.rarity]} · ×{n}
+        </small>
+      </button>
+    );
+  };
+  if (!got.length) return <p className="muted small">아직 얻은 칭호가 없어요. 대결을 끝내면 업적과 함께 칭호가 생겨요.</p>;
+  return (
+    <>
+      <p className="muted small deco-note">고른 칭호는 이름 옆과 랭킹에 보여요. 한 번 더 누르면 빼요.</p>
+      <div className="deco-grid">{normal.map(cell)}</div>
+      {funny.length > 0 && (
+        <>
+          <h4 className="deco-sub">웃픈 칭호</h4>
+          <div className="deco-grid">{funny.map(cell)}</div>
+        </>
+      )}
+      {total - got.length > 0 && <p className="muted small deco-hidden">아직 숨은 칭호 {total - got.length}개</p>}
+    </>
   );
 }

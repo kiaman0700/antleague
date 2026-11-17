@@ -4,6 +4,14 @@
  */
 import {
   Activity,
+  Mountain,
+  Bandage,
+  ArrowDownToLine,
+  HeartCrack,
+  ThermometerSun,
+  Annoyed,
+  Ghost,
+  Pencil,
   Footprints,
   Crosshair,
   Umbrella,
@@ -156,6 +164,7 @@ const ICONS = {
   percent: Percent,
   fuel: Fuel,
   copy: Copy,
+  edit: Pencil,
   share: Share2,
   door: DoorOpen,
   play: Play,
@@ -261,6 +270,17 @@ const BADGE_ICONS: Record<string, LucideIcon> = {
   lv10: Star,
   lv15: Medal,
   lv20: Gem,
+  // 웃픈 업적
+  big_loss: Wallet,
+  buy_high: Mountain,
+  punching_bag: Bandage,
+  fooled: EyeOff,
+  last_place: Ghost,
+  limit_down: ArrowDownToLine,
+  paper_hands: HeartCrack,
+  fee_donor: Receipt,
+  lev_burn: ThermometerSun,
+  choke: Annoyed,
 };
 export function BadgeIcon({ id, size = 20 }: { id: string; size?: number }) {
   const C = BADGE_ICONS[id] ?? Medal;
