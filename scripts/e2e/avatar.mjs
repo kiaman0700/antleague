@@ -9,7 +9,7 @@ const c = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth
 const { data } = await c.auth.signInWithPassword({ email: (await post({ action: 'loginEmail', username: m.u })).b.email, password: m.pw });
 const U = (b) => post(b, data.session.access_token);
 ok('처음엔 기본 사진', ((await U({ action: 'profile' })).b.profile.avatar ?? 'default') === 'default');
-ok('누구나 쓰는 사진으로 바꾸기', (await U({ action: 'updateProfile', avatar: 'piggy' })).s === 200 && (await U({ action: 'profile' })).b.profile.avatar === 'piggy');
+ok('누구나 쓰는 사진으로 바꾸기', (await U({ action: 'updateProfile', avatar: 'antred' })).s === 200 && (await U({ action: 'profile' })).b.profile.avatar === 'antred');
 // 이 계정이 아직 못 딴 업적으로 잠긴 사진을 고름 (시험 계정도 실제 대결로 업적을 딸 수 있어서 고정해 두면 틀림)
 const { AVATARS } = await import('../../src/game/avatars.ts').catch(() => ({ AVATARS: null }));
 const prof = (await U({ action: 'profile' })).b;

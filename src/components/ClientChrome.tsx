@@ -46,6 +46,7 @@ export function TopBar({
   adminUnread,
   onAdmin,
   missions,
+  onSignup,
 }: {
   active: NavTab | null;
   account: AccountState;
@@ -67,6 +68,7 @@ export function TopBar({
   onAdmin?: () => void;
   /** 오늘의 미션 버튼 (마우스를 올리면 팝업) */
   missions?: ReactNode;
+  onSignup?: () => void;
 }) {
   return (
     <header className="cl-top">
@@ -110,7 +112,7 @@ export function TopBar({
       <div className="cl-right">
         {adminUnread !== undefined && onAdmin && <AdminInboxButton unread={adminUnread} onClick={onAdmin} />}
         {missions}
-        <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} />
+        <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} onSignup={onSignup} />
         {online && (
           <button className={'cl-social-btn' + (socialOpen ? ' on' : '')} onClick={onSocial} aria-label="친구·파티" aria-expanded={socialOpen} title="친구·파티">
             <Icon name="users" size={18} />

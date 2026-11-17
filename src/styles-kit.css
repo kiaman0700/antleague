@@ -738,3 +738,8 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .hub-stage.solo { grid-template-columns: minmax(0, 1fr); }
 .ms-gain { margin: 0; padding: 8px 10px; border-radius: 10px; background: #161616; font-size: 14px; }
 .ms-gain b { color: #b9b0ff; font-variant-numeric: tabular-nums; }
+.pfc-note { margin: 0; }
+.pfc-acts { display: flex; gap: 8px; }
+.pfc-acts .btn { flex: 1; }
+.acc-chip.guest .acc-txt b { color: #c8c8c8; }
+.pf-av svg { display: block; }

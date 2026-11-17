@@ -71,7 +71,7 @@ export function Brand({ compact }: { compact?: boolean }) {
 }
 
 /** 회원이면 프로필 칩, 게스트면 로그인 버튼, 확인 중이면 빈 자리 */
-export function AccountChip({ account, online, onProfile, onLogin, compact, plain }: { account: AccountState; online: boolean; onProfile: () => void; onLogin: () => void; compact?: boolean; /** 팝업 없이 누르면 바로 프로필 (더보기 화면 등) */ plain?: boolean }) {
+export function AccountChip({ account, online, onProfile, onLogin, onSignup, compact, plain }: { account: AccountState; online: boolean; onProfile: () => void; onLogin: () => void; onSignup?: () => void; compact?: boolean; /** 팝업 없이 누르면 바로 프로필 (더보기 화면 등) */ plain?: boolean }) {
   if (!online) return null;
   if (account.status === 'member' && account.profile && !plain) {
     const p = account.profile;
@@ -105,6 +105,47 @@ export function AccountChip({ account, online, onProfile, onLogin, compact, plai
         </span>
       </button>
     );
+  if (account.status === 'guest' && !plain) {
+    const nick = loadNick() || '손님';
+    return (
+      <HoverPop
+        className={'acc-pop' + (compact ? ' compact' : '')}
+        btnClass={'acc-chip guest' + (compact ? ' compact' : '')}
+        label="손님으로 하는 중 — 로그인·회원가입"
+        button={
+          <>
+            <Avatar name={nick} guest size={30} className="acc-av" />
+            {!compact && (
+              <span className="acc-txt">
+                <b>손님</b>
+              </span>
+            )}
+          </>
+        }
+      >
+        <section className="panel pad pfc">
+          <div className="pfc-head">
+            <Avatar name={nick} guest size={52} className="pfc-av" />
+            <span className="pfc-name">
+              <b>{nick === '손님' ? '손님' : nick}</b>
+              <small className="muted">손님으로 하는 중</small>
+            </span>
+          </div>
+          <p className="muted small pfc-note">회원이 되면 전적·랭킹전·미션 경험치·레벨·친구가 남아요. 지금까지 한 판도 그대로 이어져요.</p>
+          <div className="pfc-acts">
+            {onSignup && (
+              <button className="btn sm primary" onClick={onSignup}>
+                회원가입
+              </button>
+            )}
+            <button className="btn sm" onClick={onLogin}>
+              로그인
+            </button>
+          </div>
+        </section>
+      </HoverPop>
+    );
+  }
   if (account.status === 'guest')
     return (
       <button className={'btn sm primary ln-login' + (compact ? ' compact' : '')} onClick={onLogin}>

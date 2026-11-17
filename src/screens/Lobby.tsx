@@ -1613,6 +1613,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onCancelMatch={() => void cancelMatch()}
         onProfile={() => go('me')}
         onLogin={() => go('login')}
+        onSignup={() => go('signup')}
         socialBadge={badges.friends}
         socialOpen={wideSocial ? !socialFold : socialOpen}
         // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
@@ -1628,7 +1629,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             <span className="lt-right">
               {online && <MissionsButton compact onSignup={account.status === 'member' ? undefined : () => go('signup')} />}
               {adminUnread !== undefined && <AdminInboxButton unread={adminUnread} onClick={() => go('admin')} compact />}
-              <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
+              <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} onSignup={() => go('signup')} compact />
             </span>
           </div>
           <div className="lobby-body">{body}</div>

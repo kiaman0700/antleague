@@ -1,9 +1,12 @@
 /**
  * 위 메뉴바 버튼 + 팝업 (미션·내 프로필 공용, 2026-11-17)
- * - 마우스를 올리면 열리고 내리면 닫힘 (PC)
+ * - 마우스를 올리면 열리고, 벗어나면 바로 닫힘 (PC, 사용자 요청 2026-11-17 — 늦게 닫히면 옆 팝업과 겹쳐 보였음)
+ * - 한 번에 하나만: 하나가 열리면 다른 팝업은 바로 닫힘
  * - 누르면 고정해서 열림 (휴대폰·키보드), 다시 누르거나 바깥을 누르거나 Esc 로 닫힘
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+
+const OPEN_EVENT = 'stockduel:hpop';
 
 export function HoverPop({
   className,
@@ -28,21 +31,26 @@ export function HoverPop({
   const [open, setOpen] = useState(false);
   const pinned = useRef(false);
   const wrap = useRef<HTMLSpanElement>(null);
-  const shut = useRef<number | undefined>(undefined);
+  const me = useId();
   const show = () => {
-    window.clearTimeout(shut.current);
     if (!open) onOpen?.();
     setOpen(true);
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: me }));
   };
   const close = () => {
     pinned.current = false;
     setOpen(false);
   };
-  const hideSoon = () => {
-    if (pinned.current) return;
-    window.clearTimeout(shut.current);
-    shut.current = window.setTimeout(() => setOpen(false), 220);
+  const hide = () => {
+    pinned.current = false;
+    setOpen(false);
   };
+  // 다른 팝업이 열리면 이건 닫힘
+  useEffect(() => {
+    const other = (e: Event) => (e as CustomEvent<string>).detail !== me && hide();
+    window.addEventListener(OPEN_EVENT, other);
+    return () => window.removeEventListener(OPEN_EVENT, other);
+  }, [me]);
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => {
@@ -56,13 +64,12 @@ export function HoverPop({
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
-  useEffect(() => () => window.clearTimeout(shut.current), []);
   return (
     <span
       className={'hpop' + (open ? ' open' : '') + (className ? ' ' + className : '')}
       ref={wrap}
       onPointerEnter={(e) => e.pointerType === 'mouse' && show()}
-      onPointerLeave={(e) => e.pointerType === 'mouse' && hideSoon()}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && hide()}
     >
       <button
         className={'hpop-btn' + (btnClass ? ' ' + btnClass : '')}
