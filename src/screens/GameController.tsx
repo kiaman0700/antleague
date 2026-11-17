@@ -1489,8 +1489,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   <div className="tug-mid" />
                 </div>
                 <span className="tug-ends" aria-hidden>
-                  <i>{myRank === 1 ? '1위' : '2위'}</i>
-                  <i>{myRank === 1 ? '2위' : '1위'}</i>
+                  <i>{tiedFirst ? '공동 1위' : myRank === 1 ? '1위' : '2위'}</i>
+                  <i>{tiedFirst ? '공동 1위' : myRank === 1 ? '2위' : '1위'}</i>
                 </span>
               </div>
               <div className="score-opp">
