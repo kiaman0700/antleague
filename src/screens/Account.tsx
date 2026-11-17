@@ -470,7 +470,6 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           ) : (
             <div className="me-name-row">
               <b className="me-nick">{p.nickname}</b>
-              <Icon name="check" size={15} className="verified" />
               <button className="me-nick-btn" onClick={() => (setEditNick(true), setNick(p.nickname))} aria-label="닉네임 바꾸기" title="닉네임 바꾸기">
                 <Icon name="edit" size={13} />
               </button>
