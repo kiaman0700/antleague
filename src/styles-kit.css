@@ -876,3 +876,8 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 }
 .more-page .more-me { padding: 10px 12px; margin: 0 -12px; width: calc(100% + 24px); }
 .more-page .more-me .mr-t b { font-size: 16px; }
+
+/* 사진만 보이는 프로필 버튼(좁은 화면 위 머리줄)은 사진에 맞춘 동그라미 */
+.acc-chip.compact { width: 40px; height: 40px; padding: 4px !important; justify-content: center; border-radius: 50%; gap: 0; }
+.acc-chip.compact .acc-av { width: 30px; height: 30px; }
+.acc-chip.compact .acc-txt { display: none; }

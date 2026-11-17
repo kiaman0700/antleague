@@ -10,6 +10,7 @@ import { useDialogFocus } from './ui';
 import { TierBadge, tierText } from './TierBadge';
 import { HoverPop } from './HoverPop';
 import { LevelMeter } from './Missions';
+import { BADGE_MAP } from '../game/achievements';
 import type { MyProfile } from '../net/account';
 import { Avatar } from './Avatar';
 import { api } from '../net/api';
@@ -164,7 +165,7 @@ function ProfileCard({ p, onProfile }: { p: MyProfile; onProfile: () => void }) 
         <Avatar id={p.avatar} name={p.nickname} size={52} className="pfc-av" />
         <span className="pfc-name">
           <b>{p.nickname}</b>
-          <small className="muted">{p.title ?? '칭호 없음'}</small>
+          <small className="muted">{(p.title && BADGE_MAP[p.title]?.name) || '칭호 없음'}</small>
         </span>
       </div>
       <div className="pfc-row">
