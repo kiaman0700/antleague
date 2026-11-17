@@ -508,6 +508,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     const s = newSolo(nick() || '나', days, daySec, true, bots);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
+  // 연습 메뉴 '오늘의 도전' 칸: 오늘 했는지·순위 (로그인 전이면 서버에 안 물음)
+  const dailyTile = useDailyInfo(online && tab === 'practice').info;
   const head = TAB_HEAD[tab];
   // 처음 온 사람에게 튜토리얼 권하기 (한 번 닫거나 해 보면 다시 안 나옴)
   const [nudge, setNudge] = useState(() => !tutorialSeen());
@@ -742,7 +744,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
-              <small>모두 같은 시장, 하루 한 번</small>
+              <small>{dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
