@@ -42,7 +42,12 @@ async function playBotGame(U, trade = true) {
     if (!r?.roomId) break;
     await U({ action: 'leave', roomId: r.roomId });
   }
-  const bm = await U({ action: 'botMatch', levels: [1], totalDays: 10, turnSeconds: 60, nickname: '미션', mode: 'easy' });
+  // 앞 판에서 상태 요청을 많이 보내 계정당 요청 제한(429)에 걸리면 잠깐 쉬고 다시 (서버 동작은 맞음)
+  let bm = await U({ action: 'botMatch', levels: [1], totalDays: 10, turnSeconds: 60, nickname: '미션', mode: 'easy' });
+  for (let i = 0; i < 4 && bm.s === 429; i++) {
+    await new Promise((r) => setTimeout(r, 20_000));
+    bm = await U({ action: 'botMatch', levels: [1], totalDays: 10, turnSeconds: 60, nickname: '미션', mode: 'easy' });
+  }
   if (bm.s !== 200) throw new Error('botMatch ' + JSON.stringify(bm.b));
   const roomId = bm.b.roomId;
   // (v14) 첫날 장 전 시간 → 준비 완료로 바로 장을 엶 (사람은 나 혼자)
