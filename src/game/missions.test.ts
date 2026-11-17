@@ -194,3 +194,20 @@ describe('판 경험치 (설계서 design/game-xp.md)', () => {
     expect(capXp(70, 500)).toBe(70);
   });
 });
+
+describe('미션 50·30가지', () => {
+  it('일일 50 · 주간 30, 등급별 칸을 채울 만큼 있음', () => {
+    expect(MISSIONS.filter((m) => m.scope === 'day')).toHaveLength(50);
+    expect(MISSIONS.filter((m) => m.scope === 'week')).toHaveLength(30);
+    expect(MISSIONS.filter((m) => m.scope === 'day' && m.tier === 'easy').length).toBeGreaterThanOrEqual(3);
+    expect(MISSIONS.filter((m) => m.scope === 'week' && m.tier === 'hard').length).toBeGreaterThanOrEqual(2);
+  });
+  it('모든 미션은 그 게임 종류에서 깰 수 있는 조건이 있음 (판정이 비어 있지 않음)', () => {
+    const rich = (kind: string, players: number): MissionGame =>
+      game({ kind, players, rank: 1, won: true, ranked: true, ret: 0.25, trades: 120, botLevels: [2, 3], detectorUses: 3, cardUses: 12, filledOrders: 1, boughtBreaking: true, boughtRumorSector: true, boughtKr: true, boughtUs: true, boughtEtf: true, indexRet: 0, sells: 10, profitSells: 40, symbolsBought: 6, sectorsBought: ['bio', 'semi', 'it', 'auto', 'battery'], usBuys: 6, bioBuys: 6, boughtLev: true, boughtInverse: true, usedKinds: ['bonus', 'analyst', 'scout', 'paper', 'fee', 'detector'], endedCash: true, maxHoldDays: 9, dividends: 100, days: 10 });
+    for (const m of MISSIONS) {
+      const ok = ['match', 'bot', 'daily', 'custom'].some((k) => [2, 4].some((n) => missionGain(m.id, rich(k, n)) > 0));
+      expect(ok, m.id).toBe(true);
+    }
+  });
+});

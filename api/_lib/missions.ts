@@ -6,7 +6,7 @@
  */
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { finalResults, GameError, marketFor, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
+import { finalResults, GameError, marketFor, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
 import { BADGE_XP, DAILY_XP_CAP, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
 import { KR_INDEX_BASE } from '../../src/game/market.js';
 import { preRumors } from '../../src/game/rumors.js';
@@ -191,6 +191,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
         (d.room.version ?? 1) >= PREMARKET_VERSION &&
         trades.some((t) => t.side === 'buy' && preRumors(m, t.day, d.room.salt ?? String(d.room.seed)).some((r) => r.sector === STOCK_MAP[t.symbol]?.sector)),
       indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
+      ...gameExtras(d, p.id, trades, uses.map((i) => i.kind)),
     };
     const ms = await missionsForUser(sb, uid, now);
     // 오늘 첫 승은 예전과 같은 날짜 열쇠 (미션 2판으로 기간 이름이 바뀌어도 하루 한 번)
@@ -265,3 +266,47 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   };
 }
 export type MissionState = Awaited<ReturnType<typeof missionState>>;
+
+/** 미션 50·30가지 판정 재료 (서버 데이터로만): 매도·수익 매도·산 종목/업종 수·미국/바이오 매수·레버리지/인버스·쓴 카드·현금 마감·가장 오래 든 날·배당 */
+function gameExtras(d: GameData, playerId: string, trades: GameData['trades'], usedKinds: string[]) {
+  const pf = portfolioOf(d, playerId);
+  const buys = trades.filter((t) => t.side === 'buy');
+  const def = (s: string) => STOCK_MAP[s];
+  // 종목마다 들고 있던 날 수 (사서 다 팔 때까지, 끝까지 들고 있으면 마지막 날까지)
+  let maxHoldDays = 0;
+  const bySym = new Map<string, GameData['trades']>();
+  for (const t of [...trades].sort((a, b) => a.day - b.day)) bySym.set(t.symbol, [...(bySym.get(t.symbol) ?? []), t]);
+  for (const list of bySym.values()) {
+    let qty = 0;
+    let since = -1;
+    for (const t of list) {
+      if (t.side === 'buy') {
+        if (qty === 0) since = t.day;
+        qty += t.qty;
+      } else {
+        qty -= t.qty;
+        if (qty <= 0 && since >= 0) {
+          maxHoldDays = Math.max(maxHoldDays, t.day - since);
+          qty = 0;
+          since = -1;
+        }
+      }
+    }
+    if (qty > 0 && since >= 0) maxHoldDays = Math.max(maxHoldDays, d.room.total_days - 1 - since);
+  }
+  return {
+    sells: trades.filter((t) => t.side === 'sell').length,
+    profitSells: pf.closed.filter((c) => c.pnl > 0).length,
+    symbolsBought: new Set(buys.map((t) => t.symbol)).size,
+    sectorsBought: [...new Set(buys.map((t) => def(t.symbol)?.sector).filter((x): x is string => !!x))],
+    usBuys: buys.filter((t) => def(t.symbol)?.currency === 'USD').length,
+    bioBuys: buys.filter((t) => def(t.symbol)?.sector === 'bio').length,
+    boughtLev: buys.some((t) => (def(t.symbol)?.etf?.lev ?? 1) > 1),
+    boughtInverse: buys.some((t) => (def(t.symbol)?.etf?.lev ?? 1) < 0),
+    usedKinds: [...new Set(usedKinds)],
+    endedCash: Object.keys(pf.holdings).length === 0,
+    maxHoldDays,
+    dividends: pf.dividendLog.reduce((s, x) => s + x.amount, 0),
+    days: d.room.total_days,
+  };
+}

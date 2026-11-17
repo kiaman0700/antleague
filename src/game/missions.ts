@@ -24,7 +24,7 @@ export interface MissionDef {
 }
 
 export const MISSIONS: MissionDef[] = [
-  // ---- 일일 · 쉬움 ----
+  // ---- 일일 · 쉬움 (25) ----
   { id: 'finish1', title: '대결 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: VERSUS },
   { id: 'detector', title: '루머 감별기 1번 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'order', title: '예약 주문 1번 체결시키기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
@@ -37,7 +37,20 @@ export const MISSIONS: MissionDef[] = [
   { id: 'rumorbuy', title: '찌라시에 나온 업종 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'krus', title: '한 판에서 국내·미국 종목 둘 다 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'etf1', title: 'ETF 사 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
-  // ---- 일일 · 보통 ----
+  { id: 'sell3', title: '한 판에서 3번 넘게 팔기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'sym3', title: '한 판에서 서로 다른 종목 3개 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'sector3', title: '한 판에서 업종 3곳의 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'us1', title: '미국 종목 사 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'card1', title: '찬스 카드 1장 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'bonus1', title: '용돈 봉투 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'analyst1', title: '애널리스트 콜 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'scout1', title: '차트 분석 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'bio1', title: '바이오 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'semi1', title: '반도체 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'profit1', title: '수익을 내고 팔기 1번', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'allcash', title: '거래하고 마지막 날 전부 현금으로 마감', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'hold2', title: '한 종목을 2일 넘게 들고 있기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  // ---- 일일 · 보통 (25) ----
   { id: 'ret3', title: '수익률 +3% 넘게 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
   { id: 'beatbot', title: '보통 이상 봇 이기기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['bot'] },
   { id: 'top3', title: '4명 이상 판에서 3위 안', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['match', 'custom'] },
@@ -46,18 +59,55 @@ export const MISSIONS: MissionDef[] = [
   { id: 'beatidx', title: '종합지수보다 높은 수익률로 마감', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
   { id: 'dailyplus', title: '오늘의 도전 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['daily'] },
   { id: 'customwin', title: '커스텀 방에서 1위', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['custom'] },
-  // ---- 주간 · 보통 ----
+  { id: 'ret5', title: '수익률 +5% 넘게 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
+  { id: 'profit3', title: '한 판에서 수익을 내고 3번 팔기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'trade15', title: '한 판에서 15번 넘게 거래하기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'levplus', title: '레버리지 ETF를 사고 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
+  { id: 'invplus', title: '인버스 ETF를 사고 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
+  { id: 'sector5', title: '한 판에서 업종 5곳의 종목 사기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'attack1', title: '방해 카드 1장 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: VERSUS },
+  { id: 'paper1', title: '내일 신문 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'duelwin', title: '1대1에서 이기기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: VERSUS },
+  { id: 'steady', title: '거래 10번 넘게 하고 손해 없이 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
+  { id: 'hold5', title: '한 종목을 5일 넘게 들고 있기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'dividend', title: '배당금 받기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'top2', title: '3명 이상 판에서 2위 안', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['match', 'bot', 'custom'] },
+  { id: 'bots2', title: '봇 2명 이상인 봇전에서 1위', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['bot'] },
+  { id: 'daily3', title: '오늘의 도전 +3% 넘게 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['daily'] },
+  { id: 'ranked1', title: '랭킹전 1판 끝까지 하기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['match'] },
+  { id: 'fastwin', title: '10일짜리 판에서 1위', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: VERSUS },
+  // ---- 주간 · 보통 (12) ----
   { id: 'w_finish5', title: '대결 5판 끝까지 하기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: VERSUS },
   { id: 'w_bot3', title: '봇전 3판 이기기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['bot'] },
   { id: 'w_daily3', title: '오늘의 도전 3번 하기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['daily'] },
   { id: 'w_trade30', title: '거래 30번 하기', tier: 'normal', xp: 120, goal: 30, scope: 'week', modes: ALL },
-  // ---- 주간 · 어려움 ----
+  { id: 'w_profit10', title: '수익을 내고 팔기 10번', tier: 'normal', xp: 120, goal: 10, scope: 'week', modes: ALL },
+  { id: 'w_cards5', title: '찬스 카드 5장 쓰기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ALL },
+  { id: 'w_match5', title: '일반전·랭킹전 5판 끝까지 하기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ['match'] },
+  { id: 'w_custom3', title: '커스텀 방에서 3판 끝까지 하기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['custom'] },
+  { id: 'w_bio5', title: '바이오 종목 5번 사기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ALL },
+  { id: 'w_us5', title: '미국 종목 5번 사기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ALL },
+  { id: 'w_detector3', title: '루머 감별기 3번 쓰기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ALL },
+  { id: 'w_plus3', title: '플러스로 3판 마감', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ALL },
+  // ---- 주간 · 어려움 (18) ----
   { id: 'win3', title: '일반전·랭킹전 3판 이기기', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['match'] },
   { id: 'beathard', title: '고수봇이 있는 판에서 1위', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ['bot', 'custom'] },
   { id: 'ret10', title: '수익률 +10% 넘게 마감', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ALL },
   { id: 'w_ranked2', title: '랭킹전 2판 이기기', tier: 'hard', xp: 200, goal: 2, scope: 'week', modes: ['match'] },
   { id: 'w_multi1', title: '3명 이상 판에서 1위', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ['match', 'custom'] },
-  { id: 'w_custom3', title: '커스텀 방에서 3판 끝까지 하기', tier: 'hard', xp: 150, goal: 3, scope: 'week', modes: ['custom'] },
+  { id: 'w_win5', title: '대결 5판 이기기', tier: 'hard', xp: 200, goal: 5, scope: 'week', modes: VERSUS },
+  { id: 'w_ret20', title: '수익률 +20% 넘게 마감', tier: 'hard', xp: 200, goal: 1, scope: 'week', modes: ALL },
+  { id: 'w_hard3', title: '고수봇을 3번 이기기', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['bot', 'custom'] },
+  { id: 'w_daily5', title: '오늘의 도전 5번 하기', tier: 'hard', xp: 150, goal: 5, scope: 'week', modes: ['daily'] },
+  { id: 'w_multi3', title: '3명 이상 판에서 3번 1위', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['match', 'bot', 'custom'] },
+  { id: 'w_ranked5', title: '랭킹전 5판 끝까지 하기', tier: 'hard', xp: 150, goal: 5, scope: 'week', modes: ['match'] },
+  { id: 'w_beatidx5', title: '종합지수보다 높게 5판 마감', tier: 'hard', xp: 150, goal: 5, scope: 'week', modes: ALL },
+  { id: 'w_profit30', title: '수익을 내고 팔기 30번', tier: 'hard', xp: 150, goal: 30, scope: 'week', modes: ALL },
+  { id: 'w_trade100', title: '거래 100번 하기', tier: 'hard', xp: 150, goal: 100, scope: 'week', modes: ALL },
+  { id: 'w_duel5', title: '1대1에서 5번 이기기', tier: 'hard', xp: 200, goal: 5, scope: 'week', modes: VERSUS },
+  { id: 'w_customwin3', title: '커스텀 방에서 3번 1위', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['custom'] },
+  { id: 'w_cards12', title: '찬스 카드 12장 쓰기', tier: 'hard', xp: 150, goal: 12, scope: 'week', modes: ALL },
+  { id: 'w_hold7', title: '한 종목을 7일 넘게 들고 있기', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ALL },
 ];
 export const MISSION_MAP: Record<string, MissionDef> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 /** 하루에 일일 미션으로 받을 수 있는 경험치 상한 (짜고 치기 막기) — 주간 미션은 따로 */
@@ -145,6 +195,20 @@ export interface MissionGame {
   boughtRumorSector?: boolean;
   /** 종합지수 수익률 */
   indexRet?: number;
+  /** (50·30가지) 판 기록 */
+  sells?: number;
+  profitSells?: number;
+  symbolsBought?: number;
+  sectorsBought?: string[];
+  usBuys?: number;
+  bioBuys?: number;
+  boughtLev?: boolean;
+  boughtInverse?: boolean;
+  usedKinds?: string[];
+  endedCash?: boolean;
+  maxHoldDays?: number;
+  dividends?: number;
+  days?: number;
 }
 /** 판 종류 → 미션 모드 (친구 1대1은 커스텀) */
 export const modeOf = (kind: string): MissionMode => (kind === 'match' || kind === 'bot' || kind === 'daily' ? kind : 'custom');
@@ -207,6 +271,105 @@ export function missionGain(id: string, g: MissionGame): number {
       return g.ranked && g.won ? 1 : 0;
     case 'w_multi1':
       return g.players >= 3 && g.won ? 1 : 0;
+    // ---- 50·30가지로 늘린 것 ----
+    case 'sell3':
+      return (g.sells ?? 0) > 3 ? 1 : 0;
+    case 'sym3':
+      return (g.symbolsBought ?? 0) >= 3 ? 1 : 0;
+    case 'sector3':
+      return (g.sectorsBought?.length ?? 0) >= 3 ? 1 : 0;
+    case 'sector5':
+      return (g.sectorsBought?.length ?? 0) >= 5 ? 1 : 0;
+    case 'us1':
+      return g.boughtUs ? 1 : 0;
+    case 'card1':
+      return g.cardUses >= 1 ? 1 : 0;
+    case 'bonus1':
+      return g.usedKinds?.includes('bonus') ? 1 : 0;
+    case 'analyst1':
+      return g.usedKinds?.includes('analyst') ? 1 : 0;
+    case 'scout1':
+      return g.usedKinds?.includes('scout') ? 1 : 0;
+    case 'paper1':
+      return g.usedKinds?.includes('paper') ? 1 : 0;
+    case 'attack1':
+      return g.usedKinds?.some((k) => ['freeze', 'blackout', 'fake', 'fee'].includes(k)) ? 1 : 0;
+    case 'bio1':
+      return g.sectorsBought?.includes('bio') ? 1 : 0;
+    case 'semi1':
+      return g.sectorsBought?.includes('semi') ? 1 : 0;
+    case 'profit1':
+      return (g.profitSells ?? 0) >= 1 ? 1 : 0;
+    case 'profit3':
+      return (g.profitSells ?? 0) >= 3 ? 1 : 0;
+    case 'allcash':
+      return g.trades > 0 && g.endedCash ? 1 : 0;
+    case 'hold2':
+      return (g.maxHoldDays ?? 0) > 2 ? 1 : 0;
+    case 'hold5':
+      return (g.maxHoldDays ?? 0) > 5 ? 1 : 0;
+    case 'w_hold7':
+      return (g.maxHoldDays ?? 0) > 7 ? 1 : 0;
+    case 'ret5':
+      return g.trades > 0 && g.ret >= 0.05 ? 1 : 0;
+    case 'trade15':
+      return g.trades > 15 ? 1 : 0;
+    case 'levplus':
+      return g.boughtLev && g.ret > 0 ? 1 : 0;
+    case 'invplus':
+      return g.boughtInverse && g.ret > 0 ? 1 : 0;
+    case 'duelwin':
+      return g.players === 2 && g.won ? 1 : 0;
+    case 'steady':
+      return g.trades > 10 && g.ret >= 0 ? 1 : 0;
+    case 'dividend':
+      return (g.dividends ?? 0) > 0 ? 1 : 0;
+    case 'top2':
+      return g.players >= 3 && g.rank <= 2 ? 1 : 0;
+    case 'bots2':
+      return g.botLevels.length >= 2 && g.won ? 1 : 0;
+    case 'daily3':
+      return g.trades > 0 && g.ret >= 0.03 ? 1 : 0;
+    case 'ranked1':
+      return g.ranked ? 1 : 0;
+    case 'fastwin':
+      return g.days === 10 && g.won && g.players >= 2 ? 1 : 0;
+    case 'w_profit10':
+    case 'w_profit30':
+      return g.profitSells ?? 0;
+    case 'w_cards5':
+    case 'w_cards12':
+      return g.cardUses;
+    case 'w_match5':
+      return 1;
+    case 'w_bio5':
+      return g.bioBuys ?? 0;
+    case 'w_us5':
+      return g.usBuys ?? 0;
+    case 'w_detector3':
+      return g.detectorUses;
+    case 'w_plus3':
+      return g.trades > 0 && g.ret > 0 ? 1 : 0;
+    case 'w_win5':
+      return g.won && g.players >= 2 ? 1 : 0;
+    case 'w_ret20':
+      return g.trades > 0 && g.ret >= 0.2 ? 1 : 0;
+    case 'w_hard3':
+      return g.won && g.botLevels.includes(3) ? 1 : 0;
+    case 'w_daily5':
+      return 1;
+    case 'w_multi3':
+      return g.players >= 3 && g.won ? 1 : 0;
+    case 'w_ranked5':
+      return g.ranked ? 1 : 0;
+    case 'w_beatidx5':
+      return g.trades > 0 && g.indexRet !== undefined && g.ret > g.indexRet ? 1 : 0;
+    case 'w_trade100':
+      return g.trades;
+    case 'w_duel5':
+      return g.players === 2 && g.won ? 1 : 0;
+    case 'w_customwin3':
+      return g.won && g.players >= 2 ? 1 : 0;
     default:
       return 0;
   }
