@@ -6,10 +6,11 @@
  */
 export interface AvatarLook {
   char: 'ant';
-  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo';
+  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap';
   face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses';
-  /** 오른쪽 아래 스티커: components/Icon 이름 또는 'badge:업적id' */
-  sticker?: string;
+  outfit?: 'suit' | 'cape' | 'medal' | 'robe';
+  prop?: 'trophy' | 'moneybag' | 'globe' | 'hourglass' | 'cards' | 'diamond' | 'target' | 'shield' | 'robot' | 'newspaper' | 'umbrella' | 'rocket' | 'phone';
+  back?: 'rays' | 'chartUp' | 'chartV' | 'chartDown' | 'coins' | 'sparkles' | 'flames' | 'phoenix' | 'rain' | 'confetti' | 'zen' | 'cross' | 'globe' | 'clock' | 'news' | 'circuit';
 }
 export interface AvatarDef {
   id: string;
@@ -20,41 +21,41 @@ export interface AvatarDef {
   need: string | null;
 }
 
-const ant = (hat?: AvatarLook['hat'], face: AvatarLook['face'] = 'happy', sticker?: string): AvatarLook => ({ char: 'ant', hat, face, sticker });
+const ant = (l: Omit<AvatarLook, 'char'> = {}): AvatarLook => ({ char: 'ant', face: 'happy', ...l });
 
 export const AVATARS: AvatarDef[] = [
   { id: 'default', name: '새내기 개미', look: ant(), bg: '#6b58ee', need: null },
-  { id: 'antred', name: '열혈 개미', look: ant(undefined, 'brave'), bg: '#d9364b', need: null },
-  { id: 'antblue', name: '분석 개미', look: ant(undefined, 'glasses'), bg: '#2563eb', need: null },
-  // 업적으로 열리는 사진 (개미가 업적을 입음)
-  { id: 'trophy', name: '투자왕', look: ant('crown', 'happy', 'trophy'), bg: '#c98a1a', need: 'winner' },
-  { id: 'trend', name: '시장을 이긴 자', look: ant(undefined, 'cool', 'trend'), bg: '#1f8a5b', need: 'beat_market' },
-  { id: 'bank', name: '배당 부자', look: ant(undefined, 'happy', 'bank'), bg: '#a67c1d', need: 'dividend' },
-  { id: 'earth', name: '글로벌 투자자', look: ant(undefined, 'wink', 'badge:global'), bg: '#1f7a8c', need: 'global' },
-  { id: 'clock', name: '예약의 달인', look: ant(undefined, 'wink', 'hourglass'), bg: '#6a4fc9', need: 'limit_order' },
-  { id: 'cards', name: '카드 마스터', look: ant(undefined, 'cool', 'cards'), bg: '#b0405f', need: 'card_master' },
-  { id: 'bolt', name: '단타왕', look: ant('headband', 'happy', 'flame'), bg: '#c0562a', need: 'trader' },
-  { id: 'gem', name: '다이아몬드 핸드', look: ant(undefined, 'star', 'badge:diamond'), bg: '#2f7fb8', need: 'diamond' },
-  { id: 'aim', name: '저점 매수의 신', look: ant(undefined, 'wink', 'target'), bg: '#a33a3a', need: 'bottom' },
-  { id: 'shield2', name: '철벽 방어', look: ant('headband', 'cool', 'badge:shield'), bg: '#3e7a52', need: 'shield' },
-  { id: 'bear', name: '폭락장의 승자', look: ant(undefined, 'cool', 'down'), bg: '#3a4a8a', need: 'crash_winner' },
-  { id: 'rocket', name: '상한가 사냥꾼', look: ant(undefined, 'star', 'up'), bg: '#d9364b', need: 'limit_up' },
-  { id: 'zen2', name: '존버의 미학', look: ant(undefined, 'zen', 'badge:zen'), bg: '#2f8a74', need: 'zen' },
-  { id: 'phoenix', name: '대역전극', look: ant('headband', 'star', 'badge:comeback'), bg: '#d0702a', need: 'comeback' },
-  { id: 'jackpot', name: '한 방', look: ant(undefined, 'star', 'sparkles'), bg: '#8a3fc0', need: 'big_win' },
-  { id: 'botslayer', name: '고수봇 사냥꾼', look: ant('headband', 'cool', 'badge:bot_slayer'), bg: '#4a5a7a', need: 'bot_slayer' },
-  { id: 'moneybag', name: '대박', look: ant(undefined, 'star', 'badge:ret30'), bg: '#2f8a45', need: 'ret30' },
-  { id: 'streak', name: '연전연승', look: ant('headband', 'happy', 'badge:streak7'), bg: '#c0452a', need: 'streak7' },
-  { id: 'ice', name: '무결점', look: ant('halo', 'zen', 'badge:flawless'), bg: '#4a90b0', need: 'flawless' },
-  { id: 'king', name: '다인전의 왕', look: ant('bigCrown', 'cool', 'badge:multi_win'), bg: '#b8862a', need: 'multi_win' },
-  { id: 'scoop', name: '사건 해결사', look: ant(undefined, 'wink', 'badge:news_jump'), bg: '#7a4ab0', need: 'news_jump' },
-  { id: 'umbrella', name: '하락장 생존자', look: ant(undefined, 'happy', 'badge:bear_proof'), bg: '#3a7a7a', need: 'bear_proof' },
-  { id: 'sniper', name: '명중', look: ant(undefined, 'wink', 'badge:sniper'), bg: '#7a2f2f', need: 'sniper' },
+  { id: 'antred', name: '열혈 개미', look: ant({ face: 'brave', back: 'chartUp' }), bg: '#d9364b', need: null },
+  { id: 'antblue', name: '분석 개미', look: ant({ face: 'glasses', outfit: 'suit', back: 'chartV' }), bg: '#2563eb', need: null },
+  // 업적으로 열리는 사진 — 개미가 업적을 입고 들고 있음
+  { id: 'trophy', name: '투자왕', look: ant({ hat: 'crown', outfit: 'suit', prop: 'trophy', back: 'rays' }), bg: '#c98a1a', need: 'winner' },
+  { id: 'trend', name: '시장을 이긴 자', look: ant({ face: 'cool', outfit: 'suit', prop: 'phone', back: 'chartUp' }), bg: '#1f8a5b', need: 'beat_market' },
+  { id: 'bank', name: '배당 부자', look: ant({ outfit: 'suit', prop: 'moneybag', back: 'coins' }), bg: '#a67c1d', need: 'dividend' },
+  { id: 'earth', name: '글로벌 투자자', look: ant({ face: 'wink', prop: 'globe', back: 'globe' }), bg: '#1f7a8c', need: 'global' },
+  { id: 'clock', name: '예약의 달인', look: ant({ face: 'glasses', prop: 'hourglass', back: 'clock' }), bg: '#6a4fc9', need: 'limit_order' },
+  { id: 'cards', name: '카드 마스터', look: ant({ face: 'wink', hat: 'tophat', outfit: 'suit', prop: 'cards', back: 'sparkles' }), bg: '#b0405f', need: 'card_master' },
+  { id: 'bolt', name: '단타왕', look: ant({ face: 'brave', hat: 'headband', prop: 'phone', back: 'flames' }), bg: '#c0562a', need: 'trader' },
+  { id: 'gem', name: '다이아몬드 핸드', look: ant({ face: 'star', prop: 'diamond', back: 'sparkles' }), bg: '#2f7fb8', need: 'diamond' },
+  { id: 'aim', name: '저점 매수의 신', look: ant({ face: 'wink', prop: 'target', back: 'chartV' }), bg: '#a33a3a', need: 'bottom' },
+  { id: 'shield2', name: '철벽 방어', look: ant({ face: 'brave', hat: 'helmet', prop: 'shield' }), bg: '#3e7a52', need: 'shield' },
+  { id: 'bear', name: '폭락장의 승자', look: ant({ face: 'cool', outfit: 'suit', back: 'chartDown' }), bg: '#3a4a8a', need: 'crash_winner' },
+  { id: 'rocket', name: '상한가 사냥꾼', look: ant({ face: 'star', prop: 'rocket', back: 'chartUp' }), bg: '#d9364b', need: 'limit_up' },
+  { id: 'zen2', name: '존버의 미학', look: ant({ face: 'zen', outfit: 'robe', back: 'zen' }), bg: '#2f8a74', need: 'zen' },
+  { id: 'phoenix', name: '대역전극', look: ant({ face: 'brave', back: 'phoenix' }), bg: '#b0461f', need: 'comeback' },
+  { id: 'jackpot', name: '한 방', look: ant({ face: 'star', prop: 'moneybag', back: 'confetti' }), bg: '#8a3fc0', need: 'big_win' },
+  { id: 'botslayer', name: '고수봇 사냥꾼', look: ant({ face: 'cool', hat: 'headband', prop: 'robot', back: 'circuit' }), bg: '#4a5a7a', need: 'bot_slayer' },
+  { id: 'moneybag', name: '대박', look: ant({ face: 'star', outfit: 'suit', prop: 'moneybag', back: 'confetti' }), bg: '#2f8a45', need: 'ret30' },
+  { id: 'streak', name: '연전연승', look: ant({ face: 'brave', hat: 'headband', outfit: 'medal', back: 'flames' }), bg: '#c0452a', need: 'streak7' },
+  { id: 'ice', name: '무결점', look: ant({ face: 'zen', hat: 'halo', back: 'sparkles' }), bg: '#4a90b0', need: 'flawless' },
+  { id: 'king', name: '다인전의 왕', look: ant({ face: 'cool', hat: 'bigCrown', outfit: 'cape', back: 'rays' }), bg: '#b8862a', need: 'multi_win' },
+  { id: 'scoop', name: '사건 해결사', look: ant({ face: 'wink', hat: 'newsCap', prop: 'newspaper', back: 'news' }), bg: '#7a4ab0', need: 'news_jump' },
+  { id: 'umbrella', name: '하락장 생존자', look: ant({ prop: 'umbrella', back: 'rain' }), bg: '#3a7a7a', need: 'bear_proof' },
+  { id: 'sniper', name: '명중', look: ant({ face: 'wink', prop: 'target', back: 'cross' }), bg: '#7a2f2f', need: 'sniper' },
   // 레벨 (경험치) — 개미가 자라남
-  { id: 'sprout', name: '새싹 개미', look: ant('sprout'), bg: '#4a9a3a', need: 'lv5' },
-  { id: 'star', name: '꽃핀 개미', look: ant('flower'), bg: '#c9a020', need: 'lv10' },
-  { id: 'medal2', name: '베테랑 개미', look: ant('silverCrown', 'cool'), bg: '#5a6f8f', need: 'lv15' },
-  { id: 'legend', name: '개미 전설', look: ant('bigCrown', 'star'), bg: '#8a2f6b', need: 'lv20' },
+  { id: 'sprout', name: '새싹 개미', look: ant({ hat: 'sprout' }), bg: '#4a9a3a', need: 'lv5' },
+  { id: 'star', name: '꽃핀 개미', look: ant({ hat: 'flower', back: 'sparkles' }), bg: '#c9a020', need: 'lv10' },
+  { id: 'medal2', name: '베테랑 개미', look: ant({ face: 'cool', hat: 'silverCrown', outfit: 'medal' }), bg: '#5a6f8f', need: 'lv15' },
+  { id: 'legend', name: '개미 전설', look: ant({ face: 'star', hat: 'bigCrown', outfit: 'cape', back: 'rays' }), bg: '#8a2f6b', need: 'lv20' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));
 export const avatarOf = (id: string | null | undefined) => (id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default);
