@@ -1,4 +1,4 @@
-// 장 마감 규칙: 카운트다운(1대1 90초, 3인 이상 ⅔ 마감 시 30초) · 마감 취소 · 누가 마감했는지
+// 장 마감 규칙: 카운트다운(하루 길이에 맞춤 — 1대1 하루의 ⅓(20~90초), 3인 이상 ⅔ 마감 시 하루의 ⅙(10~30초)) · 마감 취소 · 누가 마감했는지
 import { user, ok, done } from './lib.mjs';
 
 async function room(players, turnSeconds) {
@@ -31,7 +31,7 @@ else console.log('ℹ️ 10분 방을 만들 수 없음 — supabase/005_turn_ti
   ok('3분 방: 시작하면 약 3분', full >= 175 && full <= 183, `남은 ${full}초`);
   await A({ action: 'endTurn', roomId });
   s = await state();
-  ok('1대1: 한 명이 마감하면 90초 카운트다운', secsLeft(s) >= 85 && secsLeft(s) <= 90, `남은 ${secsLeft(s)}초`);
+  ok('1대1(하루 3분): 한 명이 마감하면 60초 카운트다운', secsLeft(s) >= 55 && secsLeft(s) <= 60, `남은 ${secsLeft(s)}초`);
   const migrated = s.room.countdown === true;
   if (!migrated) console.log('ℹ️ 카운트다운 표시·시간 복구는 005 마이그레이션 후 동작해요');
   ok('누가 마감했는지 보임', s.players.find((p) => p.nickname === 'P0').endedDay === 0 && s.players.find((p) => p.nickname === 'P1').endedDay === -1);

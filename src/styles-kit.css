@@ -473,3 +473,95 @@ body { background: var(--bg) !important; }
 .hub-quick .hq-btn small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 400px) { .hub-quick .hq-row { grid-template-columns: 1fr; } }
 .page.ranking .daily-rank { margin-top: 14px; }
+
+/* ===== 장 전 찌라시 = 메신저로 돌아다니는 '받은 글' (2026-11-17 다시 만듦) =====
+   업종이 보낸 사람처럼, 소문은 말풍선, 감별 결과는 도장 */
+.rumor-board { margin-bottom: 12px; padding: 12px 12px 6px; border-radius: 16px; background: #1f1c14; border: 1px solid rgba(245, 184, 61, 0.28); }
+.rumor-board.live { border-color: rgba(245, 184, 61, 0.6); }
+.rumor-board .rb-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.rumor-board .rb-head b { font-size: 15px; font-weight: 800; color: #f5b83d; }
+.rumor-board .rb-head small { flex-basis: 100%; font-size: 12px; }
+.rumor-board .rb-live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #1a1406; background: #f5b83d; border-radius: 99px; padding: 2px 9px 2px 7px; }
+.rumor-board .rb-live i { width: 7px; height: 7px; border-radius: 50%; background: #1a1406; animation: rbBlink 1.2s ease-in-out infinite; }
+@keyframes rbBlink { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .rumor-board .rb-live i { animation: none; } }
+.rb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rb-msg { position: relative; display: grid; gap: 4px; }
+.rb-who { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 0; border: 0; background: none; color: var(--text-2); font-size: 12px; cursor: pointer; }
+.rb-who:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.rb-ico { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); color: var(--text); }
+.rb-ico svg { width: 13px; height: 13px; }
+.rb-who b { font-weight: 700; color: var(--text); }
+.rb-dir { font-weight: 700; font-size: 11px; padding: 1px 6px; border-radius: 6px; }
+.rb-dir.good { color: #ff6b7d; background: rgba(255, 107, 125, 0.12); }
+.rb-dir.bad { color: #7fb0ff; background: rgba(127, 176, 255, 0.12); }
+.rb-bubble { margin: 0 0 0 28px; padding: 9px 12px; border-radius: 4px 14px 14px 14px; background: var(--surface-3); color: var(--text); font-size: 14px; line-height: 1.5; word-break: keep-all; }
+.rb-msg.v-false .rb-bubble { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.35); }
+.rb-stamp { position: absolute; right: 6px; bottom: -6px; transform: rotate(-6deg); font-style: normal; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 6px; border: 2px solid currentColor; background: #1f1c14; }
+.rb-stamp.true { color: #34d399; }
+.rb-stamp.false { color: #9a9a9a; }
+.rb-msg.v-true .rb-bubble, .rb-msg.v-false .rb-bubble { padding-bottom: 16px; }
+
+/* ===== 화면 편집기 (2026-11-17) =====
+   1) 이름표는 칸 테두리 위에 걸쳐 띄움 — 편집 중에도 칸 사이 간격이 실제 화면과 같게 (예전엔 이름표 줄이 34px 씩 자리를 차지)
+   2) 편집 막대는 창(옵션·시트)보다 아래 층, 휴대폰에선 한 줄로 작게 */
+.edit-slot { margin-top: 0 !important; }
+.edit-slot > .es-bar { top: -12px !important; left: auto !important; right: 8px; padding: 0 2px 0 8px !important; height: 24px; opacity: 0.96; }
+.edit-slot > .es-bar .es-btn { width: 22px !important; height: 22px !important; }
+.edit-bar { z-index: 40 !important; }
+@media (max-width: 860px) {
+  .edit-bar { padding: 6px 8px !important; gap: 6px !important; flex-wrap: nowrap !important; margin-bottom: 14px !important; }
+  .edit-bar .eb-text b { font-size: 14px; white-space: nowrap; }
+  .edit-bar .eb-actions { gap: 6px !important; flex-wrap: nowrap !important; }
+  .edit-bar .eb-start { font-size: 0; }
+  .edit-bar .eb-start select { font-size: 13px; max-width: 74px; }
+  .edit-bar .btn.sm { padding: 0 9px; min-height: 32px; }
+}
+/* 편집 중 휴대폰: 견본 알림이 편집 막대를 가리지 않게 그 아래 (자리를 직접 옮긴 경우(free)는 그대로) */
+.m-game.editing .toast.sample:not(.free):not(.at-bottom) { top: calc(64px + env(safe-area-inset-top)); }
+
+/* ===== 알림 (2026-11-17 더 또렷하게) =====
+   보통 알림: 아이콘 + 진한 테두리 / 장중 속보: 큰 카드, 꽉 찬 '속보' 표시, 호재 빨강·악재 파랑 띠, 누르면 그 종목 */
+.toast { display: inline-flex; align-items: center; gap: 8px; background: #2a2a2a; border: 1px solid #4a4a4a; border-left-width: 4px; color: var(--text); font-size: 15px; font-weight: 700; padding: 12px 16px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+.toast > svg { flex: none; }
+.toast.ok { border-left-color: #34d399; }
+.toast.ok > svg { color: #34d399; }
+.toast.err { border-color: #7a2a35; border-left-color: #ff5d73; color: #ffc2c9; }
+.toast.warn { border-color: #6a5622; border-left-color: #f5b83d; color: #ffe2a3; }
+.toast.warn > svg { color: #f5b83d; }
+.toast.news { display: flex; align-items: stretch; gap: 0; padding: 0; width: min(560px, calc(100vw - 24px)); max-width: none; border: 0; border-radius: 14px; overflow: hidden; background: #262626; text-align: left; cursor: pointer; font: inherit; color: var(--text); animation: newsIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.toast.news.good { box-shadow: 0 0 0 2px #d9364b, 0 14px 34px rgba(0, 0, 0, 0.6); }
+.toast.news.bad { box-shadow: 0 0 0 2px #2563eb, 0 14px 34px rgba(0, 0, 0, 0.6); }
+.toast.news .tn-badge { flex: none; display: grid; place-items: center; padding: 0 12px; font-size: 14px; font-weight: 800; color: #fff; writing-mode: horizontal-tb; }
+.toast.news.good .tn-badge { background: #d9364b; }
+.toast.news.bad .tn-badge { background: #2563eb; }
+.toast.news .tn-body { display: grid; gap: 2px; padding: 11px 14px; min-width: 0; }
+.toast.news .tn-body b { font-size: 16px; line-height: 1.35; font-weight: 800; word-break: keep-all; }
+.toast.news .tn-body small { font-size: 12px; color: var(--text-2); }
+.toast.news:hover .tn-body small { text-decoration: underline; text-underline-offset: 3px; }
+@keyframes newsIn { from { opacity: 0; transform: translate(-50%, -14px) scale(0.97); } }
+.toast.news.free, .toast.news.at-bottom { animation: none; }
+@media (prefers-reduced-motion: reduce) { .toast.news { animation: none; } }
+
+/* ===== 티어표: 브론즈 → 마스터로 오르는 계단 (2026-11-17) ===== */
+.tier-ladder .tl-stairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(78px, 1fr)); align-items: end; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.tier-ladder li.tl-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.hub-grid > .tier-ladder { grid-column: 1 / -1; }
+.tl-emb { display: grid; place-items: center; margin-bottom: -6px; position: relative; z-index: 1; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
+.tl-block { position: relative; width: 100%; height: var(--h); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 4px 8px; border-radius: 10px 10px 4px 4px; border-top: 3px solid var(--tc); background: color-mix(in srgb, var(--tc) 13%, #1c1c1c); text-align: center; }
+.tl-block b { font-size: 14px; font-weight: 800; color: var(--tc); white-space: nowrap; }
+.tl-block small { font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tl-block .tl-divs { margin-top: auto; display: flex; gap: 2px; justify-content: center; }
+.tl-block .tl-div { display: flex; flex-direction: column; align-items: center; padding: 2px 1px; border-radius: 6px; }
+.tl-block .tl-div i { font-style: normal; font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
+.tl-block .tl-div.me { background: rgba(255, 255, 255, 0.12); }
+.tl-block .tl-div.me i { color: #fff; }
+.tl-block .tl-top { margin-top: auto; font-size: 11px; font-weight: 700; color: var(--tc); }
+.tier-ladder li.tl-step.me .tl-block { outline: 2px solid var(--tc); outline-offset: 2px; }
+.tl-me { position: absolute; top: -26px; right: 4px; z-index: 2; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--tc); color: #111; }
+@media (max-width: 560px) {
+  .tier-ladder .tl-stairs { grid-template-columns: repeat(6, 84px); padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .tl-step { scroll-snap-align: start; }
+}
+.tl-emb svg { max-width: 100%; height: auto; }
+.hub-grid > .ranked-guest { grid-column: 1 / -1; }

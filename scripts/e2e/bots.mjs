@@ -42,26 +42,40 @@ ok('화면 데이터에 봇 내부 값(bot_step·bot_level) 없음', !raw.includ
 ok('상대(봇) 재산은 구간만', s.players.filter((p) => p.bot).every((p) => Array.isArray(p.band)));
 ok('내 거래 목록엔 내 것만', (s.myTrades ?? []).every((t) => t.player_id === s.me || t.player_id === undefined));
 
-// 사람 둘이 마감하면 봇을 기다리지 않고 바로 다음 날
-const e1 = await A({ action: 'endTurn', roomId });
-const e2 = await B({ action: 'endTurn', roomId });
-ok('사람 둘 마감', e1.s === 200 && e2.s === 200, e1.b?.error ?? e2.b?.error);
-s = (await A({ action: 'state', roomId })).b;
-ok('봇을 기다리지 않고 바로 다음 날', s.room.day === 1, `day=${s.room.day}`);
+// 사람 둘이 모두 기권하면 (봇만 남음) 판이 바로 끝남
+await A({ action: 'leave', roomId });
+await B({ action: 'leave', roomId });
+const sFin = (await A({ action: 'history' })).b ?? [];
+ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin) && sFin.some((h) => (h.results ?? []).some((r) => r.nickname === '봇방장')), `${sFin.length}개`);
 
-// 끝까지 (사람 둘이 계속 마감)
-for (let i = 0; i < 60 && s.room.status !== 'finished'; i++) {
-  await A({ action: 'endTurn', roomId });
-  await B({ action: 'endTurn', roomId });
-  s = (await A({ action: 'state', roomId })).b;
+// 사람 1 + 쉬움 봇: 내가 마감 → 카운트다운 → 봇이 서둘러 마감 → 다음 날, 끝까지
+{
+  const m1 = await A({ action: 'create', nickname: '봇과둘', mode: 'easy', totalDays: 10, turnSeconds: 60, maxPlayers: 2, title: '봇 1대1 끝까지' });
+  const r1 = m1.b.roomId;
+  await A({ action: 'addBot', roomId: r1, level: 1 });
+  ok('사람 1 + 쉬움 봇 시작', (await A({ action: 'start', roomId: r1 })).s === 200);
+  await new Promise((r) => setTimeout(r, 2500));
+  // 같은 순간 상태를 여러 번 물어도 봇은 한 칸에 한 번
+  await Promise.all([1, 2, 3, 4, 5].map(() => A({ action: 'state', roomId: r1 })));
+  await A({ action: 'endTurn', roomId: r1 });
+  let s1 = (await A({ action: 'state', roomId: r1 })).b;
+  for (let i = 0; i < 10 && s1.room.day === 0; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    s1 = (await A({ action: 'state', roomId: r1 })).b;
+  }
+  ok('내가 마감하면 봇(쉬움)도 바로 마감해 다음 날', s1.room.day === 1, `day=${s1.room.day} countdown=${s1.room.countdown}`);
+  for (let i = 0; i < 120 && s1.room.status !== 'finished'; i++) {
+    await A({ action: 'endTurn', roomId: r1 });
+    s1 = (await A({ action: 'state', roomId: r1 })).b;
+    if (s1.room.status !== 'finished') await new Promise((r) => setTimeout(r, 400));
+  }
+  ok('끝까지 진행', s1.room.status === 'finished', `day=${s1.room.day}`);
+  const botIds = new Set(s1.players.filter((p) => p.bot).map((p) => p.id));
+  const botTrades = (s1.final?.trades ?? []).filter((t) => botIds.has(t.player_id));
+  ok('봇이 실제로 거래했음', botTrades.length > 0, `${botTrades.length}건`);
+  const keys = botTrades.map((t) => [t.player_id, t.day, t.symbol, t.side, t.qty, t.created_at].join('|'));
+  ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys).size === keys.length);
 }
-ok('끝까지 진행', s.room.status === 'finished', `day=${s.room.day}`);
-const fin = s.final;
-const botIds = new Set(s.players.filter((p) => p.bot).map((p) => p.id));
-const botTrades = (fin?.trades ?? []).filter((t) => botIds.has(t.player_id));
-ok('봇이 실제로 거래했음', botTrades.length > 0, `${botTrades.length}건`);
-const keys = botTrades.map((t) => [t.player_id, t.day, t.symbol, t.side, t.qty, t.created_at].join('|'));
-ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys).size === keys.length);
 
 // 사람이 모두 나가면 판이 끝남 (새 방)
 {
@@ -69,14 +83,11 @@ ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys)
   const r2 = m2.b.roomId;
   await A({ action: 'addBot', roomId: r2, level: 1 });
   ok('사람 1 + 봇 1 로 시작', (await A({ action: 'start', roomId: r2 })).s === 200);
-  const e = await A({ action: 'endTurn', roomId: r2 });
-  const s2 = (await A({ action: 'state', roomId: r2 })).b;
-  ok('혼자 마감하면 바로 다음 날', e.s === 200 && s2.room.day === 1, `day=${s2.room.day}`);
   await A({ action: 'leave', roomId: r2 });
   const after = (await B({ action: 'state', roomId: r2 })).s;
   ok('남의 봇 방 상태는 못 봄 (403)', after === 403);
 }
-// 사람 2 + 봇 1, 하루 3분: 한 명이 마감하면 (봇은 안 세고) 1대1처럼 90초 카운트다운
+// 사람 2 + 봇 1, 하루 3분: 봇도 마감 인원으로 셈 (3명 중 2명 마감이면 카운트다운)
 {
   const m3 = await A({ action: 'create', nickname: '카운트', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '봇 카운트다운' });
   const r3 = m3.b.roomId;
@@ -85,9 +96,15 @@ ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys)
   await A({ action: 'addBot', roomId: r3, level: 2 });
   ok('사람 2 + 봇 1 시작', (await A({ action: 'start', roomId: r3 })).s === 200);
   await A({ action: 'endTurn', roomId: r3 });
-  const s3 = (await A({ action: 'state', roomId: r3 })).b;
-  const left = Math.round((s3.room.deadline - Date.now()) / 1000);
-  ok('한 명 마감 → 90초 안쪽 카운트다운 (봇은 마감 인원에 안 셈)', s3.room.countdown === true && left <= 92 && left >= 60, `left=${left}s countdown=${s3.room.countdown}`);
+  let s3 = (await A({ action: 'state', roomId: r3 })).b;
+  ok('3명 중 1명 마감은 아직 카운트다운 아님 (봇도 한 명으로 셈)', s3.room.countdown === false, `countdown=${s3.room.countdown}`);
+  await B({ action: 'endTurn', roomId: r3 });
+  s3 = (await A({ action: 'state', roomId: r3 })).b;
+  for (let i = 0; i < 6 && s3.room.day === 0; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    s3 = (await A({ action: 'state', roomId: r3 })).b;
+  }
+  ok('둘이 마감 → 카운트다운 → 보통 봇도 서둘러 마감해 다음 날', s3.room.day === 1, `day=${s3.room.day} countdown=${s3.room.countdown}`);
   await A({ action: 'leave', roomId: r3 });
   await B({ action: 'leave', roomId: r3 });
 }

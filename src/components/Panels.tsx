@@ -190,20 +190,24 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {cat === 'rumor' && !hasRumors && <EmptyState compact icon="news" title="오늘은 찌라시가 없어요" desc="둘째 날부터 장이 열리기 전에 찌라시가 돌아요." />}
       {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
-          <div className="rb-head">
+          <header className="rb-head">
             <b>장 전 찌라시</b>
-            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜 단서일 수도, 헛소문일 수도 있어요. 루머 감별기를 쓰면 가려 줘요'}</small>
-          </div>
-          {rumors.map((r, i) => (
-            <div key={i} className={'rb-item ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>
-              <span className="rb-arrow" aria-hidden>{r.tone === 'good' ? '▲' : '▼'}</span>
-              <span className="rb-text">{r.text}</span>
-              <button className="rb-sec" onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
-                <SectorIcon id={r.sector} /> {SECTOR_MAP[r.sector]?.name ?? r.sector}
-              </button>
-              {r.verdict && <em className={'rb-verdict ' + r.verdict}>{r.verdict === 'true' ? '진짜 단서' : '헛소문'}</em>}
-            </div>
-          ))}
+            {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
+            <small className="muted">{rumorCheck ? '루머 감별기로 확인했어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
+          </header>
+          <ul className="rb-list">
+            {rumors.map((r, i) => (
+              <li key={i} className={'rb-msg ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>
+                <button className="rb-who" onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
+                  <span className="rb-ico"><SectorIcon id={r.sector} /></span>
+                  <b>{SECTOR_MAP[r.sector]?.name ?? r.sector}</b>
+                  <span className={'rb-dir ' + r.tone}>{r.tone === 'good' ? '▲ 호재 소문' : '▼ 악재 소문'}</span>
+                </button>
+                <p className="rb-bubble">{r.text}</p>
+                {r.verdict && <em className={'rb-stamp ' + r.verdict}>{r.verdict === 'true' ? '진짜 단서' : '헛소문'}</em>}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {showToday && (

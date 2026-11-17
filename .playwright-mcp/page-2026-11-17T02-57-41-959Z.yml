@@ -1,0 +1,91 @@
+- generic [ref=f5e3]:
+  - main [ref=f5e5]:
+    - generic [ref=f5e6]:
+      - generic:
+        - img "개미리그"
+      - button "로그인" [ref=f5e8] [cursor=pointer]
+    - generic [ref=f5e13]:
+      - generic [ref=f5e15]:
+        - heading "설정·더보기" [level=2] [ref=f5e16]
+        - paragraph [ref=f5e17]: 계정, 화면 모드, 도움말
+      - generic [ref=f5e18]:
+        - generic [ref=f5e19]:
+          - heading "내 계정" [level=3] [ref=f5e20]
+          - generic [ref=f5e21]:
+            - generic [ref=f5e22]: 게스트 닉네임 (랭킹에는 안 올라가요)
+            - textbox "게스트 닉네임 (랭킹에는 안 올라가요)" [ref=f5e23]:
+              - /placeholder: "예: 개미왕"
+          - generic [ref=f5e24]:
+            - button "회원가입" [ref=f5e25] [cursor=pointer]
+            - button "로그인" [ref=f5e29] [cursor=pointer]
+        - generic [ref=f5e30]:
+          - heading "화면 모드" [level=3] [ref=f5e31]
+          - paragraph [ref=f5e32]: 게임 중에도 바꿀 수 있어요
+          - generic [ref=f5e33]:
+            - radiogroup "화면 모드" [ref=f5e34]:
+              - radio "초보" [checked] [ref=f5e35] [cursor=pointer]
+              - radio "일반" [ref=f5e38] [cursor=pointer]
+              - generic [ref=f5e41]:
+                - radio "커스텀" [ref=f5e42] [cursor=pointer]
+                - button "커스텀 모드 화면 편집" [ref=f5e44] [cursor=pointer]
+            - generic [ref=f5e48]: 쉬운 말과 금액 버튼으로 쉽게 사고, 어려운 말엔 설명이 붙어요
+        - generic [ref=f5e50]:
+          - generic [ref=f5e51]:
+            - generic [ref=f5e52]: 효과음
+            - generic [ref=f5e53]: 장 마감, 체결, 매칭 때 소리가 나요
+          - switch "효과음" [checked] [ref=f5e54] [cursor=pointer]
+        - generic [ref=f5e56]:
+          - generic [ref=f5e57]:
+            - heading "둘러보기" [level=3] [ref=f5e58]
+            - button "랭킹 회원 순위와 티어" [ref=f5e59] [cursor=pointer]:
+              - generic [ref=f5e62]:
+                - generic [ref=f5e63]: 랭킹
+                - generic [ref=f5e64]: 회원 순위와 티어
+            - button "업적 모은 업적·칭호·프로필 사진" [ref=f5e67] [cursor=pointer]:
+              - generic [ref=f5e74]:
+                - generic [ref=f5e75]: 업적
+                - generic [ref=f5e76]: 모은 업적·칭호·프로필 사진
+            - button "연습 혼자서 마음껏 연습" [ref=f5e79] [cursor=pointer]:
+              - generic [ref=f5e84]:
+                - generic [ref=f5e85]: 연습
+                - generic [ref=f5e86]: 혼자서 마음껏 연습
+            - button "공부 투자 기초와 기업 살펴보기" [ref=f5e89] [cursor=pointer]:
+              - generic [ref=f5e92]:
+                - generic [ref=f5e93]: 공부
+                - generic [ref=f5e94]: 투자 기초와 기업 살펴보기
+          - generic [ref=f5e97]:
+            - heading "처음이라면" [level=3] [ref=f5e98]
+            - button "튜토리얼 연습봇과 한 판 따라 하기" [ref=f5e99] [cursor=pointer]:
+              - generic [ref=f5e102]:
+                - generic [ref=f5e103]: 튜토리얼
+                - generic [ref=f5e104]: 연습봇과 한 판 따라 하기
+            - button "게임 방법 규칙을 한눈에" [ref=f5e107] [cursor=pointer]:
+              - generic [ref=f5e111]:
+                - generic [ref=f5e112]: 게임 방법
+                - generic [ref=f5e113]: 규칙을 한눈에
+          - generic [ref=f5e116]:
+            - heading "문의·안내" [level=3] [ref=f5e117]
+            - button "의견·버그 보내기 운영자에게 바로 전달돼요" [ref=f5e118] [cursor=pointer]:
+              - generic [ref=f5e122]:
+                - generic [ref=f5e123]: 의견·버그 보내기
+                - generic [ref=f5e124]: 운영자에게 바로 전달돼요
+            - button "개인정보처리방침 모으는 정보와 지우는 방법" [ref=f5e127] [cursor=pointer]:
+              - generic [ref=f5e131]:
+                - generic [ref=f5e132]: 개인정보처리방침
+                - generic [ref=f5e133]: 모으는 정보와 지우는 방법
+            - button "이용약관 서비스 이용 약속" [ref=f5e136] [cursor=pointer]:
+              - generic [ref=f5e139]:
+                - generic [ref=f5e140]: 이용약관
+                - generic [ref=f5e141]: 서비스 이용 약속
+    - generic [ref=f5e144]:
+      - navigation "안내" [ref=f5e145]:
+        - button "개인정보처리방침" [ref=f5e146] [cursor=pointer]
+        - button "이용약관" [ref=f5e147] [cursor=pointer]
+        - button "의견·버그 보내기" [ref=f5e148] [cursor=pointer]
+      - paragraph [ref=f5e149]: 개미리그 · 개인 운영 · 운영자 이준엽 · kiaman0700@naver.com
+  - navigation "메뉴" [ref=f5e150]:
+    - button "랭킹전" [ref=f5e151] [cursor=pointer]
+    - button "일반전" [ref=f5e160] [cursor=pointer]
+    - button "커스텀" [ref=f5e168] [cursor=pointer]
+    - button "친구" [ref=f5e174] [cursor=pointer]
+    - button "더보기" [ref=f5e180] [cursor=pointer]

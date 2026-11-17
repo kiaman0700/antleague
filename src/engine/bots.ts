@@ -4,7 +4,7 @@
  * 모든 행동은 validate* 를 거쳐 실제 규칙(카드 제한·거래 정지·수수료 폭탄·레버리지 제한)이 그대로 적용된다.
  * 서버(커스텀 방)와 브라우저(봇전)가 같은 코드를 쓴다. 무작위는 봇 전용 난수(seeded) — 시장 난수와 섞이지 않음.
  */
-import { buildView, dayClock, GameError, inPremarket, portfolioOf, validateBuyItem, validateTrade, validateUseItem, type GameData, type View } from './engine.js';
+import { buildView, dayClock, GameError, graceSecondsFor, inPremarket, portfolioOf, validateBuyItem, validateTrade, validateUseItem, type GameData, type View } from './engine.js';
 import { ITEM_MAP, itemCost, type ItemKind, type ItemRow } from '../game/items.js';
 import type { Market, NewsEvent } from '../game/market.js';
 import { maxBuyQty, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
@@ -30,7 +30,7 @@ export function botCheckpoints(n: number, times = 3): number[] {
   return [...new Set(out)];
 }
 /** 난이도별 하루에 화면을 보는 횟수 (실험으로 바꿀 수 있게 내보냄) */
-export const BOT_TIMES: Record<number, number> = { 1: 6, 2: 3, 3: 10 };
+export const BOT_TIMES: Record<number, number> = { 1: 18, 2: 3, 3: 10 };
 
 /* ---------------- 봇이 보는 세상 (시뮬레이터 Ctx 와 같은 모양) ---------------- */
 export interface BotCtx {
@@ -291,23 +291,31 @@ export interface BotRun {
   /** 새로 생긴 거래·카드 (서버는 DB 에 넣고, 브라우저는 그대로 붙임) */
   trades: Trade[];
   items: ItemRow[];
-  /** 봇마다 마지막으로 움직인 칸 (day*100 + 칸 번호) */
+  /** 봇마다 마지막으로 움직인 칸 (day*100 + 칸 번호, 장 마감했으면 day*100+99) */
   steps: Record<string, number>;
+  /** 오늘 장 마감을 누른 봇 */
+  ends: string[];
 }
+
+/** 봇이 장 마감을 누르는 때 (하루 중 비율) — 쉬움은 일찍 포기, 어려움은 끝까지 지켜봄 */
+export const BOT_END_AT: Record<number, [number, number]> = { 1: [0.3, 0.55], 2: [0.85, 0.93], 3: [0.93, 0.97] };
+/** 장 마감한 봇의 칸 표시 */
+export const END_STEP = 99;
 
 /** 봇 한 명이 마지막으로 움직인 칸 표시 (없으면 -1) */
 export const stepKey = (day: number, cp: number) => day * 100 + cp;
 
 /**
  * 지금 시각까지 봇이 해야 할 움직임을 한다. d 는 바뀌지 않음(복사본으로 계산) — 새 줄만 돌려줌.
- * humansDone: 사람이 모두 장 마감함 → 남은 칸(마감 무렵 포함)을 지금 한꺼번에
- * done: 봇별로 이미 한 칸 (서버는 DB 의 bot_step, 브라우저는 player.bot_step)
+ * - 봇은 사람처럼 하루 중 몇 번 화면을 보고 움직이고, 판단이 끝나면 스스로 장 마감 (난이도마다 때가 다름, BOT_END_AT)
+ * - 카운트다운(누가 먼저 마감)이 시작되면 반응: 쉬움은 바로 마감, 보통은 마지막 정리 후 바로 마감, 어려움은 남은 시간의 절반까지 버티다 정리 후 마감
+ * - 지나간 칸만 움직임 (앞으로 올 가격은 절대 안 씀). 카운트다운으로 하루가 일찍 끝나면 못 한 칸은 그냥 지나감
  */
-export function runBots(d: GameData, now: number, opts: { humansDone?: boolean; salt?: string; only?: string } = {}): BotRun {
-  const out: BotRun = { trades: [], items: [], steps: {} };
+export function runBots(d: GameData, now: number, opts: { salt?: string; only?: string } = {}): BotRun {
+  const out: BotRun = { trades: [], items: [], steps: {}, ends: [] };
   const r = d.room;
   if (r.status !== 'playing' || inPremarket(r, now)) return out;
-  const bots = d.players.filter((p) => p.bot_level && !p.left_game && (!opts.only || p.id === opts.only));
+  const bots = d.players.filter((p) => p.bot_level && !p.left_game && p.ended_day < r.day && (!opts.only || p.id === opts.only));
   if (!bots.length) return out;
   const clk = dayClock(r, now);
   const { n, tick } = clk;
@@ -317,15 +325,27 @@ export function runBots(d: GameData, now: number, opts: { humansDone?: boolean; 
   const stamp = (at: number) => new Date(at + (seq++ % 900)).toISOString();
   for (const b of bots) {
     const cps = botCheckpoints(n, BOT_TIMES[b.bot_level ?? 2] ?? 3);
+    const lastI = cps.length - 1;
     const doneStep = b.bot_step ?? -1;
-    const due = cps.map((t, i) => ({ t, i })).filter(({ t, i }) => stepKey(r.day, i) > doneStep && (t <= tick || opts.humansDone));
-    if (!due.length) continue;
     const level = STRATEGY[b.bot_level ?? 2] ? (b.bot_level as number) : 2;
+    // 오늘 장 마감을 누를 칸 (봇마다·날마다 조금씩 다르게)
+    const [lo, hi] = BOT_END_AT[b.bot_level ?? 2] ?? BOT_END_AT[2];
+    let endTick = Math.round(n * (lo + (hi - lo) * seeded(`${opts.salt ?? r.id}:bot:${b.id}:${r.day}:end`)()));
+    // 누가 먼저 마감해 카운트다운이 시작됐으면 서두름
+    const countdown = r.deadline != null && r.day_deadline != null && r.deadline < r.day_deadline;
+    if (countdown) {
+      const left = (r.deadline! - now) / 1000;
+      const grace = graceSecondsFor(d.players.filter((p) => !p.left_game).length, r.turn_seconds);
+      if (level <= 2 || left <= grace / 2) endTick = Math.min(endTick, tick);
+    }
+    const ending = tick >= endTick;
+    const due = cps.map((t, i) => ({ t, i })).filter(({ t, i }) => stepKey(r.day, i) > doneStep && t <= Math.min(tick, endTick) && !(ending && i === lastI));
+    // 마감할 때는 마지막 정리(isLast: 들고 갈지·현금으로 바꿀지)를 한 번 하고 마감
+    if (ending && stepKey(r.day, lastI) > doneStep && level >= 2) due.push({ t: tick, i: lastI });
+    if (!due.length && !ending) continue;
     for (const { t, i } of due) {
-      const isLast = i === cps.length - 1;
-      // 사람이 일찍 마감해 남은 칸을 한꺼번에 할 때도 봇은 '그 칸의 시각'의 가격·뉴스로 움직임 (한순간에 몰아서 하지 않게)
-      // 지난 칸은 지금 시각, 앞으로 올 칸은 그 칸 시각 — 장 마감 직전을 넘지 않음
-      const at = Math.min(t <= tick ? now : clk.startAt + t * clk.tickMs + 1, clk.endAt - 1);
+      const isLast = i === lastI;
+      const at = Math.min(now, clk.endAt - 1);
       const rng = seeded(`${opts.salt ?? r.id}:bot:${b.id}:${r.day}:${i}`);
       let view = buildView(w, b.id, at);
       let market = view.market!;
@@ -403,6 +423,10 @@ export function runBots(d: GameData, now: number, opts: { humansDone?: boolean; 
       };
       STRATEGY[level](ctx);
       out.steps[b.id] = stepKey(r.day, i);
+    }
+    if (ending) {
+      out.steps[b.id] = stepKey(r.day, END_STEP);
+      out.ends.push(b.id);
     }
   }
   return out;

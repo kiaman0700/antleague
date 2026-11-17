@@ -1,3 +1,4 @@
+import { graceSecondsFor } from './engine/engine';
 export type UiMode = 'easy' | 'pro';
 
 export interface Session {
@@ -30,15 +31,18 @@ export const TURN_OPTIONS = [
 export const turnLabel = (sec: number) => TURN_OPTIONS.find((t) => t.sec === sec)?.label ?? (sec === 90 ? '1분 30초' : sec > 0 ? `${Math.round(sec / 60)}분` : '10분');
 
 /** 카운트다운 규칙 안내 문구 (서버 graceRule 과 같은 규칙) */
-export function graceText(players: number) {
-  return players <= 2 ? '한 명이 마감하면 1분 30초' : `${Math.ceil((players * 2) / 3)}명 이상 마감하면 30초`;
+/** 카운트다운 안내: 하루 길이에 맞춘 길이 (서버 graceRule 과 같음) */
+export function graceText(players: number, turnSeconds = 600) {
+  const sec = graceSeconds(players, turnSeconds);
+  const len = sec >= 60 ? `${Math.floor(sec / 60)}분${sec % 60 ? ` ${sec % 60}초` : ''}` : `${sec}초`;
+  return players <= 2 ? `한 명이 마감하면 ${len}` : `${Math.ceil((players * 2) / 3)}명 이상 마감하면 ${len}`;
 }
-/** 카운트다운 길이(초): 1대1 90초, 3인 이상 30초 (서버 graceRule 과 같음) */
-export const graceSeconds = (players: number) => (players <= 2 ? 90 : 30);
+/** 카운트다운 길이(초) — 서버 graceSecondsFor 와 같음 */
+export const graceSeconds = (players: number, turnSeconds = 600) => graceSecondsFor(players, turnSeconds);
 /** 대기실·방 만들기 안내 한 문장: 하루가 카운트다운보다 짧으면 카운트다운 얘기는 빼고 (예: 1분 하루에 '1분 30초 뒤'는 말이 안 됨) */
 export function graceSentence(players: number, turnSeconds: number) {
   // 사람이 1명뿐(나머지는 봇)이면 카운트다운이 없음 — 내가 마감하면 바로 다음 날
-  return players >= 2 && turnSeconds > graceSeconds(players) ? `${graceText(players)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요.` : '아니면 하루 시간이 끝날 때 자동으로 넘어가요.';
+  return players >= 2 ? `${graceText(players, turnSeconds)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요.` : '아니면 하루 시간이 끝날 때 자동으로 넘어가요.';
 }
 
 /** 마감 후 결과 보여주는 시간 등 하루마다 드는 시간(초) */

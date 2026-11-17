@@ -1,5 +1,5 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
-import { buildView, CURRENT_RULES_VERSION, dayClock, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
+import { buildView, CURRENT_RULES_VERSION, dayClock, graceDeadline, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
 import { STOCK_MAP } from '../game/stocks.js';
 import { botInfo, MAX_BOTS, runBots, type BotRun } from './bots.js';
 
@@ -170,10 +170,10 @@ function botNames(levels: number[]) {
 
 /** 봇이 한 일을 저장 데이터에 반영 */
 function applyBots(d: GameData, run: BotRun) {
-  if (!Object.keys(run.steps).length) return false;
+  if (!Object.keys(run.steps).length && !run.ends.length) return false;
   for (const t of run.trades) d.trades.push({ ...t, id: uid() });
   for (const it of run.items) d.items.push({ ...it, id: uid() });
-  d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id] } : p));
+  d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id], ...(run.ends.includes(p.id) ? { ended_day: d.room.day } : {}) } : p));
   return true;
 }
 
@@ -238,8 +238,9 @@ export function soloSync(s: SoloSave, now = Date.now()): SoloSave {
   let changed = false;
   if (d.orders.some((o) => o.day === d.room.day && o.status === 'open')) changed = applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, now).tick, false));
   // 봇전: 봇이 움직일 칸이 됐으면 움직임 (시간이 다 됐으면 남은 칸까지 하고 넘어감)
-  if (d.room.deadline !== null && !s.tutorial) changed = applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined, humansDone: now >= d.room.deadline })) || changed;
-  if (d.room.deadline !== null && now >= d.room.deadline) changed = advance(d, now) || changed;
+  if (d.room.deadline !== null && !s.tutorial) changed = applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined })) || changed;
+  // 시간이 다 됐거나 모두(나 + 봇) 장 마감했으면 다음 날
+  if (d.room.deadline !== null && nextRoomState(d, now)) changed = advance(d, now) || changed;
   if (!changed) return s;
   const out = { ...s, data: d };
   if (!s.demo && !s.tutorial) saveSolo(out);
@@ -279,11 +280,19 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'endTurn': {
       // 혼자 연습: 장 마감을 누르면 남은 시간을 건너뛰고 바로 다음 날
       const { day } = validateEndTurn(d, 'me', now);
-      // 봇전: 내가 마감하면 봇도 남은 움직임을 지금 하고 같이 마감
-      if (!s.tutorial) applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined, humansDone: true }));
       // 튜토리얼: 봇도 같이 마감
       for (const p of d.players) if (p.id === 'me' || s.tutorial) p.ended_day = day;
-      if (advance(d, now) && s.tutorial) botActs(d);
+      if (s.tutorial) {
+        if (advance(d, now)) botActs(d);
+        break;
+      }
+      // 혼자 연습: 바로 다음 날. 봇전: 봇이 아직 마감 안 했으면 카운트다운 (봇도 서둘러 정리하고 마감)
+      if (!advance(d, now)) {
+        const grace = graceDeadline(d, now);
+        if (grace !== null) d.room = { ...d.room, deadline: grace };
+        applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined }));
+        if (nextRoomState(d, now)) advance(d, now);
+      }
       break;
     }
     default:

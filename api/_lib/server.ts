@@ -407,25 +407,32 @@ async function fillOrdersNow(d: GameData): Promise<boolean> {
 async function moveBots(d0: GameData, now = Date.now()): Promise<boolean> {
   let d = d0;
   if (d.room.status !== 'playing' || !d.players.some((p) => p.bot_level && !p.left_game)) return false;
-  const humans = d.players.filter((p) => !p.bot_level && !p.left_game);
-  const humansDone = (humans.length > 0 && humans.every((p) => p.ended_day >= d.room.day)) || (d.room.deadline !== null && now >= d.room.deadline);
   let changed = false;
+  let ended = false;
   // 봇을 한 명씩: 앞 봇이 실제로 넣은 줄만 다음 봇 판단에 반영 (다른 요청이 앞 봇을 차지했으면 그 봇 줄은 이 데이터에 없음)
   for (const bot of d.players.filter((p) => p.bot_level && !p.left_game)) {
-    const run = runBots(d, now, { salt: d.room.salt ?? undefined, humansDone, only: bot.id });
+    const run = runBots(d, now, { salt: d.room.salt ?? undefined, only: bot.id });
     const botId = bot.id;
     const step = run.steps[botId];
     if (step === undefined) continue;
     const prev = bot.bot_step ?? null;
-    const base = db().from('players').update({ bot_step: step }).eq('id', botId).eq('room_id', d.room.id);
+    // 봇이 오늘 장 마감을 누르면 같은 줄에서 ended_day 도 (차지한 요청만)
+    const ends = run.ends.includes(botId);
+    const base = db().from('players').update(ends ? { bot_step: step, ended_day: d.room.day } : { bot_step: step }).eq('id', botId).eq('room_id', d.room.id);
     const claimed = must(await (prev === null ? base.is('bot_step', null) : base.eq('bot_step', prev)).select('id'), 'bot step') as unknown[];
     if (!claimed.length) continue; // 다른 요청이 이미 움직임
     const trades = run.trades.filter((t) => t.player_id === botId).map((t) => ({ room_id: d.room.id, ...t }));
     const items = run.items.filter((i) => i.player_id === botId).map((i) => ({ room_id: d.room.id, ...i }));
     if (trades.length) must(await db().from('trades').insert(trades), 'bot trades');
     if (items.length) must(await db().from('items').insert(items), 'bot items');
-    d = { ...d, trades: [...d.trades, ...run.trades], items: [...d.items, ...run.items] };
+    d = { ...d, trades: [...d.trades, ...run.trades], items: [...d.items, ...run.items], players: d.players.map((p) => (p.id === botId ? { ...p, bot_step: step, ...(ends ? { ended_day: d.room.day } : {}) } : p)) };
     changed = true;
+    if (ends) ended = true;
+  }
+  // 봇이 먼저 마감했으면 사람처럼 카운트다운 (1대1이면 남은 사람에게 하루 길이에 맞춘 시간)
+  if (ended && !nextRoomState(d, now)) {
+    const grace = graceDeadline(d, now);
+    if (grace !== null) await updatePlayingRoom(d.room.id, d.room.day, { turn_deadline: iso(grace) }, 'bot grace');
   }
   return changed;
 }

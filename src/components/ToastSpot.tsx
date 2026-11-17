@@ -22,23 +22,39 @@ export function toastStyle(xy: XY | null): CSSProperties | undefined {
   };
 }
 
+/** 알림 한 개: 보통 알림(확인·오류·주의) 또는 장중 속보(호재·악재, 누르면 그 종목으로) */
+export type ToastMsg = { text: string; kind: 'ok' | 'err' | 'warn' | 'news'; tone?: 'good' | 'bad'; sub?: string; symbol?: string };
+
 interface Props {
-  toast: { text: string; kind: 'ok' | 'err' | 'warn' } | null;
+  toast: ToastMsg | null;
+  /** 속보 알림을 누르면 그 종목 보기 */
+  onPick?: (symbol: string) => void;
   editing: boolean;
   pos: 'top' | 'bottom';
   xy: XY | null;
   onMove: (xy: XY) => void;
 }
 
-export function ToastSpot({ toast, editing, pos, xy, onMove }: Props) {
+export function ToastSpot({ toast, editing, pos, xy, onMove, onPick }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const vRef = useRef<HTMLElement>(null);
   const hRef = useRef<HTMLElement>(null);
   const cls = (xy ? ' free' : pos === 'bottom' ? ' at-bottom' : '');
+  if (toast?.kind === 'news')
+    return (
+      <button type="button" className={'toast news ' + (toast.tone ?? 'good') + cls} style={toastStyle(xy)} role="status" onClick={() => toast.symbol && onPick?.(toast.symbol)}>
+        <span className="tn-badge">속보</span>
+        <span className="tn-body">
+          <b>{toast.text}</b>
+          {toast.sub && <small>{toast.sub}</small>}
+        </span>
+      </button>
+    );
   if (toast)
     return (
       <div className={'toast ' + toast.kind + cls} style={toastStyle(xy)} role="status">
-        {toast.text}
+        <Icon name={toast.kind === 'err' ? 'warn' : toast.kind === 'warn' ? 'bell' : 'check'} size={16} />
+        <span>{toast.text}</span>
       </div>
     );
   if (!editing) return null;

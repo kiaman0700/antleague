@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildView, CURRENT_RULES_VERSION, dayClock, graceDeadline, nextRoomState, preAllReadyDeadline, validateEndTurn, type GameData } from './engine.js';
-import { BOT_TIMES, botCheckpoints, runBots, stepKey } from './bots.js';
+import { BOT_END_AT, botCheckpoints, runBots } from './bots.js';
 
 const T0 = 1_900_000_000_000;
 /** 사람 a + 봇들 (첫날 장이 열린 상태, 하루 60초) */
@@ -21,7 +21,7 @@ function game(levels: number[], humans = ['a']): GameData {
 function apply(d: GameData, run: ReturnType<typeof runBots>) {
   d.trades.push(...run.trades);
   d.items.push(...run.items);
-  d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id] } : p));
+  d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id], ...(run.ends.includes(p.id) ? { ended_day: d.room.day } : {}) } : p));
 }
 const tickAt = (d: GameData, tick: number) => dayClock(d.room, T0).startAt + tick * dayClock(d.room, T0).tickMs + 1;
 
@@ -55,30 +55,60 @@ describe('봇', () => {
     expect(a.trades.map((t) => [t.player_id, t.symbol, t.side, t.qty])).toEqual(b.trades.map((t) => [t.player_id, t.symbol, t.side, t.qty]));
   });
 
-  it('사람이 모두 마감하면 남은 칸을 한꺼번에 하고 바로 다음 날 (카운트다운 없음)', () => {
-    const d = game([3]);
-    const now = tickAt(d, 5);
-    apply(d, runBots(d, now));
-    const end = validateEndTurn(d, 'a', now);
-    d.players = d.players.map((p) => (p.id === 'a' ? { ...p, ended_day: end.day } : p));
-    // 봇이 마감 안 했어도 사람이 다 마감했으니 넘어감
-    expect(graceDeadline(d, now)).toBeNull();
-    const run = runBots(d, now, { humansDone: true });
-    expect(run.steps.bot0).toBe(stepKey(0, botCheckpoints(60, BOT_TIMES[3]).length - 1));
-    apply(d, run);
-    expect(nextRoomState(d, now)?.day).toBe(1);
+  it('봇은 판단이 끝나면 스스로 장 마감 — 쉬움은 일찍, 어려움은 끝 무렵 (BOT_END_AT)', () => {
+    const d = game([1, 3]);
+    let easyEnd = -1;
+    let hardEnd = -1;
+    for (let t = 0; t <= 59; t++) {
+      const run = runBots(d, tickAt(d, t));
+      apply(d, run);
+      if (run.ends.includes('bot0') && easyEnd < 0) easyEnd = t;
+      if (run.ends.includes('bot1') && hardEnd < 0) hardEnd = t;
+    }
+    expect(easyEnd).toBeGreaterThanOrEqual(Math.floor(60 * BOT_END_AT[1][0]));
+    expect(easyEnd).toBeLessThanOrEqual(Math.ceil(60 * BOT_END_AT[1][1]));
+    expect(hardEnd).toBeGreaterThanOrEqual(Math.floor(60 * BOT_END_AT[3][0]));
+    expect(hardEnd).toBeGreaterThan(easyEnd);
+    expect(d.players.find((p) => p.id === 'bot0')!.ended_day).toBe(0);
   });
 
-  it('봇은 카운트다운·장 전 준비 기준에서 빠짐 (사람 둘 + 봇: 한 명 마감 → 1대1 처럼 90초)', () => {
+  it('봇이 먼저 마감하면 사람에게 카운트다운, 사람이 먼저 마감하면 봇이 서둘러 마감', () => {
+    // 하루 3분: 1대1 카운트다운 60초
+    const mk = (lv: number) => {
+      const d = game([lv]);
+      d.room = { ...d.room, turn_seconds: 180, deadline: T0 + 183_000, day_deadline: T0 + 183_000 };
+      return d;
+    };
+    // 봇(쉬움)이 먼저 마감 → 사람에게 카운트다운
+    const d1 = mk(1);
+    for (let t = 0; t <= 100; t++) apply(d1, runBots(d1, tickAt(d1, t)));
+    expect(d1.players.find((p) => p.id === 'bot0')!.ended_day).toBe(0);
+    const g1 = graceDeadline(d1, tickAt(d1, 100));
+    expect(g1).not.toBeNull();
+    expect(Math.round((g1! - tickAt(d1, 100)) / 1000)).toBe(60);
+    // 사람이 먼저 마감 → 카운트다운이 걸리고, 보통 봇은 바로 정리하고 마감
+    const d2 = mk(2);
+    const now = tickAt(d2, 10);
+    apply(d2, runBots(d2, now));
+    d2.players = d2.players.map((p) => (p.id === 'a' ? { ...p, ended_day: validateEndTurn(d2, 'a', now).day } : p));
+    const g2 = graceDeadline(d2, now)!;
+    d2.room = { ...d2.room, deadline: g2 };
+    const run = runBots(d2, now + 1000);
+    expect(run.ends).toEqual(['bot0']);
+    apply(d2, run);
+    expect(nextRoomState(d2, now + 1000)?.day).toBe(1);
+    // 어려움은 카운트다운 절반까지 버팀
+    const d3 = mk(3);
+    d3.players = d3.players.map((p) => (p.id === 'a' ? { ...p, ended_day: 0 } : p));
+    const n3 = tickAt(d3, 10);
+    d3.room = { ...d3.room, deadline: graceDeadline(d3, n3)! };
+    expect(runBots(d3, n3 + 1000).ends).toEqual([]);
+    expect(runBots(d3, n3 + 45_000).ends).toEqual(['bot0']);
+  });
+
+  it('장 전 준비는 사람만 확인 (봇은 늘 준비 완료)', () => {
     const d = game([2, 2], ['a', 'b']);
-    // 하루 3분 (60초 하루는 90초 카운트다운이 원래 안 생김)
-    d.room = { ...d.room, turn_seconds: 180, deadline: T0 + 183_000, day_deadline: T0 + 183_000 };
-    const now = tickAt(d, 3);
-    d.players = d.players.map((p) => (p.id === 'a' ? { ...p, ended_day: 0 } : p));
-    const g = graceDeadline(d, now);
-    expect(g).not.toBeNull();
-    expect(Math.round((g! - now) / 1000)).toBe(90);
-    expect(preAllReadyDeadline(d, now)).toBeNull();
+    expect(preAllReadyDeadline(d, tickAt(d, 3))).toBeNull();
   });
 
   it('사람이 모두 나가면 판이 끝남', () => {
@@ -119,10 +149,10 @@ describe('봇', () => {
   it('10일 동안 봇끼리 돌려도 오류 없이 끝까지 (난이도 1·2·3)', () => {
     const d = game([1, 2, 3]);
     for (let day = 0; day < 10; day++) {
-      for (const tick of [0, 30, 58]) apply(d, runBots(d, tickAt(d, tick)));
+      for (let tick = 0; tick <= 59; tick += 3) apply(d, runBots(d, tickAt(d, tick)));
       const now = tickAt(d, 59);
       d.players = d.players.map((p) => (p.id === 'a' ? { ...p, ended_day: day } : p));
-      apply(d, runBots(d, now, { humansDone: true }));
+      apply(d, runBots(d, now));
       const next = nextRoomState(d, now)!;
       d.room = { ...d.room, ...next, ...(next.deadline ? {} : {}) };
       if (d.room.status === 'finished') break;

@@ -18,6 +18,18 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
   componentDidCatch(error: Error) {
     console.error('화면 오류', error);
+    // 같은 오류가 2분 안에 또 나면 내가 바꾼 화면 배치가 원인일 수 있어 자동으로 처음 배치로 (게임 기록은 그대로)
+    try {
+      const key = 'stockduel.crash';
+      const prev = JSON.parse(sessionStorage.getItem(key) ?? 'null') as { msg: string; at: number } | null;
+      const msg = String(error?.message ?? '').slice(0, 120);
+      if (prev && prev.msg === msg && Date.now() - prev.at < 120_000) {
+        resetLayout();
+        sessionStorage.removeItem(key);
+      } else sessionStorage.setItem(key, JSON.stringify({ msg, at: Date.now() }));
+    } catch {
+      /* 저장소 없음 */
+    }
   }
   render() {
     if (!this.state.error) return this.props.children;
@@ -32,16 +44,6 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             </button>
             <button className="btn ghost" onClick={() => location.assign('/')}>
               홈으로
-            </button>
-            <button
-              className="btn ghost"
-              onClick={() => {
-                resetLayout();
-                location.reload();
-              }}
-              title="내가 바꾼 화면 배치를 처음으로 돌려요 (게임 기록은 그대로)"
-            >
-              화면 배치 초기화
             </button>
             <button className="btn ghost" onClick={() => this.setState({ report: true })}>
               이 오류 알리기

@@ -239,8 +239,14 @@ export const LEGACY_TURN_SECONDS = 600;
  * - 3인 이상: 3분의 2 이상(올림)이 마감하면 30초
  * 남은 시간이 이미 그보다 짧으면 그대로
  */
-export function graceRule(players: number): { need: number; seconds: number } {
-  return players <= 2 ? { need: 1, seconds: 90 } : { need: Math.ceil((players * 2) / 3), seconds: 30 };
+export function graceRule(players: number, turnSeconds = 600): { need: number; seconds: number } {
+  // 카운트다운 길이는 하루 길이에 맞춤 (2026-11-17): 1대1 하루의 ⅓(20~90초), 3인 이상 ⅙(10~30초) — 1분 하루면 20초·10초
+  const t = turnSeconds > 0 ? turnSeconds : 600;
+  return players <= 2 ? { need: 1, seconds: graceSecondsFor(players, t) } : { need: Math.ceil((players * 2) / 3), seconds: graceSecondsFor(players, t) };
+}
+/** 카운트다운(초): 1대1 하루의 ⅓(20~90), 3인 이상 ⅙(10~30) */
+export function graceSecondsFor(players: number, turnSeconds: number) {
+  return players <= 2 ? Math.max(20, Math.min(90, Math.round(turnSeconds / 3))) : Math.max(10, Math.min(30, Math.round(turnSeconds / 6)));
 }
 export const MAX_QTY = 1_000_000;
 
@@ -751,8 +757,8 @@ export function validateEndTurn(d: GameData, meId: string, now: number) {
 export const AWAY_MS = 90_000;
 /** 지금 게임에 참여 중인지 (나가지 않았고 최근에 접속). 기록이 없으면(예전 데이터) 참여 중으로 봄 */
 export function isActive(p: PlayerRow, now: number): boolean {
-  // 봇은 카운트다운·장 전 준비 기준에서 빠짐 (사람이 모두 마감하면 봇도 따라 마감)
-  if (p.left_game || p.bot_level) return false;
+  if (p.left_game) return false;
+  if (p.bot_level) return true; // 봇은 늘 자리에 있음 (스스로 장 마감도 함)
   if (!p.last_seen) return true;
   return now - new Date(p.last_seen).getTime() < AWAY_MS;
 }
@@ -760,7 +766,7 @@ const activePlayers = (d: GameData, now: number) => d.players.filter((p) => isAc
 const endedCount = (d: GameData, now: number) => activePlayers(d, now).filter((p) => p.ended_day >= d.room.day).length;
 /** 나가지 않은 모든 사람이 오늘 마감했는지 (자리 비운 사람도 마감해야 '바로' 넘어감 — 잠깐 앱을 바꾼 사람을 건너뛰지 않게) */
 const allStayingEnded = (d: GameData) => {
-  const staying = d.players.filter((p) => !p.left_game && !p.bot_level);
+  const staying = d.players.filter((p) => !p.left_game);
   return staying.length > 0 && staying.every((p) => p.ended_day >= d.room.day);
 };
 
@@ -780,7 +786,7 @@ export function graceDeadline(d: GameData, now: number): number | null {
   // 카운트다운 기준은 지금 접속 중인 사람으로 (자리 비운 사람 때문에 하루가 끝까지 늘어지지 않게)
   const active = activePlayers(d, now).length;
   const ended = endedCount(d, now);
-  const rule = graceRule(active);
+  const rule = graceRule(active, r.turn_seconds);
   if (active === 0 || allStayingEnded(d) || ended < rule.need) return null;
   const target = now + rule.seconds * 1000;
   return r.deadline === null || target < r.deadline ? target : null;
@@ -795,7 +801,7 @@ export function isCountdown(r: RoomRow) {
 export function restoreDeadline(d: GameData, now = Date.now()): number | null {
   const r = d.room;
   if (r.status !== 'playing' || !isCountdown(r)) return null;
-  return endedCount(d, now) < graceRule(activePlayers(d, now).length).need ? r.day_deadline! : null;
+  return endedCount(d, now) < graceRule(activePlayers(d, now).length, r.turn_seconds).need ? r.day_deadline! : null;
 }
 
 /** 장 마감 취소 — 다음 날로 넘어가기 전이면 언제든. 시간이 이미 다 됐으면 불가 */
@@ -845,7 +851,8 @@ export function validatePreReady(d: GameData, meId: string, now: number) {
 export function preAllReadyDeadline(d: GameData, now: number): number | null {
   const r = d.room;
   if (!inPremarket(r, now)) return null;
-  const staying = d.players.filter((p) => !p.left_game && isActive(p, now));
+  // 봇은 장 전엔 늘 준비 완료 — 사람만 확인
+  const staying = d.players.filter((p) => !p.left_game && !p.bot_level && isActive(p, now));
   if (!staying.length || !staying.every((p) => (p.pre_day ?? -1) >= r.day)) return null;
   return now + r.turn_seconds * 1000;
 }

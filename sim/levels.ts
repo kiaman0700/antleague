@@ -34,10 +34,11 @@ function play(seed: number, a: number, b: number) {
       d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id] } : p));
     }
     d.players[0].ended_day = day;
-    const next = nextRoomState(d, at(59))!;
+    // 봇이 마감 안 했어도 하루 시간이 끝나면 넘어감
+    const next = nextRoomState(d, clk.endAt + 1)!;
     d.room = { ...d.room, ...next };
     if (d.room.status === 'finished') break;
-    const nd = at(59) + 64_000;
+    const nd = clk.endAt + 1 + 64_000;
     d.room = { ...d.room, deadline: nd, day_deadline: nd };
   }
   const f = finalResults(d).results;

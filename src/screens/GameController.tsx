@@ -20,7 +20,7 @@ import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
-import { ToastSpot } from '../components/ToastSpot';
+import { ToastSpot, type ToastMsg } from '../components/ToastSpot';
 import { TradeJump } from '../components/TradeJump';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN } from '../components/MatchFinder';
@@ -194,7 +194,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   }, [tutStep, mobile]);
   const [filter, setFilter] = useState<BrowserFilter>({ region: 'all', sub: null });
   const [watch, setWatch] = useState<string[]>(loadWatch);
-  const [toast, setToast] = useState<{ text: string; kind: 'ok' | 'err' | 'warn' } | null>(null);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
   const [exitAsk, setExitAsk] = useState(false);
   // PC: 뉴스 크게 보기 (넓은 창)
   const [newsBig, setNewsBig] = useState(false);
@@ -264,6 +264,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     window.clearTimeout(toastTimer.current);
     // 긴 안내는 읽을 시간만큼 더 오래
     toastTimer.current = window.setTimeout(() => setToast(null), Math.max(2600, text.length * 90));
+  }, []);
+  /** 장중 속보: 크게, 더 오래(6초+), 누르면 그 종목으로 */
+  const showNews = useCallback((msg: Omit<ToastMsg, 'kind'>) => {
+    setToast({ ...msg, kind: 'news' });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), Math.max(6000, msg.text.length * 110));
   }, []);
 
   useEffect(() => {
@@ -342,9 +348,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const vsBots = solo && players.some((p) => p.bot);
   // 오늘의 도전처럼 서버 판이라도 혼자면 상대 칸 대신 '오늘의 도전' 표시
   const rivals = (!solo || vsBots) && players.length >= 2;
-  const humanCount = players.filter((p) => !p.bot).length;
   const meRow = players.find((p) => p.id === me);
-  const endedToday = !solo && (meRow?.endedDay ?? -1) >= day;
+  // 봇전(브라우저)도 봇이 마감할 때까지 '마감함' 상태로 기다림 (취소는 대결에서만)
+  const endedToday = (!solo || players.some((p) => p.bot)) && (meRow?.endedDay ?? -1) >= day;
   const effects = view?.effectsToday ?? [];
   const frozen = effects.includes('freeze');
   const feeRate = effects.includes('fee') ? FEE_BOMB_RATE : FEE_RATE;
@@ -450,10 +456,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     for (const n of breaking) {
       if (seenBreaking.current.has(key(n))) continue;
       seenBreaking.current.add(key(n));
-      showToast(`속보 · ${n.headline.replace('[루머] ', '')}`, 'warn');
+      const sym = n.symbol ?? n.related?.[0];
+      showNews({ text: n.headline.replace('[루머] ', '').replace(/^\[속보\]\s*/, ''), tone: n.tone, symbol: sym ?? undefined, sub: sym && STOCK_MAP[sym] ? `${STOCK_MAP[sym].name} · 눌러서 차트 보기` : undefined });
       play('news');
     }
-  }, [market, showToast]);
+  }, [market, showNews]);
 
   // 예약 주문 체결 알림
   const seenOrders = useRef<Map<string, string> | null>(null);
@@ -962,6 +969,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         pos={layout.toastPos}
         xy={mobile ? layout.mToastXY : layout.toastXY}
         onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
+        onPick={(sym) => {
+          setToast(null);
+          selectStock(sym);
+        }}
       />
       {(
         <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
@@ -1141,7 +1152,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <b>
           <Icon name="sliders" size={16} /> 화면 편집 중
         </b>
-        <small>{mobile ? '화살표로 순서, 눈 모양으로 보이기/숨기기 · 아래 탭 순서 · 견본 알림은 끌어서 놓기' : '손잡이를 잡고 끌면 바뀔 배치가 바로 보여요 · 막대로 크기 조절 · 견본 알림은 끌어서 놓기 (가운데·끝에 맞춰 붙어요)'}</small>
+        {!mobile && <small>손잡이를 잡고 끌면 바뀔 배치가 바로 보여요. 막대로 크기를 바꾸고, 견본 알림은 끌어서 놓아요.</small>}
       </div>
       <div className="eb-actions">
         {mobile && (
@@ -1159,8 +1170,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
           <Icon name="settings" size={14} /> 옵션
         </button>
-        <button className="btn sm ghost" onClick={resetLayout}>
-          배치 처음으로
+        <button className="btn sm ghost" onClick={resetLayout} title="배치 처음으로">
+          {mobile ? <Icon name="refresh" size={14} /> : '배치 처음으로'}
         </button>
         <button className="btn sm primary" onClick={() => (session.demo ? onExit() : setEditing(false))}>
           <Icon name="check" size={14} /> 완료
@@ -1274,14 +1285,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 {inPre
                   ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}` : ''}`
                   : endedToday
-                    ? `마감 ${rows.filter((r) => r.ended && !r.bot).length}/${rows.filter((r) => !r.bot).length}${timerText ? ' · ' + timerText : ''}`
+                    ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ' + timerText : ''}`
                     : timerText
                       ? `${timerText} 남음`
                       : `${day + 1}일차`}
               </small>
             </button>
           </div>
-          {!solo && humanCount >= 2 && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} compact />}
+          {rivals && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} turnSeconds={room.turnSeconds} leftSec={preLeft > 0 ? room.turnSeconds : remaining} compact />}
           <div className="m-progress-row" aria-label={`${total}일 중 ${day + 1}일차`}>
             <span className="mp-now">
               <b>{day + 1}일차</b>
@@ -1481,7 +1492,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           )}
         </div>
         )}
-        {!solo && humanCount >= 2 && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} />}
+        {rivals && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} turnSeconds={room.turnSeconds} leftSec={preLeft > 0 ? room.turnSeconds : remaining} />}
         <AssetSummary
           ui={ui}
           cash={portfolio.cash}
@@ -1503,7 +1514,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             {inPre
               ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}명` : ''}`
               : endedToday
-                ? `마감 ${rows.filter((r) => r.ended && !r.bot).length}/${rows.filter((r) => !r.bot).length}명${timerText ? ' · ' + timerText : ''}`
+                ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}명${timerText ? ' · ' + timerText : ''}`
                 : timerText
                   ? `${timerText} 남음`
                   : `${day + 1}일차`}

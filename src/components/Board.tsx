@@ -7,7 +7,7 @@ import type { PublicPlayer } from '../engine/engine';
 import { ITEM_MAP, type ItemKind } from '../game/items';
 import { barNow, KR_INDEX_BASE, US_INDEX_BASE, type Market } from '../game/market';
 import { pct, tone, wonShort } from '../lib/format';
-import { graceText } from '../session';
+import { graceSeconds, graceText } from '../session';
 import { ScrollChips } from './StockBrowser';
 import { Term } from './Term';
 
@@ -45,7 +45,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
-    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.bot ? false : p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
+    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -79,8 +79,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
             <span className={'rs gone ' + r.status} title={r.status === 'left' ? '게임에서 나갔어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
               {STATUS_TEXT[r.status]}
             </span>
-          ) : r.bot ? null : (
-            // 봇은 사람이 모두 마감하면 따라 마감하므로 '고민 중' 표시를 안 함
+          ) : (
             <span className={'rs' + (r.ended ? ' ok' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
               {r.ended ? <Icon name="check" size={13} /> : '…'}
             </span>
@@ -92,15 +91,14 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
 }
 
 /** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
-export function EndStatus({ rows: all, countdown, compact, leftSec }: { rows: RankRow[]; countdown: boolean; compact?: boolean; leftSec?: number | null }) {
+export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds = 600 }: { rows: RankRow[]; countdown: boolean; compact?: boolean; leftSec?: number | null; turnSeconds?: number }) {
   // 나간·자리 비운 사람은 기다리지 않으므로 마감 인원 계산에서 뺌
-  // 봇은 사람이 모두 마감하면 따라 마감하므로 세지 않음
-  const rows = all.filter((r) => r.status === 'on' && !r.bot);
-  const gone = all.filter((r) => r.status !== 'on' && !r.bot);
+  const rows = all.filter((r) => r.status === 'on');
+  const gone = all.filter((r) => r.status !== 'on');
   const done = rows.filter((r) => r.ended).length;
-  // 남은 시간이 카운트다운(1대1 90초·3인 이상 30초)보다 짧으면 카운트다운은 의미가 없으니 안내하지 않음
-  const graceSec = rows.length <= 2 ? 90 : 30;
-  const hint = !countdown && rows.length >= 2 && done < rows.length && (leftSec == null || leftSec > graceSec) ? `${graceText(rows.length)} 카운트다운` : null;
+  // 남은 시간이 카운트다운(하루 길이에 맞춤)보다 짧으면 카운트다운은 의미가 없으니 안내하지 않음
+  const graceSec = graceSeconds(rows.length, turnSeconds);
+  const hint = !countdown && rows.length >= 2 && done < rows.length && (leftSec == null || leftSec > graceSec) ? `${graceText(rows.length, turnSeconds)} 카운트다운` : null;
   return (
     <div className={'end-status' + (compact ? ' compact' : '')} aria-label={`장 마감 ${done}/${rows.length}명`}>
       <span className="es-title">

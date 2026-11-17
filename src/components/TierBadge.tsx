@@ -116,8 +116,8 @@ export function tierShort(rating: number, rankedGames: number | null | undefined
 }
 
 /**
- * 티어표: 마스터 → 브론즈, 티어마다 단계 III · II · I 그림 (오를수록 장식이 늘어남).
- * mine 을 주면 내 티어·단계를 표시
+ * 티어표: 브론즈 → 마스터로 오르는 계단. 계단이 높아질수록 그림도 커지고, 계단 안에 단계 III · II · I.
+ * mine 을 주면 내 티어에 '나' 표시
  */
 export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: number | null | undefined } }) {
   const my = mine && isPlaced(mine.rankedGames) ? tierOf(mine.rating) : null;
@@ -127,27 +127,32 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
       <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 III → II → I 단계(50점씩)가 있어요.</p>
-      <ol>
-        {[...TIERS].reverse().map((t) => {
+      <ol className="tl-stairs">
+        {TIERS.map((t, i) => {
           const base = t.id === 'bronze' ? 850 : t.min;
           const here = my?.id === t.id;
           return (
-            <li key={t.id} className={here ? 'me' : undefined}>
-              <TierEmblem rating={t.id === 'master' ? 1600 : base + 100} size={32} />
-              <span className="tl-name">
-                <b style={{ color: t.color }}>{t.name}</b>
-                <small className="muted">{here ? '지금 내 티어' : t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점부터'}</small>
-              </span>
-              {t.id !== 'master' && (
-                <span className="tl-divs" aria-label={`${t.name} III, II, I`}>
-                  {(['III', 'II', 'I'] as const).map((dv, i) => (
-                    <span key={dv} className={'tl-div' + (here && my?.division === dv ? ' me' : '')}>
-                      <TierEmblem rating={base + i * 50} size={22} />
-                      <small>{dv}</small>
-                    </span>
-                  ))}
-                </span>
-              )}
+            <li key={t.id} className={'tl-step' + (here ? ' me' : '')} style={{ ['--tc' as string]: t.color, ['--h' as string]: `${86 + i * 18}px` }}>
+              <div className="tl-emb">
+                <TierEmblem rating={t.id === 'master' ? 1600 : base + 100} size={40 + i * 5} />
+              </div>
+              <div className="tl-block">
+                {here && <span className="tl-me">나</span>}
+                <b>{t.name}</b>
+                <small>{t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점'}</small>
+                {t.id !== 'master' ? (
+                  <span className="tl-divs" aria-label={`${t.name} III, II, I`}>
+                    {(['III', 'II', 'I'] as const).map((dv, k) => (
+                      <span key={dv} className={'tl-div' + (here && my?.division === dv ? ' me' : '')} title={`${t.name} ${dv}`}>
+                        <TierEmblem rating={base + k * 50} size={14} />
+                        <i>{dv}</i>
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="tl-top">최고 티어</span>
+                )}
+              </div>
             </li>
           );
         })}
