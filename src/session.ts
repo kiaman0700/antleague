@@ -53,9 +53,9 @@ const DAY_OVERHEAD = 8;
  */
 export function estimateMinutes(days: number, turnSec: number) {
   const typical = Math.min(Math.min(turnSec * 0.5, 120) + 15, turnSec);
-  // 둘째 날부터 장 전 시간(신속 20초·일반 30초·그 밖 ⅓)이 더해짐
+  // 날마다(v14부터 첫날 포함) 장 전 시간(신속 20초·일반 30초·그 밖 ⅓)이 더해짐
   const pre = turnSec <= 60 ? 20 : turnSec <= 90 ? 30 : Math.max(15, Math.min(45, Math.round(turnSec / 3)));
-  const toMin = (perDay: number) => Math.max(1, Math.round((days * (perDay + DAY_OVERHEAD) + (days - 1) * pre) / 60));
+  const toMin = (perDay: number) => Math.max(1, Math.round((days * (perDay + DAY_OVERHEAD) + days * pre) / 60));
   return { typical: toMin(typical), max: toMin(turnSec) };
 }
 
