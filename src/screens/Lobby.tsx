@@ -92,10 +92,10 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
     onChange(m);
   };
   const desc = custom
-    ? `내가 바꾼 화면으로 · 바탕 ${value === 'easy' ? '초보' : '일반'}`
+    ? `내가 바꾼 화면이에요 (바탕은 ${value === 'easy' ? '초보' : '일반'})`
     : value === 'easy'
-      ? '쉬운 말 · 금액 버튼으로 쉽게 사기 · 용어 설명'
-      : '캔들 차트 · 수량 주문 · 시가/고가/저가';
+      ? '쉬운 말과 금액 버튼으로 쉽게 사고, 어려운 말엔 설명이 붙어요'
+      : '캔들 차트와 수량 주문, 시가·고가·저가까지 보여요';
   return (
     <div className="mode-pick compact">
       <div className="mp-row" role="radiogroup" aria-label="화면 모드">
@@ -613,7 +613,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && setModal('practice')}>
             <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
-            <small>나만의 속도로, 이 기기에 저장돼요</small>
+            <small>원하는 속도로 혼자 한 판</small>
           </button>
           <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
             <i><Icon name="play" size={24} /></i>
@@ -646,7 +646,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             ) : (
               <>
                 <label className={'field' + (profile.nick && !profile.ok ? ' invalid' : '')}>
-                  <span>게스트 닉네임 · 랭킹에는 안 올라가요</span>
+                  <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
                   <input value={profile.nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => profile.setNick(e.target.value)} />
                 </label>
                 {online && (
@@ -1573,7 +1573,7 @@ function SoundSetting() {
       <div className="ms-row">
         <span>
           <b>효과음</b>
-          <small className="muted">마감·체결·매칭 소리</small>
+          <small className="muted">장 마감, 체결, 매칭 때 소리가 나요</small>
         </span>
         <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} aria-label="효과음" onClick={() => (setMuted(!m), setM(!m))}>
           <i />

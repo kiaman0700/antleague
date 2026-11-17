@@ -182,7 +182,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         const b = r.bonusOn[d] ?? 0;
         return b !== 0 && Math.sign(b) === Math.sign(dv) && Math.abs(b) * 2 >= Math.abs(dv) ? `용돈 봉투로 ${b > 0 ? '+' : ''}${wonShort(b)}` : undefined;
       };
-      if (best > 0) out.push({ icon: 'sparkles', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd, note: why(bd, best) });
+      if (best > 0) out.push({ icon: 'trend', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd, note: why(bd, best) });
       if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd, note: why(wd, worst) });
     }
     return out;
@@ -335,7 +335,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
       {highlights.length > 0 && (
       <div className="panel pad">
-        <h3><Icon name="sparkles" /> 하이라이트</h3>
+        <h3><Icon name="star" /> 하이라이트</h3>
         <div className="hl-grid" style={{ ['--cols' as string]: balancedCols(highlights.length) }}>
           {highlights.map((h, i) => (
             <button key={i} className="hl-card" onClick={() => h.day !== undefined && setReplayDay(h.day)}>

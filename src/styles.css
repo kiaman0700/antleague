@@ -1,15 +1,15 @@
 /* ============ 디자인 토큰 ============ */
 :root {
-  --bg: #0b0d12;
-  --bg-2: #10131a;
-  --surface: #151922;
-  --surface-2: #1b202b;
-  --surface-3: #232937;
+  --bg: #111111;
+  --bg-2: #161616;
+  --surface: #1c1c1c;
+  --surface-2: #242424;
+  --surface-3: #2e2e2e;
   --line: rgba(255, 255, 255, 0.07);
   --line-2: rgba(255, 255, 255, 0.12);
-  --text: #f1f3f7;
-  --text-2: #c3c9d4;
-  --muted: #828a99;
+  --text: #f2f2f2;
+  --text-2: #c8c8c8;
+  --muted: #8e8e8e;
   --up: #f2495c; /* 한국식: 상승 빨강 */
   --up-soft: rgba(242, 73, 92, 0.14);
   --down: #3b82f6; /* 하락 파랑 */
@@ -168,13 +168,12 @@ code {
   opacity: 0.38;
 }
 .btn.primary {
-  background: linear-gradient(180deg, var(--accent), #8b7bff);
+  background: #6b58ee; /* 흰 글자 대비 4.5:1 이상 되는 진한 보라 단색 */
   border-color: transparent;
   color: #ffffff;
-  box-shadow: 0 6px 20px rgba(139, 123, 255, 0.22);
 }
 .btn.primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ada1ff, var(--accent));
+  background: #7765f2;
 }
 .btn.ghost {
   background: transparent;
@@ -194,16 +193,15 @@ code {
   border-radius: var(--r-sm);
 }
 .btn.buy {
-  background: var(--up);
-  border-color: var(--up);
+  /* 흰 글자 대비 4.5:1 이상 되게 상승 빨강·하락 파랑을 조금 진하게 */
+  background: #d9364b;
+  border-color: #d9364b;
   color: #fff;
-  box-shadow: 0 6px 20px rgba(242, 73, 92, 0.25);
 }
 .btn.sell {
-  background: var(--down);
-  border-color: var(--down);
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.25);
 }
 .icon-btn {
   width: 36px;
@@ -360,7 +358,7 @@ code {
   left: 50%;
   transform: translateX(-50%);
   width: 240px;
-  background: #262c3a;
+  background: #2d2d2d;
   border: 1px solid var(--line-2);
   border-radius: 12px;
   padding: 12px 14px;
@@ -762,7 +760,7 @@ code {
   background: var(--bg);
 }
 .end-turn {
-  background: linear-gradient(180deg, var(--accent), #8b7bff);
+  background: #6b58ee;
   color: #ffffff;
   border: 0;
   padding: 12px 22px;
@@ -772,7 +770,6 @@ code {
   align-items: center;
   line-height: 1.2;
   min-width: 150px;
-  box-shadow: 0 6px 20px rgba(139, 123, 255, 0.25);
 }
 .end-turn small {
   font-size: 11px;
@@ -960,7 +957,7 @@ code {
   flex-shrink: 0;
 }
 .held {
-  color: var(--gold);
+  color: var(--accent-text, #b9b0ff);
 }
 .risk.r1 {
   color: var(--green);
@@ -1451,11 +1448,11 @@ code {
   font-size: 14px;
 }
 .reveal.paper {
-  background: linear-gradient(135deg, rgba(139, 123, 255, 0.16), rgba(139, 123, 255, 0.04));
+  background: rgba(139, 123, 255, 0.1);
   border: 1px solid rgba(139, 123, 255, 0.4);
 }
 .reveal.analyst {
-  background: linear-gradient(135deg, rgba(167, 139, 250, 0.16), rgba(167, 139, 250, 0.04));
+  background: rgba(167, 139, 250, 0.1);
   border: 1px solid rgba(167, 139, 250, 0.4);
 }
 .reveal-title {
@@ -1485,7 +1482,7 @@ code {
 
 /* 자산 */
 .asset-hero {
-  background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
+  background: var(--surface-2);
   border-radius: var(--r-lg);
   padding: 18px;
   display: flex;
@@ -1652,8 +1649,7 @@ code {
 .modal-bg {
   position: fixed;
   inset: 0;
-  background: rgba(5, 6, 10, 0.6);
-  backdrop-filter: blur(6px);
+  background: rgba(7, 7, 7, 0.72);
   display: grid;
   place-items: center;
   z-index: 50;
@@ -1661,7 +1657,7 @@ code {
   animation: fade 0.2s ease-out;
 }
 .modal-bg.strong {
-  background: rgba(5, 6, 10, 0.78);
+  background: rgba(7, 7, 7, 0.78);
 }
 @keyframes fade {
   from {
@@ -1789,7 +1785,7 @@ code {
   left: 50%;
   top: 18px;
   transform: translateX(-50%);
-  background: #262c3a;
+  background: #2d2d2d;
   border: 1px solid var(--line-2);
   padding: 12px 18px;
   border-radius: 14px;
@@ -1812,7 +1808,7 @@ code {
 }
 .toast.warn {
   border-color: var(--gold);
-  color: var(--gold);
+  color: var(--accent-text, #b9b0ff);
 }
 .react-wrap {
   position: fixed;
@@ -1885,7 +1881,7 @@ code {
 }
 .bubble {
   background: var(--opp);
-  color: #160d2e;
+  color: #161616;
   border-radius: 18px 18px 4px 18px;
   padding: 10px 14px;
   font-weight: 700;
@@ -1976,7 +1972,7 @@ code {
   border-top: 3px solid;
 }
 .score-card.champ {
-  box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.5), 0 10px 40px rgba(139, 123, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.5);
 }
 .big-num {
   font-size: 26px;
@@ -2140,8 +2136,7 @@ code {
     right: 0;
     bottom: 0;
     z-index: 35;
-    background: rgba(16, 19, 26, 0.92);
-    backdrop-filter: blur(14px);
+    background: var(--bg-2);
     border-top: 1px solid var(--line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
   }

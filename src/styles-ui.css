@@ -57,15 +57,15 @@ h4 .ico {
   color: var(--text-2);
 }
 .rank-badge.r1 {
-  background: linear-gradient(180deg, var(--accent-text), #8b7bff);
+  background: #8b7bff;
   color: #ffffff;
 }
 .rank-badge.r2 {
-  background: linear-gradient(180deg, #e6e9ef, #b7bdc8);
-  color: #1b1f27;
+  background: #c9ced8;
+  color: #202020;
 }
 .rank-badge.r3 {
-  background: linear-gradient(180deg, #e7b48a, #b8794a);
+  background: #c98e60;
   color: #1d120a;
 }
 
@@ -74,7 +74,7 @@ h4 .ico {
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: #10131a;
+  color: #141414;
 }
 .avatar.empty {
   color: var(--muted);
@@ -422,8 +422,7 @@ button.tag:hover,
   gap: 8px 12px;
   padding: 10px 14px;
   margin-bottom: 8px;
-  background: rgba(21, 25, 34, 0.96);
-  backdrop-filter: blur(10px);
+  background: var(--surface);
   border: 1px solid rgba(139, 123, 255, 0.5);
   border-radius: 14px;
 }
@@ -818,7 +817,7 @@ button.tag:hover,
 /* ============ 새 뉴스·속보 강조 (1분) ============ */
 .news-card.fresh {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.35), 0 0 18px rgba(139, 123, 255, 0.18);
+  box-shadow: 0 0 0 1px rgba(139, 123, 255, 0.35);
   animation: fresh-in 0.5s ease-out;
 }
 @keyframes fresh-in {
@@ -1222,7 +1221,6 @@ button.tag:hover,
   flex: 0 0 4px;
   border-radius: 4px;
   background: var(--gold);
-  box-shadow: 0 0 10px rgba(139, 123, 255, 0.6);
 }
 .drop-line.v {
   flex: 0 0 4px;
@@ -1337,13 +1335,13 @@ button.tag:hover,
 .tut-dim {
   position: absolute;
   inset: 0;
-  background: rgba(5, 6, 10, 0.55);
+  background: rgba(7, 7, 7, 0.55);
 }
 /* 비춘 곳 밖은 어둡게 (안쪽은 그대로 눌러 볼 수 있음) */
 .tut-spot {
   position: fixed;
   border-radius: 14px;
-  box-shadow: 0 0 0 9999px rgba(5, 6, 10, 0.55), 0 0 0 2px var(--gold), 0 0 22px rgba(139, 123, 255, 0.5);
+  box-shadow: 0 0 0 9999px rgba(7, 7, 7, 0.55), 0 0 0 2px var(--gold);
   transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s;
 }
 .tut-bubble {
@@ -1567,7 +1565,7 @@ button.tag:hover,
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background: var(--bg, #0d0f14);
+  background: var(--bg, #101010);
   color: var(--text, #e8ebf2);
 }
 .crash-box {
@@ -1708,13 +1706,13 @@ button.tag:hover,
   min-width: 96px;
 }
 .trade-jump .btn.buy {
-  background: var(--up);
-  border-color: var(--up);
+  background: #d9364b;
+  border-color: #d9364b;
   color: #fff;
 }
 .trade-jump .btn.sell {
-  background: var(--down);
-  border-color: var(--down);
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 .trade-jump .btn:disabled {
@@ -2199,8 +2197,8 @@ button.tag:hover,
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: #10131a;
-  background: linear-gradient(135deg, var(--accent-text), #8b7bff);
+  color: #141414;
+  background: #6b58ee;
   flex: 0 0 auto;
 }
 .acc-txt {
@@ -2735,6 +2733,9 @@ button.tag:hover,
 }
 .mode-pick.compact .mp-custom-pill > button:not(.mp-gear) {
   flex: 1;
+  min-width: 0; /* 좁은 칸에서 톱니 버튼이 밖으로 밀려 잘리지 않게 */
+  padding-left: 4px;
+  padding-right: 4px;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -2744,8 +2745,9 @@ button.tag:hover,
   border-left: 1px solid var(--line-2);
   border-radius: 0;
   background: transparent;
-  width: 38px;
-  min-width: 38px;
+  width: 32px;
+  min-width: 32px;
+  flex: none;
 }
 .mp-custom-pill.on .mp-gear.icon-btn {
   border-left-color: rgba(139, 123, 255, 0.45);

@@ -62,7 +62,7 @@ kbd {
 }
 .cal-row.today {
   border-color: rgba(139, 123, 255, 0.6);
-  background: linear-gradient(135deg, rgba(139, 123, 255, 0.1), var(--surface-2));
+  background: rgba(139, 123, 255, 0.08);
 }
 .cal-d {
   display: flex;
@@ -103,6 +103,9 @@ kbd {
   gap: 6px;
 }
 .order-kind button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line-2);
   background: transparent;
   border-radius: 10px;
@@ -241,7 +244,7 @@ kbd {
 }
 .badge.r3 {
   border-color: rgba(139, 123, 255, 0.7);
-  background: linear-gradient(135deg, rgba(139, 123, 255, 0.12), var(--surface-2));
+  background: rgba(139, 123, 255, 0.12);
 }
 .hl-grid {
   display: grid;
@@ -402,8 +405,7 @@ kbd {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(11, 13, 18, 0.94);
-  backdrop-filter: blur(14px);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
   padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
   display: flex;
@@ -469,14 +471,13 @@ kbd {
   color: var(--green);
 }
 .m-end {
-  background: linear-gradient(180deg, var(--accent), #8b7bff);
+  background: #6b58ee;
   color: #ffffff;
   border: 0;
   padding: 12px 16px;
   border-radius: 14px;
   font-size: 15px;
   min-height: 46px;
-  box-shadow: 0 6px 20px rgba(139, 123, 255, 0.25);
 }
 .m-end.waiting,
 .m-end:disabled {
@@ -577,8 +578,7 @@ kbd {
   gap: 8px;
   align-items: center;
   padding: 10px 12px;
-  background: rgba(16, 19, 26, 0.96);
-  backdrop-filter: blur(14px);
+  background: var(--bg-2);
   border-top: 1px solid var(--line);
 }
 .mt-price {
@@ -608,8 +608,7 @@ kbd {
   right: 0;
   bottom: 0;
   z-index: 35;
-  background: rgba(16, 19, 26, 0.96);
-  backdrop-filter: blur(14px);
+  background: var(--bg-2);
   border-top: 1px solid var(--line);
   padding: 4px 2px calc(4px + env(safe-area-inset-bottom));
 }
@@ -691,8 +690,7 @@ kbd {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(5, 6, 10, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(7, 7, 7, 0.72);
   display: flex;
   align-items: flex-end;
   animation: fade 0.2s ease-out;
@@ -752,10 +750,10 @@ kbd {
   color: var(--text-2);
 }
 .nlabel.l-속보 {
-  color: var(--up);
+  color: #ff6b7d;
 }
 .nlabel.l-단독 {
-  color: var(--gold);
+  color: #a99dff;
 }
 .nlabel.l-시황,
 .nlabel.l-특징주 {

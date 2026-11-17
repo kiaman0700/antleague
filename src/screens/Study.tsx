@@ -106,7 +106,7 @@ export function StudyBasics() {
           </div>
           <p>{l.body}</p>
           <p className="sc-tip">
-            <Icon name="sparkles" size={14} /> {l.tip}
+            <Icon name="info" size={14} /> {l.tip}
           </p>
         </section>
       ))}

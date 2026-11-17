@@ -347,7 +347,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const feeRate = effects.includes('fee') ? FEE_BOMB_RATE : FEE_RATE;
   const canAct = !!view && room?.status === 'playing' && closing === null && viewDay === serverDay && !endedToday && !showResult;
   const deadline = room?.deadline ?? null;
-  const remaining = deadline !== null ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
+  // 마감 시각엔 장이 열리기 전 몇 초(장 시작 준비)가 들어 있어서, 그대로 보이면 '1분' 하루에 '1:03 남음'처럼 하루 길이보다 길게 보임 → 하루 길이까지만
+  const daySecs = room?.turnSeconds ?? 0;
+  const rawRemaining = deadline !== null ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
+  const remaining = rawRemaining !== null && daySecs > 0 ? Math.min(rawRemaining, daySecs) : rawRemaining;
   // (v7) 장 전 시간: 어제 정리·찌라시·예약 주문. 지금 가격 거래와 장 마감은 장이 열린 뒤에
   const preUntil = !solo ? (room?.preUntil ?? null) : null;
   const preLeft = preUntil !== null ? Math.max(0, Math.ceil((preUntil - (now + offset)) / 1000)) : 0;
@@ -1526,10 +1529,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           onClick={inPre ? preReady : endedToday ? cancelEnd : endTurn}
           title={inPre ? '모두 준비 완료를 누르면 장이 바로 열려요' : endedToday ? '다음 날로 넘어가기 전까지 취소할 수 있어요' : '오늘 거래를 끝내고 마감해요'}
         >
-          <span className="et-main">
-            <Icon name={inPre ? 'play' : endedToday ? 'refresh' : 'check'} size={18} />
-            {endLabel}
-          </span>
+          <span className="et-main">{endLabel}</span>
           <small className="et-sub">
             {inPre
               ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}명` : ''}`

@@ -328,8 +328,7 @@
     bottom: 0;
     z-index: 40;
     padding: 4px 4px env(safe-area-inset-bottom);
-    background: color-mix(in srgb, var(--bg-2) 94%, transparent);
-    backdrop-filter: blur(10px);
+    background: var(--bg-2);
     border-top: 1px solid var(--line);
   }
   .lobby-bottom button {
@@ -900,8 +899,7 @@ button.hr-row:hover {
   position: sticky;
   top: var(--m-top-h, 0px);
   z-index: 29;
-  background: rgba(11, 13, 18, 0.94);
-  backdrop-filter: blur(14px);
+  background: var(--bg);
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
 }

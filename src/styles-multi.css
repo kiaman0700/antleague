@@ -396,7 +396,7 @@
   }
 }
 .tk.tk-pinned {
-  background: linear-gradient(160deg, rgba(139, 123, 255, 0.1), var(--surface) 70%);
+  background: rgba(139, 123, 255, 0.07);
   border-color: rgba(139, 123, 255, 0.28);
 }
 .tk-pin {
@@ -541,7 +541,7 @@
 }
 .sched-chip.today {
   border-color: rgba(139, 123, 255, 0.55);
-  background: linear-gradient(135deg, rgba(139, 123, 255, 0.12), var(--surface));
+  background: rgba(139, 123, 255, 0.1);
   color: var(--text);
 }
 .sched-chip.today b {
@@ -677,9 +677,8 @@
   padding: 6px 14px;
   border: 0;
   border-radius: 14px;
-  background: linear-gradient(180deg, var(--accent), #8b7bff);
+  background: #6b58ee;
   color: #ffffff;
-  box-shadow: 0 6px 18px rgba(139, 123, 255, 0.22);
   transition: transform 0.08s;
 }
 .m-end2:active:not(:disabled) {
@@ -696,7 +695,7 @@
   white-space: nowrap;
 }
 .m-end2.hurry {
-  background: linear-gradient(180deg, var(--danger-text), #f2495c);
+  background: #d42f48;
   color: #fff;
   animation: pulse 1s ease-in-out infinite;
 }
@@ -717,7 +716,7 @@
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, rgba(139, 123, 255, 0.5), var(--gold));
+  background: var(--accent);
   transition: width 0.4s ease;
 }
 

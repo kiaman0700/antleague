@@ -14,12 +14,12 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
         </linearGradient>
       </defs>
       <path d="M20 2 L35 8 V20 C35 29 28 35 20 38 C12 35 5 29 5 20 V8 Z" fill={`url(#tg-${t.id}-${placed ? 1 : 0})`} stroke={c} strokeWidth="1.5" />
-      <path d="M11 24 L17 18 L21 22 L29 13" fill="none" stroke="#0b0d12" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11 24 L17 18 L21 22 L29 13" fill="none" stroke="#111111" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       {Array.from({ length: pips }, (_, i) => (
-        <circle key={i} cx={20 - (pips - 1) * 3 + i * 6} cy="31" r="1.7" fill="#0b0d12" />
+        <circle key={i} cx={20 - (pips - 1) * 3 + i * 6} cy="31" r="1.7" fill="#111111" />
       ))}
       {!placed && (
-        <text x="20" y="25" textAnchor="middle" fontSize="13" fontWeight="900" fill="#0b0d12">
+        <text x="20" y="25" textAnchor="middle" fontSize="13" fontWeight="900" fill="#111111">
           ?
         </text>
       )}

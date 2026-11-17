@@ -100,7 +100,7 @@
 .btn.danger:hover:not(:disabled) { background: rgba(240, 68, 82, 0.12); color: #ffb3bb; }
 
 /* 화면 아래 짧은 확인 안내 */
-.ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #1f2433; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
+.ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #262626; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
 .ui-toast > svg, .ui-toast > .ico { color: var(--success); flex: 0 0 auto; }
 .ui-toast.error > svg, .ui-toast.error > .ico { color: var(--danger-text); }
 @keyframes uiToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -215,7 +215,7 @@
 
 /* 업적 화면 '최근 전적': 내 기준 요약 숫자 + 판마다 내 순위·수익률 */
 .rec-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: rgba(255,255,255,.06); border-radius: 12px; overflow: hidden; margin: 8px 0 12px; }
-.rec-sum > div { background: rgba(10,10,20,.55); padding: 12px 8px 10px; display: grid; gap: 2px; text-align: center; }
+.rec-sum > div { background: rgba(12, 12, 12,.55); padding: 12px 8px 10px; display: grid; gap: 2px; text-align: center; }
 .rec-sum b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .rec-sum small { font-size: 12px; color: var(--muted); }
 .rec-gold { color: var(--accent-text); }
@@ -342,7 +342,7 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 /* 글자 대비(읽기 쉬움) 맞추기 — 같은 색 계열에서 밝기만 조정
    상승·하락 글자: 밝은 칸 위에서도 4.5:1 이상 / 흰 글자 작은 배지: 배경을 조금 진하게 */
 /* (색 토큰 자체는 그대로 — 버튼 배경으로도 써서 흰 글자 대비가 떨어짐. 글자로 쓰는 .up/.down 만 밝게) */
-.up { color: #ff5a6e; }
+.up { color: #ff6b7d; }
 .down { color: #5b9bff; }
 .breaking-badge, .news-cats .nc-unread { background: #d42f48; }
 .news-cats .chip.on { background: #6b58ee; border-color: #6b58ee; }
@@ -396,7 +396,7 @@ body { background: var(--bg) !important; }
 .cl-play, .lobby-shell.client .match-finder .btn.primary.xl, .wr-go, .result .center-actions .btn.primary {
   clip-path: none !important;
   border-radius: var(--r) !important;
-  background: var(--accent) !important;
+  background: #6b58ee !important; /* 흰 글자 대비 4.5:1 이상 */
   letter-spacing: inherit !important;
 }
 .wr-go.off, .wr-go:disabled { background: var(--surface-3) !important; }
@@ -430,3 +430,8 @@ body { background: var(--bg) !important; }
 .acc-agree > .check, .acc-agree .check-row .check { display: flex; align-items: center; gap: 8px; }
 /* 법적 안내 줄은 휴대폰에서도 (예전엔 PC 에서만 보였음) — 아래 탭바에 가리지 않게 여백 */
 .cl-foot { display: flex !important; padding: 12px 0 calc(18px + env(safe-area-inset-bottom)); font-size: 12px; color: var(--muted); }
+
+/* 설정·더보기(휴대폰): 목록 칸 제목을 목록 아이콘과 같은 줄에 (예전엔 칸 테두리에 붙어 다른 칸 제목보다 왼쪽에 있었음) */
+@media (max-width: 860px) {
+  .more-page .more-links > .more-h { margin: 10px 12px 4px !important; }
+}

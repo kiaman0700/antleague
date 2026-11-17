@@ -752,7 +752,7 @@ export function TradePanel({
           className={kind === "limit" ? "on" : ""}
           onClick={() => switchKind("limit")}
         >
-          <Icon name="hourglass" size={14} /> {easy ? "예약 주문" : "지정가"}
+          {easy ? "예약 주문" : "지정가"}
         </button>
       </div>
 

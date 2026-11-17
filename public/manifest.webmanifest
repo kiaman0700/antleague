@@ -4,8 +4,8 @@
   "description": "같은 시장, 같은 뉴스로 겨루는 모의 주식 대결",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#151922",
-  "theme_color": "#151922",
+  "background_color": "#161616",
+  "theme_color": "#161616",
   "lang": "ko",
   "icons": [
     {
