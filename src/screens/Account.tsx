@@ -10,6 +10,7 @@ import { TierBadge, TierLadder } from '../components/TierBadge';
 import { DailyRankPanel } from '../components/Daily';
 import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { api } from '../net/api';
+import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
 import { BADGES, titleOf } from '../game/achievements';
@@ -598,7 +599,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         </button>
       </section>
 
-      <section className="panel pad">
+      <section className="panel pad acc-sec">
         <h3>계정</h3>
         <div className="acc-pw">
           <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
@@ -647,9 +648,9 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         >
           <Icon name="key" size={14} /> 복구 코드 새로 받기
         </button>
-        <small className="muted">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
-        <p className="muted small">탈퇴는 업적 화면 맨 아래 '회원 탈퇴 · 내 데이터 지우기'에서 할 수 있어요.</p>
+        <small className="muted acc-note">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
       </section>
+      <ForgetMe />
     </div>
   );
 }
