@@ -141,6 +141,13 @@ export function newsBot(o: Partial<NewsBotOpts> & { name: string }): Bot {
       const co = COMPANIES[Math.floor(c.rng() * COMPANIES.length)];
       payload = { target, symbol: co.symbol, tone: 'good' };
     }
+    // (v14) 감별기는 오늘 소식 하나를 골라야 함 — 소문 기사(사건 찌라시) → 장 전 찌라시 → 첫 뉴스 순 (고르지 않으면 서버가 거절해 카드가 헛돎)
+    if (kind === 'detector' && SIM_V >= 14) {
+      const today = c.market.news.filter((n) => n.day === c.day);
+      const pick = today.find((n) => n.rumor && n.kind === 'company')?.headline ?? c.view.rumors?.[0]?.text ?? today[0]?.headline;
+      if (!pick) return false;
+      payload = { pick };
+    }
     if (kind === 'scout') {
       const sc = scores(c);
       const top = Object.entries(sc).sort((a, b) => b[1] - a[1])[0];
