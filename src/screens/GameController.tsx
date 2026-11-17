@@ -49,7 +49,7 @@ interface Props {
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
 const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
-const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '뉴스', assets: '내 재산', cards: '카드' };
+const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '소식', assets: '내 재산', cards: '카드' };
 const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'news', assets: 'wallet', cards: 'cards' };
 const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', schedule: '일정', assets: '내 재산 요약' };
 
@@ -946,7 +946,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         </div>
       )}
       {newsBig && !mobile && (
-        <Sheet title={<><Icon name="news" size={18} /> 오늘의 뉴스</>} onClose={() => setNewsBig(false)} wide>
+        <Sheet title={<><Icon name="news" size={18} /> 오늘의 소식</>} onClose={() => setNewsBig(false)} wide>
           {/* 관련 종목·업종을 누르면 그 차트로 가면서 창을 닫음 */}
           <div className="news-big" onClickCapture={(e) => (e.target as Element).closest(".rel-chip, .rb-sec, .linkish-soft") && setTimeout(() => setNewsBig(false), 0)}>{newsPanel}</div>
         </Sheet>
@@ -1582,7 +1582,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             <section className="pane p-news">
               {/* 뉴스 칸 제목 + 크게 보기 (카드 칸 제목과 같은 모양) */}
               <div className="news-bar">
-                <b><Icon name="news" size={15} /> 뉴스</b>
+                <b><Icon name="news" size={15} /> 소식</b>
                 <button className="btn sm ghost" onClick={() => setNewsBig(true)}>
                   <Icon name="grid" size={14} /> 크게 보기
                 </button>

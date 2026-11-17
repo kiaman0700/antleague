@@ -73,6 +73,8 @@ interface Props {
 }
 
 const W = 680;
+/** 처음 화면의 봉 칸 수 (간격과 상관없이 같은 굵기) */
+const SLOTS = 36;
 
 /** 차트에 그은 선은 판마다 따로 저장 (지난 판의 선이 새 판에 나타나지 않게). 게임 화면이 판이 바뀔 때 정함 */
 let drawScope = 'x';
@@ -175,17 +177,13 @@ export function ProChart({
   // 기본 화면: 지나온 날 + 약간의 여유 (초반에 빈 미래 칸이 대부분이 되지 않게)
   const offset = unit?.offset;
   const defaultView = useCallback(
-    (): [number, number] =>
-      offset != null
-        ? // 오늘 하루 + 왼쪽에 전날 끝부분 조금 (지난 날이 이어진다는 게 보이게)
-          [Math.max(0, offset - Math.round((totalDays - offset) * 0.25)), totalDays - 1]
-        : [
-            0,
-            Math.min(
-              totalDays - 1,
-              Math.max(lastIdx + 2, Math.min(totalDays - 1, 9)),
-            ),
-          ],
+    (): [number, number] => {
+      // 처음 화면은 늘 봉 SLOTS 칸 — 5·10·20·30초·일 어느 간격이든 봉 굵기·사이가 같게 (사용자 요청 2026-11-17).
+      // 봉이 적으면 늘리지 않고 빈칸으로 둠. 장중은 오늘 끝(지금 이후 칸 포함)에, 일봉은 지난날+2칸에 오른쪽 끝을 맞춤
+      const anchor = offset != null ? totalDays - 1 : Math.min(totalDays - 1, lastIdx + 2);
+      const end = Math.max(SLOTS - 1, anchor);
+      return [end - SLOTS + 1, end];
+    },
     [totalDays, lastIdx, offset],
   );
   const [view, setViewRaw] = useState<[number, number]>(defaultView);
@@ -329,14 +327,16 @@ export function ProChart({
   };
   const clampView = useCallback(
     (a: number, b: number): [number, number] => {
-      const minSpan = Math.min(5, totalDays);
-      let s = Math.max(minSpan, Math.min(totalDays, b - a));
+      // 봉이 SLOTS 칸보다 적어도 화면 폭은 SLOTS 칸 (빈칸으로 둠)
+      const room = Math.max(totalDays, SLOTS);
+      const minSpan = Math.min(5, room);
+      let s = Math.max(minSpan, Math.min(room, b - a));
       let start = a;
       if (start < -0.5) start = -0.5;
-      if (start + s > totalDays - 0.5) start = totalDays - 0.5 - s;
+      if (start + s > room - 0.5) start = room - 0.5 - s;
       if (start < -0.5) {
         start = -0.5;
-        s = totalDays;
+        s = room;
       }
       return [start + 0.5, start + s - 0.5];
     },

@@ -93,11 +93,33 @@ function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change
   );
 }
 
+/** 찌라시 글 꾸밈 (화면 전용): 글 내용으로만 정하는 익명 아이디·출처·시간·숫자 — 진짜/가짜와 아무 관련 없음 */
+const SNS_WHERE = ['주식 단톡방', '종목 토론방', '찌라시 채널', '개미 카페', '익명 게시판'];
+const SNS_AV = ['default', 'antred', 'antblue'];
+function snsFace(seed: string) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const u = (k: number) => ((h >>> 0) % (k * 7919 + 1)) % k;
+  const r = h >>> 0;
+  return {
+    handle: '개미_' + (10 + (r % 890)),
+    where: SNS_WHERE[(r >>> 3) % SNS_WHERE.length],
+    min: 1 + ((r >>> 7) % 48),
+    views: (120 + ((r >>> 11) % 4800)).toLocaleString('ko-KR'),
+    likes: 3 + u(240),
+    avatar: SNS_AV[(r >>> 5) % SNS_AV.length],
+  };
+}
+
 export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
-  // 보기: 전체 / 찌라시 / n일차 (날이 바뀌면 다시 전체로)
-  const [cat, setCat] = useState<'all' | 'rumor' | number>('all');
+  // 뉴스와 찌라시는 따로 (사용자 요청 2026-11-17): 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
+  const [mode, setMode] = useState<'news' | 'rumor'>('news');
+  const [cat, setCat] = useState<'all' | number>('all');
   useEffect(() => setCat('all'), [day]);
   // 날짜 칩 줄: 오늘 칩이 줄 가운데에 오게 (긴 게임에서 오늘이 오른쪽 밖에 숨지 않게 — 그 줄만 옆으로 움직임)
   const catsRef = useRef<HTMLDivElement>(null);
@@ -106,63 +128,82 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     const chip = box?.querySelector<HTMLElement>('.nc-today');
     if (box && chip) box.scrollLeft = Math.max(0, chip.offsetLeft - box.offsetLeft - box.clientWidth / 2 + chip.offsetWidth / 2);
   }, [day, totalDays]);
-  const today = news.filter((n) => n.day === day);
-  const old = news.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
+  // 정식 기사와 소문 기사('루머' 표시)를 나눔 — 소문 기사는 찌라시 쪽에
+  const official = news.filter((n) => !n.rumor);
+  const rumorNews = news.filter((n) => n.rumor);
+  const today = official.filter((n) => n.day === day);
+  const old = official.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
+  const rumorToday = rumorNews.filter((n) => n.day === day);
+  const rumorOld = rumorNews.filter((n) => n.day < day).sort((a, b) => b.day - a.day);
   const hasRumors = !!rumors && rumors.length > 0;
-  const showAll = cat === 'all';
-  const showRumors = showAll || cat === 'rumor';
-  const showToday = showAll || cat === day;
-  const pastDay = typeof cat === 'number' && cat < day ? cat : null;
+  // 날이 바뀌면: 장 전 시간에 찌라시가 돌면 찌라시부터, 아니면 뉴스
+  useEffect(() => setMode(pre && hasRumors ? 'rumor' : 'news'), [day]); // eslint-disable-line react-hooks/exhaustive-deps
+  const showAll = mode === 'news' && cat === 'all';
+  const showRumors = mode === 'rumor';
+  const showToday = mode === 'news' && (cat === 'all' || cat === day);
+  const pastDay = mode === 'news' && typeof cat === 'number' && cat < day ? cat : null;
   const days = Math.max(totalDays ?? day + 1, day + 1);
   // 지금 보이는 것을 읽음으로 (전체 = 오늘 뉴스·찌라시, 날짜 = 그날, 찌라시 = 찌라시, 지난 뉴스를 펼치면 지난 것도)
   const [, bump] = useState(0);
   useEffect(() => {
     const keys: string[] = [];
-    if (cat === 'all' || cat === day) keys.push(...today.map(newsKey));
-    if ((cat === 'all' || cat === 'rumor') && rumors) keys.push(...rumors.map((r) => rumorKey(day, r.text)));
-    if (typeof cat === 'number' && cat < day) keys.push(...news.filter((n) => n.day === cat).map(newsKey));
-    if (cat === 'all' && showOld) keys.push(...old.map(newsKey));
+    if (showToday) keys.push(...today.map(newsKey));
+    if (showRumors) {
+      if (rumors) keys.push(...rumors.map((r) => rumorKey(day, r.text)));
+      keys.push(...rumorToday.map(newsKey));
+    }
+    if (pastDay !== null) keys.push(...official.filter((n) => n.day === pastDay).map(newsKey));
+    if (showAll && showOld) keys.push(...old.map(newsKey));
     if (markSeen(keys)) bump((x) => x + 1);
   });
-  const unreadOf = (d: number) => news.filter((n) => n.day === d && !seenNews.has(newsKey(n))).length;
-  const unreadRumors = rumors ? rumors.filter((r) => !seenNews.has(rumorKey(day, r.text))).length : 0;
+  const unreadOf = (d: number) => official.filter((n) => n.day === d && !seenNews.has(newsKey(n))).length;
+  const unreadRumors = (rumors ? rumors.filter((r) => !seenNews.has(rumorKey(day, r.text))).length : 0) + rumorToday.filter((n) => !seenNews.has(newsKey(n))).length;
+  const rumorCount = (rumors?.length ?? 0) + rumorToday.length;
   const dot = (k: number) => (k > 0 ? <span className="nc-unread" aria-label={`안 읽은 것 ${k}개`}>{k > 9 ? '9+' : k}</span> : null);
 
   return (
     <div className="news-panel">
-      {/* 보기 칩: 전체(맨 앞 고정) · 찌라시 · 1~마지막 날 (아직 안 온 날은 꺼짐) */}
-      <div className="news-cats" role="tablist" aria-label="뉴스 보기">
-        <button role="tab" aria-selected={cat === 'all'} className={'chip sm nc-fixed' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
-          전체
+      {/* 맨 위: 뉴스 / 찌라시 (정식 기사와 소문을 따로) */}
+      <div className="news-mode" role="tablist" aria-label="뉴스와 찌라시">
+        <button role="tab" aria-selected={mode === 'news'} className={mode === 'news' ? 'on' : ''} onClick={() => setMode('news')}>
+          뉴스{dot(mode === 'news' ? 0 : unreadOf(day))}
         </button>
-        <div className="nc-scroll" ref={catsRef}>
-          <button role="tab" aria-selected={cat === 'rumor'} className={'chip sm' + (cat === 'rumor' ? ' on' : '')} disabled={!hasRumors} onClick={() => setCat('rumor')} title={hasRumors ? '오늘 장 전 찌라시' : '오늘은 찌라시가 없어요'}>
-            찌라시{dot(cat === 'rumor' ? 0 : unreadRumors)}
-          </button>
-          {Array.from({ length: days }, (_, d) => (
-            <button
-              key={d}
-              role="tab"
-              aria-selected={cat === d}
-              className={'chip sm' + (cat === d ? ' on' : '') + (d === day ? ' nc-today' : '')}
-              disabled={d > day}
-              onClick={() => setCat(d)}
-              title={d > day ? '아직 오지 않은 날이에요' : d === day ? '오늘 뉴스' : `${d + 1}일차 뉴스`}
-            >
-              {d === day && <i className="nc-dot" aria-hidden />}
-              {d + 1}일{d === day ? ' 오늘' : ''}
-              {d <= day && dot(cat === d ? 0 : unreadOf(d))}
-            </button>
-          ))}
-        </div>
+        <button role="tab" aria-selected={mode === 'rumor'} className={mode === 'rumor' ? 'on' : ''} onClick={() => setMode('rumor')}>
+          찌라시{rumorCount > 0 && mode !== 'rumor' && unreadRumors === 0 ? <span className="nm-count">{rumorCount}</span> : dot(mode === 'rumor' ? 0 : unreadRumors)}
+        </button>
       </div>
+      {/* 뉴스: 전체(맨 앞 고정) · 1~마지막 날 (아직 안 온 날은 꺼짐) */}
+      {mode === 'news' && (
+        <div className="news-cats" role="tablist" aria-label="날짜">
+          <button role="tab" aria-selected={cat === 'all'} className={'chip sm nc-fixed' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>
+            전체
+          </button>
+          <div className="nc-scroll" ref={catsRef}>
+            {Array.from({ length: days }, (_, d) => (
+              <button
+                key={d}
+                role="tab"
+                aria-selected={cat === d}
+                className={'chip sm' + (cat === d ? ' on' : '') + (d === day ? ' nc-today' : '')}
+                disabled={d > day}
+                onClick={() => setCat(d)}
+                title={d > day ? '아직 오지 않은 날이에요' : d === day ? '오늘 뉴스' : `${d + 1}일차 뉴스`}
+              >
+                {d + 1}일차
+                {d === day && <span className="sr-only"> (오늘)</span>}
+                {d <= day && dot(cat === d ? 0 : unreadOf(d))}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pastDay !== null && (
         <>
           <h4 className="sec-title">
-            {pastDay + 1}일차 뉴스 <span className="count-badge">{news.filter((n) => n.day === pastDay).length}</span>
+            {pastDay + 1}일차 뉴스 <span className="count-badge">{official.filter((n) => n.day === pastDay).length}</span>
           </h4>
-          {news.filter((n) => n.day === pastDay).length === 0 && <EmptyState compact icon="news" title="이날은 뉴스가 없었어요" />}
+          {official.filter((n) => n.day === pastDay).length === 0 && <EmptyState compact icon="news" title="이날은 뉴스가 없었어요" />}
           {news
             .filter((n) => n.day === pastDay)
             .map((n) => (
@@ -188,28 +229,101 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         </>
       )}
 
-      {cat === 'rumor' && !hasRumors && <EmptyState compact icon="news" title="오늘은 찌라시가 없어요" desc="둘째 날부터 장이 열리기 전에 찌라시가 돌아요." />}
+      {showRumors && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 찌라시가 없어요" desc="장이 열리기 전과 장중에 소문이 돌면 여기에 모여요." />}
       {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
           <header className="rb-head">
-            <b>장 전 찌라시</b>
+            <b>개미 커뮤니티</b>
             {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
             <small className="muted">{rumorCheck ? '루머 감별기로 확인했어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
           <ul className="rb-list">
-            {rumors.map((r, i) => (
-              <li key={i} className={'rb-msg ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>
-                <button className="rb-who" onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
-                  <span className="rb-ico"><SectorIcon id={r.sector} /></span>
-                  <b>{SECTOR_MAP[r.sector]?.name ?? r.sector}</b>
-                  <span className={'rb-dir ' + r.tone}>{r.tone === 'good' ? '▲ 호재 소문' : '▼ 악재 소문'}</span>
-                </button>
-                <p className="rb-bubble">{r.text}</p>
-                {r.verdict && <em className={'rb-stamp ' + r.verdict}>{r.verdict === 'true' ? '진짜 단서' : '헛소문'}</em>}
+            {rumors
+              .map((r) => ({ r, f: snsFace(day + ':' + r.text) }))
+              .sort((a, b) => a.f.min - b.f.min)
+              .map(({ r, f }, i) => {
+              // SNS 글처럼: 익명 개미·출처·몇 분 전·본 사람·반응 — 모두 글 내용으로만 정한 꾸밈 (진짜인지와 상관없음), 최근 글이 위
+              return (
+                <li key={i} className={'sns-post ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')} style={{ ['--i' as string]: i }}>
+                  <Avatar id={f.avatar} name={f.handle} size={34} className="sp-av" />
+                  <div className="sp-main">
+                    <div className="sp-head">
+                      <b>익명의 개미</b>
+                      <span className="sp-meta">
+                        @{f.handle} · {f.where} · {f.min}분 전
+                      </span>
+                    </div>
+                    <p className="sp-text">{r.text}</p>
+                    <div className="sp-foot">
+                      <button className={'sp-tag ' + r.tone} onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
+                        <SectorIcon id={r.sector} /> #{SECTOR_MAP[r.sector]?.name ?? r.sector} {r.tone === 'good' ? '호재설' : '악재설'}
+                      </button>
+                      <span className="sp-stat" aria-label={`본 사람 ${f.views}`}>
+                        <Icon name="eye" size={13} /> {f.views}
+                      </span>
+                      <span className="sp-stat" aria-label={`반응 ${f.likes}`}>
+                        <Icon name="flame" size={13} /> {f.likes}
+                      </span>
+                    </div>
+                  </div>
+                  {r.verdict && <em className={'rb-stamp ' + r.verdict}>{r.verdict === 'true' ? '진짜 단서' : '헛소문'}</em>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+      {showRumors && rumorToday.length > 0 && (
+        <>
+          <h4 className="sec-title">
+            오늘 도는 소문 기사 <span className="count-badge">{rumorToday.length}</span>
+          </h4>
+          {rumorCheck && !blackout && (
+            <div className="detector-sum">
+              <CardIcon kind="detector" size={15} /> 루머 감별기: 소문 {rumorToday.length}개 중 <b className="up">가짜 {rumorToday.filter((n) => n.verdict === 'false').length}개</b>, 사실 {rumorToday.filter((n) => n.verdict === 'true').length}개
+            </div>
+          )}
+          {rumorToday.map((n) => (
+            <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '')}>
+              <div className="news-meta">
+                {isFresh(n) && <span className="new-badge">새 기사</span>}
+                <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
+                {n.sector && (
+                  <button className="muted linkish-soft" onClick={() => onSelectSector(n.sector!)}>
+                    <SectorIcon id={n.sector} /> {SECTOR_MAP[n.sector].name}
+                  </button>
+                )}
+                <span className="rumor">
+                  <Term k="루머" />
+                </span>
+                {n.verdict && <span className={'verdict ' + n.verdict}><Icon name={n.verdict === 'true' ? 'check' : 'x'} size={12} /> {n.verdict === 'true' ? '사실' : '가짜'}</span>}
+              </div>
+              <div className="news-headline">
+                <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
+                {n.headline.replace('[루머] ', '')}
+              </div>
+              <RelatedChips symbols={n.related} change={change} onSelect={onSelect} />
+            </div>
+          ))}
+        </>
+      )}
+      {showRumors && rumorOld.length > 0 && (
+        <>
+          <h4 className="sec-title">지난 소문은 어떻게 됐을까</h4>
+          <ul className="old-news">
+            {rumorOld.map((n, i) => (
+              <li key={i} className={n.tone}>
+                <span className="d">{n.day + 1}일</span>
+                <span className="old-body">
+                  {n.headline.replace('[루머] ', '')}
+                  {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
+                  {n.verdict === 'true' && <em className="old-verdict true">사실로 확인</em>}
+                  <RelatedChips symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        </>
       )}
       {showToday && (
       <>

@@ -272,7 +272,7 @@
 
 /* PC 뉴스 칸 제목 줄 (카드 칸 제목과 같은 모양) + 크게 보기 창 */
 .p-news { display: flex; flex-direction: column; min-height: 0; }
-.news-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 2px 8px; }
+.news-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 8px; } /* 아래 찬스 카드 칸 머리·날짜 버튼과 같은 안쪽 여백 (2px 라 칸 끝에 붙어 보이던 것) */
 .news-bar b { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; }
 .news-big .news-headline { font-size: 19px; }
 .news-big .news-card { padding: 16px 18px; }
@@ -899,3 +899,63 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 /* 결과 화면: 오래 가만히 있으면 홈으로 — 마지막 20초 안내 (시간이 걸린 상태 = 호박색) */
 .idle-exit { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px; background: #f5b83d; color: #1a1300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
 .idle-exit .btn.sm { background: #1a1300; color: #f5b83d; border: 0; }
+
+/* ---------- 마지막 점검 (2026-11-17 밤): 작은 글자·작은 버튼·잘림 ---------- */
+/* 휴대폰 위 '시장보다 +3.6%' 끝이 4px 잘리던 것 (글자 폭 계산 오차) — 그냥 글자는 자르지 않음 */
+.mh-cmp:not(.btnlike) { overflow: visible; }
+/* 상대 비교 버튼: 누르기 쉬운 높이 */
+.mh-cmp.btnlike { min-height: 30px; }
+/* 티어표 단계(III·II·I) 9px → 11px */
+.tl-block .tl-div i { font-size: 11px; }
+/* 카드 위 종류·개수·자동 표시 10px → 11px (작은 카드는 10px) */
+.gc-top { font-size: 11px; }
+.gc-auto { font-size: 11px; }
+.gc-sm .gc-top, .gc-sm .gc-auto { font-size: 10px; }
+/* 장 전 찌라시 말풍선 머리(업종 누르기): 누르기 쉬운 높이 */
+.rb-who { min-height: 30px; }
+/* 회원가입 비밀번호 '보기': 누르기 쉬운 폭 */
+.linkish-soft { min-width: 36px; }
+/* 휴대폰 화면 편집 버튼(위로·아래로·숨기기) 22px → 30px */
+html[data-device='phone'] .dock-panel.editing > .es-bar .es-btn,
+html[data-device='phone'] .edit-slot > .es-bar .es-btn { width: 30px !important; height: 30px !important; }
+/* 뉴스 머리의 업종 글자(누르면 그 업종): 보기는 그대로, 누르는 칸만 넓게 */
+.news-meta .linkish-soft { padding: 7px 4px; margin: -7px 0; min-height: 0; }
+/* PC 서랍(내 재산·카드 상점): 닫혀 있으면 키보드로도 못 들어가게 (화면 밖 버튼에 포커스가 가던 것) */
+.drawer-bg:not(.open) .drawer { visibility: hidden; transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s 0.28s; }
+/* 10px 이던 보조 글자 → 11px (날짜 띠 숫자·시장 티커·재산 요약·일정 달력·메뉴 설명) — 키보드 표시와 숫자 배지는 그대로 */
+.tl-cell small, .m-asum small, .tk small, .tk em, .ms-day em.muted, .m-menu small, .cal-d small, .bg-cell small { font-size: 11px; }
+
+/* ---------- 뉴스 / 찌라시 나누기 (2026-11-17) ---------- */
+.news-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 10px; border-radius: 12px; background: var(--surface-2, #242424); }
+.news-mode button { position: relative; min-height: 34px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2, #c8c8c8); font-size: 14px; font-weight: 700; cursor: pointer; }
+.news-mode button.on { background: var(--surface-3, #2e2e2e); color: var(--text, #f2f2f2); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset; }
+.news-mode button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.news-mode .nm-count { margin-left: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+/* 날짜 칩: 'n일차' — 오늘은 글자 대신 색 + 아래 짧은 막대, 안 읽은 수는 모서리에 겹쳐 (칩 폭이 늘지 않게) */
+.news-cats .nc-scroll { padding-top: 7px; margin-top: -7px; }
+.news-cats .chip.nc-today:not(.on) { border-color: var(--accent); color: var(--accent-text); font-weight: 800; }
+.news-cats .chip.nc-today::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 14px; height: 2px; margin-left: -7px; border-radius: 2px; background: currentColor; opacity: .9; }
+.news-cats .nc-unread, .news-mode .nc-unread { position: absolute; top: -6px; right: -5px; margin: 0; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px var(--surface, #1c1c1c); }
+.news-mode .nc-unread { top: 3px; right: 8px; }
+
+/* 찌라시 = SNS·커뮤니티 글처럼 */
+.rb-list { gap: 0; }
+.sns-post { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 12px 2px; border-top: 1px solid rgba(255,255,255,.06); animation: snsIn .35s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+.sns-post:first-child { border-top: 0; padding-top: 4px; }
+@keyframes snsIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sns-post { animation: none; } }
+.sns-post .sp-av { width: 34px; height: 34px; }
+.sp-main { min-width: 0; }
+.sp-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.sp-head b { font-size: 13px; font-weight: 800; color: var(--text); }
+.sp-meta { font-size: 12px; color: var(--muted); }
+.sp-text { margin: 3px 0 8px; font-size: 14px; line-height: 1.5; color: var(--text); word-break: keep-all; }
+.sns-post.v-false .sp-text { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(255,255,255,.35); }
+.sp-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sp-tag { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 3px 9px; border-radius: 99px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; }
+.sp-tag svg { width: 13px; height: 13px; }
+.sp-tag.good { color: #ff8a98; }
+.sp-tag.bad { color: #8fbcff; }
+.sp-tag:hover { border-color: currentColor; }
+.sp-stat { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sns-post .rb-stamp { right: 4px; bottom: 6px; }
