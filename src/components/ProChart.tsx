@@ -6,7 +6,7 @@
  * - 보조지표: 이동평균 5·10·20, 볼린저밴드
  * - 그리기: 수평선, 추세선, 지우기 (종목별로 이 기기에 저장)
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { getEffective } from "../prefs";
 import type { Bar } from "../game/market";
@@ -273,7 +273,23 @@ export function ProChart({
     yMin + (1 - (py - padT) / plotH) * (yMax - yMin);
 
   // ---------- 포인터 조작 ----------
+  // SVG id 는 차트마다 따로 — 작은 차트와 크게 보기가 같은 id(clip-종목)를 써서 큰 차트가 작은 차트 크기로 잘리던 것
+  const uid = useId().replace(/:/g, "");
+  const clipId = `clip-${uid}`;
+  const fillId = `fill-${uid}`;
   const svgRef = useRef<SVGSVGElement>(null);
+  // 화면에 그려진 폭 대비 SVG 단위 (휴대폰은 차트가 줄어들어 글자가 작아지므로, 최고·최저 글자는 화면 기준 크기로)
+  const [unitPerPx, setUnitPerPx] = useState(1);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setUnitPerPx(W / w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{
     startX: number;
@@ -480,6 +496,20 @@ export function ProChart({
     });
     return d;
   };
+  // 보이는 구간 최고·최저 (선 차트는 종가, 봉 차트는 고가·저가 / 아직 시가만 보이는 오늘 봉은 뺌). 봉이 3개 미만이거나 같으면 안 그림
+  const hiLo = (() => {
+    let hi = -1, lo = -1, hiV = -Infinity, loV = Infinity, n = 0;
+    for (let i = i0; i <= i1; i++) {
+      const b = bars[i];
+      if (!b || (liveOpenOnly && i === lastIdx)) continue;
+      n++;
+      const h = type === "line" ? closes[i] : b.high;
+      const l = type === "line" ? closes[i] : b.low;
+      if (h > hiV) (hiV = h), (hi = i);
+      if (l < loV) (loV = l), (lo = i);
+    }
+    return n >= 3 && hiV > loV ? { hi, lo, hiV, loV } : null;
+  })();
   const dayStep = span > 60 ? 12 : span > 20 ? 5 : span > 10 ? 2 : 1;
   const ci = cross ? bars[cross.i] : null;
   const prevC = cross ? (cross.i > 0 ? closes[cross.i - 1] : null) : null;
@@ -636,10 +666,10 @@ export function ProChart({
         aria-label="가격 차트. 드래그로 이동, 휠이나 두 손가락으로 확대"
       >
         <defs>
-          <clipPath id={`clip-${symbol}`}>
+          <clipPath id={clipId}>
             <rect x={padL} y={padT} width={plotW} height={plotH} />
           </clipPath>
-          <linearGradient id={`fill-${symbol}`} x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
             <stop
               offset="0%"
               stopColor={up ? "#f2495c" : "#3b82f6"}
@@ -685,7 +715,7 @@ export function ProChart({
           ))}
 
         {unit?.now && <NowRow now={unit.now} x={x} padL={padL} right={W - padR} top={padT} plotBottom={H - padB} H={H} />}
-        <g clipPath={`url(#clip-${symbol})`}>
+        <g clipPath={`url(#${clipId})`}>
           {/* 아직 오지 않은 날 */}
           {lastIdx < totalDays - 1 && (
             <rect
@@ -708,31 +738,10 @@ export function ProChart({
                 className={"marker " + mk.tone}
               />
             ))}
-          {refLine &&
-            (() => {
-              const ry = y(refLine.value);
-              // 화면 밖이면 선 대신 위/아래 끝에 화살표 글자로
-              if (ry < padT)
-                return (
-                  <text x={padL + 4} y={padT + 12} className="ref-label">
-                    ▲ {refLine.label}
-                  </text>
-                );
-              if (ry > H - padB)
-                return (
-                  <text x={padL + 4} y={H - padB - 6} className="ref-label">
-                    ▼ {refLine.label}
-                  </text>
-                );
-              return (
-                <g>
-                  <line x1={padL} x2={W - padR} y1={ry} y2={ry} className="ref" />
-                  <text x={padL + 4} y={ry - 5} className="ref-label">
-                    {refLine.label}
-                  </text>
-                </g>
-              );
-            })()}
+          {/* 기준선(어제 종가·평균 단가): 선은 봉 아래, 글자는 봉 위에 (봉에 가려지지 않게 — 아래 refText) */}
+          {refLine && y(refLine.value) >= padT && y(refLine.value) <= H - padB && (
+            <line x1={padL} x2={W - padR} y1={y(refLine.value)} y2={y(refLine.value)} className="ref" />
+          )}
 
           {/* 볼린저 밴드 */}
           {series
@@ -781,7 +790,7 @@ export function ProChart({
               {closes.length > 1 && (
                 <path
                   d={`${pathOf(closes)} L${x(Math.min(lastIdx, view[1] + 1))},${H - padB} L${x(Math.max(0, Math.floor(view[0]) - 1))},${H - padB} Z`}
-                  fill={`url(#fill-${symbol})`}
+                  fill={`url(#${fillId})`}
                 />
               )}
               <path
@@ -866,6 +875,64 @@ export function ProChart({
                 opacity={0.95}
               />
             ))}
+
+          {/* 보이는 구간의 최고가·최저가 표시 (증권 앱처럼) */}
+          {hiLo && (
+            <g className="hl-mark" aria-hidden>
+              {[
+                { i: hiLo.hi, v: hiLo.hiV, top: true },
+                { i: hiLo.lo, v: hiLo.loV, top: false },
+              ].map(({ i, v, top }) => {
+                // 토스증권처럼: 최고점 위·최저점 아래에 짧은 선 + '가격원 (지금 대비 %, 시각)'. 글자는 그림 칸 안에 들어오게 좌우·위아래를 맞춤
+                const px = x(i);
+                const vy = y(v);
+                const diff = lastPrice ? (v - lastPrice) / lastPrice : 0;
+                const when = unit ? unit.axis(i) : `${i + 1}일`;
+                const shown = fmt(v);
+                const label = `${shown}${shown.startsWith("$") ? "" : "원"} (${diff > 0 ? "+" : ""}${(diff * 100).toFixed(2)}%, ${when})`;
+                // 휴대폰처럼 차트가 줄어들면 화면 기준 11.5px, 커지면 다른 눈금 글자처럼 함께 커짐
+                const fz = Math.max(12, 11.5 * unitPerPx);
+                const tw = [...label].reduce((a, c) => a + (/[가-힣]/.test(c) ? 1 : 0.58), 0) * fz;
+                const tx = Math.min(W - padR - 4 - tw / 2, Math.max(padL + 2 + tw / 2, px));
+                const ty = top ? Math.max(padT + fz * 0.8, vy - 8 - fz * 0.35) : Math.min(H - padB - 3, vy + 8 + fz * 0.95);
+                const ly = top ? vy - 3 : vy + 3;
+                const ly2 = top ? vy - 7 : vy + 7;
+                return (
+                  <g key={top ? "h" : "l"} className={top ? "hl-hi" : "hl-lo"}>
+                    <line x1={px} x2={px} y1={ly} y2={ly2} />
+                    <text x={tx} y={ty} textAnchor="middle" fontSize={fz} strokeWidth={fz / 4}>
+                      {label}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
+
+          {refLine &&
+            (() => {
+              const ry = y(refLine.value);
+              // 화면 밖이면 선 대신 위/아래 끝에 화살표 글자로
+              if (ry < padT)
+                return (
+                  <text x={padL + 4} y={padT + 12} className="ref-label">
+                    ▲ {refLine.label}
+                  </text>
+                );
+              if (ry > H - padB)
+                return (
+                  <text x={padL + 4} y={H - padB - 6} className="ref-label">
+                    ▼ {refLine.label}
+                  </text>
+                );
+              return (
+                <g>
+                  <text x={padL + 4} y={ry - 5} className="ref-label">
+                    {refLine.label}
+                  </text>
+                </g>
+              );
+            })()}
 
           {/* 내가 그린 선 */}
           {drawings.map((d) =>

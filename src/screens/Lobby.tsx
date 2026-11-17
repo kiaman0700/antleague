@@ -24,7 +24,7 @@ import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
-import { BADGES, givesTitle, titleOf } from '../game/achievements';
+import { BADGE_MAP, BADGES, givesTitle, titleOf } from '../game/achievements';
 import { AVATARS } from '../game/avatars';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -1261,7 +1261,9 @@ function Records({ go }: Pick<Props, 'go'>) {
     for (const h of list) for (const r of h.results) if (r.nickname === h.me) for (const b of r.badges ?? []) count[b] = (count[b] ?? 0) + 1;
     return count;
   }, [list]);
-  const myTitle = titleOf(Object.keys(myBadges));
+  // 회원이 고른 칭호가 있으면 그것 (마이프로필·프로필 팝업과 같게), 없으면 가장 귀한 것
+  const picked = acc.profile?.title ? BADGE_MAP[acc.profile.title] : undefined;
+  const myTitle = picked && givesTitle(picked.id) ? picked : titleOf(Object.keys(myBadges));
 
   return (
     <div className="lobby page records">

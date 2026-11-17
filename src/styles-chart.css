@@ -396,3 +396,28 @@
     margin: 0 auto;
   }
 }
+
+/* 보이는 구간 최고가·최저가 표시 (ProChart hiLo, 토스증권처럼 점 위·아래에 짧은 선 + 가격) */
+.chart .hl-mark text {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  paint-order: stroke;
+  stroke: var(--bg-2, #161616);
+  stroke-linejoin: round;
+}
+.chart .hl-mark line {
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+.chart .hl-hi text { fill: var(--up); }
+.chart .hl-hi line { stroke: var(--up); }
+.chart .hl-lo text { fill: var(--down); }
+.chart .hl-lo line { stroke: var(--down); }
+/* 기준선 글자(평균 산 가격 등): 봉 위에 그리므로 글자 테두리로 읽기 쉽게 */
+.chart .ref-label {
+  paint-order: stroke;
+  stroke: var(--bg-2, #161616);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
