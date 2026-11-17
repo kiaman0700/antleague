@@ -45,6 +45,14 @@ for (const [name, opts, wantDevice, wantGame, allowW] of DEVICES) {
   const ctx = await browser.newContext(opts);
   // 아이패드처럼 터치 지점 수를 실제 기기와 같게 (시험용 크롬은 1개로 흉내 냄)
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }));
+  // 진짜 기기처럼 '기기 종류'도 흉내: 크롬 계열(안드로이드·윈도우)은 알려 주고, 사파리(아이폰·아이패드·Mac)는 안 알려 줌
+  const ua = opts.userAgent ?? '';
+  const ff = /iPhone|iPad|Macintosh/.test(ua) ? null : /Android/.test(ua) ? (/Mobile/.test(ua) ? ['Mobile'] : ['Tablet']) : ['Desktop'];
+  await ctx.addInitScript((ffv) => {
+    if (!ffv) return void Object.defineProperty(navigator, 'userAgentData', { get: () => undefined });
+    const data = { mobile: ffv.includes('Mobile'), platform: '', brands: [], getHighEntropyValues: async () => ({ formFactors: ffv, model: '' }) };
+    Object.defineProperty(navigator, 'userAgentData', { get: () => data });
+  }, ff);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));

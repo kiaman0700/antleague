@@ -37,17 +37,20 @@ describe('기기 판단: 입력 장치보다 기기 자체를 먼저 봄', () =>
   it('진짜 Mac(터치 없음)은 PC', () => {
     expect(guessDevice(c({ userAgent: UA.mac, maxTouchPoints: 0 }))).toBe('pc');
   });
-  it('안드로이드는 크롬이 알려 주는 기기 종류로 휴대폰·태블릿·DeX 를 가름', () => {
+  it('브라우저가 직접 알려 주는 기기 종류(크롬 계열)를 가장 먼저 믿음', () => {
     expect(guessDevice(c({ userAgent: UA.androidTab, formFactors: ['Mobile'], maxTouchPoints: 5, screenW: 400, screenH: 900 }))).toBe('phone');
     expect(guessDevice(c({ userAgent: UA.androidPhone, formFactors: ['Tablet'], maxTouchPoints: 5, screenW: 800, screenH: 1280 }))).toBe('tablet');
-    // 삼성 DeX·데스크톱 사이트는 브라우저 정보가 리눅스 PC 로 바뀜 → PC
+    // 터치 노트북·2in1 크롬북은 Desktop 이 함께 옴 → PC
+    expect(guessDevice(c({ userAgent: UA.cros, formFactors: ['Desktop', 'Tablet'], maxTouchPoints: 10 }))).toBe('pc');
+    // 삼성 DeX·데스크톱 사이트
     expect(guessDevice(c({ userAgent: UA.linux, formFactors: ['Desktop'], maxTouchPoints: 5 }))).toBe('pc');
-    // 시험용 크롬처럼 안드로이드인데 Desktop 이라고 해도 안드로이드 글자를 따름
-    expect(guessDevice(c({ userAgent: UA.androidPhone, formFactors: ['Desktop'], maxTouchPoints: 5, screenW: 360, screenH: 780 }))).toBe('phone');
   });
-  it('브라우저 정보가 확실하면 크롬의 기기 종류보다 먼저 (아이폰인데 Desktop 이라고 해도 휴대폰)', () => {
-    expect(guessDevice(c({ userAgent: UA.iphone, formFactors: ['Desktop'], maxTouchPoints: 5, screenW: 375, screenH: 667 }))).toBe('phone');
-    expect(guessDevice(c({ userAgent: UA.win, formFactors: ['Tablet'], maxTouchPoints: 10 }))).toBe('pc');
+  it('기기 종류가 아직 안 왔으면 크롬의 \'휴대폰인가\' 표시로', () => {
+    expect(guessDevice(c({ userAgent: UA.androidTab, uaMobile: true, maxTouchPoints: 5, screenW: 400, screenH: 900 }))).toBe('phone');
+  });
+  it('기기 종류를 안 알려 주는 브라우저(사파리·파이어폭스)는 브라우저 정보로', () => {
+    expect(guessDevice(c({ userAgent: UA.iphone, maxTouchPoints: 5, screenW: 375, screenH: 667 }))).toBe('phone');
+    expect(guessDevice(c({ userAgent: UA.ipad, maxTouchPoints: 5, screenW: 820, screenH: 1180 }))).toBe('tablet');
   });
   it('TV·게임기 브라우저는 PC 화면', () => {
     expect(guessDevice(c({ userAgent: UA.tv }))).toBe('pc');
