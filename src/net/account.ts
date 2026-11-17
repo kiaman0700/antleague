@@ -35,6 +35,18 @@ export interface MatchRow {
   rating_before: number | null;
   rating_after: number | null;
   created_at: string;
+  /** (042) 판 종류 · 랭킹전 */
+  kind?: string | null;
+  ranked?: boolean | null;
+}
+/** 전적에 보일 판 종류 이름 (롤·배그 전적처럼) */
+export function matchKindName(kind: string | null | undefined, ranked: boolean | null | undefined, players: number) {
+  if (kind === 'match') return ranked ? '랭킹전' : '일반전';
+  if (kind === 'bot') return '봇전';
+  if (kind === 'daily') return '오늘의 도전';
+  if (kind === 'friend') return '친구 1대1';
+  if (kind === 'custom') return '커스텀';
+  return players === 2 ? '1대1' : players + '명 대결';
 }
 export interface AccountState {
   status: 'loading' | 'guest' | 'member';

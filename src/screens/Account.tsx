@@ -12,7 +12,7 @@ import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
-import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
+import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover, matchKindName } from '../net/account';
 import { BADGES, givesTitle, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
 import { Sheet } from '../components/PrefsPanel';
@@ -526,32 +526,37 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         {acc.recent.length === 0 ? (
           <p className="muted small">아직 끝낸 대결이 없어요. 친구와 대결을 끝내면 여기에 쌓여요.</p>
         ) : (
-          <ul className="me-recent">
-            {/* 칸 이름 (날짜 · 순위/인원 · 수익률 · 점수) */}
-            <li className="me-recent-head" aria-hidden>
-              <span>날짜</span>
-              <span>순위 / 인원</span>
-              <span>수익률</span>
-              <span>점수</span>
-            </li>
-            {acc.recent.map((r) => (
-              <li key={r.room_id}>
-                <span className="date">{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
-                <b>
-                  {r.rank}위 / {r.players}명
-                </b>
-                <span className={tone(r.ret)}>{pct(r.ret, 1)}</span>
-                {r.rated && r.rating_after !== null && r.rating_before !== null && isPlaced(p.ranked_games) ? (
-                  <span className={r.rating_after >= r.rating_before ? 'up' : 'down'}>
-                    {r.rating_after >= r.rating_before ? '+' : ''}
-                    {r.rating_after - r.rating_before}점
+          <ul className="me-recent mr-list">
+            {/* 롤·배그 전적처럼: 왼쪽 색 띠(1위 강조) · 판 종류와 날짜 · 큰 순위 · 수익률 · 랭킹전만 점수 */}
+            {acc.recent.map((r) => {
+              const ranked = r.rated || !!r.ranked;
+              const pts = r.rated && r.rating_after !== null && r.rating_before !== null ? r.rating_after - r.rating_before : null;
+              return (
+                <li key={r.room_id} className={'mr-row' + (r.rank === 1 ? ' win' : '')}>
+                  <span className="mr-mode">
+                    <b>{matchKindName(r.kind, r.ranked ?? r.rated, r.players)}</b>
+                    <small>{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small>
                   </span>
-                ) : (
-                  // 점수가 안 바뀐 판은 봇전·일반전·커스텀도 있어서 '게스트와'라고 하면 틀림. 랭킹전 배치 중이면 점수를 숨김
-                  <span className="muted small">{r.rated ? '배치 경기' : '점수 없는 판'}</span>
-                )}
-              </li>
-            ))}
+                  <span className="mr-rank">
+                    <b>{r.rank}위</b>
+                    <small>/ {r.players}명</small>
+                  </span>
+                  <span className={'mr-ret ' + tone(r.ret)}>{pct(r.ret, 1)}</span>
+                  <span className="mr-pts">
+                    {ranked && pts !== null ? (
+                      isPlaced(p.ranked_games) ? (
+                        <b className={pts >= 0 ? 'up' : 'down'}>
+                          {pts >= 0 ? '+' : ''}
+                          {pts}점
+                        </b>
+                      ) : (
+                        <small className="muted">배치</small>
+                      )
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
         <button className="btn sm ghost" onClick={onRecords}>

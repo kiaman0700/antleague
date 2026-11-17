@@ -200,7 +200,10 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (above.error) above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', p.rating);
       const tst = await sb.from('profiles').select('is_test').eq('user_id', uid).maybeSingle();
       const unlisted = !tst.error && !!(tst.data as { is_test?: boolean } | null)?.is_test;
-      const recent = ((await sb.from('match_players').select('room_id, rank, players, ret, rated, rating_before, rating_after, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)).data ?? []) as unknown[];
+      // 판 종류(kind·ranked)는 042 뒤에만 — 없으면 예전 칸만
+      let rq = await sb.from('match_players').select('room_id, rank, players, ret, rated, rating_before, rating_after, created_at, kind, ranked').eq('user_id', uid).order('created_at', { ascending: false }).limit(10);
+      if (rq.error) rq = (await sb.from('match_players').select('room_id, rank, players, ret, rated, rating_before, rating_after, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)) as typeof rq;
+      const recent = (rq.data ?? []) as unknown[];
       const badges = await earnedBadges(sb, uid);
       const { user_id: _u, ...pub } = p;
       return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null }, recent, badges };
@@ -390,6 +393,8 @@ export function eloDeltas(
 export async function recordMatch(sb: SupabaseClient, roomId: string, results: { nickname: string; ret: number; idle?: boolean }[], ranked = false) {
   const ps = ((await sb.from('players').select('user_id, nickname, left_game').eq('room_id', roomId)).data ?? []) as { user_id: string | null; nickname: string; left_game: boolean | null }[];
   if (ps.length < 2) return;
+  // 판 종류 (전적에 '랭킹전·봇전…' 표시용)
+  const room = (await sb.from('rooms').select('kind, ranked').eq('id', roomId).maybeSingle()).data as { kind?: string; ranked?: boolean } | null;
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
   let pq = await sb.from('profiles').select('user_id, rating, games, wins, best_ret, ranked_games').in('user_id', uids);
   if (pq.error) pq = (await sb.from('profiles').select('user_id, rating, games, wins, best_ret').in('user_id', uids)) as typeof pq;
@@ -426,10 +431,10 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const after = p.rating + d;
     const ret = retOf.get(p.user_id) ?? 0;
     // match_players 기본키(방·사람)로 한 판은 한 번만 반영
-    const ins = await sb
-      .from('match_players')
-      .insert({ room_id: roomId, user_id: p.user_id, rank, players: ps.length, ret, rated, rating_before: p.rating, rating_after: after })
-      .select('user_id');
+    const row = { room_id: roomId, user_id: p.user_id, rank, players: ps.length, ret, rated, rating_before: p.rating, rating_after: after };
+    let ins = await sb.from('match_players').insert({ ...row, kind: room?.kind ?? null, ranked: !!room?.ranked }).select('user_id');
+    // 042(판 종류 칸) 적용 전이면 예전 칸만으로 다시 (점수 기록이 막히지 않게)
+    if (ins.error && /kind|ranked|column/i.test(ins.error.message)) ins = await sb.from('match_players').insert(row).select('user_id');
     if (ins.error || !ins.data?.length) continue; // 이미 반영된 판
     // 점수·전적은 DB 안에서 한 번에 더함 (두 판이 동시에 끝나도 값이 덮어써지지 않게)
     let rpc = await sb.rpc('apply_rating2', { p_user: p.user_id, p_delta: d, p_win: rank === 1 && !quit.has(p.user_id), p_ret: ret, p_ranked: rated });

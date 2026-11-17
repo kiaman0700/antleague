@@ -19,7 +19,7 @@ import { LegalSheet, OPERATOR } from '../components/Legal';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
 import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
-import { useAccount } from '../net/account';
+import { matchKindName, useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
@@ -27,7 +27,7 @@ import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
 import { BADGE_MAP, BADGES, givesTitle, titleOf } from '../game/achievements';
 import { AVATARS } from '../game/avatars';
-import { pct, tone } from '../lib/format';
+import { pct, tone, wonShort } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
@@ -59,7 +59,11 @@ export interface RoomInfo {
 interface MatchResult {
   id: string;
   winner_nickname: string | null;
-  results: { nickname: string; equity: number; ret: number; badges?: string[]; /** 봇 자리면 난이도 (2026-11-17부터 기록) */ bot?: number }[];
+  results: { nickname: string; equity: number; ret: number; badges?: string[]; /** 봇 자리면 난이도 (2026-11-17부터 기록) */ bot?: number; left?: boolean; idle?: boolean }[];
+  /** 내 기록에서: 판 종류 · 랭킹전 · 점수 변화 */
+  kind?: string | null;
+  ranked?: boolean | null;
+  pts?: number | null;
   created_at: string;
   me?: string | null;
 }
@@ -1228,6 +1232,9 @@ function Records({ go }: Pick<Props, 'go'>) {
   const [history, setHistory] = useState<MatchResult[] | null>(null);
   const [histErr, setHistErr] = useState(false);
   const [histTry, setHistTry] = useState(0);
+  const [openId, setOpenId] = useState<string | null>(null);
+  // 업적이 많아 '+n'으로 접힌 사람 중 펼친 사람 (판 id + 순서)
+  const [allBadges, setAllBadges] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!online) return setHistory([]);
     setHistErr(false);
@@ -1284,18 +1291,71 @@ function Records({ go }: Pick<Props, 'go'>) {
             <div><b className="rec-gold">{sum.wins}</b><small>1위</small></div>
             <div><b>{sum.games > 0 ? Math.round((sum.wins / sum.games) * 100) : 0}%</b><small>승률{record.draws ? ` · 비김 ${record.draws}` : ''}</small></div>
           </div>
-          <ul className="rec-list">
-            {record.rows.slice(0, 10).map(({ h, meR, draw, won, rank }) => (
-              <li key={h.id} className={won ? 'won' : ''}>
-                <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
-                <span className={'rec-rank' + (won || (draw && rank === 1) ? ' r1' : draw ? ' draw' : '')}>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</span>
-                <span className="rec-who muted">
-                  {h.results.length === 1 ? '오늘의 도전' : h.results.some((r) => r.bot) ? '봇전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
-                  {!won && h.winner_nickname && <small>승자 {h.winner_nickname}</small>}
-                </span>
-                <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>
-              </li>
-            ))}
+          {/* 롤·배그 전적처럼 한 줄 카드 — 누르면 그 판의 상세(참가자별 순위·수익률·재산·업적)가 펼쳐짐 */}
+          <ul className="mr-list">
+            {record.rows.slice(0, 20).map(({ h, meR, draw, won, rank }) => {
+              const open = openId === h.id;
+              const kindName = h.results.length === 1 ? '오늘의 도전' : h.kind ? matchKindName(h.kind, h.ranked, h.results.length) : h.results.some((r) => r.bot) ? '봇전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`;
+              return (
+                <li key={h.id} className="mr-item">
+                  <button className={'mr-row' + (won || (draw && rank === 1) ? ' win' : '') + (open ? ' open' : '')} onClick={() => setOpenId(open ? null : h.id)} aria-expanded={open}>
+                    <span className="mr-mode">
+                      <b>{kindName}</b>
+                      <small>{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small>
+                    </span>
+                    <span className="mr-rank">
+                      <b>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</b>
+                      <small>/ {h.results.length}명</small>
+                    </span>
+                    <span className={'mr-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</span>
+                    <span className="mr-pts">
+                      {h.ranked && h.pts != null ? (
+                        <b className={h.pts >= 0 ? 'up' : 'down'}>
+                          {h.pts >= 0 ? '+' : ''}
+                          {h.pts}점
+                        </b>
+                      ) : null}
+                      <Icon name={open ? 'up' : 'down'} size={14} className="mr-chev" />
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="mr-detail">
+                      <ol className="mr-players">
+                        {h.results.map((r, i) => (
+                          <li key={r.nickname + i} className={r.nickname === h.me ? 'me' : ''}>
+                            <span className="mr-p-rank">{i + 1}</span>
+                            <span className="mr-p-name">
+                              {r.nickname}
+                              {r.nickname === h.me && <em> (나)</em>}
+                              {!!r.bot && <span className="bot-tag">봇</span>}
+                              {r.left && <span className="mr-tag">기권</span>}
+                              {r.idle && <span className="mr-tag">거래 0회</span>}
+                            </span>
+                            <span className={'mr-p-ret ' + tone(r.ret)}>{pct(r.ret, 1)}</span>
+                            <span className="mr-p-eq muted">{wonShort(r.equity)}</span>
+                            {(r.badges ?? []).length > 0 && (
+                              <span className="mr-p-badges">
+                                {(r.badges ?? []).slice(0, allBadges.has(h.id + i) ? 99 : 6).map((b) => (
+                                  <span key={b} className="mr-badge" title={BADGE_MAP[b]?.desc}>
+                                    <BadgeIcon id={b} size={12} /> {BADGE_MAP[b]?.name ?? b}
+                                  </span>
+                                ))}
+                                {(r.badges ?? []).length > 6 && !allBadges.has(h.id + i) && (
+                                  // 누르면(휴대폰) · 마우스를 올리면(PC) 나머지 업적까지 모두 펼침
+                                  <button className="mr-badge mr-more" onClick={() => setAllBadges((x) => new Set(x).add(h.id + i))} onMouseEnter={() => setAllBadges((x) => new Set(x).add(h.id + i))} aria-label="업적 더 보기" title={(r.badges ?? []).slice(6).map((b) => BADGE_MAP[b]?.name ?? b).join(', ')}>
+                                    +{(r.badges ?? []).length - 6}
+                                  </button>
+                                )}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

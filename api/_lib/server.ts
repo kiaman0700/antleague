@@ -666,7 +666,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         await sb.from('match_history').select('id, room_id, winner_nickname, results, created_at').in('room_id', mine.map((m) => m.room_id)).order('created_at', { ascending: false }).limit(30),
         'history',
       ) as { room_id: string }[];
-      return rows.map(({ room_id, ...r }) => ({ ...r, me: nickOf.get(room_id) ?? null }));
+      // 판 종류·랭킹 점수 (내 기록만, 042 뒤에만 — 없으면 빈 칸)
+      const mp = await sb.from('match_players').select('room_id, kind, ranked, rated, rating_before, rating_after').eq('user_id', uid).in('room_id', rows.map((r) => r.room_id));
+      const mine2 = new Map(((mp.error ? [] : mp.data) ?? []).map((x: { room_id: string }) => [x.room_id, x as { kind?: string | null; ranked?: boolean | null; rated?: boolean; rating_before?: number | null; rating_after?: number | null }]));
+      return rows.map(({ room_id, ...r }) => {
+        const m = mine2.get(room_id);
+        return { ...r, me: nickOf.get(room_id) ?? null, kind: m?.kind ?? null, ranked: m ? !!(m.ranked ?? m.rated) : null, pts: m?.rated && m.rating_after != null && m.rating_before != null ? m.rating_after - m.rating_before : null };
+      });
     }
 
     case 'state': {

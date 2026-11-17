@@ -1034,3 +1034,45 @@ ul.me-recent li.me-recent-head { padding: 0 0 6px; border-bottom: 1px solid rgba
 @media (min-width: 1080px) and (max-width: 1279px) { .cl-subs .cl-sub span { display: inline !important; } .cl-subs .cl-sub { padding: 0 8px; } }
 .cl-right .cl-social-btn { height: 40px; min-width: 40px; border-radius: 10px; }
 .cl-subs { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.1); }
+
+/* ---------- 전적 줄 (롤·배그 전적처럼, 2026-11-18) ---------- */
+ul.mr-list { display: grid; gap: 6px; margin: 10px 0; padding: 0; list-style: none; }
+ul.mr-list li.mr-row { position: relative; display: grid; grid-template-columns: minmax(88px, 1.1fr) minmax(76px, 1fr) minmax(56px, auto) minmax(48px, auto); align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border: 0; border-radius: 10px; background: var(--surface-2, #242424); font-variant-numeric: tabular-nums; }
+ul.mr-list li.mr-row::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: rgba(255, 255, 255, 0.18); }
+ul.mr-list li.mr-row.win::before { background: var(--accent); }
+.mr-mode { display: grid; gap: 1px; min-width: 0; }
+.mr-mode b { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mr-mode small { font-size: 11px; color: var(--muted); }
+.mr-rank { display: inline-flex; align-items: baseline; gap: 4px; }
+.mr-rank b { font-size: 17px; font-weight: 800; color: var(--text); }
+.mr-row.win .mr-rank b { color: var(--accent-text); }
+.mr-rank small { font-size: 12px; color: var(--muted); }
+.mr-ret { font-size: 14px; font-weight: 700; text-align: right; }
+.mr-pts { justify-self: end; font-size: 13px; text-align: right; }
+/* 업적 화면 전적: 줄을 누르면 상세가 펼쳐짐 */
+ul.mr-list li.mr-item { list-style: none; }
+ul.mr-list button.mr-row { position: relative; width: 100%; display: grid; grid-template-columns: minmax(88px, 1.1fr) minmax(76px, 1fr) minmax(56px, auto) minmax(64px, auto); align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2, #242424); color: inherit; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+ul.mr-list button.mr-row::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: rgba(255, 255, 255, 0.18); }
+ul.mr-list button.mr-row.win::before { background: var(--accent); }
+ul.mr-list button.mr-row:hover { border-color: rgba(255, 255, 255, 0.1); }
+ul.mr-list button.mr-row.open { border-radius: 10px 10px 0 0; border-color: rgba(255, 255, 255, 0.1); }
+ul.mr-list button.mr-row .mr-pts { display: inline-flex; align-items: center; gap: 6px; }
+.mr-chev { color: var(--muted); }
+.mr-detail { padding: 6px 12px 12px; border: 1px solid rgba(255, 255, 255, 0.1); border-top: 0; border-radius: 0 0 10px 10px; background: var(--surface, #1c1c1c); }
+.mr-players { list-style: none; margin: 0; padding: 0; display: grid; }
+.mr-players > li { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; font-variant-numeric: tabular-nums; }
+.mr-players > li:last-child { border-bottom: 0; }
+.mr-players > li.me .mr-p-name { color: var(--accent-text); font-weight: 700; }
+.mr-p-rank { font-weight: 800; color: var(--muted); text-align: center; }
+.mr-p-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mr-p-name em { font-style: normal; color: var(--muted); }
+.mr-tag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 11px; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.12); }
+.mr-p-ret { font-weight: 700; text-align: right; }
+.mr-p-eq { font-size: 12px; text-align: right; min-width: 64px; }
+.mr-p-badges { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.mr-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); font-size: 11px; color: var(--text-2); }
+ul.mr-list li.mr-item { display: block; padding: 0; border: 0; }
+ul.mr-list li.mr-row, ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 8px; }
+ul.mr-list li.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 58px 48px; }
+ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 58px 66px; }
+.mr-more { border: 1px solid rgba(255,255,255,.14); cursor: pointer; font-weight: 700; color: var(--accent-text); } .mr-more:hover { border-color: var(--accent); }
