@@ -145,26 +145,12 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
       </div>
 
       <div className="field">
-        <span>일봉 차트 모양</span>
+        <span>차트 모양</span>
         <Seg
           value={p.chartType}
           onChange={(chartType) => setPrefs({ chartType })}
           options={[
             { v: 'auto', label: '모드 기본', sub: '초보 라인 · 일반 캔들' },
-            { v: 'line', label: '라인', sample: 'line' },
-            { v: 'candle', label: '캔들', sample: 'candle' },
-            { v: 'ohlc', label: '바', sample: 'ohlc' },
-          ]}
-        />
-      </div>
-
-      <div className="field">
-        <span>초 단위 차트 모양</span>
-        <Seg
-          value={p.liveChartType ?? 'same'}
-          onChange={(liveChartType) => setPrefs({ liveChartType })}
-          options={[
-            { v: 'same', label: '일봉과 같게', sub: '한쪽을 바꾸면 같이' },
             { v: 'line', label: '라인', sample: 'line' },
             { v: 'candle', label: '캔들', sample: 'candle' },
             { v: 'ohlc', label: '바', sample: 'ohlc' },

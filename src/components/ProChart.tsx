@@ -1,7 +1,7 @@
 /**
  * 실제 증권앱처럼 조작하는 차트 (토스 스타일)
  * - 차트 종류: 라인 / 캔들 / 바(OHLC)
- * - 확대·축소: 휠, 두 손가락, 기간 버튼 · 이동: 드래그 · 초기화: 더블클릭
+ * - 확대·축소: 휠, 두 손가락 · 이동: 드래그 · 초기화: 더블클릭
  * - 십자선: 마우스 올리기 / 터치로 탭
  * - 보조지표: 이동평균 5·10·20, 볼린저밴드
  * - 그리기: 수평선, 추세선, 지우기 (종목별로 이 기기에 저장)
@@ -118,16 +118,11 @@ export function ProChart({
   const plotH = H - padT - padB;
 
   // 설정: 초보=라인, 일반=캔들이 기본. 바꾼 건 모드별로 기억
-  // 장중 차트는 설정에서 '일별과 같게'면 일별과 같은 값을 함께 쓰고, 아니면 따로 기억
+  // 차트가 하나로 합쳐져서(5·10·20·30초·일) 모양 설정도 하나 — 예전 '초 단위 차트 모양' 설정은 쓰지 않음
   const eff = getEffective();
-  const liveOwn = !!unit && (eff.liveChartType ?? "same") !== "same";
-  const prefKey = liveOwn ? `stockduel.chartLive.${ui}` : `stockduel.chart.${ui}`;
+  const prefKey = `stockduel.chart.${ui}`;
   // 내 화면 설정에서 차트 모양을 정했으면 그걸 기본으로
-  const pickFixed = () => {
-    const e = getEffective();
-    const live = !!unit && (e.liveChartType ?? "same") !== "same";
-    return live ? (e.liveChartType as ChartType | "auto") : e.chartType;
-  };
+  const pickFixed = () => getEffective().chartType;
   const fixedType = pickFixed();
   const [type, setTypeRaw] = useState<ChartType>(() =>
     fixedType !== "auto"
@@ -165,7 +160,7 @@ export function ProChart({
     );
     setInds(load(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui, prefKey, eff.chartType, eff.liveChartType]);
+  }, [ui, prefKey, eff.chartType]);
 
   const drawKey = unit?.drawKey ?? drawKeyFor(symbol);
   const [drawings, setDrawings] = useState<Drawing[]>(() => load(drawKey, []));
