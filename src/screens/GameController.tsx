@@ -1095,18 +1095,21 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 </button>
               </li>
             ))}
-            {(view.market?.news ?? [])
+            {/* 화면이 가진 시장 데이터(market)에서 — view.market 은 바뀐 때만 오므로 대결에서는 대개 비어 있음.
+                확인할 만한 기사(소문·특징주·단독)를 먼저, 머리말을 함께 보여 줌 */}
+            {(market?.news ?? [])
               .filter((n) => n.day === view.room.day)
+              .sort((x, y) => Number(!!(y.rumor || y.label === '특징주' || y.label === '단독')) - Number(!!(x.rumor || x.label === '특징주' || x.label === '단독')))
               .map((n) => (
                 <li key={'n' + n.headline}>
                   <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: n.headline }))}>
-                    <span className="det-kind">{n.rumor ? '소문 기사' : '뉴스'}</span>
+                    <span className="det-kind">{n.rumor ? '소문 기사' : n.label ?? '뉴스'}</span>
                     <span>{n.headline.replace('[루머] ', '')}</span>
                   </button>
                 </li>
               ))}
           </ul>
-          {!(view.rumors ?? []).length && !(view.market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
+          {!(view.rumors ?? []).length && !(market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
         </Sheet>
       )}
       {fakeModal && (
