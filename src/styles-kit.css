@@ -1245,3 +1245,4 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .mr-rank, .mr-rank b, .mr-rank small { white-space: nowrap; }
 @media (max-width: 480px) { .mr-rank b { font-size: 15px; } }
 @media (max-width: 860px) { .lobby-main:has(> .rc-pill) > .cl-foot { padding-bottom: 76px; } .lobby-main:has(> .rc-pill):has(> .mm-pill) > .cl-foot { padding-bottom: 132px; } }
+.news-empty { margin: 4px 2px 12px; }
