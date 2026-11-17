@@ -991,3 +991,16 @@ html[data-device='pc'] .news-cats .nc-scroll { cursor: grab; }
 .news-cats .nc-scroll.dragging .chip { pointer-events: none; }
 /* 날짜 줄·뉴스/찌라시 버튼: 끌 때 글자가 선택돼 회색으로 칠해지던 것 */
 .news-cats, .news-mode { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* 화면 편집: 아래 탭 순서 화살표 — 보라 네모 두 개 대신 이름표와 같은 모양의 작은 알약, 끝 칸의 못 쓰는 화살표는 숨김 */
+.nav-move { top: -17px; gap: 0; padding: 1px; border-radius: 99px; background: #1b1930; border: 1px solid rgba(139, 123, 255, 0.55); }
+.nav-move i { width: 26px; height: 26px; border-radius: 99px; background: transparent; color: #c4baff; }
+.nav-move i:active { background: rgba(139, 123, 255, 0.25); }
+.nav-move i.dis { visibility: hidden; width: 8px; }
+.m-game.editing .bottom-nav { padding-top: 18px; }
+.nav-move { top: -12px; }
+.nav-move i { width: 24px; height: 22px; }
+.m-game.editing .bottom-nav { padding-top: 24px; }
+.m-game.editing .bottom-nav { padding-top: 6px; }
+.m-game.editing .bottom-nav > button { padding-top: 16px; }
+.nav-move { top: -6px; }
+.nav-move { top: -13px; }
