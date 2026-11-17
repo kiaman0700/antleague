@@ -272,18 +272,29 @@ export function MissionsButton({ onSignup, compact }: { onSignup?: () => void; c
   const list = m.info?.today.list ?? [];
   const done = list.filter((x) => x.done).length;
   const pct = list.length ? done / list.length : 0;
-  const r = 8;
-  const len = 2 * Math.PI * r;
+  const week = m.info?.week.list ?? [];
+  const wDone = week.filter((x) => x.done).length;
+  const wPct = week.length ? wDone / week.length : 0;
+  // 두 겹 링 (사용자 요청 2026-11-18): 안쪽 = 일일 미션, 바깥 = 주간 미션
+  const ring = (r: number, p: number, cls: string) => {
+    const len = 2 * Math.PI * r;
+    return (
+      <>
+        <circle cx="12" cy="12" r={r} fill="none" className="msb-track" strokeWidth="2.6" />
+        {p > 0 && <circle cx="12" cy="12" r={r} fill="none" className={cls} strokeWidth="2.6" strokeLinecap="round" strokeDasharray={`${len * p} ${len}`} transform="rotate(-90 12 12)" />}
+      </>
+    );
+  };
   return (
     <HoverPop
       className={'msb' + (compact ? ' compact' : '') + (list.length && done === list.length ? ' all' : '')}
-      label={list.length ? `일일 미션 ${done}/${list.length} 완료` : '일일 미션'}
+      label={list.length ? `일일 미션 ${done}/${list.length} · 주간 미션 ${wDone}/${week.length} 완료` : '미션'}
       onOpen={m.reload}
       button={
         <>
-          <svg className="msb-ring" width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-            <circle cx="11" cy="11" r={r} fill="none" stroke="#3a3a3a" strokeWidth="3" />
-            {pct > 0 && <circle cx="11" cy="11" r={r} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${len * pct} ${len}`} transform="rotate(-90 11 11)" />}
+          <svg className="msb-ring" width="24" height="24" viewBox="0 0 24 24" aria-hidden>
+            {ring(10, wPct, 'msb-week')}
+            {ring(5.6, pct, 'msb-day')}
           </svg>
           {!compact && <span>미션</span>}
           {list.length > 0 && (
