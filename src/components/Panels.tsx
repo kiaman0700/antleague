@@ -276,7 +276,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           <header className="rb-head">
             <b>개미 커뮤니티</b>
             {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
-            <small className="muted">{rumorCheck ? '루머 감별기로 확인했어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
+            <small className="muted">{rumorCheck ? '루머 감별기를 쓴 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
           <ul className="rb-list">
             {rumors
@@ -321,7 +321,19 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           </h4>
           {rumorCheck && !blackout && (
             <div className="detector-sum">
-              <CardIcon kind="detector" size={15} /> 루머 감별기: 소문 {rumorToday.length}개 중 <b className="up">가짜 {rumorToday.filter((n) => n.verdict === 'false').length}개</b>, 사실 {rumorToday.filter((n) => n.verdict === 'true').length}개
+              <CardIcon kind="detector" size={15} />{' '}
+              {rumorToday.every((n) => n.verdict) ? (
+                <>
+                  루머 감별기: 소문 {rumorToday.length}개 중 <b className="up">가짜 {rumorToday.filter((n) => n.verdict === 'false').length}개</b>, 사실 {rumorToday.filter((n) => n.verdict === 'true').length}개
+                </>
+              ) : rumorToday.some((n) => n.verdict) ? (
+                // (v14) 고른 소문 하나만 판정
+                <>
+                  루머 감별기로 고른 소문: <b className={rumorToday.find((n) => n.verdict)!.verdict === 'false' ? 'up' : ''}>{rumorToday.find((n) => n.verdict)!.verdict === 'false' ? '가짜' : '사실'}</b>
+                </>
+              ) : (
+                '오늘 루머 감별기는 다른 소식을 확인했어요'
+              )}
             </div>
           )}
           {rumorToday.map((n) => (
