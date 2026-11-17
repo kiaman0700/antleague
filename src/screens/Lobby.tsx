@@ -6,8 +6,8 @@ import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
 import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
-import { TierBadge, TierEmblem } from '../components/TierBadge';
-import { isPlaced, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
+import { TierBadge, TierLadder } from '../components/TierBadge';
+import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 import { Companies } from './Companies';
@@ -27,7 +27,7 @@ import { api } from '../net/api';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { setPrefs, usePrefs } from '../prefs';
-import { DAY_OPTIONS, estimateMinutes, graceText, loadNick, markTutorialSeen, tutorialSeen, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
+import { DAY_OPTIONS, estimateMinutes, graceSentence, loadNick, markTutorialSeen, tutorialSeen, loadUi, saveNick, saveUi, TURN_OPTIONS, turnLabel, type Session, type UiMode } from '../session';
 
 export interface ResumeInfo {
   roomId: string;
@@ -495,21 +495,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               </button>
             </section>
             {/* 무엇을 얻는지 보여 주기: 티어 사다리 */}
-            <section className="panel pad tier-ladder" aria-label="랭킹 티어">
-              <h3>
-                <Icon name="crown" size={18} /> 랭킹 티어
-              </h3>
-              <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해져요.</p>
-              <ol>
-                {[...TIERS].reverse().map((t) => (
-                  <li key={t.id}>
-                    <TierEmblem rating={t.id === 'bronze' ? 900 : t.min} size={30} />
-                    <b style={{ color: t.color }}>{t.name}</b>
-                    <small className="muted">{t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점부터'}</small>
-                  </li>
-                ))}
-              </ol>
-            </section>
+            <TierLadder />
           </div>
         ))}
 
@@ -1002,7 +988,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
               </button>
             ))}
           </div>
-          <small className="hint">모두 마감하면 바로 다음 날로 가요. {graceText(maxPlayers)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요. 마감은 넘어가기 전까지 취소할 수 있어요.</small>
+          <small className="hint">모두 마감하면 바로 다음 날로 가요. {graceSentence(maxPlayers, turnSec)} 마감은 넘어가기 전까지 취소할 수 있어요.</small>
         </div>
         <div className="estimate">
           <span>⌛ 예상 게임 시간</span>
@@ -1170,7 +1156,10 @@ function Records({ go }: Pick<Props, 'go'>) {
               <li key={h.id} className={won ? 'won' : ''}>
                 <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
                 <span className={'rec-rank' + (won || (draw && rank === 1) ? ' r1' : draw ? ' draw' : '')}>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</span>
-                <span className="rec-who muted">{h.results.length}명 대결{!won && h.winner_nickname ? ` · 승자 ${h.winner_nickname}` : ''}</span>
+                <span className="rec-who muted">
+                  {h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
+                  {!won && h.winner_nickname && <small>승자 {h.winner_nickname}</small>}
+                </span>
                 <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>
               </li>
             ))}

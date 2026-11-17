@@ -18,7 +18,7 @@
   --gold-soft: rgba(139, 123, 255, 0.14);
   --green: #2fbf71;
   --me: #8b7bff;
-  --opp: #a78bfa;
+  --opp: #f5b83d; /* 상대 선: 나(보라)와 확실히 구분되는 색 */
   --r-lg: 20px;
   --r: 14px;
   --r-sm: 10px;

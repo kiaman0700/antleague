@@ -917,7 +917,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {/* 연결이 끊기면 바로 알림 (가격이 멈춘 걸 모르고 기다리지 않게) */}
       {session.mode === 'multi' && (!online || error) && (
         <div className="net-banner" role="alert">
-          <Icon name="warn" size={14} /> {online ? '연결이 불안정해요 · 다시 연결하는 중…' : '인터넷이 끊겼어요 · 연결되면 자동으로 이어져요'}
+          <Icon name="warn" size={14} /> {online ? '연결이 불안정해요. 다시 연결하는 중…' : '인터넷이 끊겼어요. 연결되면 자동으로 이어져요'}
         </div>
       )}
       {newsBig && !mobile && (
@@ -940,7 +940,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .then(() => {
-                    setFlash('기권했어요 · 이번 대결은 끝났어요');
+                    setFlash('기권했어요. 이번 대결은 끝났어요');
                     onExit();
                   })
                   // 기권 요청이 실패하면 나가지 않고 알려 줌 (기권한 줄 알았는데 대결이 남아 막히지 않게)

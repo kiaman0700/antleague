@@ -57,7 +57,7 @@ h4 .ico {
   color: var(--text-2);
 }
 .rank-badge.r1 {
-  background: #8b7bff;
+  background: #6b58ee; /* 흰 숫자 대비 */
   color: #ffffff;
 }
 .rank-badge.r2 {

@@ -23,25 +23,21 @@ const MAIN: [NavTab, string, IconName][] = [
   ['friends', '친구', 'userPlus'],
   ['practice', '연습', 'target'],
 ];
-const SUB: [NavTab, string, IconName][] = [
-  ['ranking', '랭킹', 'crown'],
-  ['records', '업적', 'medal'],
-  ['companies', '공부', 'book'],
-  ['more', '설정·더보기', 'settings'],
-];
 
 const LAST = 'stockduel.tab';
+/** 홈(/)에서 다시 열어 줄 '대결 메뉴' — 친구·설정 같은 화면은 기억하지 않음 */
+const PLAY_TABS: NavTab[] = ['ranked', 'casual', 'custom', 'practice'];
 export function lastTab(): NavTab {
   try {
     const v = localStorage.getItem(LAST);
-    if (v && [...MAIN, ...SUB].some(([k]) => k === v)) return v as NavTab;
+    if (v && PLAY_TABS.includes(v as NavTab)) return v as NavTab;
   } catch {
     /* 저장소 없음 */
   }
   return 'casual';
 }
 export function rememberTab(t: NavTab) {
-  if (!MAIN.some(([k]) => k === t)) return; // 큰 메뉴(대결 종류)만 기억
+  if (!PLAY_TABS.includes(t)) return; // 대결 메뉴만 기억 (친구 화면 뒤 '홈으로'가 친구로 가지 않게)
   try {
     localStorage.setItem(LAST, t);
   } catch {

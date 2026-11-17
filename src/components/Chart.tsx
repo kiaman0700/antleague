@@ -42,7 +42,14 @@ function frame(values: number[], count: number, H: number, extra: number[] = [])
 }
 
 function Axes({ f, count, fmt }: { f: Frame; count: number; fmt: (v: number) => string }) {
-  const ticks = [0.15, 0.5, 0.85].map((t) => f.min + (f.max - f.min) * t);
+  // 눈금 글자가 같아지면(예: 범위가 좁아 '100만'이 두 번) 하나만 남김
+  const seen = new Set<string>();
+  const ticks = [0.15, 0.5, 0.85].map((t) => f.min + (f.max - f.min) * t).filter((v) => {
+    const k = fmt(v);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
   const step = count > 20 ? 10 : 5;
   const days: number[] = [];
   for (let d = 0; d < count; d += step) days.push(d);

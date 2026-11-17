@@ -123,7 +123,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
                   {sent[f.id] && sent[f.id] !== 'ok' && <small className="error">{sent[f.id]}</small>}
-                  {sent[f.id] === 'ok' && <small className="good-msg">불렀어요 · 2분 안에 수락하면 들어와요 (못 받았으면 다시 부르기)</small>}
+                  {sent[f.id] === 'ok' && <small className="good-msg">불렀어요. 2분 안에 수락하면 들어와요 (못 받았으면 다시 부르기)</small>}
                 </span>
                 <span className="fr-act">
                   <button className="btn sm" disabled={!!fresh[f.id]} onClick={() => invite(f.id)}>

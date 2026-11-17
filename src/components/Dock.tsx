@@ -297,7 +297,7 @@ export function DockBoard({ zones, hidden, editing, sizes, render, onChange, onR
           <span>
             <Icon name="grip" size={13} /> {PANEL_LABEL[drag.id]}
           </span>
-          <small>{drag.over ? `${ZONE_LABEL[drag.over.zone]}에 놓기 · 손을 떼면 확정` : '놓을 칸 위로 가져가세요 · Esc 로 취소'}</small>
+          <small>{drag.over ? `${ZONE_LABEL[drag.over.zone]}에 놓기 · 손을 떼면 확정` : '놓을 칸 위로 가져가세요 (Esc 로 취소)'}</small>
         </div>
       )}
     </>

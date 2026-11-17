@@ -240,7 +240,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           <>
             <div className="crown"><Icon name="users" size={40} /></div>
             <h1>무승부!</h1>
-            <p>{results.length > 2 ? '1위가 여러 명이에요 · 재산이 똑같아요' : '두 사람 재산이 똑같아요'} · 다음 판에서 승부를 가려 봐요</p>
+            <p>{results.length > 2 ? '재산이 똑같아서 1위가 여러 명이에요' : '두 사람 재산이 똑같아요'} · 다음 판에서 승부를 가려 봐요</p>
           </>
         )}
       </div>
@@ -405,7 +405,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
           totalDays={market.totalDays}
           refLine={{ value: START_CASH, label: `시작 ${START_CASH >= 10_000_000 ? '1,000만원' : '100만원'}` }}
-          fmt={(v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : `${Math.round(v / 1e4).toLocaleString('ko-KR')}만`)}
+          fmt={(v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : v >= 1e7 ? `${Math.round(v / 1e4).toLocaleString('ko-KR')}만` : `${(Math.round(v / 1e3) / 10).toLocaleString('ko-KR')}만`)}
           fill={false}
         />
       </div>
@@ -469,7 +469,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기
           <>
-            {!party.isLeader && party.searching && <p className="rematch-note">파티장이 다시 찾고 있어요 · 파티로 가면 같이 찾아요</p>}
+            {!party.isLeader && party.searching && <p className="rematch-note">파티장이 다시 찾고 있어요. 파티로 가면 같이 찾아요</p>}
             <button className="btn primary xl again-btn" onClick={onBackToParty}>
               <b>파티로 돌아가기</b>
               <small>{party.isLeader ? '모두 돌아오면 다시 찾을 수 있어요' : '파티장이 다시 찾기를 눌러요'}</small>

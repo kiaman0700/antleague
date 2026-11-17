@@ -229,7 +229,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
           <path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.2 4.3-1.4 1.4-4.3-4.2A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" fill="currentColor" />
         </svg>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="종목·업종·ETF 검색 (초성 OK)" maxLength={30} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="종목 검색" placeholder="종목·업종·ETF 검색 (초성 OK)" maxLength={30} />
         {q && (
           <button className="clear" onClick={() => setQ('')} aria-label="검색어 지우기">
             <Icon name="x" />

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, Loading } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 import { AVATARS, canUseAvatar } from '../game/avatars';
-import { TierBadge } from '../components/TierBadge';
+import { TierBadge, TierLadder } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { api } from '../net/api';
 import { loadNick } from '../session';
@@ -712,6 +712,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
           })}
         </ol>
       )}
+      <TierLadder mine={data?.me ? { rating: data.me.rating, rankedGames: data.me.ranked_games } : undefined} />
     </div>
   );
 }

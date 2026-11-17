@@ -192,7 +192,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
           <div className="rb-head">
             <b>장 전 찌라시</b>
-            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜 단서일 수도, 헛소문일 수도 있어요 · 루머 감별기를 쓰면 가려 줘요'}</small>
+            <small className="muted">{rumorCheck ? '감별기로 확인한 결과예요' : '진짜 단서일 수도, 헛소문일 수도 있어요. 루머 감별기를 쓰면 가려 줘요'}</small>
           </div>
           {rumors.map((r, i) => (
             <div key={i} className={'rb-item ' + r.tone + (r.verdict ? ' v-' + r.verdict : '')}>

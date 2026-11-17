@@ -291,7 +291,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                 <Avatar id={f.avatar} name={f.nickname} size={38} className="fr-av" />
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
-                  <small className="muted">답을 기다리는 중 · 7일 뒤 자동으로 사라져요</small>
+                  <small className="muted">답을 기다리는 중이에요. 7일 뒤 자동으로 사라져요</small>
                 </span>
                 <span className="fr-act">
                   <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('friendRemove', { id: f.id }), '신청을 취소했어요')}>
