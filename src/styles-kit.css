@@ -868,3 +868,11 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .rank-chip .rk-av, .rank-row .rk-av { flex: none; }
 .slot .slot-av { margin: 0 auto 6px; }
 .vs-card .vs-av { margin-bottom: 4px; }
+
+/* 연습 메뉴 6칸: PC 는 3칸 × 2줄 (4칸이면 둘째 줄에 2칸만 남아 비어 보였음), 휴대폰은 2칸 × 3줄 */
+.hub .home-actions.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) {
+  .hub .home-actions.six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.more-page .more-me { padding: 10px 12px; margin: 0 -12px; width: calc(100% + 24px); }
+.more-page .more-me .mr-t b { font-size: 16px; }

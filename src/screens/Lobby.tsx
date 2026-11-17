@@ -6,7 +6,8 @@ import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
 import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
-import { TierBadge, TierLadder } from '../components/TierBadge';
+import { Avatar } from '../components/Avatar';
+import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
@@ -772,7 +773,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       )}
 
       {tab === 'practice' && (
-        <nav className="home-actions">
+        <nav className={'home-actions' + (online ? ' six' : '')}>
           {online && (
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
@@ -813,9 +814,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <section className="panel pad">
             <h3>내 계정</h3>
             {member ? (
-              <div className="more-acc">
-                <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} plain />
-              </div>
+              <button className="more-row more-me" onClick={() => go('me')}>
+                <Avatar id={account.profile?.avatar} name={account.profile?.nickname ?? ''} size={44} />
+                <span className="mr-t">
+                  <b>{account.profile?.nickname}</b>
+                  <small>{tierText(account.profile?.rating ?? 1000, account.profile?.ranked_games)} · 마이프로필 · 사진 · 칭호 · 계정</small>
+                </span>
+                <Icon name="right" size={14} />
+              </button>
             ) : account.status === 'loading' ? (
               <Loading inline label="내 계정을 확인하는 중…" />
             ) : (

@@ -1,6 +1,7 @@
 /** 미션 (설계서 design/missions.md): 오늘 3개 · 이번 주 1개 · 레벨 막대. 판정·경험치는 서버만 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
+import { useAccount } from '../net/account';
 import { Icon } from './Icon';
 import { ErrorState, Loading } from './ui';
 import { HoverPop } from './HoverPop';
@@ -30,22 +31,52 @@ export interface MissionInfo {
   thisGame?: { xp: number; detail: string; firstWin: number } | null;
 }
 
+const EMPTY: MissionInfo = { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 };
+/**
+ * 앱 전체가 함께 쓰는 미션 정보 (room 없는 것만): 메뉴바 버튼이 휴대폰·PC 두 곳 + 화면을 옮길 때마다 따로 물어
+ * 요청 제한(429)에 걸리던 것 — 15초 안이면 받아 둔 것을 쓰고, 같은 때 여러 곳이 물어도 한 번만 보냄. 실패하면 받아 둔 것 유지
+ */
+const shared: { at: number; who: string; data: MissionInfo | null; inflight: Promise<MissionInfo> | null } = { at: 0, who: '', data: null, inflight: null };
+function fetchShared(force: boolean, who: string): Promise<MissionInfo> {
+  // 계정이 바뀌면(로그인·로그아웃) 받아 둔 것은 버림
+  if (shared.who !== who) {
+    shared.who = who;
+    shared.data = null;
+    shared.inflight = null;
+  }
+  if (!force && shared.data && Date.now() - shared.at < 15_000) return Promise.resolve(shared.data);
+  if (shared.inflight) return shared.inflight;
+  const mine = api<MissionInfo | null>('missions', {})
+    // 로그인 전(세션 없음)이면 서버에 안 묻고 null → 미션 없이 안내만
+    .then((r) => {
+      if (shared.who !== who) return r ?? EMPTY;
+      shared.data = r ?? EMPTY;
+      shared.at = Date.now();
+      return shared.data;
+    })
+    .finally(() => {
+      if (shared.inflight === mine) shared.inflight = null;
+    });
+  shared.inflight = mine;
+  return mine;
+}
+
 export function useMissions(enabled = true, room?: string) {
-  const [info, setInfo] = useState<MissionInfo | null>(null);
+  const acc = useAccount();
+  const who = acc.profile?.username ?? acc.status;
+  const [info, setInfo] = useState<MissionInfo | null>(() => (room || shared.who !== who ? null : shared.data));
   const [err, setErr] = useState(false);
   const [n, setN] = useState(0);
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || who === 'loading') return; // 계정 확인 전엔 안 물음
     let alive = true;
     setErr(false);
-    api<MissionInfo | null>('missions', room ? { room } : {})
-      // 로그인 전(세션 없음)이면 서버에 안 묻고 null → 미션 없이 안내만
-      .then((r) => alive && setInfo(r ?? { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 }))
-      .catch(() => alive && setErr(true));
+    const req = room ? api<MissionInfo | null>('missions', { room }).then((r) => r ?? EMPTY) : fetchShared(n > 0, who);
+    req.then((r) => alive && setInfo(r)).catch(() => alive && !shared.data && setErr(true));
     return () => {
       alive = false;
     };
-  }, [enabled, n, room]);
+  }, [enabled, n, room, who]);
   const reload = useCallback(() => setN((x) => x + 1), []);
   return { info, err, reload };
 }
