@@ -299,7 +299,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
   const setLevel = (i: number, lv: number) => setBots((b) => b.map((x, j) => (j === i ? lv : x)));
   return (
     <Modal title={<><Icon name="bot" size={18} /> 봇전</>} onClose={onClose}>
-      <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 점수는 바뀌지 않고, 이 기기에 저장돼요.</p>
+      <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 랭킹 점수는 바뀌지 않고, 전적·업적·미션에는 남아요.</p>
       <div className="field">
         <span>상대 봇 ({bots.length}명)</span>
         <ul className="bot-pick">
@@ -1643,7 +1643,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     window.dispatchEvent(new Event('stockduel:play'));
   };
   return (
-    <div className="lobby-shell client">
+    <div className={'lobby-shell client' + (socialFold ? ' social-folded' : '')}>
       <TopBar
         active={active}
         account={account}
@@ -1657,7 +1657,8 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onLogin={() => go('login')}
         socialBadge={badges.friends}
         socialOpen={socialOpen}
-        onSocial={() => setSocialOpen((v) => !v)}
+        // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
+        onSocial={() => (socialFold && matchMedia('(min-width: 1280px)').matches ? fold(false) : setSocialOpen((v) => !v))}
         adminUnread={adminUnread}
         onAdmin={() => go('admin')}
       />
@@ -1709,13 +1710,6 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         </main>
         {online && (
           <div className={'cl-social-wrap' + (socialOpen ? ' open' : '') + (socialFold ? ' folded' : '')}>
-            {/* 접혀 있을 때(넓은 화면): 얇은 줄 — 누르면 펼침 */}
-            <button className="cs-rail" onClick={() => fold(false)} aria-label="소셜 칸 펼치기" aria-expanded={false} title="친구·파티 펼치기">
-              <Icon name="left" size={16} />
-              <Icon name="users" size={20} />
-              {badges.friends > 0 && <i className="ln-badge">{badges.friends > 9 ? '9+' : badges.friends}</i>}
-              <span>친구</span>
-            </button>
             <SocialPanel
               onFold={() => fold(true)}
               account={account}

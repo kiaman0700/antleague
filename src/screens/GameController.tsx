@@ -14,7 +14,7 @@ import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
-import { isLeveraged, LEVERAGE_CAP, type View } from '../engine/engine';
+import { isLeveraged, josa, LEVERAGE_CAP, type View } from '../engine/engine';
 import { loadSolo, saveSolo, makeDemo, makeTutorial, soloAct, soloSync, soloView, type SoloSave } from '../engine/local';
 import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
@@ -1146,7 +1146,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     displayDay === 0 ? START_CASH : equityWith(computePortfolio(view.myTrades, spends, displayDay - 1, paidDivs, START_CASH), pricesAt(m, displayDay - 1, true));
   const todayPnl = equity - prevCloseEquity;
   const rows = rankRows(players, me, equity, day, START_CASH);
-  const myRank = rows.findIndex((r) => r.me) + 1;
+  // 순위는 서버가 정한 값 (재산이 같으면 같은 순위)
+  const myRank = rows.find((r) => r.me)?.rank ?? rows.findIndex((r) => r.me) + 1;
+  const tiedFirst = myRank === 1 && rows.filter((r) => (r.rank ?? 0) === 1).length > 1;
   const openOrderCount = myOrders.filter((o) => o.status === 'open' && o.day === day).length;
 
 
@@ -1260,14 +1262,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   </strong>
                   <span className="muted">/ {rows.length}명</span>
                   <span className={myRank === 1 ? 'up' : 'down'}>
-                    · {myRank === 1 ? '선두!' : `1위 수익률 ${rows[0].band ? bandText(rows[0].band) : pct(rows[0].ret)}`}
+                    · {tiedFirst ? '공동 선두' : myRank === 1 ? '선두!' : `1위 수익률 ${rows[0].band ? bandText(rows[0].band) : pct(rows[0].ret)}`}
                   </span>
                   <i>›</i>
                 </button>
               ) : opponent ? (
                 <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
-                  <span className={myRank === 1 ? 'up' : 'down'}>
-                    {myRank === 1 ? `${opponent.nickname}보다 앞서는 중` : `${opponent.nickname}보다 뒤지는 중`}
+                  <span className={tiedFirst ? 'muted' : myRank === 1 ? 'up' : 'down'}>
+                    {tiedFirst ? `${josa(opponent.nickname, "과", "와")} 비기는 중` : myRank === 1 ? `${opponent.nickname}보다 앞서는 중` : `${opponent.nickname}보다 뒤지는 중`}
                   </span>
                   <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중'}</span>
                 </button>
@@ -1462,8 +1464,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           {rivals ? (
             <>
               <div className="tug-wrap">
-                <span className={'tug-lead ' + (opponent?.status === 'left' ? 'muted' : myRank === 1 ? 'up' : 'down')}>
-                  {opponent?.status === 'left' ? '상대가 나갔어요' : myRank === 1 ? '내가 앞서는 중' : '상대가 앞서는 중'}
+                <span className={'tug-lead ' + (opponent?.status === 'left' || tiedFirst ? 'muted' : myRank === 1 ? 'up' : 'down')}>
+                  {opponent?.status === 'left' ? '상대가 나갔어요' : tiedFirst ? '비기는 중' : myRank === 1 ? '내가 앞서는 중' : '상대가 앞서는 중'}
                 </span>
                 <div className="tug" aria-hidden>
                   <div className="tug-me" style={{ width: `${share * 100}%` }} />

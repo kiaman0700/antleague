@@ -503,7 +503,6 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   })() : prices;
   const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), p.id === meId ? prices : coarse))]));
   const rankEq = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), coarse))]));
-  const order = [...players].sort((a, b) => rankEq.get(b.id)! - rankEq.get(a.id)! || a.created_at.localeCompare(b.created_at)).map((p) => p.id);
   base.players = players.map((p) => {
     const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;
@@ -514,7 +513,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       // 상대: 구간 가운데 값(대략) — 화면은 금액 대신 구간으로 보여 줌
       equity: mine ? exact : Math.round(start * (1 + (lo + RET_BAND / 2) / 100)),
       band: mine ? null : ([lo, lo + RET_BAND] as [number, number]),
-      rank: order.indexOf(p.id) + 1,
+      // 재산이 똑같으면 같은 순위 (먼저 들어온 사람이 앞서 보이지 않게)
+      rank: 1 + players.filter((q) => rankEq.get(q.id)! > rankEq.get(p.id)!).length,
       tradeCount: d.trades.filter((t) => t.player_id === p.id && (mine || t.day < r.day)).length,
     };
   });
