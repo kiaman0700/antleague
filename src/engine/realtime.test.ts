@@ -82,7 +82,7 @@ describe('화면 데이터: 지금 칸까지만', () => {
     }
     expect(checked).toBe(5);
   });
-  it('상대 재산은 지금 가격 기준이지만 10만원 단위로만 (칸마다 역산 불가), 내 재산은 정확히', () => {
+  it('상대 재산도 지금 가격 기준 원 단위 (2026-11-17 결정), 상대 거래는 안 보임', () => {
     const d = game();
     d.trades.push({ player_id: 'b', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
     d.trades.push({ player_id: 'a', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
@@ -92,12 +92,10 @@ describe('화면 데이터: 지금 칸까지만', () => {
     const t = dayTicks(m, 'NEOT', 2, N);
     const eq = (v: typeof v0, id: string) => v.players.find((p) => p.id === id)!.equity;
     expect(eq(v1, 'a') - eq(v0, 'a')).toBe(100 * (t[30] - t[0]));
-    // 상대는 수익률 구간(2%p)의 가운데 값만 — 칸마다 바뀌는 정확한 값이 아님
-    const ob = v1.players.find((p) => p.id === 'b')!.band!;
-    const myRet = (eq(v1, 'a') / 10_000_000 - 1) * 100;
-    expect(myRet).toBeGreaterThanOrEqual(ob[0] - 0.2);
-    expect(myRet).toBeLessThan(ob[1] + 0.2);
-    expect(eq(v1, 'b') % 100_000).toBe(0);
+    // 같은 거래를 한 상대도 같은 재산 (원 단위)
+    expect(eq(v1, 'b')).toBe(eq(v1, 'a'));
+    expect(v1.players.find((p) => p.id === 'b')!.band).toBeNull();
+    expect(v1.myTrades.every((x) => x.player_id === 'a')).toBe(true);
   });
 });
 

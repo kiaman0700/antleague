@@ -219,8 +219,8 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: false }))}>
                     거절
                   </button>
-                  <button className="icon-btn sm" aria-label={`${f.nickname} 차단`} title="차단" disabled={busy} onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 이 사람의 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
-                    <Icon name="eyeOff" size={16} />
+                  <button className="btn sm ghost fr-block" aria-label={`${f.nickname} 차단`} disabled={busy} onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 이 사람의 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
+                    차단
                   </button>
                 </span>
               </li>

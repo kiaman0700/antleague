@@ -84,16 +84,19 @@ describe('나감·자리 비움', () => {
   });
 });
 
-describe('상대 재산은 수익률 구간만 (보유 종목 역산 방지)', () => {
-  it('상대는 2%p 수익률 구간과 순위만, 내 재산은 정확히', () => {
+describe('상대 재산은 보이고, 무엇을 샀는지는 안 보임 (2026-11-17 결정)', () => {
+  it('상대도 재산·순위는 원 단위, 거래·보유·오늘 거래 횟수는 없음', () => {
     const d = game(2, 0);
     d.trades.push({ player_id: 'p1', day: 0, symbol: 'CORE', side: 'buy', qty: 7, price: 101_234, fee: 709 });
     d.trades.push({ player_id: 'p0', day: 0, symbol: 'CORE', side: 'buy', qty: 3, price: 101_234, fee: 304 });
     const v = buildView(d, 'p0', now - 200_000);
     const opp = v.players.find((p) => p.id === 'p1')!;
-    expect(opp.band).toBeTruthy();
-    expect(opp.band![1] - opp.band![0]).toBe(2);
+    expect(opp.band).toBeNull();
+    expect(opp.equity % 100_000 === 0).toBe(false);
     expect(v.players.find((p) => p.id === 'p0')!.band).toBeNull();
+    // 상대 거래는 화면 데이터 어디에도 없음
+    expect(v.myTrades.every((t) => t.player_id === 'p0')).toBe(true);
+    expect(JSON.stringify(v)).not.toContain('"qty":7');
     expect(new Set(v.players.map((p) => p.rank))).toEqual(new Set([1, 2]));
     expect(v.players.find((p) => p.id === 'p0')!.equity % 100_000 === 0).toBe(false);
     expect(opp.tradeCount).toBe(0); // 오늘 거래 횟수는 안 보임

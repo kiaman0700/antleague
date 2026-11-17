@@ -493,28 +493,18 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const items = itemsOf(d);
   const mine = items.players[meId] ?? base.myItems;
 
-  // 순위는 서버가 정확한 재산으로 정하고, 상대의 재산은 금액 대신 '수익률 구간'(2%p 단위)만 보냄
-  // 상대의 순위·구간은 30초(6칸) 단위 가격으로만 → 칸마다 바뀌는 값으로 정확한 재산을 좁혀 가지 못하게
-  const coarse = open ? (() => {
-    const c = dayClock(r, now);
-    // 30초 단위 (칸 길이와 상관없이)
-    const every = Math.max(1, Math.round((RANK_EVERY_TICKS * 5000) / c.tickMs));
-    return livePriceMap(d, m, c.startAt + Math.floor(c.tick / every) * every * c.tickMs);
-  })() : prices;
-  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), p.id === meId ? prices : coarse))]));
-  const rankEq = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), coarse))]));
+  // 재산·수익률은 상대도 원 단위로 지금 가격 그대로 보여 줌 (사용자 결정 2026-11-17 — 예전엔 2%p 구간만).
+  // 무엇을 샀는지(보유 종목·거래·카드·주문)와 오늘 거래 횟수는 여전히 안 보냄
+  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), prices))]));
   base.players = players.map((p) => {
     const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;
-    const start = startCashFor(r.version);
-    const lo = Math.floor(((exact / start - 1) * 100) / RET_BAND) * RET_BAND;
     return {
       ...base.players.find((x) => x.id === p.id)!,
-      // 상대: 구간 가운데 값(대략) — 화면은 금액 대신 구간으로 보여 줌
-      equity: mine ? exact : Math.round(start * (1 + (lo + RET_BAND / 2) / 100)),
-      band: mine ? null : ([lo, lo + RET_BAND] as [number, number]),
+      equity: exact,
+      band: null,
       // 재산이 똑같으면 같은 순위 (먼저 들어온 사람이 앞서 보이지 않게)
-      rank: 1 + players.filter((q) => rankEq.get(q.id)! > rankEq.get(p.id)!).length,
+      rank: 1 + players.filter((q) => exacts.get(q.id)! > exact).length,
       tradeCount: d.trades.filter((t) => t.player_id === p.id && (mine || t.day < r.day)).length,
     };
   });

@@ -668,3 +668,11 @@ body { background: var(--bg) !important; }
   .st-qbtn b { font-size: 15px; }
   .st-qbtn small { font-size: 12px; }
 }
+/* 세로 태블릿(600~860px): 기다리지 않고 하기 3칸을 한 줄로 */
+@media (min-width: 600px) and (max-width: 860px) {
+  .st-quick { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .st-qbtn:nth-child(3) { grid-column: auto; }
+}
+.fr-block { color: #ff8a98; }
+.news-card.bad .arrow { color: #5b9bff; }
+.news-card.good .arrow { color: #ff6b7d; }

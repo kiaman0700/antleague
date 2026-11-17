@@ -55,8 +55,8 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
   return (
     <div className="rank-strip" role="list" aria-label="순위">
       {rows.map((r, i) => (
-        <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + (i === 0 ? ' lead' : '')}>
-          <span className="rk">{rankBadge(i)}</span>
+        <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + ((r.rank ?? i + 1) === 1 ? ' lead' : '')}>
+          <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
           <span className="rn">
             <b>
               <FitText>
@@ -130,10 +130,10 @@ export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds 
 export function RankList({ rows }: { rows: RankRow[] }) {
   return (
     <div className="rank-list">
-      <p className="muted small">상대의 정확한 재산은 보이지 않고 수익률 구간(2%p)만 보여요. 순위는 정확해요.</p>
+      <p className="muted small">상대의 재산과 수익률은 보이지만, 무엇을 샀는지는 보이지 않아요.</p>
       {rows.map((r, i) => (
         <div key={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
-          <span className="rk">{rankBadge(i)}</span>
+          <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
           <span className="rn">
             <b>
               <FitText>

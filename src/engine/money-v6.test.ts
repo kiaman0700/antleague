@@ -32,10 +32,10 @@ describe('v6: 시작 돈 100만원 (예전 방은 그대로)', () => {
     expect(itemCost('freeze', 2, 5)).toBe(300_000);
     expect(validateBuyItem(game(6), 'a', now, { kind: 'paper' }).cost).toBe(60_000);
   });
-  it('상대 재산은 화면 데이터에서 구간(가운데 값)만 — 100만원 기준', () => {
+  it('상대 재산은 원 단위로 보임 — 100만원 기준', () => {
     const v = buildView(game(6), 'a', now);
     const opp = v.players.find((p) => p.id === 'b')!;
-    expect(opp.band).toBeTruthy();
+    expect(opp.band).toBeNull();
     expect(opp.equity).toBeGreaterThan(900_000);
     expect(opp.equity).toBeLessThan(1_100_000);
   });

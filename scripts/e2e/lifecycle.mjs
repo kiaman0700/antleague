@@ -51,7 +51,9 @@ async function room(players, opts = {}) {
   await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   const s = (await A({ action: 'state', roomId })).b;
   const b = s.players.find((p) => p.id === ids[1]);
-  ok('상대 재산은 대략값(구간 가운데)만', b.equity % 10000 === 0 && !!b.band, String(b.equity));
+  // 2026-11-17 결정: 상대 재산은 원 단위로 보임, 무엇을 샀는지는 안 보임
+  ok('상대 재산은 원 단위로 보임 (구간 아님)', typeof b.equity === 'number' && !b.band, String(b.equity));
+  ok('상대가 산 종목·거래는 안 보임', !JSON.stringify(s).includes('"player_id":"' + ids[1] + '"') && (s.myTrades ?? []).length === 0);
   ok('상대의 오늘 거래 횟수는 안 보임', b.tradeCount === 0, String(b.tradeCount));
   ok('접속 시각 같은 내부 값은 없음', !JSON.stringify(s).includes('last_seen') && !JSON.stringify(s).includes('rejoin'));
   const leave = await C({ action: 'leave', roomId });

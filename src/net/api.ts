@@ -123,9 +123,11 @@ export function useLiveView(roomId: string | null): LiveView {
   const liveRef = useRef<View['live']>(null);
   /** 서버가 '너무 많은 요청'(429)을 주면 잠깐 천천히 */
   const slowUntil = useRef(0);
+  /** 이 방에서 빠졌거나 방이 사라짐(403·404) — 더 묻지 않음 (화면은 '더 이상 할 수 없어요' 안내) */
+  const goneRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    if (!roomId) return;
+    if (!roomId || goneRef.current) return;
     if (busy.current) {
       again.current = true;
       return;
@@ -163,7 +165,10 @@ export function useLiveView(roomId: string | null): LiveView {
     } catch (e) {
       // 요청이 많다고 하면 화면은 그대로 두고 10초 동안 천천히 받음 (오류 문구로 놀라게 하지 않음)
       if (e instanceof ApiError && e.status === 429) slowUntil.current = Date.now() + 10_000;
-      else setError(e instanceof Error ? e.message : String(e));
+      else {
+        if (e instanceof ApiError && (e.status === 403 || e.status === 404)) goneRef.current = true;
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       busy.current = false;
       if (again.current) {
@@ -176,6 +181,7 @@ export function useLiveView(roomId: string | null): LiveView {
   useEffect(() => {
     if (!roomId) return;
     keyRef.current = undefined;
+    goneRef.current = false;
     refresh();
     // 1초 가격 방(v11)에서 장이 열려 있으면 1초마다, 아니면 2.5초마다 새로 받음
     let poll = 0;
@@ -184,6 +190,7 @@ export function useLiveView(roomId: string | null): LiveView {
       const hidden = document.visibilityState === 'hidden';
       const ms = hidden ? 10_000 : doneRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
       poll = window.setTimeout(() => {
+        if (goneRef.current) return; // 방에서 빠졌으면 여기서 멈춤
         refresh();
         loop();
       }, ms);

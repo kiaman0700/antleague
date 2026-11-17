@@ -39,7 +39,7 @@ await Promise.all([1, 2, 3, 4, 5, 6].map((i) => (i % 2 ? A : B)({ action: 'state
 s = (await A({ action: 'state', roomId })).b;
 const raw = JSON.stringify(s);
 ok('화면 데이터에 봇 내부 값(bot_step·bot_level) 없음', !raw.includes('bot_step') && !raw.includes('bot_level'));
-ok('상대(봇) 재산은 구간만', s.players.filter((p) => p.bot).every((p) => Array.isArray(p.band)));
+ok('상대(봇) 재산은 원 단위로 보이고 거래는 안 보임', s.players.filter((p) => p.bot).every((p) => !p.band && typeof p.equity === 'number') && (s.myTrades ?? []).every((t) => !s.players.some((p) => p.bot && p.id === t.player_id)));
 ok('내 거래 목록엔 내 것만', (s.myTrades ?? []).every((t) => t.player_id === s.me || t.player_id === undefined));
 
 // 사람 둘이 모두 기권하면 (봇만 남음) 판이 바로 끝남

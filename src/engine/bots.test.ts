@@ -136,8 +136,9 @@ describe('봇', () => {
     const bot = v.players.find((p) => p.id === 'bot4')!;
     expect(bot.bot).toBe(3);
     expect(bot.status).toBe('on');
-    // 상대(봇) 재산은 정확한 값이 아니라 구간
-    expect(bot.band).toBeTruthy();
+    // 상대(봇) 재산은 원 단위로 보이지만(2026-11-17 결정) 보유 종목은 없음
+    expect(bot.band).toBeNull();
+    expect(JSON.stringify(bot)).not.toMatch(/holdings|symbol|qty/);
   });
 
   it('봇은 미래를 모른다: 봇 판단에 쓰이는 화면 데이터엔 내일 가격이 없음', () => {
