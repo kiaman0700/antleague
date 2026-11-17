@@ -1,5 +1,6 @@
 import { LEVERAGE_CAP } from "../engine/engine";
 import { useEffect, useState } from "react";
+import { chartPrefSec } from "../prefs";
 import { getEffective } from "../prefs";
 import { Icon, SectorIcon } from "./Icon";
 import type { Market, NewsEvent } from "../game/market";
@@ -74,7 +75,7 @@ export function StockDetail(props: Props) {
     } catch {
       /* 무시 */
     }
-    return getEffective().chart === "daily" ? 0 : 5;
+    return chartPrefSec(getEffective().chart);
   });
   const setIv = (v: number) => {
     setIvRaw(v);

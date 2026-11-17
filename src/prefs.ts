@@ -81,8 +81,8 @@ export interface Prefs {
   sectorPins: string[] | null;
   /** 카테고리(전체·국내·미국·ETF·관심·보유·오늘 뉴스) 순서 (null = 기본) */
   regionOrder: string[] | null;
-  /** 차트 기본 보기 */
-  chart: 'live' | 'daily';
+  /** 차트 처음 봉 간격: live = 5초, '10'·'20'·'30' 초, daily = 일 */
+  chart: 'live' | '10' | '20' | '30' | 'daily';
   /** 일별 차트 모양: auto = 모드 기본(초보 라인, 일반 캔들) */
   chartType: 'auto' | 'line' | 'candle' | 'ohlc';
   /** 장중 차트 모양: same = 일별과 똑같이(한쪽을 바꾸면 같이 바뀜), 아니면 따로 */
@@ -170,6 +170,10 @@ export function moved<T>(arr: T[], i: number, d: number): T[] {
 }
 /** 지금 적용 중인 설정 (렌더 밖에서) */
 export const getEffective = () => effective(current);
+/** 설정의 차트 봉 간격 → 초 (0 = 일) */
+export function chartPrefSec(c: string): number {
+  return c === 'daily' ? 0 : c === 'live' ? 5 : Number(c) || 5;
+}
 
 export function usePrefs() {
   return useSyncExternalStore(

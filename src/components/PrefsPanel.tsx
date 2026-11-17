@@ -1,7 +1,7 @@
 /** 내 화면 설정: 금액 단위 · 차트 기본 보기 · 자주 쓰는 업종(순서). 이 기기에 저장되어 다음 게임에도 그대로 */
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useDialogFocus } from './ui';
-import { isCustom, resetPrefs, setPrefs, usePrefs } from '../prefs';
+import { chartPrefSec, isCustom, resetPrefs, setPrefs, usePrefs } from '../prefs';
 import { manExact } from '../lib/format';
 import type { UiMode } from '../session';
 import { Icon } from './Icon';
@@ -132,14 +132,17 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
             setPrefs({ chart });
             // 차트 위 간격 버튼으로 고른 값보다 이 설정이 바로 보이게
             try {
-              localStorage.setItem('stockduel.chartIv', chart === 'daily' ? '0' : '5');
+              localStorage.setItem('stockduel.chartIv', String(chartPrefSec(chart)));
             } catch {
               /* 무시 */
             }
           }}
           options={[
-            { v: 'live', label: '5초', sub: '지난 날까지 이어서' },
-            { v: 'daily', label: '일', sub: '하루에 봉 하나' },
+            { v: 'live', label: '5초' },
+            { v: '10', label: '10초' },
+            { v: '20', label: '20초' },
+            { v: '30', label: '30초' },
+            { v: 'daily', label: '일' },
           ]}
         />
       </div>
