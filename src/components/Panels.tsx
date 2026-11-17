@@ -135,7 +135,39 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       box.scrollLeft += e.deltaY;
     };
     box.addEventListener('wheel', onWheel, { passive: false });
-    return () => box.removeEventListener('wheel', onWheel);
+    // PC: 마우스를 누른 채 좌우로 끌어서 넘기기 (끌었으면 그 뒤 클릭은 무시 — 날짜가 잘못 눌리지 않게)
+    let drag: { x: number; left: number; moved: boolean } | null = null;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      drag = { x: e.clientX, left: box.scrollLeft, moved: false };
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) < 5) return;
+      drag.moved = true;
+      box.classList.add('dragging');
+      box.scrollLeft = drag.left - dx;
+    };
+    const onUp = () => {
+      if (drag?.moved) setTimeout(() => box.classList.remove('dragging'), 0);
+      else box.classList.remove('dragging');
+      if (drag?.moved) {
+        const stop = (ev: Event) => (ev.stopPropagation(), ev.preventDefault());
+        box.addEventListener('click', stop, { capture: true, once: true });
+        setTimeout(() => box.removeEventListener('click', stop, { capture: true }), 50);
+      }
+      drag = null;
+    };
+    box.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      box.removeEventListener('wheel', onWheel);
+      box.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
   }, [day, totalDays, mode]);
   // 정식 기사와 소문 기사('루머' 표시)를 나눔 — 소문 기사는 찌라시 쪽에
   const official = news.filter((n) => !n.rumor);

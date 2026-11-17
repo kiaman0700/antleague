@@ -23,7 +23,8 @@ interface Props {
 export function EditSlot({ editing, label, hidden, onPrev, onNext, onToggle, dir = 'v', className, children }: Props) {
   if (!editing) return hidden ? null : <>{children}</>;
   return (
-    <div className={'edit-slot' + (hidden ? ' off' : '') + (className ? ' ' + className : '')}>
+    // tabIndex: 휴대폰에서 칸을 누르면 그 칸이 골라져(focus-within) 위로·아래로·숨기기 버튼이 나타남
+    <div className={'edit-slot' + (hidden ? ' off' : '') + (className ? ' ' + className : '')} tabIndex={0} aria-label={label + ' 편집'}>
       <div className="es-bar" onClick={(e) => e.stopPropagation()}>
         <b>{label}</b>
         {hidden && <span className="es-off">숨김</span>}
