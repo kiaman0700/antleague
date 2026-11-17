@@ -234,7 +234,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
           친구 <span className="fr-count">{d ? `${d.friends.length}/${d.max}` : ''}</span>
         </h3>
         {!d && (loadFailed ? <ErrorState compact what="친구 목록" onRetry={() => void refreshFriends()} /> : <Loading inline />)}
-        {d && d.friends.length === 0 && <EmptyState compact icon="users" title="아직 친구가 없어요" desc="위에서 친구 닉네임을 입력해 신청해 보세요." />}
+        {d && d.friends.length === 0 && <EmptyState compact icon="users" title="아직 친구가 없어요" desc="친구 닉네임을 정확히 입력해 신청해 보세요." />}
         {d && d.friends.length > 0 && (
           <ul className="fr-list">
             {d.friends.map((f) => {
