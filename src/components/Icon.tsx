@@ -13,6 +13,8 @@ import {
   Bird,
   Award,
   Bot,
+  Sprout,
+  Gem,
   CalendarCheck,
   GripVertical,
   Move,
@@ -255,6 +257,10 @@ const BADGE_ICONS: Record<string, LucideIcon> = {
   detective: SearchCheck,
   first_card: Sparkles,
   first_trade: Bird,
+  lv5: Sprout,
+  lv10: Star,
+  lv15: Medal,
+  lv20: Gem,
 };
 export function BadgeIcon({ id, size = 20 }: { id: string; size?: number }) {
   const C = BADGE_ICONS[id] ?? Medal;

@@ -44,6 +44,11 @@ export const AVATARS: AvatarDef[] = [
   { id: 'king', name: '다인전의 왕', icon: 'badge:multi_win', bg: '#7a5a2a', need: 'multi_win' },
   { id: 'scoop', name: '사건 해결사', icon: 'badge:news_jump', bg: '#5a3a6b', need: 'news_jump' },
   { id: 'umbrella', name: '하락장 생존자', icon: 'badge:bear_proof', bg: '#3a5a5a', need: 'bear_proof' },
+  // 레벨 (미션 경험치)
+  { id: 'sprout', name: '새싹 개미', icon: 'badge:lv5', bg: '#3d6b2f', need: 'lv5' },
+  { id: 'star', name: '성실한 개미', icon: 'badge:lv10', bg: '#6b5a2f', need: 'lv10' },
+  { id: 'medal2', name: '베테랑 개미', icon: 'badge:lv15', bg: '#2f4f7a', need: 'lv15' },
+  { id: 'legend', name: '개미 전설', icon: 'badge:lv20', bg: '#7a2f5f', need: 'lv20' },
   { id: 'sniper', name: '명중', icon: 'badge:sniper', bg: '#6b2f2f', need: 'sniper' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));

@@ -1782,3 +1782,25 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
   .wr-main > .wr-side { order: 2; }
   .wr-left > .wr-rules { order: 3; }
 }
+
+/* ---- 소셜 칸 접기 (1280px 이상, 사용자 요청 2026-11-17) ---- */
+.cs-rail { display: none; }
+.cs-fold { display: none; }
+@media (min-width: 1280px) {
+  .cs-fold { display: grid; }
+  .cl-social-wrap { transition: flex-basis 0.2s ease; }
+  .cl-social-wrap.folded { flex-basis: 56px; }
+  .cl-social-wrap.folded .cl-social { display: none; }
+  .cl-social-wrap.folded .cs-rail {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 100%; height: 100%; padding: 16px 0;
+    border: 0; border-left: 1px solid var(--line-2); background: var(--bg-2);
+    color: var(--text-2, #c8c8c8); font: inherit; cursor: pointer;
+  }
+  .cl-social-wrap.folded .cs-rail:hover { color: var(--text); background: #1c1c1c; }
+  .cl-social-wrap.folded .cs-rail:focus-visible { outline: 2px solid #b9b0ff; outline-offset: -2px; }
+  .cs-rail span { font-size: 12px; font-weight: 700; writing-mode: vertical-rl; letter-spacing: 0.1em; }
+  .cs-rail .ln-badge { position: absolute; top: 44px; right: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .cl-social-wrap { transition: none; } }

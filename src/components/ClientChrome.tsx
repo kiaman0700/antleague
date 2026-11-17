@@ -127,6 +127,7 @@ export function SocialPanel({
   onLogin,
   onSignup,
   onClose,
+  onFold,
 }: {
   account: AccountState;
   party: PartyState | null;
@@ -135,6 +136,8 @@ export function SocialPanel({
   onLogin: () => void;
   onSignup: () => void;
   onClose?: () => void;
+  /** 넓은 화면: 접기 (오른쪽 얇은 줄로) */
+  onFold?: () => void;
 }) {
   const member = account.status === 'member';
   const d = useFriends();
@@ -181,6 +184,11 @@ export function SocialPanel({
             <Icon name="userPlus" size={16} />
           </button>
         )}
+        {onFold && (
+          <button className="icon-btn sm cs-fold" onClick={onFold} aria-label="소셜 칸 접기" title="접기">
+            <Icon name="right" size={16} />
+          </button>
+        )}
         {onClose && (
           <button className="icon-btn sm" onClick={onClose} aria-label="닫기">
             <Icon name="x" size={16} />
@@ -204,6 +212,7 @@ export function SocialPanel({
         </div>
       ) : (
         <>
+          {party && (
           <div className="cs-party">
             <div className="cs-sub">
               파티 <small className="muted">일반전 다인전을 같이</small>
@@ -237,6 +246,7 @@ export function SocialPanel({
               )}
             </div>
           </div>
+          )}
 
           {d && d.incoming.length > 0 && (
             <button className="cs-req" onClick={onFriends}>

@@ -761,7 +761,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         onRematch={
           session.mode === 'multi' && onWaiting && view.room.kind !== 'daily'
             ? async () => {
-                const r = await api<{ roomId: string; playerId: string; code: string }>('rematch', { roomId: session.roomId });
+                // 봇전: 같은 봇·같은 설정으로 새 판 (바로 시작)
+                const r =
+                  view.room.kind === 'bot'
+                    ? await api<{ roomId: string; playerId: string; code: string }>('botMatch', { levels: view.players.filter((p) => p.bot).map((p) => p.bot), totalDays: view.room.totalDays, turnSeconds: view.room.turnSeconds, nickname: session.nickname, mode: session.ui })
+                    : await api<{ roomId: string; playerId: string; code: string }>('rematch', { roomId: session.roomId });
                 onWaiting(r.roomId, r.playerId, session.nickname, r.code);
               }
             : undefined

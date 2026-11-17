@@ -28,6 +28,7 @@ const PEEK_EMPTY: Record<string, () => unknown> = {
   me: () => ({ isAdmin: false }),
   history: () => [],
   dailyInfo: () => null,
+  missions: () => null,
 };
 
 /** 게임 서버(/api/game) 호출 — 로그인 토큰을 함께 보낸다 */

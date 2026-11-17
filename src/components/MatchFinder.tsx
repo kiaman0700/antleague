@@ -8,6 +8,7 @@ import { cancelMatch, clearMatchErr, getMatch, mmss, startMatch, useMatch, type 
 import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
 import { Icon } from './Icon';
 import { loadNick } from '../session';
+import { StageChart } from './StageChart';
 
 export type { Matched };
 
@@ -43,6 +44,8 @@ interface Props {
   onMatched?: (m: Matched) => void;
   /** 일반전 파티 (2명이면 다인전으로만, 파티장만 찾기 시작, 파티원은 자동으로 따라감) */
   party?: { isLeader: boolean; searching: boolean; size: number; queue?: string | null; waiting?: boolean } | null;
+  /** 로비 '플레이 무대' 모양 (큰 제목·뒤 차트·큰 버튼) */
+  stage?: boolean;
 }
 
 const parseQueueName = (q: string) => {
@@ -50,7 +53,7 @@ const parseQueueName = (q: string) => {
   return { kind, size, speed };
 };
 
-export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, party }: Props) {
+export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, party, stage = false }: Props) {
   const [pref, setPref] = useState(loadPref);
   const m = useMatch();
   const searching = m.phase !== 'idle';
@@ -121,6 +124,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     };
   }, [searching]);
   const waitingIn = (size: QueueSize, speed: QueueSpeed) => counts[`${kind}_${size}_${speed}`] ?? 0;
+  const nWaitOf = (size: QueueSize) => waitingIn(size, pref.speed);
   const label = (size: QueueSize, speed: QueueSpeed) => `${size === 'duel' ? '1대1' : '다인전'} ${SPEED_PRESET[speed].label}`;
   /** 지금 찾는 대기열 (다른 메뉴에서 시작했으면 그 대기열) */
   const curQ = m.queue ? parseQueueName(m.queue) : null;
@@ -184,6 +188,101 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
       ))}
     </div>
   );
+
+  const preset = SPEED_PRESET[pref.speed];
+  const minutes = preset.minutes.replace('약 ', '');
+  const nWait = waitingIn(sizeEff, pref.speed);
+  const findLabel = joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : inParty && party!.waiting ? '파티원이 돌아오길 기다리는 중' : stage ? '대결 찾기' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`;
+  const findDisabled = loading || joining || (inParty && (!party!.isLeader || kind === 'ranked' || !!party!.waiting));
+
+  if (stage)
+    return (
+      <section className={'mf-stage' + (searching ? ' is-searching' : '')} aria-label={`${kind === 'ranked' ? '랭킹전' : '일반전'} 대결 찾기`}>
+        <StageChart />
+        <div className="st-copy">
+          <span className="st-eyebrow">{kind === 'ranked' ? '랭킹전 · 이기면 점수가 올라요' : '일반전 · 점수 걱정 없이'}</span>
+          <h1 className="st-title">
+            {sizeEff === 'duel' ? '두 명이 겨루는' : '서너 명이 겨루는'}
+            <br />
+            {minutes}짜리 한 판
+          </h1>
+          <p className="st-desc">
+            같은 시장, 같은 뉴스. {preset.days}일 동안 하루 {preset.turnSeconds}초씩 사고팔아 마지막 날 재산이 많은 사람이 이겨요.
+          </p>
+        </div>
+        <div className="st-pick">
+          <div className="st-field">
+            <span className="st-label" id="st-size">몇 명이서</span>
+            {inParty ? (
+              <p className="muted small mf-note">파티는 다인전으로 같이 찾아요 (4명, 1분 30초 뒤엔 3명도).</p>
+            ) : (
+              <div className="st-seg" role="radiogroup" aria-labelledby="st-size">
+                {([['duel', '1대1', nWaitOf('duel')], ['multi', '다인전 3~4명', nWaitOf('multi')]] as [QueueSize, string, number][]).map(([v, l, n]) => (
+                  <button key={v} role="radio" aria-checked={sizeEff === v} className={sizeEff === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, size: v })}>
+                    {l}
+                    {n > 0 && <small>{n}명 대기</small>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="st-field">
+            <span className="st-label" id="st-speed">얼마나 빨리</span>
+            <div className="st-seg" role="radiogroup" aria-labelledby="st-speed">
+              {(['quick', 'normal'] as QueueSpeed[]).map((v) => (
+                <button key={v} role="radio" aria-checked={pref.speed === v} className={pref.speed === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, speed: v })}>
+                  {SPEED_PRESET[v].label} {SPEED_PRESET[v].minutes.replace('약 ', '')}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {inParty && kind === 'ranked' && <p className="muted small mf-note">랭킹전은 파티 없이 혼자 찾아요. 파티에서 나오면 찾을 수 있어요.</p>}
+        {err && <p className="error">{err}</p>}
+        <div className="st-go">
+          {searching ? (
+            <div className="mf-live" role="status" aria-live="polite">
+              <div className="mf-live-top">
+                <span className="mf-spin sm" aria-hidden />
+                <b>{linking ? '상대를 찾았어요! 방을 만드는 중…' : '상대를 찾고 있어요'}</b>
+                <span className="mf-clock">{mmss(waited)}</span>
+              </div>
+              <small className="muted">
+                예상 대기 {waitLabel(info?.etaSec ?? null)}
+                {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 아직 찾는 사람이 나뿐이에요') : ''}
+              </small>
+              <div className="mf-live-act">
+                {alt && (
+                  <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>
+                    <Icon name="refresh" size={14} /> {label(alt.size, alt.speed)}으로 바꿔 찾기{alt.n > 0 ? ` (${alt.n}명 대기 중)` : ''}
+                  </button>
+                )}
+                {!linking && (
+                  <button className="btn ghost" onClick={cancel}>
+                    그만 찾기
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <button className="btn primary st-btn" onClick={start} disabled={findDisabled}>
+                {findLabel}
+              </button>
+              {online !== null && (
+                <div className="st-status" aria-live="polite">
+                  <span>
+                    <i className={'st-dot' + (nWait > 0 ? ' live' : '')} aria-hidden />
+                    {nWait > 0 ? `지금 ${nWait}명이 찾는 중` : '지금 찾는 사람이 없어요'}
+                  </span>
+                  <small>예상 대기 {waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}</small>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+    );
 
   return (
     <section className={'panel pad match-finder' + (searching ? ' is-searching' : '')}>

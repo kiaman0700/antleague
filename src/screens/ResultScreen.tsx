@@ -17,6 +17,7 @@ import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
 import { DailyResult } from '../components/Daily';
+import { MissionsPanel } from '../components/Missions';
 
 interface Props {
   session: Session;
@@ -468,6 +469,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         </div>
       )}
       {matchKind === 'daily' && <DailyResult />}
+      {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
+      {session.mode === 'multi' && <MissionsPanel retry={2} />}
       <div className="center-actions">
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기
@@ -495,7 +498,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           <>
             {nextCode && <p className="rematch-note">다시 하기 방이 열렸어요! 같은 설정으로 바로 붙어요</p>}
             <button className="btn primary xl again-btn" onClick={rematch} disabled={rematching}>
-              {rematching ? '방으로 가는 중…' : <><b>{nextCode ? '다시 하기 방 입장' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
+              {rematching ? '방으로 가는 중…' : <><b>{matchKind === 'bot' ? '같은 봇과 한 판 더' : nextCode ? '다시 하기 방 입장' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
             </button>
             <button className="btn ghost" onClick={onExit}>
               홈으로

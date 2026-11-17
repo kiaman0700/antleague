@@ -108,4 +108,19 @@ ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin)
   await A({ action: 'leave', roomId: r3 });
   await B({ action: 'leave', roomId: r3 });
 }
+// 봇전(서버 판): 바로 시작, 잘못된 값 거절, 한 판 더(rematch)는 봇전 메뉴로
+{
+  const bad = await A({ action: 'botMatch', levels: [9, 'x'], totalDays: 10, turnSeconds: 60 });
+  ok('봇전: 잘못된 난이도만 보내면 거절 (400)', bad.s === 400, bad.b?.error);
+  const bm = await A({ action: 'botMatch', levels: [2, 3, 1, 1, 2, 3, 3], totalDays: 10, turnSeconds: 60, nickname: '봇전나', mode: 'easy' });
+  ok('봇전 서버 판 시작', bm.s === 200, bm.b?.error);
+  const sb = (await A({ action: 'state', roomId: bm.b.roomId })).b;
+  ok('봇은 5명까지, 방 종류 bot, 바로 진행', sb.players.filter((p) => p.bot).length === 5 && sb.room.kind === 'bot' && sb.room.status === 'playing', `${sb.players.length}명 ${sb.room.kind} ${sb.room.status}`);
+  ok('봇 이름이 겹치지 않음', new Set(sb.players.map((p) => p.nickname)).size === sb.players.length);
+  const notMine = await B({ action: 'state', roomId: bm.b.roomId });
+  ok('남의 봇전은 못 봄 (403)', notMine.s === 403);
+  const rm = await A({ action: 'rematch', roomId: bm.b.roomId });
+  ok('봇전 rematch 는 거절 (봇전 메뉴로)', rm.s === 409, rm.b?.error);
+  await A({ action: 'leave', roomId: bm.b.roomId });
+}
 done();

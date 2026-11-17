@@ -12,6 +12,7 @@ import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { BADGES } from '../../src/game/achievements.js';
 import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
+import { levelBadges } from '../../src/game/missions.js';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 const USERNAME_RE = /^[a-z0-9_]{4,16}$/;
@@ -30,6 +31,8 @@ export interface Profile {
   ranked_games?: number;
   /** 프로필 사진 프리셋 id */
   avatar?: string;
+  /** 미션 경험치 */
+  xp?: number;
 }
 
 const hash = (v: string) => {
@@ -74,7 +77,8 @@ export function cleanNewPassword(v: unknown): string {
 }
 
 export async function getProfile(sb: SupabaseClient, uid: string): Promise<Profile | null> {
-  let r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games, avatar').eq('user_id', uid).maybeSingle();
+  let r = await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games, avatar, xp').eq('user_id', uid).maybeSingle();
+  if (r.error && /xp/.test(r.error.message)) r = (await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret, ranked_games, avatar').eq('user_id', uid).maybeSingle()) as typeof r; // 035 전
   if (r.error && /ranked_games/.test(r.error.message)) r = (await sb.from('profiles').select('user_id, username, nickname, title, rating, games, wins, best_ret').eq('user_id', uid).maybeSingle()) as typeof r; // 022 전
   if (r.error) return null; // 015 전이면 회원 기능 없음
   return (r.data as Profile | null) ?? null;
@@ -88,11 +92,14 @@ export async function nicknameFree(sb: SupabaseClient, nickname: string, exceptU
 
 /** 이 사용자가 얻은 업적 (회원·게스트 모두: 참가한 끝난 대결의 결과에서) */
 export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  // 레벨 업적 (미션 경험치 — 서버가 올린 profiles.xp 로만)
+  const pr = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
+  if (!pr.error && pr.data) for (const id of levelBadges((pr.data as { xp?: number }).xp ?? 0)) out[id] = 1;
   const mine = ((await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(300)).data ?? []) as { room_id: string; nickname: string }[];
-  if (!mine.length) return {};
+  if (!mine.length) return out;
   const nick = new Map(mine.map((m) => [m.room_id, m.nickname]));
   const hist = ((await sb.from('match_history').select('room_id, results').in('room_id', mine.map((m) => m.room_id))).data ?? []) as { room_id: string; results: { nickname: string; badges?: string[] }[] }[];
-  const out: Record<string, number> = {};
   for (const h of hist) for (const r of h.results) if (r.nickname === nick.get(h.room_id)) for (const b of r.badges ?? []) out[b] = (out[b] ?? 0) + 1;
   return out;
 }

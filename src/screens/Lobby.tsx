@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { EmptyState, ErrorState, IconList, Loading, SectionTitle, Toast, useDialogFocus, useEscape } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
@@ -21,6 +21,7 @@ import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
+import { MissionsPanel } from '../components/Missions';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -504,6 +505,18 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
   const nick = () => (member ? account.profile!.nickname : loadNick().trim());
   const joined = (r: Joined) => onWaiting(r.roomId, r.playerId, nick(), r.code);
+  // 봇전: 서버 판으로 (기록·업적·미션에 남음). 인터넷 설정이 없으면 이 기기에서
+  const startBots = async (days: number, daySec: number, bots: number[]) => {
+    if (!online) return startPractice(days, daySec, bots);
+    try {
+      const nickname = nick() || '나';
+      const r = await api<{ roomId: string; playerId: string; code: string }>('botMatch', { levels: bots, totalDays: days, turnSeconds: daySec, nickname, mode: profile.ui });
+      setModal(null);
+      onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname, ui: profile.ui });
+    } catch (e) {
+      void ask(e instanceof Error ? e.message : String(e), { ok: '확인' });
+    }
+  };
   const startPractice = (days: number, daySec: number, bots: number[] = []) => {
     const s = newSolo(nick() || '나', days, daySec, true, bots);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
@@ -514,8 +527,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   // 처음 온 사람에게 튜토리얼 권하기 (한 번 닫거나 해 보면 다시 안 나옴)
   const [nudge, setNudge] = useState(() => !tutorialSeen());
 
-  const finder = (kind: 'ranked' | 'casual') => (
+  const finder = (kind: 'ranked' | 'casual', stage = false) => (
     <MatchFinder
+      stage={stage}
       member={member}
       loading={account.status === 'loading'}
       fixedKind={kind}
@@ -529,9 +543,35 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     />
   );
 
+  const quickRow = (
+    <section className="st-quick" aria-label="기다리지 않고 하기">
+      <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
+        <i className="q-bot"><Icon name="bot" size={22} /></i>
+        <span>
+          <b>봇전</b>
+          <small>기다림 없이 봇과 바로</small>
+        </span>
+      </button>
+      <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
+        <i className="q-daily"><Icon name="daily" size={22} /></i>
+        <span>
+          <b>오늘의 도전</b>
+          <small>모두 같은 시장에서</small>
+        </span>
+      </button>
+      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+        <i className="q-tut"><Icon name="play" size={22} /></i>
+        <span>
+          <b>튜토리얼</b>
+          <small>3분이면 규칙을 익혀요</small>
+        </span>
+      </button>
+    </section>
+  );
+
   return (
     <div className={'hub hub-' + tab}>
-      <header className="hub-head">
+      <header className={'hub-head' + ((tab === 'casual' && online) || (tab === 'ranked' && online && member) ? ' sr-only' : '')}>
         <div>
           <h2>{head.title}</h2>
           <p className="muted small">{head.desc}</p>
@@ -568,8 +608,12 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <span className="muted small">내 계정을 확인하는 중…</span>
           </section>
         ) : member ? (
-          <div className="hub-grid">
-            {finder('ranked')}
+          <div className="hub-stage">
+            <div className="hs-main">
+              {finder('ranked', true)}
+              {quickRow}
+            </div>
+            <aside className="hs-side">
             <section className="panel pad rank-card">
               <h3>
                 <Icon name="crown" size={18} /> 내 랭킹
@@ -595,6 +639,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="trophy" /> 전체 랭킹 보기
               </button>
             </section>
+            <MissionsPanel />
+            </aside>
           </div>
         ) : (
           <div className="hub-grid">
@@ -623,32 +669,16 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'casual' &&
         (online ? (
-          <>
-            <div className="hub-grid">
-              {finder('casual')}
-              {member ? <PartyPanel party={party} reload={reloadParty} /> : <MatchFlow />}
+          <div className="hub-stage">
+            <div className="hs-main">
+              {finder('casual', true)}
+              {quickRow}
             </div>
-            {/* 사람이 적어 매칭이 오래 걸릴 때: 기다리지 않고 할 수 있는 것 */}
-            <section className="panel pad hub-quick" aria-label="기다리지 않고 하기">
-              <SectionTitle>기다리기 싫다면</SectionTitle>
-              <div className="hq-row">
-                <button className="hq-btn" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
-                  <Icon name="bot" size={20} />
-                  <span>
-                    <b>봇전</b>
-                    <small>봇과 바로 한 판</small>
-                  </span>
-                </button>
-                <button className="hq-btn" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
-                  <Icon name="daily" size={20} />
-                  <span>
-                    <b>오늘의 도전</b>
-                    <small>모두 같은 시장, 하루 한 번</small>
-                  </span>
-                </button>
-              </div>
-            </section>
-          </>
+            <aside className="hs-side">
+              <MissionsPanel enabled={account.status !== 'loading'} onSignup={member ? undefined : () => go('signup')} />
+              {member && <PartyPanel party={party} reload={reloadParty} />}
+            </aside>
+          </div>
         ) : (
           <OfflineNote />
         ))}
@@ -774,6 +804,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           </button>
         </nav>
       )}
+      {tab === 'practice' && online && <MissionsPanel enabled={account.status !== 'loading'} onSignup={member ? undefined : () => go('signup')} />}
 
       {tab === 'more' && (
         <div className="more-page">
@@ -858,28 +889,10 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
-      {modal === 'bots' && <BotStart onStart={startPractice} onClose={() => setModal(null)} />}
+      {modal === 'bots' && <BotStart onStart={startBots} onClose={() => setModal(null)} />}
       {modal === 'daily' && <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} />}
       {gate.el}
     </div>
-  );
-}
-
-/** 한 판이 흘러가는 순서 (처음 온 사람용) */
-function MatchFlow() {
-  return (
-    <section className="panel pad" aria-label="한 판 진행 순서">
-      <SectionTitle>한 판은 이렇게 진행돼요</SectionTitle>
-      <IconList
-        steps
-        items={[
-          { icon: 'search', title: '대결 찾기', body: '비슷한 사람과 자동으로 묶여요. 모두 같은 시장·같은 뉴스로 시작해요.' },
-          { icon: 'news', title: '장 전', body: '둘째 날부터 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어요.' },
-          { icon: 'activity', title: '장중', body: '가격이 1초마다 움직여요. 속보를 보고 사고팔고, 찬스 카드를 써요.' },
-          { icon: 'trophy', title: '결과', body: '마지막 날 재산이 가장 많은 사람이 이겨요.' },
-        ]}
-      />
-    </section>
   );
 }
 
@@ -1484,6 +1497,22 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
   const [socialOpen, setSocialOpen] = useState(false);
+  // 넓은 화면(1280px 이상)에서 오른쪽 소셜 칸 접기 — 이 기기에 기억
+  const [socialFold, setSocialFold] = useState(() => {
+    try {
+      return localStorage.getItem('stockduel.socialFold') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const fold = (v: boolean) => {
+    setSocialFold(v);
+    try {
+      localStorage.setItem('stockduel.socialFold', v ? '1' : '0');
+    } catch {
+      /* 저장 못 해도 괜찮음 */
+    }
+  };
   // 옆에서 나오는 친구·파티 패널: Esc 로 닫기 (열린 창이 따로 있으면 그 창이 먼저)
   useEscape(() => !document.querySelector('.modal-bg, .sheet-bg') && setSocialOpen(false), socialOpen);
   // 운영자면 위 메뉴에 의견함 + 안 읽은 수 (30초마다, 운영자 확인은 서버가)
@@ -1679,8 +1708,16 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
           </footer>
         </main>
         {online && (
-          <div className={'cl-social-wrap' + (socialOpen ? ' open' : '')}>
+          <div className={'cl-social-wrap' + (socialOpen ? ' open' : '') + (socialFold ? ' folded' : '')}>
+            {/* 접혀 있을 때(넓은 화면): 얇은 줄 — 누르면 펼침 */}
+            <button className="cs-rail" onClick={() => fold(false)} aria-label="소셜 칸 펼치기" aria-expanded={false} title="친구·파티 펼치기">
+              <Icon name="left" size={16} />
+              <Icon name="users" size={20} />
+              {badges.friends > 0 && <i className="ln-badge">{badges.friends > 9 ? '9+' : badges.friends}</i>}
+              <span>친구</span>
+            </button>
             <SocialPanel
+              onFold={() => fold(true)}
               account={account}
               party={party}
               reloadParty={reloadParty}

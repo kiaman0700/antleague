@@ -13,6 +13,7 @@ import { api } from '../net/api';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
 import { BADGES, titleOf } from '../game/achievements';
+import { levelOf } from '../game/missions';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct, tone } from '../lib/format';
 import { josa } from '../engine/engine';
@@ -441,6 +442,20 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
             </span>
           )}
           <small className="muted">아이디 {p.username}</small>
+          {(() => {
+            const lv = levelOf(p.xp ?? 0);
+            return (
+              <div className="ms-level me-level" title="미션을 깨면 경험치가 쌓여요">
+                <b className="ms-lv">Lv.{lv.level}</b>
+                <div className="ms-bar" role="progressbar" aria-label="다음 레벨까지" aria-valuemin={0} aria-valuemax={lv.need} aria-valuenow={lv.into}>
+                  <i style={{ width: `${Math.round((lv.into / lv.need) * 100)}%` }} />
+                </div>
+                <small className="muted">
+                  {lv.into}/{lv.need}
+                </small>
+              </div>
+            );
+          })()}
         </div>
         <button className="me-rank" onClick={onRanking}>
           <small>랭크</small>

@@ -135,6 +135,7 @@ import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPas
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
+import { evaluateMissions, missionState } from './missions.js';
 
 export interface ApiResult {
   status: number;
@@ -454,6 +455,12 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     } catch (e) {
       console.error('[api] rank', e instanceof Error ? e.message : e);
     }
+    // 미션: 끝난 판의 데이터로 서버가 판정 (회원·끝까지 한 사람만, 판마다 한 번)
+    try {
+      await evaluateMissions(db(), fresh, fin);
+    } catch (e) {
+      console.error('[api] missions', e instanceof Error ? e.message : e);
+    }
   }
   return true;
 }
@@ -636,6 +643,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 매칭 방은 '한 판 더' 대신 같은 조건으로 다시 찾기 (랭킹전 상대를 골라 반복하지 못하게)
       if (old.kind === 'match') throw new GameError('매칭 대결은 같은 조건으로 다시 찾아 주세요.', 409);
       if (old.kind === 'daily') throw new GameError('오늘의 도전은 하루 한 번이에요. 내일 0시에 새 시장이 열려요.', 409);
+      if (old.kind === 'bot') throw new GameError('봇전은 봇전 메뉴에서 다시 시작해 주세요.', 409);
       const me = must(await sb.from('players').select('nickname, mode').eq('id', playerId).single(), 'me') as { nickname: string; mode: string };
       const prof = await getProfile(sb, uid);
       if (prof) me.nickname = prof.nickname;
@@ -909,6 +917,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
     }
 
+    case 'missions': {
+      // 내 오늘·이번 주 미션과 레벨 (읽기만)
+      rateLimit(uid + ':missions', 30, 60_000);
+      return missionState(sb, uid);
+    }
+
     case 'dailyInfo': {
       // 오늘의 도전: 내 기록 + 오늘 점수표(회원·끝낸 판, 시험 회원 제외) — 계정 id 는 안 보냄
       rateLimit(uid + ':dailyInfo', 40, 60_000);
@@ -998,6 +1012,50 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         return { roomId: room.id, playerId: p.id, code: room.code };
       } catch (e) {
         await undo(roomId);
+        throw e;
+      }
+    }
+
+    case 'botMatch': {
+      // 봇전(서버 판): 봇 1~5명과 바로 시작 — 기록·업적·미션에 남음 (설계서 design/missions.md 결정 2)
+      rateLimit(uid + ':botMatch', 20, 3_600_000);
+      const levels = Array.isArray(b.levels) ? (b.levels as unknown[]).filter((x): x is number => typeof x === 'number' && [1, 2, 3].includes(x)).slice(0, MAX_BOTS) : [];
+      if (!levels.length) throw new GameError('봇을 1명 이상 골라 주세요.');
+      const totalDays = b.totalDays === 20 ? 20 : 10;
+      const turnSeconds = b.turnSeconds === 180 ? 180 : 60;
+      const nickname = await nickFor(uid, b.nickname);
+      const mode = cleanMode(b.mode);
+      await ensureFree(uid);
+      const deadline = iso(Date.now() + (turnSeconds + 3) * 1000);
+      let room: { id: string; code: string } | null = null;
+      for (let i = 0; i < 5 && !room; i++) {
+        const res = await sb
+          .from('rooms')
+          .insert({ code: newCode(), total_days: totalDays, turn_seconds: turnSeconds, title: '봇전', max_players: Math.max(2, levels.length + 1), is_private: true, kind: 'bot', status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline })
+          .select('id, code')
+          .single();
+        if (!res.error) room = res.data;
+        else if (!/duplicate/i.test(res.error.message)) must(res, 'bot room');
+      }
+      if (!room) throw new GameError('봇전을 시작하지 못했어요. 다시 시도해 주세요.', 500);
+      try {
+        await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
+        const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'bot host') as { id: string };
+        const count: Record<number, number> = {};
+        const total: Record<number, number> = {};
+        for (const l of levels) total[l] = (total[l] ?? 0) + 1;
+        const rows = levels.map((l) => {
+          count[l] = (count[l] ?? 0) + 1;
+          const base = botInfo(l)!.name;
+          return { room_id: room!.id, user_id: null, nickname: total[l] > 1 ? `${base} ${count[l]}` : base, mode: 'pro', ready: true, bot_level: l };
+        });
+        const ins = await sb.from('players').insert(rows);
+        if (ins.error && /bot_level/.test(ins.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
+        must(ins, 'bot players');
+        must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'bot host_id');
+        return { roomId: room.id, playerId: p.id, code: room.code };
+      } catch (e) {
+        await sb.from('rooms').delete().eq('id', room.id);
         throw e;
       }
     }

@@ -19,6 +19,8 @@ export interface MyProfile {
   ranked_games?: number;
   /** 프로필 사진 프리셋 id */
   avatar?: string;
+  /** 미션 경험치 (레벨) */
+  xp?: number;
   games: number;
   wins: number;
   best_ret: number | null;
