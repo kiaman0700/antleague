@@ -67,7 +67,7 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
 /** 흔한 비밀번호 모양 (abcd1234·password1·qwer1234·같은 글자 반복·12345678 연속) — 막지는 않고 알려만 줌 */
 function weakPw(p: string): boolean {
   const s = p.toLowerCase();
-  if (/^(.)+$/.test(s.replace(/\d+$/, '')) ) return true;
+  if (/^(.)\1+$/.test(s.replace(/\d+$/, '')) ) return true;
   if (/(password|qwer|asdf|zxcv|abcd|1234|1q2w|iloveyou|admin|test)/.test(s) && s.length < 12) return true;
   return s.length < 10 && /^[a-z]+\d+$/.test(s) && new Set(s).size <= 5;
 }

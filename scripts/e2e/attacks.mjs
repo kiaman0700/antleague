@@ -57,7 +57,8 @@ async function room3() {
   const shields = (await st(C)).myItems.inventory.shield ?? 0;
   ok('C 반사 거울 준비', await buy(C, 'mirror'));
   // C 에게 방패가 있으면 첫날 하나로 방패를 소모 (방패가 거울보다 먼저 막음, 하루 한 번 규칙 때문에 다음 날 다시)
-  if (shields > 0) {
+  // (무료 카드로 방패를 2장 받을 수도 있어서 남은 방패를 모두 소모)
+  for (let i = 0; i < shields; i++) {
     ok('A fake 준비', await buy(A, 'fake'));
     const f = await A({ action: 'useItem', roomId, kind: 'fake', payload: { target: ids.C, symbol: 'CORE', tone: 'good' } });
     ok('A → C fake (방패 소모용)', f.s === 200, f.b?.error ?? '');

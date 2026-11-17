@@ -67,6 +67,13 @@ try {
     } finally {
       await c.end();
     }
+  } else if (cmd === 'errors') {
+    // 예상 못 한 서버 오류 최근 40개 (036, 읽기만)
+    const c = await connect();
+    const r = await c.query('select action, message, created_at from public.server_errors order by created_at desc limit 40');
+    for (const x of r.rows) console.log(`${new Date(x.created_at).toLocaleString('ko-KR')}  [${x.action}] ${x.message}`);
+    if (!r.rows.length) console.log('기록된 서버 오류가 없어요.');
+    await c.end();
   } else if (cmd === 'feedback') {
     // 이용자가 보낸 의견 최근 30개 (읽기만)
     const c = await connect();
