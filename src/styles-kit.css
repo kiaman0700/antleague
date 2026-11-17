@@ -686,3 +686,8 @@ body { background: var(--bg) !important; }
 .m-game .m-page::after { content: ''; display: block; height: 56px; }
 /* 세로 태블릿 나란히 화면: 차트가 양옆으로 6px 넓게 그려져 오른쪽이 화면 밖으로 넘치던 것 (가로 스크롤바) */
 .m-page.split .chart-wrap { margin-right: 0; }
+/* 노트북 폭(1101~1439px, 오른쪽 소셜 칸까지 있으면 가운데가 좁음): 무대를 가로로 넓게, 미션·파티·랭크 칸은 아래 두 칸으로 */
+@media (min-width: 1101px) and (max-width: 1439px) {
+  .hub-stage { grid-template-columns: minmax(0, 1fr); }
+  .hs-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
