@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
@@ -13,9 +13,12 @@ import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
-import { Companies } from './Companies';
-import { Admin } from './Admin';
-import { LoginPage, MyProfilePage, RankingPage } from './Account';
+// 가끔 여는 화면(공부·운영자·계정)은 열 때 받음 — 첫 화면을 가볍게
+const Companies = lazy(() => import('./Companies').then((m) => ({ default: m.Companies })));
+const Admin = lazy(() => import('./Admin').then((m) => ({ default: m.Admin })));
+const LoginPage = lazy(() => import('./Account').then((m) => ({ default: m.LoginPage })));
+const MyProfilePage = lazy(() => import('./Account').then((m) => ({ default: m.MyProfilePage })));
+const RankingPage = lazy(() => import('./Account').then((m) => ({ default: m.RankingPage })));
 import { LegalSheet, OPERATOR } from '../components/Legal';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
@@ -1618,23 +1621,43 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <Records go={go} />;
       break;
     case 'companies':
-      body = <Companies onBack={back} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <Companies onBack={back} />
+        </Suspense>
+      );
       break;
     case 'admin':
-      body = <Admin onBack={back} onLogin={() => go('login')} onNotices={() => go('notices')} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <Admin onBack={back} onLogin={() => go('login')} onNotices={() => go('notices')} />
+        </Suspense>
+      );
       break;
     case 'login':
     case 'signup':
-      body = <LoginPage key={resolved} initialTab={resolved === 'signup' ? 'signup' : 'login'} onBack={back} onDone={() => go('me')} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <LoginPage key={resolved} initialTab={resolved === 'signup' ? 'signup' : 'login'} onBack={back} onDone={() => go('me')} />
+        </Suspense>
+      );
       break;
     case 'me':
-      body = <MyProfilePage onBack={back} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <MyProfilePage onBack={back} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />
+        </Suspense>
+      );
       break;
     case 'notices':
       body = <NoticesPage onBack={back} />;
       break;
     case 'ranking':
-      body = <RankingPage onBack={back} onLogin={() => go('login')} onPlay={() => go('ranked')} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <RankingPage onBack={back} onLogin={() => go('login')} onPlay={() => go('ranked')} />
+        </Suspense>
+      );
       break;
     case 'friends':
       body = (
