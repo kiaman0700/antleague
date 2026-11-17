@@ -682,3 +682,7 @@ body { background: var(--bg) !important; }
 .fr-act .btn[data-off] { opacity: 0.5; }
 .fr-menu [data-off] { opacity: 0.5; }
 .toast.sample.news-sample { border-left: 3px solid #f2495c; }
+/* 휴대폰 게임: 맨 아래까지 내리면 마지막 줄이 오른쪽 아래 이모지 버튼(46px)에 가리지 않게 여백 */
+.m-game .m-page::after { content: ''; display: block; height: 56px; }
+/* 세로 태블릿 나란히 화면: 차트가 양옆으로 6px 넓게 그려져 오른쪽이 화면 밖으로 넘치던 것 (가로 스크롤바) */
+.m-page.split .chart-wrap { margin-right: 0; }
