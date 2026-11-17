@@ -564,7 +564,7 @@ body { background: var(--bg) !important; }
   .tl-step { scroll-snap-align: start; }
 }
 .tl-emb svg { max-width: 100%; height: auto; }
-.hub-grid > .ranked-guest { grid-column: 1 / -1; }
+.hub-grid > .ranked-guest { grid-column: 1 / -1; max-width: none; } /* 반쪽만 차지하고 오른쪽이 비어 보이던 것 */
 
 /* ---------- 미션 (design/missions.md) ---------- */
 .missions { display: flex; flex-direction: column; gap: 10px; }

@@ -127,8 +127,8 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
           <div className="pfc-head">
             <Avatar name={nick} guest size={52} className="pfc-av" />
             <span className="pfc-name">
-              <b>{nick === '손님' ? '손님' : nick}</b>
-              <small className="muted">손님으로 하는 중</small>
+              <b>손님으로 하는 중</b>
+              <small className="muted">{nick === '손님' ? '게임 이름은 처음 대결할 때 정해요' : `게임에서 쓰는 이름: ${nick}`}</small>
             </span>
           </div>
           <p className="muted small pfc-note">회원이 되면 전적·랭킹전·미션 경험치·레벨·친구가 남아요. 지금까지 한 판도 그대로 이어져요.</p>
