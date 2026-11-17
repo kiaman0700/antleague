@@ -10,7 +10,7 @@ import { useDialogFocus } from './ui';
 import { TierBadge, tierText } from './TierBadge';
 import { HoverPop } from './HoverPop';
 import { LevelMeter } from './Missions';
-import { BADGE_MAP } from '../game/achievements';
+import { BADGE_MAP, titleOf } from '../game/achievements';
 import type { MyProfile } from '../net/account';
 import { Avatar } from './Avatar';
 import { api } from '../net/api';
@@ -95,7 +95,7 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
           </>
         }
       >
-        <ProfileCard p={p} onProfile={onProfile} />
+        <ProfileCard p={p} badges={account.badges} onProfile={onProfile} />
       </HoverPop>
     );
   }
@@ -160,7 +160,9 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
 }
 
 /** 메뉴바 내 프로필 팝업: 사진·닉네임·칭호 · 티어 · 레벨(경험치) · 전적 */
-function ProfileCard({ p, onProfile }: { p: MyProfile; onProfile: () => void }) {
+function ProfileCard({ p, badges, onProfile }: { p: MyProfile; badges?: Record<string, number>; onProfile: () => void }) {
+  // 고른 칭호가 없으면 마이프로필처럼 가장 귀한 업적 칭호를 보여 줌
+  const title = (p.title && BADGE_MAP[p.title]?.name) || titleOf(Object.keys(badges ?? {}))?.name || '칭호 없음';
   const rate = p.games > 0 ? Math.round((p.wins / p.games) * 100) : null;
   return (
     <section className="panel pad pfc">
@@ -168,7 +170,7 @@ function ProfileCard({ p, onProfile }: { p: MyProfile; onProfile: () => void }) 
         <Avatar id={p.avatar} name={p.nickname} size={52} className="pfc-av" />
         <span className="pfc-name">
           <b>{p.nickname}</b>
-          <small className="muted">{(p.title && BADGE_MAP[p.title]?.name) || '칭호 없음'}</small>
+          <small className="muted">{title}</small>
         </span>
       </div>
       <div className="pfc-row">
