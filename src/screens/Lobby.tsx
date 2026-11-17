@@ -1264,7 +1264,9 @@ function Records({ go }: Pick<Props, 'go'>) {
     let draws = 0;
     const rows = list.map((h) => {
       const meR = h.results.find((r) => r.nickname === h.me) ?? null;
-      const draw = !h.winner_nickname;
+      // 혼자 하는 오늘의 도전은 순위·승패가 없음 (비김·1위로 세지 않음)
+      const solo = h.results.length === 1;
+      const draw = !solo && !h.winner_nickname;
       const won = !draw && h.winner_nickname === h.me;
       // 비긴 판에서 나보다 높은 사람이 없으면 공동 1위 (프로필의 1등과 같은 기준: 공동 1위 포함)
       // 기권·거래 0회(매칭)는 서버가 맨 뒤로 보냄 → 공동 1위가 될 수 없고, 순위는 서버가 정한 차례 그대로 (프로필의 순위와 같게)
@@ -1273,8 +1275,8 @@ function Records({ go }: Pick<Props, 'go'>) {
       if (won || tiedTop) wins++;
       if (draw) draws++;
       // 1위는 서버가 정한 승자(기권 규칙 포함) 기준, 나머지 순위는 수익률 순
-      const rank = won || tiedTop ? 1 : meR ? (back(meR) ? h.results.indexOf(meR) + 1 : Math.max(2, h.results.filter((r) => !back(r) && r.ret > meR.ret).length + 1)) : null;
-      return { h, meR, draw, won, rank, tiedTop };
+      const rank = solo ? null : won || tiedTop ? 1 : meR ? (back(meR) ? h.results.indexOf(meR) + 1 : Math.max(2, h.results.filter((r) => !back(r) && r.ret > meR.ret).length + 1)) : null;
+      return { h, meR, draw, won, rank, tiedTop, solo };
     });
     return { wins, draws, games: list.length, rows };
   }, [list]);
@@ -1309,7 +1311,7 @@ function Records({ go }: Pick<Props, 'go'>) {
           </div>
           {/* 롤·배그 전적처럼 한 줄 카드 — 누르면 그 판의 상세(참가자별 순위·수익률·재산·업적)가 펼쳐짐 */}
           <ul className="mr-list">
-            {record.rows.slice(0, 20).map(({ h, meR, draw, won, rank, tiedTop }) => {
+            {record.rows.slice(0, 20).map(({ h, meR, draw, won, rank, tiedTop, solo }) => {
               const open = openId === h.id;
               const kindName = h.results.length === 1 ? '오늘의 도전' : h.kind ? matchKindName(h.kind, h.ranked, h.results.length) : h.results.some((r) => r.bot) ? '봇전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`;
               return (
@@ -1320,7 +1322,7 @@ function Records({ go }: Pick<Props, 'go'>) {
                       <small>{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small>
                     </span>
                     <span className="mr-rank">
-                      <b>{tiedTop ? '공동 1위' : draw && !(meR && (meR.left || meR.idle)) ? '무승부' : rank ? `${rank}위` : '-'}</b>
+                      <b>{solo ? '완주' : tiedTop ? '공동 1위' : draw && !(meR && (meR.left || meR.idle)) ? '무승부' : rank ? `${rank}위` : '-'}</b>
                       <small>/ {h.results.length}명</small>
                     </span>
                     <span className={'mr-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</span>

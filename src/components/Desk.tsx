@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { GameCard } from './GameCard';
 import { Icon, type IconName } from './Icon';
-import { canUse, holdLimit, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
+import { canUse, holdLimit, infoLimitReason, ITEM_MAP, type ItemKind, type PlayerItems } from '../game/items';
 import type { EventKind, Market } from '../game/market';
 import { STOCK_MAP } from '../game/stocks';
 import { pct, tone, wonShort } from '../lib/format';
@@ -185,7 +185,7 @@ export function CardTray({
         {owned.length === 0 && <span className="muted small">카드가 없어요</span>}
         {owned.map(([k, n], i) => {
           const d = ITEM_MAP[k];
-          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : (blockReason ?? '지금은 쓸 수 없어요');
+          const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) ?? infoLimitReason(version, k, usedToday) : (blockReason ?? '지금은 쓸 수 없어요');
           return (
             <div key={k} className="fan-slot" style={{ ['--i' as string]: i - (owned.length - 1) / 2 }}>
             <GameCard

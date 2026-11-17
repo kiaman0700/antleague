@@ -27,7 +27,7 @@ import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN } from '../components/MatchFinder';
 import { withLive } from '../game/live';
 import { withStoryEvents } from '../game/storyDates';
-import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
+import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow, infoLimitReason } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor } from '../game/portfolio';
 import { quote } from '../game/quote';
@@ -556,6 +556,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     }
     // 차트 분석은 지금 보고 있는 종목
     if (kind === 'scout' && !payload.symbol) payload = { ...payload, symbol: selected };
+    // (v14) 오늘 이미 다른 정보 카드를 썼으면 고르기 창을 열지 않고 바로 알림
+    const limit = infoLimitReason(view?.room.rulesVersion ?? 1, kind, usedToday);
+    if (limit) return showToast(limit, 'warn');
     if (kind === 'detector' && (view?.room.rulesVersion ?? 1) >= 14 && !payload.pick) return setDetectorPick(true);
     if (kind === 'fake' && !payload.symbol) {
       setFakeTarget(payload.target ?? null);

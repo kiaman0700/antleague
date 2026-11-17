@@ -287,3 +287,10 @@ export function canUse(p: PlayerItems, kind: ItemKind, day: number, totalDays: n
   if ((def.type === 'attack' || kind === 'paper') && day >= totalDays - 1) return '마지막 날에는 쓸 수 없어요';
   return null;
 }
+
+/** (v14) 정보 카드는 하루 1장 — 오늘 이미 다른 정보 카드를 썼으면 그 이유 (화면에서 미리 흐리게, 서버도 같은 규칙) */
+export function infoLimitReason(version: number, kind: ItemKind, usedToday: Iterable<ItemKind>): string | null {
+  if (version < INFO_ONE_PER_DAY_VERSION || ITEM_MAP[kind]?.type !== 'info') return null;
+  for (const u of usedToday) if (ITEM_MAP[u]?.type === 'info') return '정보 카드는 하루에 1장만 쓸 수 있어요';
+  return null;
+}

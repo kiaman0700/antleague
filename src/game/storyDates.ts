@@ -1,6 +1,6 @@
 /**
  * (v15) 사건 예고 기사에 적힌 발표 날짜를 일정에 넣음 — "(9일차 발표 예정)" · "9일차에 공개 예정" 처럼
- * 이미 화면에 보이는 기사 제목만 읽음 (서버 비밀·미래 정보 없음). 지난 발표·결과는 넣지 않음
+ * 이미 화면에 보이는 기사 제목만 읽음 (서버 비밀·미래 정보 없음)
  */
 import type { Market, MarketEvent } from './market.js';
 import { STOCK_MAP } from './stocks.js';
@@ -15,7 +15,8 @@ export function storyEvents(market: Pick<Market, 'news'>, day: number): MarketEv
     const m = n.headline.match(DUE);
     if (!m) continue;
     const due = Number(m[1]) - 1;
-    if (!Number.isFinite(due) || due < day || due <= n.day) continue;
+    // 지난 발표 날도 남김 — PC 타임라인은 지난 날 칸에도 일정 아이콘을 그림 (일정 띠·창은 오늘부터만 따로 거름)
+    if (!Number.isFinite(due) || due <= n.day) continue;
     const key = n.symbol + ':' + due;
     if (seen.has(key)) continue;
     seen.add(key);
