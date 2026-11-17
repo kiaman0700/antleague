@@ -205,7 +205,7 @@
 .wr-invite .wr-btns > .btn { justify-content: center; white-space: nowrap; }
 
 /* 방 만들기 아래 고정 줄: 요약 글이 뒤 내용과 겹쳐 보이지 않게 — 흐려지는 부분은 글 위쪽 여백에만 */
-.create-bar { padding-top: 22px; background: linear-gradient(to top, var(--bg) calc(100% - 22px), transparent); }
+.create-bar { padding-top: 12px; background: var(--bg); border-top: 1px solid var(--line-2, #2a2a2a); } /* 뒤 글이 비쳐 요약 줄과 겹쳐 보이던 것 → 꽉 찬 배경 */
 
 /* 랭킹 목록 줄: 순위 · 사진 · 이름 · 판수 · 티어 (사진이 들어오며 칸이 하나 밀려 이름이 오른쪽 끝, 티어가 둘째 줄로 가던 문제) */
 .rank-board li { grid-template-columns: 34px 30px minmax(0, 1fr) auto auto; }
@@ -690,4 +690,8 @@ body { background: var(--bg) !important; }
 @media (min-width: 1101px) and (max-width: 1439px) {
   .hub-stage { grid-template-columns: minmax(0, 1fr); }
   .hs-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+/* 가로로 눕힌 휴대폰(높이 500 이하): 위 머리의 '마감 현황' 줄은 숨겨 내용 칸을 넓게 (마감 버튼·카운트다운 시간은 그대로 보임) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .m-game .m-top .end-status { display: none; }
 }
