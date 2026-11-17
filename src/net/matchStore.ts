@@ -55,6 +55,11 @@ export function useMatch() {
 }
 
 let timer: ReturnType<typeof setInterval> | null = null;
+/** 마지막 찾기 설정 (화면을 잠깐 벗어났다 돌아오면 같은 설정으로 다시 찾기) */
+let last: { queue: string; nickname: string; mode: string; follow: boolean } | null = null;
+/** 찾는 중에 화면을 벗어난 시각 (0 = 계속 보고 있었음) */
+let awayStart = 0;
+const REJOIN_MS = 3 * 60_000;
 /** 찾기 세대: 그만 찾기 → 다시 찾기 사이에 늦게 온 예전 응답은 무시 */
 let gen = 0;
 let inflight = false;
@@ -81,12 +86,30 @@ async function tick() {
     }
     if (s.status === 'none') {
       stopPoll();
+      // 휴대폰에서 앱을 바꾸거나 화면을 끄면 확인 요청이 멈춰 서버가 10초 뒤 대기표를 지움(그사이 매칭되지 않게).
+      // 3분 안에 돌아왔으면 같은 설정으로 바로 다시 찾고, 더 오래 비웠으면 멈췄다고 알림 (파티원은 파티장이 다시 찾음)
+      if (s.reason !== 'party' && awayStart && last && !last.follow) {
+        const away = Date.now() - awayStart;
+        awayStart = 0;
+        if (away < REJOIN_MS) {
+          const l = last;
+          set({ phase: 'idle', queue: null, info: null });
+          void startMatch(l.queue, l.nickname, l.mode).then(() => getMatch().phase === 'searching' && showNotice('화면을 벗어난 사이 대기가 끊겨서 다시 찾고 있어요.'));
+          return;
+        }
+        set({ phase: 'idle', queue: null, info: null, err: '화면을 오래 벗어나 있어서 찾기를 멈췄어요. 다시 찾아 주세요.' });
+        return;
+      }
       set({ phase: 'idle', queue: null, info: null, err: s.reason === 'party' ? '파티원 연결이 끊겨서 같이 찾기가 취소됐어요. 친구가 다시 들어오면 찾아 주세요.' : '대기가 끝났어요. 다시 찾아 주세요.' });
       return;
     }
     const info: MatchInfo = { waitedSec: s.waitedSec ?? 0, inQueue: s.inQueue ?? 1, window: s.window ?? 100, similar: s.similar ?? 0, online: s.online ?? 0, etaSec: s.etaSec ?? null };
-    // 서버가 센 대기 시간에 맞춰 화면 시계를 보정, 연결이 돌아오면 오류 글자도 지움
-    set({ info, startedAt: Date.now() - info.waitedSec * 1000, err: '' });
+    // 서버가 센 대기 시간(초 단위로 버림)에 화면 시계를 맞추되, 2초 넘게 어긋날 때만 — 매번 맞추면 시작 시각이
+    // 1초 안에서 앞뒤로 흔들려 숫자가 2씩 뛰거나 멈춰 보였음. 연결이 돌아오면 오류 글자도 지움
+    const serverStart = Date.now() - info.waitedSec * 1000;
+    // 보고 있는 화면에서 대기가 이어졌으면 '벗어나 있었음' 기록을 지움
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') awayStart = 0;
+    set({ info, err: '', ...(Math.abs(serverStart - st.startedAt) > 2000 ? { startedAt: serverStart } : {}) });
   } catch (e) {
     if (my !== gen) return;
     // 로그인이 풀렸으면 더 묻지 않고 멈춤 (헛된 요청 반복 방지)
@@ -128,6 +151,8 @@ export async function startMatch(queue: string, nickname: string, mode: string) 
   if (st.phase !== 'idle') return;
   gen++;
   cancelAsked = false;
+  last = { queue, nickname, mode, follow: false };
+  awayStart = 0;
   set({ phase: 'joining', err: '', matched: null, startedAt: Date.now(), info: null }); // 지난 찾기의 시작 시각이 잠깐 보이지 않게
   try {
     await api('queueJoin', { queue, nickname, mode });
@@ -148,6 +173,8 @@ export async function startMatch(queue: string, nickname: string, mode: string) 
 export function followMatch(queue: string | null) {
   if (st.phase !== 'idle') return;
   gen++;
+  last = queue ? { queue, nickname: '', mode: '', follow: true } : null;
+  awayStart = 0;
   set({ phase: 'searching', queue, startedAt: Date.now(), info: null, err: '', matched: null });
   startPoll();
 }
@@ -192,18 +219,37 @@ export const clearMatchErr = () => st.err && set({ err: '' });
 
 /** 대기 중에는 할 수 없는 행동이면 안내하고 false (방 만들기·입장·연습·튜토리얼·1대1 신청 등) */
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-export function okWhileMatching(what = '이건') {
-  if (st.phase === 'idle') return true;
-  set({ notice: `매칭 대기 중이에요. ${what} 그만 찾기를 누른 뒤에 할 수 있어요.` });
+function showNotice(text: string) {
+  set({ notice: text });
   if (noticeTimer) clearTimeout(noticeTimer);
   noticeTimer = setTimeout(() => set({ notice: '' }), 3500);
+}
+export function okWhileMatching(what = '이건') {
+  if (st.phase === 'idle') return true;
+  showNotice(`매칭 대기 중이에요. ${what} 그만 찾기를 누른 뒤에 할 수 있어요.`);
   return false;
 }
 
 // 창을 닫으면 대기 취소 (페이지가 사라져도 요청이 끝까지 가도록)
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => {
-    if (st.phase === 'searching') leaveQueueOnExit();
+    if (st.phase === 'searching') {
+      leaveQueueOnExit();
+      awayStart = awayStart || Date.now();
+    }
+  });
+  // 휴대폰: 앱 바꾸기·화면 끄기 → 확인이 멈춤. 돌아오면 바로 한 번 확인 (끊겼으면 위에서 다시 찾기)
+  document.addEventListener('visibilitychange', () => {
+    if (st.phase !== 'searching') return;
+    if (document.visibilityState === 'hidden') awayStart = awayStart || Date.now();
+    else {
+      if (!timer) startPoll();
+      else void tick();
+    }
+  });
+  // 뒤로 가기 캐시에서 페이지가 되살아나면(멈춰 있던 화면) 확인을 다시 시작
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted && st.phase === 'searching') startPoll();
   });
 }
 

@@ -160,6 +160,14 @@ export function relatedForSector(id: string): string[] {
  * 같은 (seed, totalDays, version)이면 항상 같은 시장.
  * version 2 는 v1 과 같은 난수 흐름 위에 연관성을 더한다 (v1 방의 가격은 절대 바뀌지 않음)
  */
+/** (v15) 발표를 앞둔 반전 소식 — 기대와 반대 방향 (맞을 수도, 오보일 수도) */
+const TWIST_HEADS = [
+  '{name}, 발표 앞두고 "결과 기대 이하" 내부 문건 유출설',
+  '{name}, 핵심 일정 연기 가능성 제기… 투자자 불안',
+  '{name}, 경쟁사 먼저 발표에 "효과 반감" 우려',
+  '{name}, 대주주 지분 매도 소식에 "악재 미리 아나" 의심',
+  '{name}, 업계 "발표 내용 시장 기대 못 미칠 것" 전망',
+];
 export function generateMarket(seed: number, totalDays: number, version = 1, salt?: string): Market {
   /**
    * v4: 방마다 서버에만 있는 128비트 비밀값(salt)으로 난수를 만듦.
@@ -219,6 +227,19 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
   const stories = v12 ? planStories(rngS, totalDays) : [];
   /** 사건 흐름 뉴스 (머리말을 그대로 두고, 무작위 장중 속보로 뽑지 않음) */
   const storyNews = new WeakSet<NewsEvent>();
+  // v15 (설계서 design/story-v2.md): 예고 → 날마다 기대감 → (약 35%) 전날·당일 반전 소식 → 발표 크기는 '이미 오른 만큼'을 빼고.
+  // 별도 난수(story15)라 v14 이하 가격·사건은 그대로
+  const v15 = version >= 15;
+  const rngT = R('story15', () => mulberry32((seed ^ 0x51ed270b) >>> 0));
+  const twist = stories.map((st) => {
+    if (!v15) return null;
+    if (rngT() >= 0.35) return null;
+    // 반전은 발표 전날 아침 또는 당일 아침 (예고 다음 날 이후), 결과와 상관없이 정함 → 반전이 나왔다고 결과를 알 수는 없음
+    const day = st.resolve - 1 > st.start && rngT() < 0.5 ? st.resolve - 1 : st.resolve;
+    return { day, mag: range(rngT, 0.05, 0.12) };
+  });
+  /** 사건마다 지금까지 쌓인 기대감(사건 때문에 오른 만큼, 로그) */
+  const runup = stories.map(() => 0);
 
   const bars: Record<string, Bar[]> = Object.fromEntries(STOCKS.map((s) => [s.symbol, []]));
   const usd: Record<string, Bar[]> = Object.fromEntries(COMPANIES.filter((s) => s.currency === 'USD').map((s) => [s.symbol, []]));
@@ -397,11 +418,24 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         storyNews.add(ev);
         news.push(ev);
       };
+      const si = stories.indexOf(st);
       if (day === st.start) {
         // 기대감: 결과 발표를 앞두고 미리 오름
         addStock(st.symbol, st.setupMag);
-        push(pick(rngS, st.kind.open), 'good', 'good', false, { label: '단독' });
+        runup[si] += st.setupMag;
+        const head = pick(rngS, st.kind.open);
+        // (v15) 예고에 발표 날짜를 분명히 (일정 띠처럼 n일차)
+        // 문구에 이미 '{d}일 뒤'가 있으면 그 자리를 'n일차에'로 바꾸고, 없으면 끝에 '(n일차 발표 예정)' — 날짜를 두 번 말하지 않게
+        const day15 = `${st.resolve + 1}일차`;
+        const open15 = head.includes('{d}일 뒤') ? fill(head.replace('{d}일 뒤', day15 + '에'), vars) : fill(head, vars) + ` (${day15} 발표 예정)`;
+        push(v15 ? open15 : head, 'good', 'good', false, { label: '단독' });
       } else if (day > st.start && day < st.resolve) {
+        // (v15) 발표 날까지 날마다 기대감에 조금씩 더 오름 (사는 사람이 몰림)
+        if (v15) {
+          const drift = range(rngT, 0.01, 0.04);
+          addStock(st.symbol, drift);
+          runup[si] += drift;
+        }
         // 중간 찌라시: 70%는 실제 결과 쪽, 30%는 반대 (감별기로 진짜를 가릴 수 있음). 미리 아는 사람이 조금씩 움직여 주가도 살짝
         if (rngS() < 0.75) {
           const rumorGood = rngS() < 0.7 ? st.good : !st.good;
@@ -409,9 +443,25 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           // 소문 쪽으로 조금 움직임 (결과가 아니라 소문을 따라 — 주가로 결과가 새지 않게)
           addStock(st.symbol, ((version >= 13 ? rumorGood : st.good) ? 1 : -1) * st.setupMag * 0.35);
         }
-      } else if (day === st.resolve) {
+      }
+      // (v15) 반전 소식: 그날 아침 '기대와 반대' 기사가 나와 주가가 크게 빠짐. 결과가 나쁘면 맞는 기사, 좋으면 오보(발표 다음 날 밝혀짐)
+      const tw = twist[si];
+      if (tw && day === tw.day) {
+        addStock(st.symbol, -tw.mag);
+        runup[si] -= tw.mag;
+        const twHead = pick(rngT, TWIST_HEADS);
+        const ev: NewsEvent = { day, kind: 'company', symbol: st.symbol, sector: def.sector, headline: fill(twHead, vars), rumor: false, tone: 'bad', realTone: st.good ? 'good' : 'bad', related: relatedForCompany(def), label: '특징주', revealDay: st.resolve + 1, ...(st.good ? { fake: true } : {}) };
+        storyNews.add(ev);
+        news.push(ev);
+      }
+      if (day === st.resolve) {
         // 결과 발표: 장중 속보로 크게 (상·하한가 근처)
-        const mag = (st.good ? 1 : -1) * st.resultMag;
+        // (v15) '소문에 사고 뉴스에 판다': 미리 많이 오른 좋은 결과는 조금만(때로 오히려 빠짐), 많이 오른 뒤 나쁜 결과는 더 크게
+        const mag = v15
+          ? st.good
+            ? Math.max(-0.06, st.resultMag - runup[si] * 0.8)
+            : -(st.resultMag + Math.max(0, runup[si]) * 0.9)
+          : (st.good ? 1 : -1) * st.resultMag;
         addStock(st.symbol, mag);
         for (const [l, w] of Object.entries(COMPANY_LINKS[st.symbol] ?? {})) addStock(l, mag * w * 0.5);
         for (const pe of COMPANIES) if (pe.sector === def.sector && pe.symbol !== st.symbol) addStock(pe.symbol, mag * 0.15);

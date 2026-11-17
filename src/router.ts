@@ -30,7 +30,7 @@ const TITLES: Record<Route['kind'], string> = {
   resolve: '개미리그',
 };
 
-const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking' };
+const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking', '/notices': 'notices' };
 /** 주소만으로 열 수 있는 화면(로비 페이지)인지 */
 function routeFromPath(path: string): Route {
   const page = LOBBY_PAGES[path.replace(/\/+$/, '') || '/'];

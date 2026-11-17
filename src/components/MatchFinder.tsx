@@ -80,7 +80,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   const [, setNowTick] = useState(0);
   useEffect(() => {
     if (!searching) return;
-    const id = setInterval(() => setNowTick((x) => x + 1), 1000);
+    // 0.5초마다 보고 보이는 초가 바뀔 때만 다시 그림 (1초 간격이면 늦은 한 번에 숫자를 건너뜀)
+    const id = setInterval(() => setNowTick(Math.floor((Date.now() - getMatch().startedAt) / 1000)), 500);
     return () => clearInterval(id);
   }, [searching]);
   const waited = searching ? Math.max(0, Math.floor((Date.now() - m.startedAt) / 1000)) : 0;

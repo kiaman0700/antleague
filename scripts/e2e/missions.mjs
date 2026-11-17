@@ -5,7 +5,7 @@ import { ok, done, BASE, user } from './lib.mjs';
 
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
@@ -45,11 +45,17 @@ async function playBotGame(U, trade = true) {
   const bm = await U({ action: 'botMatch', levels: [1], totalDays: 10, turnSeconds: 60, nickname: '미션', mode: 'easy' });
   if (bm.s !== 200) throw new Error('botMatch ' + JSON.stringify(bm.b));
   const roomId = bm.b.roomId;
+  // (v14) 첫날 장 전 시간 → 준비 완료로 바로 장을 엶 (사람은 나 혼자)
+  await U({ action: 'preReady', roomId });
+  await new Promise((r) => setTimeout(r, 4500));
   const did = { trades: 0, detector: false, cards: 0 };
   if (trade) {
     // 거래 6번(한 판 5번 넘게) + 감별기·차트 분석 카드 2장 → 여러 미션 조건을 채움
     for (const side of ['buy', 'buy', 'buy', 'sell', 'sell', 'sell']) if ((await U({ action: 'trade', roomId, symbol: 'CORE', side, qty: 1 })).s === 200) did.trades++;
-    for (const [kind, payload] of [['detector', {}], ['scout', { symbol: 'CORE' }]]) {
+    // (v14) 감별기는 오늘 보이는 소식 하나를 골라야 함 · 정보 카드는 하루 1장이라 차트 분석은 거절될 수 있음
+    const sv = (await U({ action: 'state', roomId })).b;
+    const pick = sv?.rumors?.[0]?.text ?? sv?.market?.news?.find((n) => n.day === sv.room.day)?.headline;
+    for (const [kind, payload] of [['detector', { pick }], ['scout', { symbol: 'CORE' }]]) {
       if ((await U({ action: 'buyItem', roomId, kind })).s !== 200) continue;
       if ((await U({ action: 'useItem', roomId, kind, payload })).s === 200) {
         did.cards++;

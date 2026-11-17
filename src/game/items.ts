@@ -28,7 +28,7 @@ export const ITEMS: ItemDef[] = [
   { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 600_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보라 가장 비싸요)' },
   { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 300_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
   { kind: 'scout', name: '차트 분석', emoji: '📊', type: 'info', cost: 200_000, desc: '지금 보고 있는 종목이 오늘 오를지 내릴지 알려줘요. (정확도 약 70%)' },
-  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 아침 뉴스와 장 전 찌라시가 진짜인지 가짜인지 하나하나 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요.' },
+  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 소식(뉴스·찌라시·소문 기사) 중 하나를 골라 진짜인지 가짜인지 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요. 비싸니 중요한 순간에 쓰세요.' },
   { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 150_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
   { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 200_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
   { kind: 'blackout', name: '정보 차단', emoji: '📵', type: 'attack', cost: 150_000, desc: '고른 상대는 내일 아침 뉴스를 볼 수 없어요.', multiOnly: true },
@@ -90,7 +90,7 @@ export interface ItemRow {
   action: 'buy' | 'use';
   cost: number;
   /** target: 방해·염탐 카드의 대상 / symbol: 가짜 뉴스·차트 분석 종목 */
-  payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string; amount?: number } | null;
+  payload?: { symbol?: string; tone?: 'good' | 'bad'; target?: string; amount?: number; /** (v14) 감별기로 고른 소식 (뉴스 제목 또는 찌라시 글) */ pick?: string } | null;
   created_at?: string;
 }
 
@@ -114,7 +114,7 @@ export interface PlayerItems {
   inventory: Partial<Record<ItemKind, number>>;
   used: Partial<Record<ItemKind, number>>;
   /** 내가 쓴 정보 카드 (화면에 결과 표시) */
-  infoUses: { kind: ItemKind; day: number; target?: string; symbol?: string }[];
+  infoUses: { kind: ItemKind; day: number; target?: string; symbol?: string; /** (v14) 감별기로 고른 소식 */ pick?: string }[];
   grants: { day: number; kind: ItemKind; skipped: boolean }[];
   total: number;
 }
@@ -187,7 +187,7 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
       if ((p.inventory[r.kind] ?? 0) <= 0) continue;
       consume(p, r.kind);
       const def = ITEM_MAP[r.kind];
-      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day, target: r.payload?.target, symbol: r.payload?.symbol });
+      if (def.type === 'info') p.infoUses.push({ kind: r.kind, day: r.day, target: r.payload?.target, symbol: r.payload?.symbol, pick: r.payload?.pick });
       if (def.type === 'attack') {
         // 대상을 고르지 않았으면(2인) 다른 한 명
         const chosen = r.payload?.target;
@@ -247,9 +247,16 @@ export const PRICE_V8: Partial<Record<ItemKind, number>> = {
  * 내일 신문 4.5만, 방해 카드 값 올림 → 4인 정보 42%·방해 33%·뉴스 30%·레버리지 26% (기대 25%)
  */
 export const PRICE_V9: Partial<Record<ItemKind, number>> = { ...PRICE_V8, paper: 45_000, freeze: 20_000, blackout: 15_000, fake: 15_000, fee: 20_000 };
+/**
+ * (v14) 설계서 design/cards-v14.md: 루머 감별기는 고른 소식 1개만 · 10만원(사용자 결정), 정보 카드는 하루 1장이 되면서
+ * 시뮬에서 값보다 이득이 작던 내일 신문·애널리스트 콜 값을 내림
+ */
+export const PRICE_V14: Partial<Record<ItemKind, number>> = { ...PRICE_V9, detector: 100_000, paper: 35_000, analyst: 25_000 };
+/** v14: 같은 날 정보 카드는 1장만 */
+export const INFO_ONE_PER_DAY_VERSION = 14;
 export function itemCost(kind: ItemKind, players: number, version = 1): number {
   const d = ITEM_MAP[kind];
-  const table = version >= 9 ? PRICE_V9 : PRICE_V8;
+  const table = version >= 14 ? PRICE_V14 : version >= 9 ? PRICE_V9 : PRICE_V8;
   if (version >= 8 && table[kind] != null) {
     const base = table[kind]!;
     return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / 5_000) * 5_000 : base;

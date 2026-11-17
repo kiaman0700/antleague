@@ -362,9 +362,9 @@ export function SocialPanel({
 /** 운영자 전용 의견함 버튼 (위 메뉴에 고정, 안 읽은 의견 수) */
 export function AdminInboxButton({ unread, onClick, compact }: { unread: number; onClick: () => void; compact?: boolean }) {
   return (
-    <button className={'cl-admin' + (unread > 0 ? ' has' : '') + (compact ? ' compact' : '')} onClick={onClick} title="의견함 (운영자)" aria-label={`의견함, 안 읽은 의견 ${unread}개`}>
+    <button className={'cl-admin' + (unread > 0 ? ' has' : '') + (compact ? ' compact' : '')} onClick={onClick} title="운영자 화면 (현황·의견함·공지)" aria-label={`운영자 화면, 안 읽은 의견 ${unread}개`}>
       <Icon name="bell" size={17} />
-      {!compact && <span>의견함</span>}
+      {!compact && <span>운영자</span>}
       {unread > 0 && <i className="ln-badge">{unread > 99 ? '99+' : unread}</i>}
     </button>
   );

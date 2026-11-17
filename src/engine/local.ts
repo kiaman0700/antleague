@@ -5,7 +5,8 @@ import { botInfo, MAX_BOTS, runBots, type BotRun } from './bots.js';
 
 const KEY = 'stockduel.solo2';
 /** 혼자 연습 하루 길이 선택지(초) */
-export const SOLO_DAY_OPTIONS = [60, 180, 300] as const;
+/** 연습 하루 길이(초) — 0 = 무제한 (가격은 3분 동안 움직이고, 시간이 끝나도 넘어가지 않아 종가로 계속 거래, 장 마감을 눌러야 다음 날) */
+export const SOLO_DAY_OPTIONS = [60, 180, 300, 0] as const;
 export const DEFAULT_SOLO_DAY = 180;
 
 export interface SoloSave {
@@ -17,6 +18,8 @@ export interface SoloSave {
   frozenAt?: number;
   /** 튜토리얼 게임 (봇과 함께, 시간이 흐르지 않음, 저장하지 않음) */
   tutorial?: { symbol: string; headline: string };
+  /** 무제한: 시간이 끝나도 자동으로 다음 날로 넘어가지 않음 */
+  unlimited?: boolean;
 }
 
 /** 튜토리얼 봇 */
@@ -72,6 +75,13 @@ function botActs(d: GameData) {
 
 /** 새 하루의 마감 시각 (장 시작 3초 뒤부터 칸이 흐름) */
 const freshDeadline = (daySec: number, now: number) => now + (daySec + 3) * 1000;
+/** 무제한: 거래 마감은 아주 멀리(30일) — 가격 시계(day_deadline)는 보통 하루처럼 3분 */
+const UNLIMITED_MS = 30 * 86_400_000;
+/** 새 날의 마감 시각들 (무제한이면 거래 마감만 멀리) */
+const dayDeadlines = (daySec: number, now: number, unlimited?: boolean) => {
+  const day = freshDeadline(daySec, now);
+  return { deadline: unlimited ? now + UNLIMITED_MS : day, day_deadline: day };
+};
 
 /** 연습 저장이 쓸 수 있는 모양인지 */
 export function validSave(v: unknown): v is SoloSave {
@@ -104,9 +114,8 @@ export function loadSolo(): SoloSave | null {
     }
     if (v && !v.data.orders) v.data.orders = [];
     // 예전 연습 저장(시간 제한 없음)은 하루 3분 실시간으로 이어서
-    if (v && v.data.room.status === 'playing' && (v.data.room.turn_seconds <= 0 || v.data.room.deadline == null)) {
-      const dl = freshDeadline(v.data.room.turn_seconds > 0 ? v.data.room.turn_seconds : DEFAULT_SOLO_DAY, Date.now());
-      v.data.room = { ...v.data.room, turn_seconds: v.data.room.turn_seconds > 0 ? v.data.room.turn_seconds : DEFAULT_SOLO_DAY, deadline: dl, day_deadline: dl };
+    if (v && v.data.room.status === 'playing' && v.data.room.turn_seconds <= 0) {
+      v.data.room = { ...v.data.room, turn_seconds: v.data.room.turn_seconds > 0 ? v.data.room.turn_seconds : DEFAULT_SOLO_DAY, ...dayDeadlines(v.data.room.turn_seconds > 0 ? v.data.room.turn_seconds : DEFAULT_SOLO_DAY, Date.now(), v.unlimited) };
     }
     return v;
   } catch {
@@ -179,13 +188,14 @@ function applyBots(d: GameData, run: BotRun) {
 
 export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true, botLevels: number[] = []): SoloSave {
   const seed = Math.floor(Math.random() * 2_000_000_000);
-  const sec = (SOLO_DAY_OPTIONS as readonly number[]).includes(daySec) ? daySec : DEFAULT_SOLO_DAY;
+  const unlimited = daySec === 0;
+  const sec = unlimited ? DEFAULT_SOLO_DAY : (SOLO_DAY_OPTIONS as readonly number[]).includes(daySec) ? daySec : DEFAULT_SOLO_DAY;
   const bots = botLevels.filter((l) => l >= 1 && l <= 3).slice(0, MAX_BOTS);
-  const dl = freshDeadline(sec, Date.now());
   const s: SoloSave = {
+    ...(unlimited ? { unlimited: true } : {}),
     nickname,
     data: {
-      room: { id: 'solo', code: 'SOLO00', seed, salt: randomSalt(), status: 'playing', total_days: totalDays, turn_seconds: sec, day: 0, deadline: dl, day_deadline: dl, host_id: 'me', version: CURRENT_RULES_VERSION },
+      room: { id: 'solo', code: 'SOLO00', seed, salt: randomSalt(), status: 'playing', total_days: totalDays, turn_seconds: sec, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: CURRENT_RULES_VERSION },
       players: [
         { id: 'me', room_id: 'solo', nickname, mode: 'easy', ready: true, ended_day: -1, created_at: new Date().toISOString(), version: 0 },
         // 봇전: 봇 1~5명 (난이도 1·2·3)
@@ -253,6 +263,7 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
   const created_at = new Date(now).toISOString();
   switch (action) {
     case 'trade':
+      if (d.room.deadline === null && !s.tutorial && !s.demo) throw new GameError('장 시작을 누른 뒤에 지금 가격으로 사고팔 수 있어요. 장 전에는 예약 주문만 할 수 있어요.', 409);
       d.trades.push({ ...validateTrade(d, 'me', now, payload), id: uid(), created_at });
       break;
     case 'buyItem':
@@ -272,8 +283,7 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'startDay': {
       // 멈춰 있는 날만 시작 (이미 열린 날은 시간을 늘리지 않음)
       if (d.room.status === 'playing' && d.room.deadline === null) {
-        const dl = freshDeadline(d.room.turn_seconds, now);
-        d.room = { ...d.room, deadline: dl, day_deadline: dl };
+        d.room = { ...d.room, ...dayDeadlines(d.room.turn_seconds, now, s.unlimited) };
       }
       break;
     }

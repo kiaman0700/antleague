@@ -28,7 +28,8 @@ else console.log('ℹ️ 10분 방을 만들 수 없음 — supabase/005_turn_ti
   const { us: [A, B], roomId, state } = await room(2, 180);
   let s = await state();
   const full = secsLeft(s);
-  ok('3분 방: 시작하면 약 3분', full >= 175 && full <= 183, `남은 ${full}초`);
+  // (v14) 첫날에도 장 전 시간(3분 방 45초)이 있어 시작 직후엔 하루 3분 + 장 전 45초
+  ok('3분 방: 시작하면 약 3분 (+ 첫날 장 전 45초)', full >= 175 && full <= 183 + 45, `남은 ${full}초`);
   await A({ action: 'endTurn', roomId });
   s = await state();
   ok('1대1(하루 3분): 한 명이 마감하면 60초 카운트다운', secsLeft(s) >= 55 && secsLeft(s) <= 60, `남은 ${secsLeft(s)}초`);

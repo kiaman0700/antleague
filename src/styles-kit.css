@@ -1085,3 +1085,160 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .msb-ring .msb-track { stroke: #3a3a3a; }
 .msb-ring .msb-day { stroke: #8b7bff; }
 .msb-ring .msb-week { stroke: #f5b83d; }
+/* (v14) 루머 감별기: 확인할 소식 고르기 */
+.det-pick { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.det-pick button { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); background: var(--surface-2, #242424); color: var(--text); font: inherit; font-size: 14px; line-height: 1.45; text-align: left; cursor: pointer; }
+.det-pick button:hover, .det-pick button:focus-visible { border-color: var(--accent); }
+.det-kind { padding: 1px 7px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); font-size: 11px; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+
+/* ---------- 공지사항 (2026-11-18) ---------- */
+.notices-page { display: grid; gap: 12px; }
+.notices-page > .btn.primary { justify-self: start; }
+.notice-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.notice { padding: 0; overflow: hidden; }
+.notice.pinned { border-color: rgba(139, 123, 255, 0.45); }
+.notice-head { width: 100%; display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; padding: 14px 16px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.notice-head:not(:has(.notice-pin)) { grid-template-columns: 1fr auto auto; }
+.notice-head b { font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice.open .notice-head b { white-space: normal; }
+.notice-head small { font-size: 12px; white-space: nowrap; }
+.notice-pin { padding: 2px 7px; border-radius: 6px; background: rgba(139, 123, 255, 0.18); color: var(--accent-text); font-size: 11px; font-weight: 800; }
+.notice-chev { color: var(--muted); }
+.notice-body { padding: 0 16px 16px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.notice-body p { margin: 12px 0 8px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.65; font-size: 14px; color: var(--text-2); }
+.notice-admin { display: flex; gap: 8px; margin-top: 8px; }
+.notice-edit { display: grid; gap: 10px; }
+.notice-edit h3 { margin: 0; }
+.notice-edit .field { display: grid; gap: 6px; }
+.notice-edit input, .notice-edit textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-2, rgba(255,255,255,.12)); background: var(--surface-2, #242424); color: var(--text); font: inherit; font-size: 14px; }
+.notice-edit textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+.notice-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.more-new { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--danger); vertical-align: 2px; }
+
+/* ---------- 하단 탭바 구분감 (2026-11-18): 바탕과 확실히 나뉘고, 고른 칸은 아이콘 뒤 알약 + 진한 글자 ---------- */
+.lobby-shell .lobby-bottom, .m-game .bottom-nav {
+  background: #181818 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.45) !important;
+}
+.lobby-shell .lobby-bottom button, .m-game .bottom-nav > button { color: #8c8c8c !important; font-weight: 600; }
+.lobby-shell .lobby-bottom button .ln-ic, .m-game .bottom-nav > button > span:first-child {
+  display: inline-grid; place-items: center; width: 52px; height: 28px; border-radius: 99px; transition: background .15s;
+}
+.lobby-shell .lobby-bottom button.on, .m-game .bottom-nav > button.on { color: #f2f2f2 !important; font-weight: 800; }
+.lobby-shell .lobby-bottom button.on .ln-ic, .m-game .bottom-nav > button.on > span:first-child { background: rgba(139, 123, 255, 0.22); color: #c4baff; }
+/* 예전 위쪽 얇은 막대 표시는 알약으로 대신 */
+.lobby-shell .lobby-bottom button.on::before, .lobby-shell .lobby-bottom button.on::after,
+.lobby-shell.client .lobby-bottom button.on .ln-ic::after, .m-game .bottom-nav > button.on::before { display: none !important; }
+
+/* ---------- 휴대폰: 매칭 중 알약 (아래 메뉴 바로 위, '진행 중인 대결' 알약과 같은 자리·모양) ---------- */
+@media (max-width: 860px) {
+  .mm-pill { bottom: calc(76px + env(safe-area-inset-bottom)); gap: 12px; padding: 7px 7px 7px 16px; width: max-content; max-width: calc(100vw - 32px); }
+  .mm-pill .mf-spin.sm { flex: 0 0 auto; }
+  .mm-txt { gap: 1px; }
+  .mm-l1 { display: flex; align-items: baseline; gap: 8px; }
+  .mm-l1 b { font-size: 14px; font-weight: 800; }
+  .mm-time { font-size: 14px; font-weight: 700; color: #f5b83d; font-variant-numeric: tabular-nums; }
+  .mm-txt small { font-family: inherit; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .mm-x { width: auto; height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line-2, rgba(255,255,255,.14)); background: #2e2e2e; font-size: 13px; font-weight: 700; }
+  .mm-x:active { background: #3a3a3a; }
+  /* 두 알약이 함께 뜨면 '진행 중' 알약을 매칭 알약 위로 */
+  .lobby-main:has(> .mm-pill) .rc-pill, .lobby-shell:has(.mm-pill) .rc-pill { bottom: calc(132px + env(safe-area-inset-bottom)); }
+  .lobby-main:has(> .mm-pill) > .cl-foot { padding-bottom: 76px; }
+}
+
+/* ---------- 운영자 화면: 탭 · 현황 ---------- */
+.admin-tabs { display: flex; gap: 6px; margin: 4px 0 16px; border-bottom: 1px solid var(--line); }
+.admin-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--text-2); font-size: 14px; font-weight: 700; cursor: pointer; }
+.admin-tabs button:hover { color: var(--text); }
+.admin-tabs button.on { color: var(--text); border-bottom-color: #6b58ee; }
+.aov { display: grid; gap: 14px; }
+.aov-nums { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.aov-nums > * { display: grid; gap: 2px; align-content: start; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; }
+.aov-nums small { font-size: 12px; color: var(--text-2); }
+.aov-nums b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.aov-nums span { font-size: 12px; color: var(--muted); }
+.aov-nums .aov-link { cursor: pointer; }
+.aov-nums .aov-link:hover { border-color: #6b58ee; }
+.aov-nums .aov-link.has { border-color: rgba(245, 184, 61, 0.6); }
+.aov-nums .aov-link.has b { color: #f5b83d; }
+.aov-nums .warn { border-color: rgba(217, 54, 75, 0.6); }
+.aov-nums .warn b { color: var(--danger-text); }
+.aov-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.aov-card h3 { margin: 0 0 2px; font-size: 15px; font-weight: 800; }
+.aov-card > p { margin: 0 0 10px; }
+.aov-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+.aov-bars { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 6px; align-items: end; height: 120px; }
+.aov-bar { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 4px; text-align: center; }
+.aov-bar > i { display: block; align-self: end; min-height: 2px; border-radius: 4px 4px 0 0; background: #6b58ee; }
+.aov-bar small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.aov-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.aov-table th { text-align: right; font-weight: 600; font-size: 12px; color: var(--text-2); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.aov-table td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); }
+.aov-table th:first-child, .aov-table td:first-child { text-align: left; padding-left: 0; }
+.aov-table tr:last-child td { border-bottom: 0; }
+.aov-table td.up { color: var(--up, #f04452); }
+.aov-table td.down { color: var(--down, #3182f6); }
+.aov-bots { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.aov-bots li { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 4px 10px; }
+.aov-bots li > small { grid-column: 2 / -1; font-size: 12px; }
+.aov-bots .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.aov-meter { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.aov-meter > i { display: block; height: 100%; background: #6b58ee; border-radius: 99px; }
+.aov-errs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13px; }
+.aov-errs li { display: grid; grid-template-columns: 96px 120px minmax(0, 1fr); gap: 10px; align-items: baseline; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.aov-errs li:last-child { border-bottom: 0; padding-bottom: 0; }
+.aov-errs span { word-break: break-word; color: var(--text-2); }
+.aov-refresh { justify-self: start; }
+@media (max-width: 960px) {
+  .aov-nums { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .aov-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .aov-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .aov-nums b { font-size: 20px; }
+  .aov-bars { gap: 3px; height: 96px; }
+  .aov-errs li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .aov-table { font-size: 12px; }
+  .aov-table th, .aov-table td { padding: 6px 4px; }
+}
+
+/* ---------- PC 위 메뉴바: 창이 좁아도 오른쪽 버튼이 메뉴 위로 겹치지 않게 (900~1439px) ----------
+   넓은 순서대로 글자를 접음: 운영자 글자 → 닉네임 → 미션 글자·보조 메뉴 간격 */
+@media (min-width: 861px) and (max-width: 1439px) { .cl-right .cl-admin span { display: none; } .cl-right .cl-admin { padding: 0 11px; } }
+@media (min-width: 861px) and (max-width: 1279px) {
+  .cl-right .acc-chip .acc-txt { display: none; }
+  .cl-right .acc-chip { padding-right: 4px; }
+  .cl-right { gap: 8px; }
+}
+@media (min-width: 861px) and (max-width: 1079px) {
+  .cl-right .msb .hpop-btn > span { display: none; }
+  .cl-subs .cl-sub { padding: 0 8px; }
+  .cl-top { gap: 12px; }
+  .cl-tab { padding: 0 9px; }
+  .cl-sep { margin-left: 4px; margin-right: 4px; }
+}
+/* 공지 쓰기: '맨 위에 고정' 확인 칸 (위 input 100% 규칙에 늘어나던 것) */
+.notice-edit .check-row { display: inline-flex; align-items: center; gap: 8px; justify-self: start; font-size: 14px; color: var(--text-2); cursor: pointer; }
+.notice-edit .check-row input { width: 18px; height: 18px; padding: 0; margin: 0; accent-color: #6b58ee; flex: none; }
+.notice-list > .notice { margin: 0; }
+.admin-tabs .admin-tab-link { margin-left: auto; }
+/* 운영자 현황 2판: 숫자 8칸 · 작은 숫자 줄 · 가로 막대 목록 */
+.aov-nums { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.aov-grid.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.aov-mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 8px; }
+.aov-mini > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, #242424); }
+.aov-mini small { font-size: 12px; color: var(--text-2); }
+.aov-mini b { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.aov-mini span { font-size: 11px; }
+.aov-blist { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.aov-blist li { display: grid; grid-template-columns: minmax(84px, 120px) minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; font-size: 13px; }
+.aov-bl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aov-blist .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aov-bl-sub { grid-column: 2 / -1; font-size: 11px; margin-top: -2px; }
+.aov-h3-gap { margin-top: 18px !important; }
+.aov-scroll { overflow-x: auto; }
+.aov-fb { margin: 12px 0 0; }
+@media (max-width: 960px) { .aov-grid.even { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .aov-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } .aov-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); } .aov-table { min-width: 420px; } }
+.aov-blist li { grid-template-columns: minmax(84px, 120px) minmax(0, 1fr) 76px; }

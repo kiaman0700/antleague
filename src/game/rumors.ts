@@ -82,6 +82,7 @@ function shuffle<T>(a: T[], rng: () => number): T[] {
 }
 
 /** 화면에 보낼 찌라시 — 진위는 감별기를 쓴 사람에게만 */
-export function publicRumors(rs: Rumor[], rumorCheck: boolean): PublicRumor[] {
-  return rs.map((r) => ({ text: r.text, sector: r.sector, tone: r.tone, ...(rumorCheck ? { verdict: r.real ? ('true' as const) : ('false' as const) } : {}) }));
+export function publicRumors(rs: Rumor[], rumorCheck: boolean, pick?: string): PublicRumor[] {
+  // (v14) 감별기로 고른 찌라시 하나만 판정
+  return rs.map((r) => ({ text: r.text, sector: r.sector, tone: r.tone, ...(rumorCheck || (pick !== undefined && r.text === pick) ? { verdict: r.real ? ('true' as const) : ('false' as const) } : {}) }));
 }

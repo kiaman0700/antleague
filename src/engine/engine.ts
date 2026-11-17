@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { activeEffects, BONUS_TABLE, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
+import { activeEffects, BONUS_TABLE, INFO_ONE_PER_DAY_VERSION, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
@@ -290,7 +290,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 13;
+export const CURRENT_RULES_VERSION = 15;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -299,9 +299,22 @@ export function preSeconds(turnSeconds: number) {
   if (turnSeconds <= 90) return 30;
   return Math.max(15, Math.min(45, Math.round(turnSeconds / 3)));
 }
-/** 지금 장 전인지 (v7 방, 장이 아직 안 열림) */
+/** (v14) 첫날에도 장 전 시간 (찌라시·예약 주문·카드) — 판을 시작하는 곳이 마감 시각을 이만큼 뒤로 */
+export const FIRST_PRE_VERSION = 14;
+/** 판 시작 때 첫날 장 전 시간(초): v14 부터 장 전 시간과 같음, 그 전은 0 */
+export function firstDayLead(version: number | undefined, turnSeconds: number, kind?: string) {
+  if ((version ?? 1) < FIRST_PRE_VERSION || turnSeconds <= 0) return 0;
+  return kind === 'bot' || kind === 'daily' ? SOLO_PRE_SECONDS : preSeconds(turnSeconds);
+}
+/** 혼자 하는 서버 판(봇전·오늘의 도전, v14+): 장 전은 사실상 무제한 — '장 시작'(준비 완료)을 눌러야 열림 (사용자 요청 2026-11-18) */
+export const SOLO_PRE_SECONDS = 6 * 3600;
+/** 그 방의 장 전 시간(초) */
+export function preSecondsFor(r: Pick<RoomRow, 'turn_seconds' | 'version' | 'kind'>) {
+  return (r.kind === 'bot' || r.kind === 'daily') && (r.version ?? 1) >= FIRST_PRE_VERSION ? SOLO_PRE_SECONDS : preSeconds(r.turn_seconds);
+}
+/** 지금 장 전인지 (v7 방, 장이 아직 안 열림 · 첫날은 v14 부터) */
 export function inPremarket(r: RoomRow, now: number) {
-  if ((r.version ?? 1) < PREMARKET_VERSION || r.status !== 'playing' || r.day === 0 || r.day >= r.total_days) return false;
+  if ((r.version ?? 1) < PREMARKET_VERSION || r.status !== 'playing' || (r.day === 0 && (r.version ?? 1) < FIRST_PRE_VERSION) || r.day >= r.total_days) return false;
   // 예전부터 있던 장 시작 전 4초(시가 그대로 거래 가능)는 장 전으로 치지 않음 → 그 앞까지만
   return now < premarketEnd(r, now);
 }
@@ -368,9 +381,11 @@ export function isFakeNews(n: NewsEvent) {
  * - 오늘 뉴스: 진실(realTone)을 감춤. 루머 감별기를 썼으면 사실/가짜 판정만 붙임
  * - 지난 뉴스: 장이 끝나 밝혀졌으므로 가짜·루머에 판정을 붙임
  */
-function publicNews(n: NewsEvent, today: number, rumorCheck: boolean): NewsEvent {
+function publicNews(n: NewsEvent, today: number, rumorCheck: boolean, pick?: string): NewsEvent {
   const { fake: _f, verdict: _v, revealDay, ...rest } = n;
   const fake = isFakeNews(n);
+  // (v14) 감별기로 고른 소식 하나만 판정
+  if (!rumorCheck && pick !== undefined && n.headline === pick && n.day === today) rumorCheck = true;
   // 사건 찌라시는 결과 발표가 지나야 진위를 밝힘 (그 전엔 오늘 뉴스처럼: 감별기를 쓴 그날만 판정)
   if (revealDay != null && today < revealDay && n.day < today) return { ...rest, realTone: rest.tone };
   if (n.day >= today) return rumorCheck && n.day === today ? { ...rest, realTone: rest.tone, verdict: fake ? 'false' : 'true' } : { ...rest, realTone: rest.tone };
@@ -383,7 +398,7 @@ function newsOrder(a: NewsEvent, b: NewsEvent) {
 }
 
 /** 오늘까지만 보이는 시장 — 오늘 종가·미래 가격·뉴스의 진실은 빠진다 */
-export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean; tick?: number; n?: number }): Market {
+export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean; tick?: number; n?: number; /** (v14) 감별기로 고른 소식 */ pick?: string }): Market {
   const strip = (b: Bar): Bar => ({ open: b.open, close: b.close, high: b.high, low: b.low, path: [] });
   if (finished) {
     return {
@@ -408,7 +423,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
   const news = [...m.news.filter((n) => n.day <= day), ...opts.fakes]
     .filter(released)
     .filter((n) => !(opts.blackout && n.day === day))
-    .map((n) => publicNews(n, day, opts.rumorCheck))
+    .map((n) => publicNews(n, day, opts.rumorCheck, opts.pick))
     .sort(newsOrder);
   return {
     seed: 0,
@@ -540,7 +555,11 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   });
 
   const todayInfo = finished ? [] : mine.infoUses.filter((u) => u.day === r.day).map((u) => u.kind);
-  const rumorCheck = todayInfo.includes('detector');
+  const usedDetector = todayInfo.includes('detector');
+  // (v14) 감별기는 고른 소식 하나만 — 예전 방은 오늘 소식 전부
+  const v14 = (r.version ?? 1) >= 14;
+  const rumorCheck = usedDetector && !v14;
+  const detectorPick = usedDetector && v14 ? mine.infoUses.find((u) => u.kind === 'detector' && u.day === r.day)?.pick : undefined;
   if (!finished) {
     if (todayInfo.includes('paper') && r.day + 1 < r.total_days) {
       // 내일 신문은 무엇이 나오는지만 — 장중 속보가 몇 시에 뜨는지(at)는 빼서 순간을 노리지 못하게
@@ -579,7 +598,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
       }
     }
   }
-  base.reveals.rumorCheck = rumorCheck;
+  base.reveals.rumorCheck = usedDetector;
 
   const fakes = finished
     ? []
@@ -587,15 +606,15 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const blackout = !finished && base.effectsToday.includes('blackout');
   base.reveals.blackout = blackout;
   // (v7) 장 전 찌라시 (둘째 날부터, 정보 차단을 맞은 날은 안 보임) · 장 전이면 장이 열리는 시각
-  if ((r.version ?? 1) >= PREMARKET_VERSION && open && r.day > 0 && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck);
+  if ((r.version ?? 1) >= PREMARKET_VERSION && open && (r.day > 0 || (r.version ?? 1) >= FIRST_PRE_VERSION) && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck, detectorPick);
   base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
   const releasedNow = open && !blackout ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
-  const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${fakes.length}|${blackout ? 1 : 0}`)}`;
+  const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${detectorPick ?? ''}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
-  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n });
+  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n, pick: detectorPick });
   if (open) {
     // 화면이 이미 가진 칸은 다시 보내지 않음 (1초 가격이면 매초 64KB → 1KB 안팎). 그래도 지금 칸까지만
     const from = liveFrom && liveFrom.day === day && Number.isInteger(liveFrom.from) && liveFrom.from > 0 && liveFrom.from <= clock.tick + 1 ? liveFrom.from : 0;
@@ -694,7 +713,17 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
   const usedToday = d.items.some((r) => r.player_id === meId && r.action === 'use' && r.kind === kind && r.day === d.room.day);
   const why = canUse(mine, kind, d.room.day, d.room.total_days, usedToday);
   if (why) throw new GameError(why);
+  const v14 = (d.room.version ?? 1) >= INFO_ONE_PER_DAY_VERSION;
+  // (v14) 정보 카드는 하루 1장 — 두 번째는 거절하고 카드는 그대로
+  if (v14 && ITEM_MAP[kind].type === 'info' && d.items.some((r) => r.player_id === meId && r.action === 'use' && r.day === d.room.day && ITEM_MAP[r.kind]?.type === 'info'))
+    throw new GameError('정보 카드는 하루에 1장만 쓸 수 있어요. 카드는 쓰이지 않고 그대로 있어요.', 409);
   let payload: ItemRow['payload'] = null;
+  // (v14) 루머 감별기: 오늘 보이는 소식(뉴스 제목·장 전 찌라시 글) 하나를 골라야 함
+  if (v14 && kind === 'detector') {
+    const pick = (input.payload as { pick?: unknown } | undefined)?.pick;
+    if (typeof pick !== 'string' || pick.length > 300 || !visibleToday(d, meId, now).includes(pick)) throw new GameError('확인할 소식을 하나 골라 주세요.');
+    payload = { pick };
+  }
   if (ITEM_MAP[kind].type === 'attack' || kind === 'spy') {
     // 기권한 사람은 대상이 될 수 없음 (카드가 헛되이 쓰이지 않게)
     const others = d.players.filter((p) => p.id !== meId && !p.left_game);
@@ -730,6 +759,20 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
     payload = { amount: Math.max(drawBonus(u), -Math.max(0, cash)) };
   }
   return { player_id: meId, day: d.room.day, kind, action: 'use', cost: 0, payload };
+}
+
+/** (v14) 오늘 이 사람 화면에 보이는 소식 — 뉴스 제목(공개된 장중 속보·받은 가짜 뉴스 포함, 정보 차단이면 없음) + 장 전 찌라시 글 */
+function visibleToday(d: GameData, meId: string, now: number): string[] {
+  const r = d.room;
+  const m = marketFor(r.seed, r.total_days, r.version ?? 1, r.salt);
+  const items = itemsOf(d);
+  const blackout = activeEffects(items, meId, r.day).some((e) => e.kind === 'blackout');
+  if (blackout) return [];
+  const clock = dayClock(r, now);
+  const news = m.news.filter((n) => n.day === r.day && (n.at == null || clock.tick >= releaseTick(n.at, clock.n))).map((n) => n.headline);
+  const fakes = items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews).filter((n) => n.day === r.day).map((n) => n.headline);
+  const rumors = (r.version ?? 1) >= PREMARKET_VERSION ? preRumors(m, r.day, r.salt ?? String(r.seed)).map((x) => x.text) : [];
+  return [...news, ...fakes, ...rumors];
 }
 
 /** 오늘 이 사람이 이미 방해를 받았는지 (적용·방패로 막힘·반사로 되돌림 모두 — 원래 대상 기준) */
@@ -825,7 +868,7 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
   const status: RoomStatus = day >= r.total_days ? 'finished' : 'playing';
   // v7: 다음 날 장이 열리기 전에 장 전 시간을 둠 (장 시계의 시작 = 마감 시각 - 하루 시간 이므로 마감 시각을 그만큼 뒤로)
   // (장 전 시간 + 예전부터 있던 장 시작 전 4초)
-  const pre = (r.version ?? 1) >= PREMARKET_VERSION ? preSeconds(r.turn_seconds) + 4 : 4;
+  const pre = (r.version ?? 1) >= PREMARKET_VERSION ? preSecondsFor(r) + 4 : 4;
   const deadline = status === 'playing' && r.turn_seconds > 0 ? now + (r.turn_seconds + pre) * 1000 : null;
   return { day, status, deadline, day_deadline: deadline };
 }
@@ -984,6 +1027,109 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
     const trade: Trade = { player_id: o.player_id, day, symbol: o.symbol, side: o.side, qty: o.qty, price, fee: o.fee, created_at: new Date(clock.startAt + hitAt * clock.tickMs + extra.length).toISOString() };
     extra.push(trade);
     out.push({ id: o.id!, status: 'filled', trade });
+  }
+  return out;
+}
+
+/* ---------------- 밸런스용 카드 기록 (판이 끝난 뒤 서버만) ---------------- */
+
+/** 카드 한 번 쓴 기록 — 언제·누구에게·막혔는지·그 뒤 결과. 계정 id 없음 */
+export interface CardUse {
+  k: ItemKind;
+  /** 쓴 날 (1일차부터) */
+  day: number;
+  /** ok · blocked(방패) · reflected(거울에 튕김) · crowded(같은 날 이미 다른 방해) */
+  res: 'ok' | 'blocked' | 'reflected' | 'crowded';
+  /** 쓸 때 내 순위 (전날 마감 재산 기준, 첫날은 없음) */
+  my?: number;
+  /** 대상의 그때 순위 · 마지막 순위 (방해·염탐) */
+  tgt?: number;
+  tgtEnd?: number;
+  /** 용돈 봉투로 받은(잃은) 돈 */
+  amt?: number;
+  /** 그날·다음 날 내 하루 수익률 − 다른 사람 평균 (%p 아닌 비율, 0.012 = 1.2%p) */
+  me0?: number;
+  me1?: number;
+  /** 방해가 걸린 날 대상의 하루 수익률 − 나머지 평균 */
+  tgt1?: number;
+}
+
+export interface CardStats {
+  uses: CardUse[];
+  /** 나를 노린 방해 카드: 종류별로 맞은 수 */
+  hit: Partial<Record<ItemKind, number>>;
+  /** 내 방패가 막은 수 · 내 거울이 튕긴 수 */
+  blocked: number;
+  mirrored: number;
+}
+
+const r4 = (x: number) => Math.round(x * 10000) / 10000;
+
+/** 자리마다 카드 기록. 판이 끝난 뒤(모든 날 공개) 서버가 game_stats 에 적을 때만 씀 — 화면 데이터에 넣지 않음 */
+export function cardStats(d: GameData): Record<string, CardStats> {
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
+  const players = sortedPlayers(d);
+  const last = d.room.total_days - 1;
+  const start = startCashFor(d.room.version);
+  // 날마다 마감 재산 (eq[id][k] = k일 마감, k=-1 은 시작 돈)
+  const eq: Record<string, number[]> = {};
+  for (const p of players) {
+    const trades = d.trades.filter((t) => t.player_id === p.id);
+    const spends = spendsOf(d, p.id);
+    eq[p.id] = [];
+    for (let k = 0; k <= last; k++) eq[p.id][k] = equityWith(computePortfolio(trades, spends, k, m.dividends, start), priceMap(m, k, true));
+  }
+  const at = (id: string, k: number) => (k < 0 ? start : eq[id][k]);
+  const dayRet = (id: string, k: number) => at(id, k) / Math.max(1, at(id, k - 1)) - 1;
+  /** k일에 id 의 하루 수익률 − 다른 사람들(except 빼고) 평균 */
+  const rel = (id: string, k: number, except: string[] = []) => {
+    if (k < 0 || k > last) return undefined;
+    const others = players.filter((o) => o.id !== id && !except.includes(o.id));
+    if (!others.length) return undefined;
+    return r4(dayRet(id, k) - others.reduce((s, o) => s + dayRet(o.id, k), 0) / others.length);
+  };
+  const rankAt = (id: string, k: number) => (k < 0 ? undefined : 1 + players.filter((o) => at(o.id, k) > at(id, k)).length);
+  const fin = finalResults(d);
+  const nickOf = new Map(players.map((p) => [p.id, p.nickname]));
+  const endRank = (id: string) => 1 + fin.results.findIndex((r) => r.nickname === nickOf.get(id));
+
+  const st = deriveItems(d.room.seed, players.map((p) => p.id), d.items, last, d.room.total_days, d.players.length < 2, d.room.version ?? 1);
+  const out: Record<string, CardStats> = {};
+  for (const p of players) out[p.id] = { uses: [], hit: {}, blocked: 0, mirrored: 0 };
+  const effs = [...st.effects];
+  const uses = d.items.filter((i) => i.action === 'use').sort((a, b) => a.day - b.day || (a.created_at ?? '').localeCompare(b.created_at ?? ''));
+  for (const u of uses) {
+    const o = out[u.player_id];
+    const def = ITEM_MAP[u.kind];
+    if (!o || !def) continue;
+    const e: CardUse = { k: u.kind, day: u.day + 1, res: 'ok' };
+    const my = rankAt(u.player_id, u.day - 1);
+    if (my) e.my = my;
+    e.me0 = rel(u.player_id, u.day);
+    e.me1 = rel(u.player_id, u.day + 1);
+    if (def.type === 'attack') {
+      // 같은 사람·종류·날의 효과 하나를 짝지음 (쓴 순서대로)
+      const i = effs.findIndex((x) => x.from === u.player_id && x.kind === u.kind && x.usedDay === u.day);
+      if (i < 0) continue; // 카드가 없어서 무효였던 줄
+      const x = effs.splice(i, 1)[0];
+      const target = x.reflected ? (x.by as string) : x.to;
+      e.res = x.reflected ? 'reflected' : x.crowded ? 'crowded' : x.blocked ? 'blocked' : 'ok';
+      e.tgt = rankAt(target, u.day - 1);
+      e.tgtEnd = endRank(target);
+      const hitId = x.reflected ? u.player_id : target;
+      if (e.res === 'ok' || e.res === 'reflected') {
+        e.tgt1 = rel(hitId, x.days[0], x.reflected ? [] : [u.player_id]);
+        out[hitId].hit[u.kind] = (out[hitId].hit[u.kind] ?? 0) + 1;
+      }
+      if (e.res === 'blocked' && out[target]) out[target].blocked++;
+      if (e.res === 'reflected' && out[target]) out[target].mirrored++;
+    } else if (u.kind === 'spy' && u.payload?.target && out[u.payload.target]) {
+      e.tgt = rankAt(u.payload.target, u.day - 1);
+      e.tgtEnd = endRank(u.payload.target);
+    }
+    if (u.kind === 'bonus' && typeof u.payload?.amount === 'number') e.amt = u.payload.amount;
+    for (const key of Object.keys(e) as (keyof CardUse)[]) if (e[key] === undefined) delete e[key];
+    o.uses.push(e);
   }
   return out;
 }

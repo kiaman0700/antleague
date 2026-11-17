@@ -119,6 +119,7 @@ import {
   finalResults,
   GameError,
   CURRENT_RULES_VERSION,
+  firstDayLead,
   dayClock,
   graceDeadline,
   LEGACY_TURN_SECONDS,
@@ -148,6 +149,9 @@ import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, 
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
 import { evaluateMissions, missionState, rerollMission } from './missions.js';
+import { adminNotice, listNotices } from './notices.js';
+import { adminOverview } from './adminStats.js';
+import { recordGameStats } from './stats.js';
 import { EMOJIS, PHRASES } from '../../src/game/reactions.js';
 
 export interface ApiResult {
@@ -517,6 +521,12 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     const fin = finalResults(fresh);
     await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
     if (d.room.kind === 'daily' && fin.results[0]) await recordDaily(d.room.id, fin.results[0].ret);
+    // 밸런스용 판 기록 (계정 id 없이, 시험 판 표시, 그 판 시작 때의 실력) — 점수 반영 전에. 실패해도 진행에 영향 없음
+    try {
+      await recordGameStats(db(), fresh, fin);
+    } catch (e) {
+      console.error('[api] stats', e instanceof Error ? e.message : e);
+    }
     try {
       await recordMatch(db(), d.room.id, fin.results, !!d.room.ranked);
     } catch (e) {
@@ -791,7 +801,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       ]);
       if ((mineDay.count ?? 0) >= 20) throw new GameError('오늘은 의견을 충분히 보냈어요. 내일 다시 보내 주세요.', 429);
       if ((allHour.count ?? 0) >= 300) throw new GameError('지금 의견이 많이 몰렸어요. 잠시 후 다시 보내 주세요.', 429);
-      const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page });
+      // 자동 시험 계정이 보낸 의견은 읽음으로 저장 — 운영자 의견함·안 읽은 수에 시험 글이 쌓이지 않게
+      const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page, ...(testMarked.has(uid) ? { read_at: new Date().toISOString() } : {}) });
       if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
       return { ok: true };
     }
@@ -975,7 +986,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         roomId = room.id;
         await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
         const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
-        const deadline = iso(Date.now() + (preset.turnSeconds + 5) * 1000);
+        const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
         const matchedAt = new Date().toISOString();
         for (const m of members) {
@@ -1086,7 +1097,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       };
       let roomId: string | undefined;
       try {
-        const deadline = iso(Date.now() + (DAILY_TURN + 3) * 1000);
+        const deadline = iso(Date.now() + (DAILY_TURN + 3 + firstDayLead(CURRENT_RULES_VERSION, DAILY_TURN, 'daily')) * 1000); // (v14) 첫날 장 전 시간
         const [, mm, dd] = day.split('-');
         let room: { id: string; code: string } | null = null;
         for (let i = 0; i < 5 && !room; i++) {
@@ -1122,7 +1133,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       await ensureFree(uid);
-      const deadline = iso(Date.now() + (turnSeconds + 3) * 1000);
+      const deadline = iso(Date.now() + (turnSeconds + 3 + firstDayLead(CURRENT_RULES_VERSION, turnSeconds, 'bot')) * 1000); // (v14) 첫날 장 전 시간
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
         const res = await sb
@@ -1208,7 +1219,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (d.room.status !== 'waiting') throw new GameError('이미 시작했어요.', 409);
       if (d.players.length < 2) throw new GameError('2명 이상 모여야 시작할 수 있어요.', 409);
       if (!d.players.every((p) => p.ready || p.id === playerId)) throw new GameError('모두 준비해야 시작할 수 있어요.', 409);
-      const deadline = iso(Date.now() + (d.room.turn_seconds + 3) * 1000);
+      const deadline = iso(Date.now() + (d.room.turn_seconds + 3 + firstDayLead(d.room.version, d.room.turn_seconds, d.room.kind)) * 1000); // (v14) 첫날 장 전 시간 (방을 만들 때 규칙)
       let st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
       if (st.error && /day_deadline/.test(st.error.message)) st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
       must(st, 'start');
@@ -1342,6 +1353,10 @@ const isAdminUser = (u: { app_metadata?: Record<string, unknown> | null; is_anon
 
 async function adminAct(action: string, b: Body) {
   const sb = db();
+  // 공지사항 쓰기·고치기·지우기 (운영자만 — 부르는 곳에서 확인)
+  if (action === 'adminNotice') return adminNotice(sb, b);
+  // 운영 현황: 숫자 모음만 (계정 id·닉네임 없음)
+  if (action === 'adminOverview') return adminOverview(sb);
   if (action === 'adminInbox') {
     const kind = typeof b.kind === 'string' && ['bug', 'idea', 'privacy', 'etc'].includes(b.kind) ? b.kind : null;
     let q = sb.from('feedback').select('id, kind, body, page, created_at, read_at').order('created_at', { ascending: false }).limit(200);
@@ -1579,7 +1594,7 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
           { room_id: room.id, user_id: inv.from_user, nickname: fromNick, mode: 'easy', ready: true },
           { room_id: room.id, user_id: uid, nickname: me.nickname, mode, ready: true },
         ]).select('id, user_id'), 'duel players') as { id: string; user_id: string }[];
-        const deadline = iso(Date.now() + (preset.turnSeconds + 5) * 1000);
+        const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'duel start');
         const fromP = ins.find((x) => x.user_id === inv.from_user)!;
         const meP = ins.find((x) => x.user_id === uid)!;
@@ -1778,7 +1793,9 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
   return { ok: true };
 }
 
-export async function handle(body: unknown, token: string | null, ip = 'unknown'): Promise<ApiResult> {
+/** 시험 계정으로 적어 둔 계정 (서버 메모리 — 같은 계정은 한 번만 DB 에 씀) */
+const testMarked = new Set<string>();
+export async function handle(body: unknown, token: string | null, ip = 'unknown', testRun = false): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'loginEmail') {
@@ -1793,6 +1810,11 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (!token && body && typeof body === 'object' && (body as Body).action === 'rooms') {
       rateLimit('rooms:' + ip, 30, 60_000);
       return { status: 200, body: await act('rooms', body as Body, '') };
+    }
+    // 공지사항은 누구나 읽기만 (로그인 없이도)
+    if (body && typeof body === 'object' && (body as Body).action === 'notices') {
+      rateLimit('notices:' + ip, 30, 60_000);
+      return { status: 200, body: await listNotices(db()) };
     }
     // 랭킹도 공개 정보(닉네임·티어·점수) — 로그인 없이 보면 '내 순위'만 빠짐
     if (!token && body && typeof body === 'object' && (body as Body).action === 'ranking') {
@@ -1812,6 +1834,11 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
     }
     const uid = data.user.id;
+    // 자동 시험 도구가 보낸 요청이면 이 계정을 시험 계정으로 적어 둠 (밸런스용 판 기록에서 뺌, 046)
+    if (testRun && !testMarked.has(uid)) {
+      testMarked.add(uid);
+      db().from('test_users').upsert({ user_id: uid }, { onConflict: 'user_id', ignoreDuplicates: true }).then(() => {}, () => {});
+    }
     if (!body || typeof body !== 'object' || Array.isArray(body)) return { status: 400, body: { error: '잘못된 요청이에요.' } };
     const b = body as Body;
     const action = typeof b.action === 'string' ? b.action : '';
@@ -1828,6 +1855,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (['signup', 'checkAvailable', 'guestSummary', 'mergeGuest', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit, leaveSeat) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };
+      if (action === 'adminOverview') rateLimit(uid + ':adminOverview', 20, 60_000); // 여러 표를 한 번에 세는 무거운 요청
       return { status: 200, body: await adminAct(action, b) };
     }
     const result = await act(action, b, uid);

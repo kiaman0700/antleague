@@ -34,13 +34,13 @@ const PEEK_EMPTY: Record<string, () => unknown> = {
 /** 게임 서버(/api/game) 호출 — 로그인 토큰을 함께 보낸다 */
 export async function api<T = unknown>(action: string, payload: Record<string, unknown> = {}, retried = false): Promise<T> {
   const peek = Object.prototype.hasOwnProperty.call(PEEK_EMPTY, action);
-  if (supabase && (peek || action === 'rooms' || action === 'ranking')) {
+  if (supabase && (peek || action === 'rooms' || action === 'ranking' || action === 'notices')) {
     const has = await supabase.auth
       .getSession()
       .then((r) => !!r.data.session)
       .catch(() => true);
     if (!has && peek) return PEEK_EMPTY[action]() as T;
-    // 방 목록·랭킹은 공개 — 계정 없이 서버에 물어봄 (토큰 없이)
+    // 방 목록·랭킹·공지사항은 공개 — 계정 없이 서버에 물어봄 (토큰 없이)
     if (!has) return apiOnce<T>(action, payload, true);
   }
   try {

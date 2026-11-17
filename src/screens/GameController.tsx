@@ -4,7 +4,7 @@ import { Loading } from '../components/ui';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
 import { setDrawScope } from '../components/ProChart';
-import { Icon, type IconName } from '../components/Icon';
+import { CardIcon, Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab } from '../prefs';
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, PlayerPic, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
@@ -246,6 +246,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 첫 판 안내: 대결 중에는 제한 시간이 흐르므로 자동으로 띄우지 않음 (도움말 버튼으로는 언제든)
   const [tutorial, setTutorial] = useState(() => !session.demo && !session.tutorial && session.mode !== 'multi' && session.ui === 'easy' && !tutorialSeen());
   const [fakeModal, setFakeModal] = useState(false);
+  // (v14) 루머 감별기: 확인할 소식 하나 고르기
+  const [detectorPick, setDetectorPick] = useState(false);
   const [sheet, setSheet] = useState<null | 'buy' | 'sell'>(null);
   const [menu, setMenu] = useState(false);
   const [rankSheet, setRankSheet] = useState(false);
@@ -370,11 +372,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 마감 시각엔 장이 열리기 전 몇 초(장 시작 준비)가 들어 있어서, 그대로 보이면 '1분' 하루에 '1:03 남음'처럼 하루 길이보다 길게 보임 → 하루 길이까지만
   const daySecs = room?.turnSeconds ?? 0;
   const rawRemaining = deadline !== null ? Math.max(0, Math.ceil((deadline - (now + offset)) / 1000)) : null;
-  const remaining = rawRemaining !== null && daySecs > 0 ? Math.min(rawRemaining, daySecs) : rawRemaining;
+  // 연습 무제한: 거래 마감이 아주 멀리 있음 → 남은 시간 대신 '시간 무제한'
+  const unlimitedDay = solo && rawRemaining !== null && rawRemaining > 86_400;
+  const remaining = unlimitedDay ? null : rawRemaining !== null && daySecs > 0 ? Math.min(rawRemaining, daySecs) : rawRemaining;
   // (v7) 장 전 시간: 어제 정리·찌라시·예약 주문. 지금 가격 거래와 장 마감은 장이 열린 뒤에
   const preUntil = !solo ? (room?.preUntil ?? null) : null;
   const preLeft = preUntil !== null ? Math.max(0, Math.ceil((preUntil - (now + offset)) / 1000)) : 0;
-  const inPre = preUntil !== null && preLeft > 0 && closing === null;
+  // 연습(혼자·봇전): 장 전 시간은 무제한 — '장 시작'을 눌러야 그날 장이 열림 (사용자 요청 2026-11-18)
+  const soloPre = solo && !session.tutorial && !session.demo && room?.status === 'playing' && room?.deadline == null && closing === null && !showResult;
+  const inPre = (preUntil !== null && preLeft > 0 && closing === null) || soloPre;
+  // 봇전·오늘의 도전(서버의 혼자 하는 판)도 장 전은 사실상 무제한 → '장 시작'으로 보여 줌
+  const freePre = soloPre || (inPre && preLeft > 3600);
   const preReadyMe = !!meRow?.preReady;
   // 카드를 지금 못 쓰는 이유 (버튼이 회색인 까닭을 그대로 알려 줌)
   const cardBlock =
@@ -546,6 +554,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     }
     // 차트 분석은 지금 보고 있는 종목
     if (kind === 'scout' && !payload.symbol) payload = { ...payload, symbol: selected };
+    if (kind === 'detector' && (view?.room.rulesVersion ?? 1) >= 14 && !payload.pick) return setDetectorPick(true);
     if (kind === 'fake' && !payload.symbol) {
       setFakeTarget(payload.target ?? null);
       return setFakeModal(true);
@@ -592,10 +601,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   };
   // 장 마감 취소: 다음 날로 넘어가기 전(시간이 남아 있을 때)이면 언제든
   const preReady = () => {
+    if (soloPre) {
+      play('tap');
+      act('startDay', {})
+        .then(() => showToast('장이 열렸어요'))
+        .catch((e) => showToast(e instanceof Error ? e.message : '실패했어요', 'err'));
+      return;
+    }
     if (!inPre || preReadyMe) return;
     play('tap');
     act('preReady', {})
-      .then(() => showToast('준비 완료! 모두 누르면 장이 바로 열려요'))
+      .then(() => showToast(freePre ? '장이 열려요' : '준비 완료! 모두 누르면 장이 바로 열려요'))
       // 시간이 막 끝난 순간이면(장이 이미 열림) 조용히 넘어감
       .catch((e) => !/장 전 시간이 아니에요/.test(e instanceof Error ? e.message : '') && showToast(e instanceof Error ? e.message : '실패했어요', 'err'));
   };
@@ -628,7 +644,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     // 새 날: 휴대폰은 아침 뉴스(대결은 장 전 찌라시도)가 있는 뉴스 탭으로 — 연습도 같게 (튜토리얼은 단계가 탭을 정함)
     if (mobile && !session.tutorial && (solo || (room?.rulesVersion ?? 1) >= 7)) setTab('news');
     // 혼자 연습: 다음 날 장은 이 버튼을 눌러야 열림 (결산 보는 동안 시간이 흐르지 않게)
-    if (solo) act('startDay', {}).catch(() => {});
+    if (solo && session.tutorial) act('startDay', {}).catch(() => {});
   };
 
   const pushBubble = (r: Reaction & { mine?: boolean }) => {
@@ -804,8 +820,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
   const effectsOnMe = effects.map((k) => (k === 'freeze' ? '누군가의 거래 정지 카드 때문에 오늘은 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
   const mmss2 = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-  const timerText = inPre ? `장 전 ${mmss2(preLeft)}` : remaining !== null && closing === null ? mmss2(remaining) : null;
-  const endLabel = inPre ? (preReadyMe ? '준비 완료함' : '준비 완료') : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
+  const timerText = inPre ? (freePre ? '장 전 · 시간 제한 없음' : `장 전 ${mmss2(preLeft)}`) : remaining !== null && closing === null ? mmss2(remaining) : null;
+  const endLabel = inPre ? (freePre ? '장 시작' : preReadyMe ? '준비 완료함' : '준비 완료') : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
   // 서버와 같은 기준: 접속 중(자리 비움·기권 제외)인 사람만 셈
   const preReadyCount = players.filter((p) => p.status === 'on' && p.preReady).length;
   const preStaying = players.filter((p) => p.status === 'on').length;
@@ -1030,7 +1046,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {intro && room && (
         <MatchIntro
           title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : room.kind === 'bot' ? '봇전' : '대결 시작'}
-          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · 장이 열렸어요`}
+          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 전 시간이에요 · 찌라시를 보고 준비하세요' : '장이 열렸어요'}`}
           players={players.filter((p) => p.status !== 'left')}
           meId={me}
           onClose={() => setIntro(false)}
@@ -1064,6 +1080,32 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             useCard(k, { target: id });
           }}
         />
+      )}
+      {detectorPick && view && (
+        <Sheet title={<><CardIcon kind="detector" size={18} /> 어떤 소식을 확인할까요?</>} onClose={() => setDetectorPick(false)}>
+          <p className="muted small">하나만 골라요. 고른 소식이 진짜인지 가짜인지 알려줘요.</p>
+          <ul className="det-pick">
+            {(view.rumors ?? []).map((r) => (
+              <li key={'r' + r.text}>
+                <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: r.text }))}>
+                  <span className="det-kind">찌라시</span>
+                  <span>{r.text}</span>
+                </button>
+              </li>
+            ))}
+            {(view.market?.news ?? [])
+              .filter((n) => n.day === view.room.day)
+              .map((n) => (
+                <li key={'n' + n.headline}>
+                  <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: n.headline }))}>
+                    <span className="det-kind">{n.rumor ? '소문 기사' : '뉴스'}</span>
+                    <span>{n.headline.replace('[루머] ', '')}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+          {!(view.rumors ?? []).length && !(view.market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
+        </Sheet>
       )}
       {fakeModal && (
         <FakeNewsModal
@@ -1278,9 +1320,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 {wonShort(equity)} <em className={tone(myRet)}>{pct(myRet, 1)}</em>
               </b>
               {!rivals ? (
-                <span className={'mh-cmp ' + tone(myRet - (idxNow / KR_INDEX_BASE - 1))}>
-                  시장보다 {pct(myRet - (idxNow / KR_INDEX_BASE - 1), 1)}
-                </span>
+                // 첫날 아무것도 사기 전엔 '시장보다 -1%' 처럼 이미 진 것처럼 보이지 않게 안내만
+                day === 0 && myRet === 0 ? (
+                  <span className="mh-cmp">시장과 비교해요</span>
+                ) : (
+                  <span className={'mh-cmp ' + tone(myRet - (idxNow / KR_INDEX_BASE - 1))}>
+                    시장보다 {pct(myRet - (idxNow / KR_INDEX_BASE - 1), 1)}
+                  </span>
+                )
               ) : players.length > 2 ? (
                 <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
                   <strong>
@@ -1315,12 +1362,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               <b>{inPre ? endLabel : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
               <small>
                 {inPre
-                  ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}` : ''}`
+                  ? freePre ? '준비되면 눌러요' : `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}` : ''}`
                   : endedToday
                     ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}${timerText ? ' · ' + timerText : ''}`
                     : timerText
                       ? `${timerText} 남음`
-                      : `${day + 1}일차`}
+                      : `${day + 1}일차${unlimitedDay ? ' · 시간 무제한' : ''}`}
               </small>
             </button>
           </div>
@@ -1541,17 +1588,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           className={'btn end-turn' + (inPre ? ' pre' + (preReadyMe ? ' waiting' : '') : endedToday ? ' waiting' : '') + (!inPre && remaining !== null && remaining <= 10 && !endedToday ? ' hurry' : '')}
           disabled={inPre ? preReadyMe || busy : endedToday ? !canCancelEnd || busy : !canAct || busy}
           onClick={inPre ? preReady : endedToday ? cancelEnd : endTurn}
-          title={inPre ? '모두 준비 완료를 누르면 장이 바로 열려요' : endedToday ? '다음 날로 넘어가기 전까지 취소할 수 있어요' : '오늘 거래를 끝내고 마감해요'}
+          title={inPre ? (freePre ? '누르면 오늘 장이 열려요' : '모두 준비 완료를 누르면 장이 바로 열려요') : endedToday ? '다음 날로 넘어가기 전까지 취소할 수 있어요' : '오늘 거래를 끝내고 마감해요'}
         >
           <span className="et-main">{endLabel}</span>
           <small className="et-sub">
             {inPre
-              ? `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}명` : ''}`
+              ? freePre ? '시간 제한 없음 · 준비되면 눌러요' : `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}명` : ''}`
               : endedToday
                 ? `마감 ${rows.filter((r) => r.ended).length}/${rows.length}명${timerText ? ' · ' + timerText : ''}`
                 : timerText
                   ? `${timerText} 남음`
-                  : `${day + 1}일차`}
+                  : `${day + 1}일차${unlimitedDay ? ' · 시간 무제한' : ''}`}
           </small>
         </button>
       </section>

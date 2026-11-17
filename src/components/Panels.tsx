@@ -426,7 +426,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       </h4>
       {rumorCheck && !blackout && today.length > 0 && (
         <div className="detector-sum">
-          <CardIcon kind="detector" size={15} /> 루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개
+          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '루머 감별기로 고른 기사를 확인했어요 (아래 표시)' : '루머 감별기로 고른 소식은 다른 칸(찌라시)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
         </div>
       )}
       {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}

@@ -18,7 +18,7 @@ const PAYLOADS = [
 ];
 
 const raw = async (body, tok, headers = {}) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}), ...headers }, body });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1', ...(tok ? { authorization: 'Bearer ' + tok } : {}), ...headers }, body });
   return { s: r.status, t: await r.text() };
 };
 const U = await user();

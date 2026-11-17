@@ -52,7 +52,7 @@ async function session() {
       return data.session.access_token;
     }
     // 익명 로그인이 막히면 게임과 같은 대체 경로(서버 손님 계정)로
-    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'guest' }) }).catch(() => null);
+    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1' }, body: JSON.stringify({ action: 'guest' }) }).catch(() => null);
     if (r?.ok) {
       const g = await r.json();
       const { data: d2, error: e2 } = await sb.auth.signInWithPassword(g);
@@ -93,7 +93,7 @@ export async function user() {
   const raw = async (body) => {
     const r = await fetch(BASE + '/api/game', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok },
+      headers: { 'content-type': 'application/json', 'x-stockduel-test': '1', authorization: 'Bearer ' + tok },
       body: JSON.stringify(body),
     });
     return { s: r.status, b: await r.json().catch(() => null) };
@@ -108,6 +108,18 @@ export async function user() {
     if (body?.action === 'endTurn' && res.s === 409 && /장이 열린 뒤/.test(res.b?.error ?? '')) {
       for (const u of roomUsers.get(body.roomId) ?? []) await u({ action: 'preReady', roomId: body.roomId });
       return raw(body);
+    }
+    // (규칙 v14) 첫날에도 장 전 시간 → 지금 가격 거래가 막히면 모두 '준비 완료' 후 다시, 그래도 안 열리면 장이 열릴 때까지 기다림
+    if (body?.action === 'trade' && res.s === 409 && /장이 열리지/.test(res.b?.error ?? '')) {
+      for (const u of roomUsers.get(body.roomId) ?? []) await u({ action: 'preReady', roomId: body.roomId });
+      let again = await raw(body);
+      for (let i = 0; i < 4 && again.s === 409 && /장이 열리지/.test(again.b?.error ?? ''); i++) {
+        const st = (await raw({ action: 'state', roomId: body.roomId })).b;
+        const wait = Math.min(46_000, Math.max(500, (st?.room?.preUntil ?? Date.now()) - Date.now() + 600));
+        await new Promise((r) => setTimeout(r, wait));
+        again = await raw(body);
+      }
+      return again;
     }
     return res;
   };

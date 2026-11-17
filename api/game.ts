@@ -36,6 +36,8 @@ export async function POST(request: Request): Promise<Response> {
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   // 손님 계정 만들기 제한용 접속 IP (Vercel 이 붙여 주는 값)
   const ip = (request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim().slice(0, 64);
-  const res = await handle(body, token, ip);
+  // 자동 시험 도구(e2e) 표시 — 밸런스 통계에서 빼는 용도로만 (붙여도 자기 판이 통계에서 빠질 뿐)
+  const testRun = request.headers.get('x-stockduel-test') === '1';
+  const res = await handle(body, token, ip, testRun);
   return json(res.status, res.body);
 }

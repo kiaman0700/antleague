@@ -5,7 +5,7 @@ import { ok, done, BASE } from './lib.mjs';
 
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
@@ -104,6 +104,10 @@ async function pollAll(us, max = 15) {
   await B({ action: 'queueJoin', queue: 'ranked_duel_quick', mode: 'easy' });
   const [ma] = await pollAll([A, B]);
   const roomId = ma.roomId;
+  // (v14) 첫날 장 전 시간 → 둘 다 준비 완료하고 장이 열릴 때까지 잠깐
+  await A({ action: 'preReady', roomId: roomId });
+  await B({ action: 'preReady', roomId: roomId });
+  await wait(4500);
   const v = (await A({ action: 'state', roomId })).b;
   ok('랭킹전 방', v.room.ranked === true && v.players.every((p) => p.verified), JSON.stringify(v.room));
   await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
@@ -135,6 +139,10 @@ async function pollAll(us, max = 15) {
   await D({ action: 'queueJoin', queue: 'ranked_duel_quick', mode: 'easy' });
   const [mc] = await pollAll([C, D]);
   const roomId = mc.roomId;
+  // (v14) 첫날 장 전 시간 → 둘 다 준비 완료하고 장이 열릴 때까지 잠깐
+  await C({ action: 'preReady', roomId: roomId });
+  await D({ action: 'preReady', roomId: roomId });
+  await wait(4500);
   // D 는 몰빵 → 재산이 C(현금)보다 낮아질 수도 있지만, C 가 기권하면 C 가 꼴찌
   await D({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   await C({ action: 'leave', roomId });

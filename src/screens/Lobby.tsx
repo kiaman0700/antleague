@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
@@ -6,7 +7,7 @@ import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPicker, PREF_EVENT } from '../components/MatchFinder';
-import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
+import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
@@ -22,6 +23,7 @@ import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel'
 import { matchKindName, useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
+import { waitLabel } from '../engine/matching';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
@@ -69,10 +71,10 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking';
+export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking' | 'notices';
 const PAGE_TITLE: Partial<Record<LobbyPage, string>> = {
   ranked: '랭킹전', casual: '일반전', custom: '커스텀', friends: '친구', practice: '연습', more: '설정·더보기', rooms: '방 찾기', create: '방 만들기',
-  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '의견함', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹',
+  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '운영자', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹', notices: '공지사항',
 };
 
 interface Props {
@@ -272,7 +274,7 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
           {DAY_OPTIONS.map((o) => (
             <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
               <b>{o.label}</b>
-              <small>최대 {Math.round((o.days * (daySec + 8)) / 60)}분</small>
+              <small>{daySec === 0 ? '시간 제한 없음' : `최대 ${Math.round((o.days * (daySec + 8)) / 60)}분`}</small>
             </button>
           ))}
         </div>
@@ -282,8 +284,8 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
         <div className="seg">
           {SOLO_DAY_OPTIONS.map((sec) => (
             <button key={sec} aria-pressed={daySec === sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
-              <b>{sec / 60}분</b>
-              <small>{sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
+              <b>{sec === 0 ? '무제한' : sec / 60 + '분'}</b>
+              <small>{sec === 0 ? '내가 마감할 때까지' : sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
             </button>
           ))}
         </div>
@@ -488,6 +490,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots' | 'daily'>(null);
+  // 설정·더보기의 공지사항 줄: 이 기기에서 아직 안 본 공지가 있으면 점 (공지 목록은 공개라 로그인 없이도)
+  const [newNotice, setNewNotice] = useState(false);
+  useEffect(() => {
+    if (tab !== 'more' || !online) return;
+    api<Notice[]>('notices')
+      .then((r) => setNewNotice(r.some((x) => new Date(x.created_at).getTime() > noticeSeenAt())))
+      .catch(() => {});
+  }, [tab]);
   const [roomList, setRoomList] = useState<RoomInfo[] | null>(null);
   const openRooms = roomList ? roomList.filter((x) => !x.joined).length : null;
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
@@ -886,6 +896,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </section>
             <section className="panel pad more-links">
               <h3 className="more-h">문의·안내</h3>
+              <button className="more-row" onClick={() => go('notices')}>
+                <Icon name="megaphone" /> <span className="mr-t"><b>공지사항{newNotice && <i className="more-new" aria-label="새 공지" />}</b><small>운영자가 알리는 소식</small></span> <Icon name="right" size={14} />
+              </button>
               <button className="more-row" onClick={() => openModal('feedback')}>
                 <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
               </button>
@@ -1601,7 +1614,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = <Companies onBack={back} />;
       break;
     case 'admin':
-      body = <Admin onBack={back} onLogin={() => go('login')} />;
+      body = <Admin onBack={back} onLogin={() => go('login')} onNotices={() => go('notices')} />;
       break;
     case 'login':
     case 'signup':
@@ -1609,6 +1622,9 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       break;
     case 'me':
       body = <MyProfilePage onBack={back} onLogin={() => go('login')} onRanking={() => go('ranking')} onRecords={() => go('records')} />;
+      break;
+    case 'notices':
+      body = <NoticesPage onBack={back} />;
       break;
     case 'ranking':
       body = <RankingPage onBack={back} onLogin={() => go('login')} onPlay={() => go('ranked')} />;
@@ -1650,7 +1666,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const [, setClock] = useState(0);
   useEffect(() => {
     if (!matching) return;
-    const id = setInterval(() => setClock((x) => x + 1), 1000);
+    const id = setInterval(() => setClock(Math.floor((Date.now() - getMatch().startedAt) / 1000)), 500);
     return () => clearInterval(id);
   }, [matching]);
   const waitedSec = matching ? Math.max(0, Math.floor((Date.now() - match.startedAt) / 1000)) : 0;
@@ -1714,15 +1730,25 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
           {matching && !onMatchPage && (
             <div className="mm-pill" role="status">
               <span className="mf-spin sm" aria-hidden />
-              <button className="mm-txt" onClick={goMatchTab}>
-                <b>{match.phase === 'linking' ? '방 만드는 중…' : '매칭 중'}</b>
+              <button className="mm-txt" onClick={goMatchTab} aria-label="매칭 화면 열기">
+                <span className="mm-l1">
+                  <b>{match.phase === 'linking' ? '상대를 찾았어요' : match.phase === 'joining' ? '찾기 시작…' : '매칭 중'}</b>
+                  <span className="mm-time">{mmss(waitedSec)}</span>
+                </span>
                 <small>
-                  {queueText(match.queue)} · {mmss(waitedSec)}
+                  {queueText(match.queue)}
+                  {match.phase === 'linking'
+                    ? ' · 방 만드는 중'
+                    : match.info?.etaSec != null
+                      ? ` · 예상 ${waitLabel(match.info.etaSec)}`
+                      : match.info && match.info.inQueue > 1
+                        ? ` · ${match.info.inQueue - 1}명 함께 찾는 중`
+                        : ''}
                 </small>
               </button>
               {match.phase !== 'linking' && (
-                <button className="mm-x" onClick={() => void cancelMatch()} aria-label="그만 찾기">
-                  <Icon name="x" size={16} />
+                <button className="mm-x" onClick={() => void cancelMatch()}>
+                  취소
                 </button>
               )}
             </div>

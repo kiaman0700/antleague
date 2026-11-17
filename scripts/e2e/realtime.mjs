@@ -9,6 +9,10 @@ const { roomId, code } = made.b;
 await B({ action: 'join', code, nickname: '실시간B', mode: 'pro' });
 await B({ action: 'ready', roomId, ready: true });
 ok('시작', (await A({ action: 'start', roomId })).s === 200);
+// (v14) 첫날에도 장 전 시간 → 둘 다 준비 완료해 바로 장을 엶
+await A({ action: 'preReady', roomId });
+await B({ action: 'preReady', roomId });
+await sleep(4500);
 
 const state = async (P = A) => (await P({ action: 'state', roomId })).b;
 let s = await state();

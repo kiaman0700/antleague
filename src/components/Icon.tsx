@@ -156,6 +156,7 @@ const ICONS = {
   info: Info,
   warn: AlertTriangle,
   bell: Bell,
+  megaphone: Megaphone,
   flame: Flame,
   coins: Coins,
   cash: Banknote,
