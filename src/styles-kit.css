@@ -465,3 +465,12 @@ body { background: var(--bg) !important; }
 .daily-me { margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
 .daily-h { margin: 14px 0 0; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
 .daily-result { margin-top: 14px; }
+/* 일반전: 기다리지 않고 하기 (봇전 · 오늘의 도전) */
+.hub-quick { margin-top: 14px; }
+.hub-quick .hq-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.hub-quick .hq-btn { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text); text-align: left; min-width: 0; }
+.hub-quick .hq-btn:hover { background: var(--surface-3); }
+.hub-quick .hq-btn > svg { flex: none; color: var(--accent-text, #b9b0ff); }
+.hub-quick .hq-btn span { display: flex; flex-direction: column; min-width: 0; }
+.hub-quick .hq-btn small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 400px) { .hub-quick .hq-row { grid-template-columns: 1fr; } }

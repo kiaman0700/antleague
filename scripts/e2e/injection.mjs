@@ -44,6 +44,8 @@ for (const p of PAYLOADS) {
   if (p.includes('<')) ok(`방 제목 '${p.slice(0, 20)}' 거절`, t.s === 400);
   await probe('join.code', { action: 'join', code: p, nickname: '정상', mode: 'easy' });
   await probe('joinRoom', { action: 'joinRoom', roomId: p, nickname: '정상', mode: 'easy', password: p });
+  await probe('addBot', { action: 'addBot', roomId: p, level: p });
+  await probe('dailyInfo', { action: 'dailyInfo', day: p });
   await probe('state', { action: 'state', roomId: p });
   await probe('check', { action: 'checkAvailable', username: p, nickname: p });
   await probe('signup', { action: 'signup', username: p, password: p, nickname: p, agree14: true, agreePrivacy: true, agreeTerms: true });

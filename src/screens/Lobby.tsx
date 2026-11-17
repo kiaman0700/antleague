@@ -621,10 +621,32 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'casual' &&
         (online ? (
-          <div className="hub-grid">
-            {finder('casual')}
-            {member ? <PartyPanel party={party} reload={reloadParty} /> : <MatchFlow />}
-          </div>
+          <>
+            <div className="hub-grid">
+              {finder('casual')}
+              {member ? <PartyPanel party={party} reload={reloadParty} /> : <MatchFlow />}
+            </div>
+            {/* 사람이 적어 매칭이 오래 걸릴 때: 기다리지 않고 할 수 있는 것 */}
+            <section className="panel pad hub-quick" aria-label="기다리지 않고 하기">
+              <SectionTitle>기다리기 싫다면</SectionTitle>
+              <div className="hq-row">
+                <button className="hq-btn" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
+                  <Icon name="bot" size={20} />
+                  <span>
+                    <b>봇전</b>
+                    <small>봇과 바로 한 판</small>
+                  </span>
+                </button>
+                <button className="hq-btn" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
+                  <Icon name="daily" size={20} />
+                  <span>
+                    <b>오늘의 도전</b>
+                    <small>모두 같은 시장, 하루 한 번</small>
+                  </span>
+                </button>
+              </div>
+            </section>
+          </>
         ) : (
           <OfflineNote />
         ))}
