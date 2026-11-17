@@ -1004,3 +1004,5 @@ html[data-device='pc'] .news-cats .nc-scroll { cursor: grab; }
 .m-game.editing .bottom-nav > button { padding-top: 16px; }
 .nav-move { top: -6px; }
 .nav-move { top: -13px; }
+/* '진행 중인 대결 · 다시 보기' 띠가 떠 있으면 맨 아래 안내 줄이 그 뒤에 가리지 않게 아래 여백 */
+.lobby-shell:has(> .rc-pill) .cl-foot { padding-bottom: 64px; }

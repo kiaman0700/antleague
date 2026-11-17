@@ -540,7 +540,8 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
                     {r.rating_after - r.rating_before}점
                   </span>
                 ) : (
-                  <span className="muted small">점수 없음(게스트와)</span>
+                  // 점수가 안 바뀐 판은 봇전·일반전·커스텀도 있어서 '게스트와'라고 하면 틀림. 랭킹전 배치 중이면 점수를 숨김
+                  <span className="muted small">{r.rated ? '배치 경기' : '점수 없는 판'}</span>
                 )}
               </li>
             ))}
