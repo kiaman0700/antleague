@@ -145,7 +145,11 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       const champ = leaderOn(days - 1);
       let takeDay = -1;
       for (let d = 1; d < days; d++) if (leaderOn(d).id === champ.id && leaderOn(d - 1).id !== champ.id) takeDay = d;
-      if (takeDay >= 0) {
+      // 재산 1위가 실제 우승자가 아니면(재산 1위가 기권) '끝까지 지켰어요'는 틀린 말 → 이 하이라이트는 건너뜀
+      const champLeft = !!results.find((r) => r.id === champ.id)?.left;
+      if (champLeft) {
+        /* 기권한 사람의 하이라이트는 넣지 않음 */
+      } else if (takeDay >= 0) {
         out.push({ icon: 'flame', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
       } else {
         let best = 0;
