@@ -78,6 +78,13 @@ async function room(players, opts = {}) {
   ok('이어하기 코드로 자리 옮기기도 없음 (400)', re.s === 400, re.b?.error);
   const still = await B({ action: 'state', roomId });
   ok('원래 사람은 그대로 자기 자리', still.s === 200);
+  // 새로고침한 게임 주소: 코드로 내 자리 찾기 — 남의 방 코드면 아무것도 안 줌, 내 방이면 내 자리만
+  const mineR = (await B({ action: 'resume', code })).b;
+  ok('코드로 이어하기: 내 방이면 내 자리', mineR?.roomId === roomId && !!mineR?.playerId, JSON.stringify(mineR));
+  const otherR = (await X1({ action: 'resume', code })).b;
+  ok('코드로 이어하기: 남의 방 코드면 내 자리(없음)만 — 남의 자리·방 id 안 보임', !otherR || otherR.code !== code, JSON.stringify(otherR));
+  const junk = await X1({ action: 'resume', code: "' or 1=1--" });
+  ok('코드로 이어하기: 이상한 코드는 무시', junk.s === 200, String(junk.s));
 }
 
 // ---- 한 판 더 ----

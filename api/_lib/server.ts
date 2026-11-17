@@ -660,6 +660,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     }
 
     case 'resume': {
+      // 새로고침한 게임 주소(/game/코드): 그 방에 내 자리가 있으면 끝난 판이어도 돌려줌 → 결과 화면을 다시 봄 (내 자리만 찾음)
+      const want = typeof b.code === 'string' && /^[A-Za-z0-9]{6}$/.test(b.code) ? b.code.toUpperCase() : null;
+      if (want) {
+        const hit = (await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status)').eq('user_id', uid).eq('rooms.code', want).order('created_at', { ascending: false }).limit(1)).data as unknown as { id: string; nickname: string; mode: string; rooms: { id: string; code: string; status: string } }[] | null;
+        const h = hit?.[0];
+        if (h) return { roomId: h.rooms.id, code: h.rooms.code, status: h.rooms.status, playerId: h.id, nickname: h.nickname, mode: h.mode };
+      }
       const rows = must(
         await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status)').eq('user_id', uid).eq('left_game', false).neq('rooms.status', 'finished').order('created_at', { ascending: false }).limit(1),
         'resume',

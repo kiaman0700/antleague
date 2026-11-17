@@ -31,7 +31,8 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
   if (!m) return { route: { kind: 'lobby' }, url: '/' };
   const code = m[2].toUpperCase();
   if (supabase) {
-    const r = await api<ResumeInfo | null>('resume').catch(() => null);
+    // 게임 주소면 그 방의 내 자리를 (끝난 판 포함) 찾아 결과까지 다시 보여 줌. 대기실 주소(/room/)는 지금처럼
+    const r = await api<ResumeInfo | null>('resume', m[1].toLowerCase() === 'game' ? { code } : {}).catch(() => null);
     if (r && r.code === code) {
       if (r.status === 'waiting') return { route: { kind: 'waiting', roomId: r.roomId, playerId: r.playerId, nickname: r.nickname, code } };
       return { route: { kind: 'game', session: { mode: 'multi', roomId: r.roomId, code, playerId: r.playerId, nickname: r.nickname, ui: r.mode as UiMode } } };
