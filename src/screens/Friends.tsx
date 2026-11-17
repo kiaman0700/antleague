@@ -251,9 +251,17 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <span className="fr-act">
                     <button
                       className="btn sm"
+                      // 접속 중인 친구에게만 (오프라인·게임 중이면 90초 안에 받을 수 없어 신청이 그냥 사라짐).
+                      // 버튼은 흐리게만 하고 누르면 이유를 알려 줌 (휴대폰은 마우스 올림 안내가 없어서)
                       disabled={busy}
-                      title="친구에게 1대1 대결 신청 (신속 · 점수 없음)"
-                      onClick={() => okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'quick' }), pokeInvites()))}
+                      aria-disabled={f.status !== 'online'}
+                      data-off={f.status !== 'online' || undefined}
+                      title={f.status === 'online' ? '친구에게 1대1 대결 신청 (신속 · 점수 없음)' : undefined}
+                      onClick={() =>
+                        f.status !== 'online'
+                          ? setMsg(f.status === 'playing' ? `${f.nickname} 님은 게임 중이에요. 끝나면 1대1을 신청할 수 있어요.` : `${f.nickname} 님이 접속 중일 때 1대1을 신청할 수 있어요.`)
+                          : okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'quick' }), pokeInvites()))
+                      }
                     >
                       <Icon name="users" size={14} /> 1대1
                     </button>
@@ -262,7 +270,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                     </button>
                     {menu === f.id && (
                       <span className="fr-menu" role="menu">
-                        <button role="menuitem" onClick={() => run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites()))}>
+                        <button role="menuitem" aria-disabled={f.status !== 'online'} data-off={f.status !== 'online' || undefined} onClick={() => (setMenu(null), f.status !== 'online' ? setMsg(f.status === 'playing' ? `${f.nickname} 님은 게임 중이에요. 끝나면 1대1을 신청할 수 있어요.` : `${f.nickname} 님이 접속 중일 때 1대1을 신청할 수 있어요.`) : okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites())))}>
                           1대1 신청 · 일반 ({SPEED_PRESET.normal.minutes})
                         </button>
                         <button role="menuitem" onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>

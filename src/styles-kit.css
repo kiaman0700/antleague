@@ -679,3 +679,5 @@ body { background: var(--bg) !important; }
 .prefs .seg button { min-width: 0; overflow: hidden; }
 .prefs .seg button svg { max-width: 100%; }
 .acc-sec .acc-note { display: block; margin-top: 6px; flex-basis: 100%; width: 100%; }
+.fr-act .btn[data-off] { opacity: 0.5; }
+.fr-menu [data-off] { opacity: 0.5; }
