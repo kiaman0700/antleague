@@ -1233,8 +1233,6 @@ function Records({ go }: Pick<Props, 'go'>) {
   const [histErr, setHistErr] = useState(false);
   const [histTry, setHistTry] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
-  // 업적이 많아 '+n'으로 접힌 사람 중 펼친 사람 (판 id + 순서)
-  const [allBadges, setAllBadges] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!online) return setHistory([]);
     setHistErr(false);
@@ -1335,16 +1333,25 @@ function Records({ go }: Pick<Props, 'go'>) {
                             <span className="mr-p-eq muted">{wonShort(r.equity)}</span>
                             {(r.badges ?? []).length > 0 && (
                               <span className="mr-p-badges">
-                                {(r.badges ?? []).slice(0, allBadges.has(h.id + i) ? 99 : 6).map((b) => (
+                                {(r.badges ?? []).slice(0, 6).map((b) => (
                                   <span key={b} className="mr-badge" title={BADGE_MAP[b]?.desc}>
                                     <BadgeIcon id={b} size={12} /> {BADGE_MAP[b]?.name ?? b}
                                   </span>
                                 ))}
-                                {(r.badges ?? []).length > 6 && !allBadges.has(h.id + i) && (
-                                  // 누르면(휴대폰) · 마우스를 올리면(PC) 나머지 업적까지 모두 펼침
-                                  <button className="mr-badge mr-more" onClick={() => setAllBadges((x) => new Set(x).add(h.id + i))} onMouseEnter={() => setAllBadges((x) => new Set(x).add(h.id + i))} aria-label="업적 더 보기" title={(r.badges ?? []).slice(6).map((b) => BADGE_MAP[b]?.name ?? b).join(', ')}>
-                                    +{(r.badges ?? []).length - 6}
-                                  </button>
+                                {(r.badges ?? []).length > 6 && (
+                                  // 마우스를 올리면(PC) · 누르면(휴대폰) 나머지 업적이 작은 팝업으로
+                                  <span className="mr-more-wrap">
+                                    <button className="mr-badge mr-more" aria-label={'업적 ' + ((r.badges ?? []).length - 6) + '개 더 보기'}>
+                                      +{(r.badges ?? []).length - 6}
+                                    </button>
+                                    <span className="mr-more-pop" role="tooltip">
+                                      {(r.badges ?? []).slice(6).map((b) => (
+                                        <span key={b} className="mr-badge">
+                                          <BadgeIcon id={b} size={12} /> {BADGE_MAP[b]?.name ?? b}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  </span>
                                 )}
                               </span>
                             )}
