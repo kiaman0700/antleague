@@ -1368,7 +1368,13 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
   }, [done]);
   useEffect(() => {
     if (!online) return;
-    api<ResumeInfo | null>('resume').then(setMulti).catch(() => {});
+    api<ResumeInfo | null>('resume')
+      .then((r) => {
+        // 답이 오는 사이 다른 창(봇전·도전 등)을 이미 열었으면 겹쳐 띄우지 않고 작은 띠로만
+        if (r && document.querySelector('.modal-bg')) setHidden(true);
+        setMulti(r);
+      })
+      .catch(() => {});
   }, []);
   const close = () => setHidden(true);
   // 팝업을 닫아도 진행 중인 대결로 돌아갈 길은 남김 (작은 띠)

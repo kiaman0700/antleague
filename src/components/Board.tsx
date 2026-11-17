@@ -45,7 +45,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
-    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
+    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.bot ? false : p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -79,7 +79,8 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
             <span className={'rs gone ' + r.status} title={r.status === 'left' ? '게임에서 나갔어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
               {STATUS_TEXT[r.status]}
             </span>
-          ) : (
+          ) : r.bot ? null : (
+            // 봇은 사람이 모두 마감하면 따라 마감하므로 '고민 중' 표시를 안 함
             <span className={'rs' + (r.ended ? ' ok' : '')} title={r.ended ? '장 마감 완료' : '고민 중'}>
               {r.ended ? <Icon name="check" size={13} /> : '…'}
             </span>

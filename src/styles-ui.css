@@ -1718,35 +1718,6 @@ button.tag:hover,
 .trade-jump .btn:disabled {
   opacity: 0.4;
 }
-.rejoin-box {
-  display: grid;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px dashed var(--line-2);
-}
-.rejoin-box b {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.code-big {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  border: 1px solid var(--line-2);
-  font-family: ui-monospace, monospace;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--gold);
-  word-break: break-all;
-}
 .rematch-note {
   margin: 0 0 6px;
   color: var(--gold);

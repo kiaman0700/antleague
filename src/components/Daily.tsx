@@ -1,5 +1,5 @@
 /** 오늘의 도전 (설계서 design/bots-daily.md 3단계): 오늘 점수표 · 내 순위 */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
 import { pct } from '../lib/format';
 import { ErrorState, Loading } from './ui';
@@ -32,7 +32,8 @@ export function useDailyInfo(enabled = true) {
       alive = false;
     };
   }, [enabled, n]);
-  return { info, err, reload: () => setN((x) => x + 1) };
+  const reload = useCallback(() => setN((x) => x + 1), []);
+  return { info, err, reload };
 }
 
 /** 오늘 점수표 (회원·끝낸 판만) */

@@ -303,11 +303,11 @@ export const stepKey = (day: number, cp: number) => day * 100 + cp;
  * humansDone: 사람이 모두 장 마감함 → 남은 칸(마감 무렵 포함)을 지금 한꺼번에
  * done: 봇별로 이미 한 칸 (서버는 DB 의 bot_step, 브라우저는 player.bot_step)
  */
-export function runBots(d: GameData, now: number, opts: { humansDone?: boolean; salt?: string } = {}): BotRun {
+export function runBots(d: GameData, now: number, opts: { humansDone?: boolean; salt?: string; only?: string } = {}): BotRun {
   const out: BotRun = { trades: [], items: [], steps: {} };
   const r = d.room;
   if (r.status !== 'playing' || inPremarket(r, now)) return out;
-  const bots = d.players.filter((p) => p.bot_level && !p.left_game);
+  const bots = d.players.filter((p) => p.bot_level && !p.left_game && (!opts.only || p.id === opts.only));
   if (!bots.length) return out;
   const clk = dayClock(r, now);
   const { n, tick } = clk;

@@ -404,14 +404,19 @@ async function fillOrdersNow(d: GameData): Promise<boolean> {
  * 봇 움직이기 (커스텀 방): 움직일 칸이 된 봇만, 그 칸을 DB 에서 먼저 차지한(bot_step 바꾸기 성공) 요청만 거래·카드를 넣음
  * → 여러 사람이 동시에 상태를 물어도 봇은 한 칸에 한 번만 움직임
  */
-async function moveBots(d: GameData, now = Date.now()): Promise<boolean> {
+async function moveBots(d0: GameData, now = Date.now()): Promise<boolean> {
+  let d = d0;
   if (d.room.status !== 'playing' || !d.players.some((p) => p.bot_level && !p.left_game)) return false;
   const humans = d.players.filter((p) => !p.bot_level && !p.left_game);
   const humansDone = (humans.length > 0 && humans.every((p) => p.ended_day >= d.room.day)) || (d.room.deadline !== null && now >= d.room.deadline);
-  const run = runBots(d, now, { salt: d.room.salt ?? undefined, humansDone });
   let changed = false;
-  for (const [botId, step] of Object.entries(run.steps)) {
-    const prev = d.players.find((p) => p.id === botId)?.bot_step ?? null;
+  // 봇을 한 명씩: 앞 봇이 실제로 넣은 줄만 다음 봇 판단에 반영 (다른 요청이 앞 봇을 차지했으면 그 봇 줄은 이 데이터에 없음)
+  for (const bot of d.players.filter((p) => p.bot_level && !p.left_game)) {
+    const run = runBots(d, now, { salt: d.room.salt ?? undefined, humansDone, only: bot.id });
+    const botId = bot.id;
+    const step = run.steps[botId];
+    if (step === undefined) continue;
+    const prev = bot.bot_step ?? null;
     const base = db().from('players').update({ bot_step: step }).eq('id', botId).eq('room_id', d.room.id);
     const claimed = must(await (prev === null ? base.is('bot_step', null) : base.eq('bot_step', prev)).select('id'), 'bot step') as unknown[];
     if (!claimed.length) continue; // 다른 요청이 이미 움직임
@@ -419,6 +424,7 @@ async function moveBots(d: GameData, now = Date.now()): Promise<boolean> {
     const items = run.items.filter((i) => i.player_id === botId).map((i) => ({ room_id: d.room.id, ...i }));
     if (trades.length) must(await db().from('trades').insert(trades), 'bot trades');
     if (items.length) must(await db().from('items').insert(items), 'bot items');
+    d = { ...d, trades: [...d.trades, ...run.trades], items: [...d.items, ...run.items] };
     changed = true;
   }
   return changed;
@@ -912,7 +918,15 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
       const board = rows.filter((r) => !tests.has(r.user_id));
       const top = board.slice(0, 50).map((r, i) => ({ rank: i + 1, nickname: r.nickname, ret: Math.round(r.ret * 10000) / 10000, me: r.user_id === uid }));
-      const myIdx = board.findIndex((r) => r.user_id === uid);
+      let myRank: number | null = (() => {
+        const i = board.findIndex((r) => r.user_id === uid);
+        return i >= 0 ? i + 1 : null;
+      })();
+      // 200명 밖이면: 나보다 높은 회원 수를 세서 (시험 회원은 근사 — 상위 목록에서만 뺌)
+      if (myRank === null && my?.finished && my.member && typeof my.ret === 'number') {
+        const above = await sb.from('daily_runs').select('user_id', { count: 'exact', head: true }).eq('day', day).eq('finished', true).eq('member', true).gt('ret', my.ret);
+        if (!above.error && typeof above.count === 'number' && !tests.has(uid)) myRank = above.count + 1;
+      }
       let resume: { roomId: string; playerId: string; code: string } | null = null;
       if (my && !my.finished && my.room_id) {
         const seat = await sb.from('players').select('id, left_game, rooms!inner(code, status)').eq('room_id', my.room_id).eq('user_id', uid).maybeSingle();
@@ -925,10 +939,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         played: !!my,
         finished: !!my?.finished,
         myRet: my?.finished ? my.ret : null,
-        myRank: myIdx >= 0 ? myIdx + 1 : null,
+        myRank,
         member: !!my?.member,
         resume,
-        total: board.length,
+        total: Math.max(board.length, myRank ?? 0),
         top,
       };
     }
@@ -1560,14 +1574,15 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
     const d = await loadGame(roomId);
     const patch = validateLeave(d, playerId);
-    // 오늘의 도전: 중간에 나가면 지금 재산으로 기록하고 그날 기회는 끝 (다시 못 함)
-    if (d.room.kind === 'daily') {
+    // 오늘의 도전: 중간에 나가면 지금 재산으로 기록하고 그날 기회는 끝 (자리 갱신이 된 뒤에 기록 — 아래)
+    const dailyRet = d.room.kind === 'daily' ? (() => {
       const meNow = buildView(d, playerId, Date.now()).players.find((p) => p.id === playerId);
-      if (meNow) await recordDaily(roomId, meNow.equity / startCashFor(d.room.version) - 1);
-    }
+      return meNow ? meNow.equity / startCashFor(d.room.version) - 1 : null;
+    })() : null;
     const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');
+    if (dailyRet !== null) await recordDaily(roomId, dailyRet);
     let fresh = await loadGame(roomId);
     if (await moveBots(fresh)) fresh = await loadGame(roomId);
     if (!(await maybeAdvance(fresh))) {
