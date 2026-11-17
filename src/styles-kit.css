@@ -800,3 +800,43 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 /* 마이프로필 '계정' 칸: 제목·줄 아이콘·화살표를 다른 칸과 같은 안쪽 22px 에 맞춤 */
 .profile-page .acc-sec { padding: 16px 10px 10px !important; }
 .profile-page .acc-sec .more-h { margin: 4px 0 6px !important; padding: 0 12px; font-size: 16px; font-weight: 800; }
+
+/* ---- 마이프로필 숫자 줄: 칸 사이 세로선 (휴대폰 2×2 는 십자선) ---- */
+.profile-page .me-stats { gap: 0; padding-left: 0; padding-right: 0; }
+.profile-page .me-stats > div { display: grid; gap: 4px; padding: 2px 8px; }
+.profile-page .me-stats > div + div { border-left: 1px solid #2e2e2e; }
+.profile-page .me-stats small { font-size: 12px; color: #9a9a9a; }
+.profile-page .me-stats b { font-size: 18px; font-weight: 800; }
+@media (max-width: 420px) {
+  .profile-page .me-stats { padding-top: 6px; padding-bottom: 6px; }
+  .profile-page .me-stats > div { padding: 12px 8px; }
+  .profile-page .me-stats > div + div { border-left: 0; }
+  .profile-page .me-stats > div:nth-child(2n) { border-left: 1px solid #2e2e2e; }
+  .profile-page .me-stats > div:nth-child(n + 3) { border-top: 1px solid #2e2e2e; }
+}
+
+/* ---- 마이프로필 PC 두 칸 (2026-11-17): 왼쪽 = 나(프로필·숫자·계정·탈퇴), 오른쪽 = 내가 한 것(최근 대결) ---- */
+@media (min-width: 1180px) {
+  .lobby-shell .lobby.page.profile-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas:
+      'head head'
+      'card recent'
+      'stats recent'
+      'acc recent'
+      'forget recent';
+    grid-template-rows: auto auto auto auto 1fr;
+    column-gap: 16px;
+    row-gap: 16px;
+    align-items: start;
+  }
+  .profile-page > .page-head { grid-area: head; }
+  .profile-page > .me-card { grid-area: card; }
+  .profile-page > .me-stats { grid-area: stats; }
+  .profile-page > .acc-sec { grid-area: acc; }
+  .profile-page > .forget { grid-area: forget; }
+  .profile-page > .me-recent { grid-area: recent; }
+  .profile-page > section { margin: 0 !important; }
+  .profile-page > p { grid-column: 1 / -1; margin: 0; }
+}

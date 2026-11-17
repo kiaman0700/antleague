@@ -518,7 +518,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       {msg && <p className="ok-msg">{msg}</p>}
       {err && <p className="error">{err}</p>}
 
-      <section className="panel pad">
+      <section className="panel pad me-recent">
         <h3>최근 대결</h3>
         {acc.recent.length === 0 ? (
           <p className="muted small">아직 끝낸 대결이 없어요. 친구와 대결을 끝내면 여기에 쌓여요.</p>
