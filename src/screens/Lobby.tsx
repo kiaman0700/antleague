@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
@@ -1371,6 +1371,7 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
     return s && s.data.room.status !== 'finished' ? s : null;
   });
   const [busy, setBusy] = useState(false);
+  const gotResume = useRef(false);
   // 초대 링크(?room=)로 왔으면 '코드로 입장' 창이 먼저 — 이 팝업은 작은 띠로만 (두 창이 겹치지 않게)
   const [hidden, setHidden] = useState(() => new URLSearchParams(location.search).has('room'));
   const [err, setErr] = useState('');
@@ -1386,7 +1387,9 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
     api<ResumeInfo | null>('resume')
       .then((r) => {
         // 답이 오는 사이 다른 창(봇전·도전 등)을 이미 열었으면 겹쳐 띄우지 않고 작은 띠로만
-        if (r && document.querySelector('.modal-bg')) setHidden(true);
+        // (이미 이 팝업을 띄웠으면 그건 '다른 창'이 아님 — 개발 모드처럼 두 번 확인해도 숨기지 않게)
+        if (r && !gotResume.current && document.querySelector('.modal-bg')) setHidden(true);
+        if (r) gotResume.current = true;
         setMulti(r);
       })
       .catch(() => {});

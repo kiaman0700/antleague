@@ -157,10 +157,12 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   };
 
   const leave = async () => {
-    if (isHost && view.players.length > 1 && !(await ask('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?', { ok: '나가기' }))) return;
-    if (isHost && view.players.length <= 1 && !(await ask('혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?', { ok: '나가기' }))) return;
+    // 방장은 봇에게 안 넘어감 → 사람이 나 혼자면(봇만 남아도) 방이 닫힘
+    const humans = view.players.filter((p) => !p.bot).length;
+    if (isHost && humans > 1 && !(await ask('방장이 나가면 다음 사람에게 방장이 넘어가요. 나갈까요?', { ok: '나가기' }))) return;
+    if (isHost && humans <= 1 && !(await ask(view.players.length > 1 ? '사람은 나 혼자라 나가면 방이 닫혀요(봇도 함께 나가요). 나갈까요?' : '혼자 있는 방이라 나가면 방이 닫혀요. 나갈까요?', { ok: '나가기' }))) return;
     api('leave', { roomId })
-      .then(() => setFlash(isHost && view.players.length <= 1 ? '방을 닫았어요' : '방에서 나왔어요'))
+      .then(() => setFlash(isHost && humans <= 1 ? '방을 닫았어요' : '방에서 나왔어요'))
       .catch(() => {})
       .finally(onLeave);
   };

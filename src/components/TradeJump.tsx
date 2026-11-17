@@ -11,11 +11,12 @@ export function TradeJump({ easy, canSell, price, openOrders = 0, onBuy, onSell 
         {price}
         {openOrders > 0 && <small className="tj-orders">예약 {openOrders}건</small>}
       </span>
-      <button className="btn buy" onClick={onBuy} title="사기 (Enter)">
-        <Icon name="cart" size={15} /> {easy ? '사기' : '매수'}
-      </button>
+      {/* 휴대폰과 같은 순서: 왼쪽 팔기 · 오른쪽 사기 (자리가 바뀌어 잘못 누르지 않게) */}
       <button className="btn sell" onClick={onSell} disabled={!canSell} title={canSell ? '팔기' : '가진 주식이 없어요'}>
         {easy ? '팔기' : '매도'}
+      </button>
+      <button className="btn buy" onClick={onBuy} title="사기 (Enter)">
+        <Icon name="cart" size={15} /> {easy ? '사기' : '매수'}
       </button>
     </div>
   );

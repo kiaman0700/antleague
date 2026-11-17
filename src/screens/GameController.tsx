@@ -949,8 +949,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </button>
             <button
               className="btn full danger"
-              onClick={async () => {
-                if (!(await ask(players.filter((p) => p.status !== 'left').length <= 2 ? `기권하면 상대가 바로 이기고, 이 게임에 다시 들어올 수 없어요.${room?.ranked ? ' 랭킹전이라 꼴찌로 계산돼요.' : ''} 정말 나갈까요?` : `기권하면 나는 꼴찌로 계산되고, 이 게임에 다시 들어올 수 없어요. 정말 나갈까요?`, { ok: '기권하기', danger: true }))) return;
+              onClick={() => {
+                // 이 창이 이미 확인 단계 — 한 번 더 묻지 않음 (결과는 버튼 아래 글로 안내)
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .then(() => {
@@ -962,7 +962,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               }}
             >
               <Icon name="door" size={16} /> 기권하고 나가기
-              <small>지금 재산으로 순위에 남고, 남은 사람들은 더 이상 나를 기다리지 않아요. 다시 들어올 수 없어요</small>
+              <small>
+                {players.filter((p) => p.status !== 'left' && !p.bot).length <= 1 && players.some((p) => p.bot)
+                  ? '봇만 남으니 이 판은 바로 끝나요. 다시 들어올 수 없어요'
+                  : players.filter((p) => p.status !== 'left').length <= 2
+                    ? `상대가 바로 이기고, 다시 들어올 수 없어요${room?.ranked ? '. 랭킹전이라 꼴찌로 계산돼요' : ''}`
+                    : `나는 꼴찌로 계산되고, 남은 사람들끼리 계속해요. 다시 들어올 수 없어요`}
+              </small>
             </button>
           </div>
         </Sheet>
