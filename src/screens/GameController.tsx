@@ -147,6 +147,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [prefsOpen, setPrefsOpen] = useState(false);
   // 화면 편집 모드: 실제 게임 화면에서 배치를 바꿈 (가상 게임이면 처음부터 편집 중)
   const [editing, setEditing] = useState(!!session.demo);
+  // 화면 편집 주소(/customize)로 바로 들어와도 편집한 배치가 적용되게 커스텀 모드를 켬 (편집 버튼으로 올 때와 같게)
+  useEffect(() => {
+    if (session.demo) setPrefs({ enabled: true });
+  }, [session.demo]);
   const editingRef = useRef(editing);
   editingRef.current = editing;
   // 휴대폰: 위 고정 막대 높이를 재서 그 바로 아래에 시장·일정·재산 줄을 붙여 둠
@@ -257,6 +261,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [muted, setMutedState] = useState(isMuted());
   const [now, setNow] = useState(Date.now());
   const toastTimer = useRef<number>();
+  /** 장중 속보는 보통 알림과 따로 (자리도 따로) */
+  const [newsToast, setNewsToast] = useState<ToastMsg | null>(null);
+  const newsTimer = useRef<number>();
   const searchRef = useRef<HTMLDivElement>(null);
 
   const showToast = useCallback((text: string, kind: 'ok' | 'err' | 'warn' = 'ok') => {
@@ -267,9 +274,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   }, []);
   /** 장중 속보: 크게, 더 오래(6초+), 누르면 그 종목으로 */
   const showNews = useCallback((msg: Omit<ToastMsg, 'kind'>) => {
-    setToast({ ...msg, kind: 'news' });
-    window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), Math.max(6000, msg.text.length * 110));
+    setNewsToast({ ...msg, kind: 'news' });
+    window.clearTimeout(newsTimer.current);
+    newsTimer.current = window.setTimeout(() => setNewsToast(null), Math.max(6000, msg.text.length * 110));
   }, []);
 
   useEffect(() => {
@@ -973,17 +980,21 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           </div>
         </Sheet>
       )}
+      {/* 장중 속보 자리 (편집기에서 따로 옮김) */}
       <ToastSpot
-        toast={toast}
+        slot="news"
+        toast={newsToast}
         editing={editing}
         pos={layout.toastPos}
         xy={mobile ? layout.mToastXY : layout.toastXY}
         onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
         onPick={(sym) => {
-          setToast(null);
+          setNewsToast(null);
           selectStock(sym);
         }}
       />
+      {/* 보통 알림 자리 (샀어요·오류 등) — 처음엔 아래쪽 */}
+      <ToastSpot slot="alert" toast={toast} editing={editing} pos="bottom" xy={mobile ? layout.mAlertXY : layout.alertXY} onMove={(xy) => setLayout(mobile ? { mAlertXY: xy } : { alertXY: xy })} />
       {(
         <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
           {sheet && (

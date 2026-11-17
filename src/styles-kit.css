@@ -681,3 +681,4 @@ body { background: var(--bg) !important; }
 .acc-sec .acc-note { display: block; margin-top: 6px; flex-basis: 100%; width: 100%; }
 .fr-act .btn[data-off] { opacity: 0.5; }
 .fr-menu [data-off] { opacity: 0.5; }
+.toast.sample.news-sample { border-left: 3px solid #f2495c; }

@@ -26,6 +26,8 @@ export function toastStyle(xy: XY | null): CSSProperties | undefined {
 export type ToastMsg = { text: string; kind: 'ok' | 'err' | 'warn' | 'news'; tone?: 'good' | 'bad'; sub?: string; symbol?: string };
 
 interface Props {
+  /** 이 자리가 맡는 것: 장중 속보 / 보통 알림 (따로 옮길 수 있음) */
+  slot: 'news' | 'alert';
   toast: ToastMsg | null;
   /** 속보 알림을 누르면 그 종목 보기 */
   onPick?: (symbol: string) => void;
@@ -35,7 +37,7 @@ interface Props {
   onMove: (xy: XY) => void;
 }
 
-export function ToastSpot({ toast, editing, pos, xy, onMove, onPick }: Props) {
+export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const vRef = useRef<HTMLElement>(null);
   const hRef = useRef<HTMLElement>(null);
@@ -145,8 +147,8 @@ export function ToastSpot({ toast, editing, pos, xy, onMove, onPick }: Props) {
 
   return (
     <>
-      <div ref={ref} className={'toast warn sample movable' + cls} style={toastStyle(xy)} onPointerDown={down} title="잡고 끌어서 알림이 뜰 곳에 놓으세요">
-        <Icon name="move" size={14} /> 속보·알림은 여기에 떠요 · 끌어서 옮기기
+      <div ref={ref} className={'toast sample movable ' + (slot === 'news' ? 'news-sample' : 'ok alert-sample') + cls} style={toastStyle(xy)} onPointerDown={down} title={slot === 'news' ? '잡고 끌어서 장중 속보가 뜰 곳에 놓으세요' : '잡고 끌어서 알림이 뜰 곳에 놓으세요'}>
+        <Icon name="move" size={14} /> {slot === 'news' ? '속보는 여기에 떠요' : '알림(샀어요·오류 등)은 여기에 떠요'} · 끌어서 옮기기
       </div>
       <i ref={vRef} className="snap-guide v" aria-hidden />
       <i ref={hRef} className="snap-guide h" aria-hidden />

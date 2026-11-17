@@ -42,6 +42,10 @@ export interface Layout {
   toastXY: { x: number; y: number } | null;
   /** 모바일 속보 알림 자유 위치 */
   mToastXY: { x: number; y: number } | null;
+  /** 보통 알림(샀어요·오류 등) 자유 위치 — 속보와 따로 (사용자 요청 2026-11-17). 없으면 아래쪽 가운데 */
+  alertXY: { x: number; y: number } | null;
+  /** 모바일 보통 알림 자유 위치 */
+  mAlertXY: { x: number; y: number } | null;
 }
 export const DEFAULT_LAYOUT: Layout = {
   mTabs: ['news', 'list', 'detail', 'assets', 'cards'], // 뉴스가 게임의 핵심이라 맨 앞
@@ -64,6 +68,8 @@ export const DEFAULT_LAYOUT: Layout = {
   pcFlex: {},
   toastXY: null,
   mToastXY: null,
+  alertXY: null,
+  mAlertXY: null,
 };
 
 export interface Prefs {
@@ -117,6 +123,8 @@ function read(): Prefs {
     const okXY = (p: unknown) => !!p && typeof p === 'object' && Number.isFinite((p as { x: number }).x) && Number.isFinite((p as { y: number }).y);
     if (!okXY(v.layout.toastXY)) v.layout.toastXY = null;
     if (!okXY(v.layout.mToastXY)) v.layout.mToastXY = null;
+    if (!okXY(v.layout.alertXY)) v.layout.alertXY = null;
+    if (!okXY(v.layout.mAlertXY)) v.layout.mAlertXY = null;
     if (!Array.isArray(v.layout.mTabs) || [...DEFAULT_LAYOUT.mTabs].sort().join() !== [...v.layout.mTabs].sort().join()) v.layout.mTabs = DEFAULT_LAYOUT.mTabs;
     return v;
   } catch {
