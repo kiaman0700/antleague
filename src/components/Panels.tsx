@@ -1,4 +1,5 @@
 import { josa } from '../engine/engine';
+import { Avatar } from './Avatar';
 import { GameCard } from './GameCard';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
@@ -547,7 +548,7 @@ export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; on
 /* ------------------------------ 하루 결산 ------------------------------ */
 
 /** 대결이 시작될 때 잠깐: 누구와 겨루는지 (게임 클라이언트의 로딩 화면처럼) */
-export function MatchIntro({ title, sub, players, meId, onClose }: { title: string; sub: string; players: { id: string; nickname: string; verified?: boolean; bot?: number }[]; meId: string; onClose: () => void }) {
+export function MatchIntro({ title, sub, players, meId, onClose }: { title: string; sub: string; players: { id: string; nickname: string; verified?: boolean; avatar?: string; bot?: number }[]; meId: string; onClose: () => void }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
@@ -563,9 +564,9 @@ export function MatchIntro({ title, sub, players, meId, onClose }: { title: stri
           <Fragment key={p.id}>
             {duel && i === 1 && <span className="vs-x">VS</span>}
             <div className={'vs-card' + (p.id === meId ? ' me' : '')} style={{ animationDelay: i * 90 + 'ms' }}>
-              <span className="vs-ini">{[...p.nickname][0] ?? '?'}</span>
+              <Avatar id={p.bot ? '__bot' : p.avatar} name={p.nickname} size={56} guest={!p.bot && !p.avatar} className="vs-av" />
               <b>{p.nickname}</b>
-              <small>{p.id === meId ? '나' : p.bot ? '봇' : p.verified ? '회원' : '게스트'}</small>
+              {(p.id === meId || p.bot) && <small>{p.id === meId ? '나' : '봇'}</small>}
             </div>
           </Fragment>
         ))}

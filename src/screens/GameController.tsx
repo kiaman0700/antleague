@@ -6,7 +6,7 @@ import { setDrawScope } from '../components/ProChart';
 import { Icon, type IconName } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab } from '../prefs';
-import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
+import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, PlayerPic, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
@@ -1473,6 +1473,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           <RankStrip rows={rows} />
         ) : (
         <div className="vs-box">
+          <PlayerPic r={{ me: true, nickname: session.nickname, avatar: players.find((x) => x.id === session.playerId)?.avatar }} size={40} />
           <div className="score-me">
             <small>{session.nickname} (나)</small>
             <b>{wonShort(equity)}</b>
@@ -1509,6 +1510,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   </>
                 )}
               </div>
+              {opponent && <PlayerPic r={{ nickname: opponent.nickname, bot: opponent.bot, avatar: opponent.avatar }} size={40} />}
             </>
           ) : (
             <div className="score-solo muted">{room?.kind === 'daily' ? '오늘의 도전' : '연습 모드'}</div>

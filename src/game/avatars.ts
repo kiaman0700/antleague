@@ -56,6 +56,8 @@ export const AVATARS: AvatarDef[] = [
   { id: 'peak', name: '꼭지에서 산 개미', look: ant({ face: 'sweat', back: 'peak' }), bg: '#8a4a6b', need: 'buy_high' },
   { id: 'bruised', name: '동네북', look: ant({ face: 'dizzy', hat: 'bandage', back: 'dizzy' }), bg: '#7a5a3a', need: 'punching_bag' },
   { id: 'fooled', name: '찌라시에 속은 개미', look: ant({ face: 'shock', prop: 'fakeNews', back: 'news' }), bg: '#3f6b8a', need: 'fooled' },
+  // 게임 안 봇 자리 그림 (고를 수 없음: need '__' 로 시작하는 건 어떤 업적으로도 안 열림)
+  { id: '__bot', name: '봇', look: ant({ face: 'cool', hat: 'helmet', back: 'circuit' }), bg: '#4a4f5a', need: '__bot' },
   // 레벨 (경험치) — 개미가 자라남
   { id: 'sprout', name: '새싹 개미', look: ant({ hat: 'sprout' }), bg: '#4a9a3a', need: 'lv5' },
   { id: 'star', name: '꽃핀 개미', look: ant({ hat: 'flower', back: 'sparkles' }), bg: '#c9a020', need: 'lv10' },

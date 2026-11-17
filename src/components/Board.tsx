@@ -10,6 +10,16 @@ import { pct, tone, wonShort } from '../lib/format';
 import { graceSeconds, graceText } from '../session';
 import { ScrollChips } from './StockBrowser';
 import { Term } from './Term';
+import { Avatar } from './Avatar';
+import { useAccount } from '../net/account';
+
+/** 게임 안 사람 사진: 회원은 그 사람 사진, 손님은 회색 손님, 봇은 봇 개미. 내 자리는 이 기기 계정 사진(연습·봇전도) */
+export function PlayerPic({ r, size }: { r: { me?: boolean; bot?: number; avatar?: string; nickname: string }; size: number }) {
+  const acc = useAccount();
+  const mine = r.me && acc.status === 'member' ? (acc.profile?.avatar ?? 'default') : undefined;
+  const id = r.bot ? '__bot' : (r.avatar ?? mine);
+  return <Avatar id={id} name={r.nickname} size={size} guest={!id} className="rk-av" />;
+}
 
 export const PLAYER_COLORS = ['var(--me)', 'var(--opp)', '#34d399', '#60a5fa', '#f472b6', '#fb923c'];
 /** 순위 표시: 1~3위는 금·은·동 동그라미, 나머지는 숫자 */
@@ -28,6 +38,8 @@ export interface RankRow {
   rank?: number;
   /** 회원(로그인) — 이름 옆 인증 표시 */
   verified?: boolean;
+  /** 회원이면 프로필 사진 id */
+  avatar?: string;
   /** 봇이면 난이도(1~3), 사람은 0 */
   bot?: number;
   /** 수익률 (시작 돈 기준 — 방 규칙마다 시작 돈이 다름) */
@@ -45,7 +57,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
-    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
+    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, avatar: p.avatar, bot: p.bot ?? 0 }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -57,11 +69,11 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
       {rows.map((r, i) => (
         <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + ((r.rank ?? i + 1) === 1 ? ' lead' : '')}>
           <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
+          <PlayerPic r={r} size={26} />
           <span className="rn">
             <b>
               <FitText>
                 {r.nickname}
-                {r.verified && <Icon name="check" size={11} className="verified" />}
                 {!!r.bot && <span className="bot-tag">봇</span>}
               </FitText>
             </b>
@@ -134,11 +146,11 @@ export function RankList({ rows }: { rows: RankRow[] }) {
       {rows.map((r, i) => (
         <div key={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
+          <PlayerPic r={r} size={30} />
           <span className="rn">
             <b>
               <FitText>
                 {r.nickname}
-                {r.verified && <Icon name="check" size={12} className="verified" />}
                 {!!r.bot && <span className="bot-tag">봇</span>}
                 {r.me && <em> (나)</em>}
               </FitText>

@@ -112,6 +112,8 @@ export interface PublicPlayer {
   rank?: number;
   /** 회원(로그인한 사람) — 이름 옆 인증 표시. 게스트는 false */
   verified?: boolean;
+  /** 회원이면 프로필 사진 id (손님·봇은 없음 — 화면이 손님/봇 사진을 그림) */
+  avatar?: string;
   /** (v7) 오늘 장 전 '준비 완료'를 눌렀는지 */
   preReady?: boolean;
   /** 봇이면 난이도 1·2·3 (이름 옆 '봇' 표시) */
@@ -462,14 +464,14 @@ export function portfolioOf(d: GameData, pid: string) {
  * keySalt: 시장 키를 섞을 서버 비밀값(방마다). 시드처럼 화면이 알면 안 되는 값은 절대 키에 넣지 않음.
  * 없으면(혼자 연습 — 어차피 브라우저에서 도는 게임) 방 ID 를 씀
  */
-export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, verified?: Set<string>, liveFrom?: { day: number; from: number }): View {
+export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, avatars?: Map<string, string>, liveFrom?: { day: number; from: number }): View {
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
     room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '개미리그', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1, ranked: !!r.ranked, kind: r.kind ?? 'custom' },
     serverNow: now,
     meId,
-    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: startCashFor(r.version), tradeCount: 0, verified: !!verified?.has(p.id), preReady: p.bot_level ? true : (p.pre_day ?? -1) >= r.day, status: p.left_game ? ('left' as const) : p.bot_level || isActive(p, now) ? ('on' as const) : ('away' as const), ...(p.bot_level ? { bot: p.bot_level } : {}) })),
+    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: startCashFor(r.version), tradeCount: 0, verified: !!avatars?.has(p.id), ...(avatars?.has(p.id) ? { avatar: avatars.get(p.id) } : {}), preReady: p.bot_level ? true : (p.pre_day ?? -1) >= r.day, status: p.left_game ? ('left' as const) : p.bot_level || isActive(p, now) ? ('on' as const) : ('away' as const), ...(p.bot_level ? { bot: p.bot_level } : {}) })),
     market: null,
     live: null,
     marketKey: 'waiting',

@@ -360,19 +360,23 @@ async function nickFor(uid: string, raw: unknown) {
   return n;
 }
 
-/** 이 방에서 회원(프로필 있음)인 플레이어들 — 화면엔 '회원 표시'만 (user_id 는 보내지 않음). 1분 캐시 */
-const verifiedCache = new Map<string, { at: number; ids: Set<string> }>();
-async function verifiedPlayers(roomId: string): Promise<Set<string>> {
-  const hit = verifiedCache.get(roomId);
-  if (hit && Date.now() - hit.at < 60_000) return hit.ids;
+/**
+ * 이 방의 회원 자리 → 프로필 사진 id (회원/손님은 사진으로만 구분 — 2026-11-17 사용자 결정, 체크 표시 없음).
+ * 화면엔 자리 id → 사진 id 만 (user_id·아이디는 보내지 않음). 1분 캐시
+ */
+const avatarCache = new Map<string, { at: number; map: Map<string, string> }>();
+async function playerAvatars(roomId: string): Promise<Map<string, string>> {
+  const hit = avatarCache.get(roomId);
+  if (hit && Date.now() - hit.at < 60_000) return hit.map;
   const ps = ((await db().from('players').select('id, user_id').eq('room_id', roomId)).data ?? []) as { id: string; user_id: string | null }[];
   const uids = ps.map((p) => p.user_id).filter((x): x is string => !!x);
-  const pr = uids.length ? await db().from('profiles').select('user_id').in('user_id', uids) : { data: [] as { user_id: string }[], error: null };
-  const have = new Set(((pr.error ? [] : pr.data) ?? []).map((x) => x.user_id));
-  const ids = new Set(ps.filter((p) => p.user_id && have.has(p.user_id)).map((p) => p.id));
-  verifiedCache.set(roomId, { at: Date.now(), ids });
-  if (verifiedCache.size > 2000) verifiedCache.clear();
-  return ids;
+  let pr = uids.length ? await db().from('profiles').select('user_id, avatar').in('user_id', uids) : { data: [] as { user_id: string; avatar?: string }[], error: null };
+  if (pr.error && /avatar/.test(pr.error.message)) pr = (await db().from('profiles').select('user_id').in('user_id', uids)) as typeof pr; // 023 전
+  const av = new Map(((pr.error ? [] : pr.data) ?? []).map((x) => [x.user_id, (x as { avatar?: string }).avatar || 'default']));
+  const map = new Map(ps.filter((p) => p.user_id && av.has(p.user_id)).map((p) => [p.id, av.get(p.user_id!)!]));
+  avatarCache.set(roomId, { at: Date.now(), map });
+  if (avatarCache.size > 2000) avatarCache.clear();
+  return map;
 }
 
 /** 시장 키를 섞을 방별 비밀값 (서버 비밀 키로 만든 HMAC — 화면은 절대 알 수 없음) */
@@ -675,7 +679,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await maybeAdvance(d)) d = await loadGame(roomId);
       // 화면이 이미 가진 장중 칸 수 (숫자만 받음)
       const lf = typeof b.liveDay === 'number' && typeof b.liveFrom === 'number' ? { day: Math.floor(b.liveDay), from: Math.floor(b.liveFrom) } : undefined;
-      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await verifiedPlayers(roomId), lf);
+      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await playerAvatars(roomId), lf);
     }
 
     case 'ready':

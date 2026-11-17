@@ -1,4 +1,5 @@
 import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/bots';
+import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
 import { EmptyState, IconList, Loading, SectionTitle } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
@@ -231,9 +232,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
               const info = botInfo(p.bot);
               return (
                 <div key={p.id} className="slot ready bot">
-                  <div className="avatar bot-av">
-                    <Icon name="bot" size={20} />
-                  </div>
+                  <Avatar id="__bot" name={p.nickname} size={44} className="slot-av" />
                   <b>
                     {p.nickname}
                     <span className="bot-tag">봇</span>
@@ -250,7 +249,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
             }
             return (
               <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
-                <div className={'avatar c' + (i % 6)}>{p.nickname.slice(0, 1)}</div>
+                <Avatar id={p.avatar} name={p.nickname} size={44} guest={!p.avatar} className="slot-av" />
                 <b>
                   {p.nickname}
                   {p.id === playerId && <em> (나)</em>}

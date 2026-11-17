@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, Loading } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 import { AVATARS, canUseAvatar } from '../game/avatars';
-import { TierBadge, TierLadder } from '../components/TierBadge';
+import { TierBadge, TierEmblem, TierLadder } from '../components/TierBadge';
 import { DailyRankPanel } from '../components/Daily';
-import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
+import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
@@ -488,10 +488,14 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           </button>
           <LevelMeter xp={p.xp ?? 0} className="me-level" title="미션·대결로 경험치를 모아 레벨을 올려요 (최대 Lv.100)" />
         </div>
-        <button className="me-rank" onClick={onRanking}>
-          <small>랭크</small>
-          <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} />
-          <small>{p.rankPos ? `${p.rankPos}위` : isPlaced(p.ranked_games) ? '랭킹 보기' : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
+        {/* 랭크 칸: 엠블럼 위 · 티어 이름(티어 색) · 점수 · '랭킹 보기 ›' — 모두 가운데 */}
+        <button className={'me-rank' + (isPlaced(p.ranked_games) ? '' : ' unplaced')} onClick={onRanking} aria-label="랭킹 보기">
+          <TierEmblem rating={p.rating} placed={isPlaced(p.ranked_games)} size={46} />
+          <b style={isPlaced(p.ranked_games) ? { color: tierOf(p.rating).color } : undefined}>{isPlaced(p.ranked_games) ? tierOf(p.rating).label : '배치 중'}</b>
+          <small>{isPlaced(p.ranked_games) ? `${tierOf(p.rating).points}점${p.rankPos ? ` · ${p.rankPos}위` : ''}` : `배치 ${p.ranked_games ?? 0}/${PLACEMENT_GAMES}판`}</small>
+          <span className="me-rank-go">
+            랭킹 보기 <Icon name="right" size={12} />
+          </span>
         </button>
       </section>
 
@@ -723,7 +727,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
 function DecoAvatars({ current, nickname, badges, onPick }: { current: string; nickname: string; badges: Record<string, number>; onPick: (id: string, name: string) => void }) {
   const mine = Object.keys(badges);
   const open = AVATARS.filter((a) => canUseAvatar(a.id, mine));
-  const hidden = AVATARS.length - open.length;
+  const hidden = AVATARS.filter((a) => !a.need?.startsWith('__')).length - open.length;
   return (
     <>
       <div className="deco-grid">
