@@ -233,7 +233,6 @@
 /* PC 대결: 오른쪽 아래 이모지 버튼이 단축키 안내(Esc 닫기)를 가리지 않게 안내 글을 왼쪽으로 */
 .desk:has(.react-wrap) .kbd-hint { padding-right: 76px; }
 
-/* 대결 나가기 창: '다른 기기로 옮기기'는 버튼이 아닌 안내 — 점선 상자로 위 선택지들과 가장자리·안쪽 여백을 맞춤 */
 
 /* 키보드로 움직일 때 지금 어디에 있는지 또렷하게 (기본 1px 흰 테두리는 어두운 화면에서 잘 안 보임) — 낮은 우선순위라 칸마다 정한 표시는 그대로 */
 :where(button, a[href], [role="button"], [role="tab"], [role="radio"], summary, select):focus-visible {

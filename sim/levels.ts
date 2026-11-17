@@ -99,3 +99,17 @@ if (process.env.SIM_BASE) {
     console.log(`${label}: 승률 ${((w / N) * 100).toFixed(0)}% · 평균 ${Math.round(ea / N).toLocaleString()}`);
   }
 }
+
+// ---- 예전 시뮬의 가장 강한 전략(smart: 감별기·신문·애널리스트를 사서 씀)과 비교: SIM_SMART=1 ----
+if (process.env.SIM_SMART) {
+  STRATEGY[9] = newsBot({ news: { verdict: true, skipRecap: true, rumorW: 0.4 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: ['detector', 'paper', 'analyst'], useFreeAttacks: false, attack: [], buyDefense: [], feeAware: true, reserve: 0.2 });
+  BOT_TIMES[9] = 6;
+  for (const lv of [2, 3]) {
+    let w = 0;
+    for (let s = 1; s <= N; s++) {
+      const [x, y] = play(s * 7919, 9, lv);
+      w += x > y ? 1 : x === y ? 0.5 : 0;
+    }
+    console.log(`smart 전략 vs 난이도 ${lv}: smart 승률 ${((w / N) * 100).toFixed(0)}%`);
+  }
+}

@@ -76,4 +76,19 @@ ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys)
   const after = (await B({ action: 'state', roomId: r2 })).s;
   ok('남의 봇 방 상태는 못 봄 (403)', after === 403);
 }
+// 사람 2 + 봇 1, 하루 3분: 한 명이 마감하면 (봇은 안 세고) 1대1처럼 90초 카운트다운
+{
+  const m3 = await A({ action: 'create', nickname: '카운트', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '봇 카운트다운' });
+  const r3 = m3.b.roomId;
+  await B({ action: 'join', code: m3.b.code, nickname: '카운트B', mode: 'easy' });
+  await B({ action: 'ready', roomId: r3, ready: true });
+  await A({ action: 'addBot', roomId: r3, level: 2 });
+  ok('사람 2 + 봇 1 시작', (await A({ action: 'start', roomId: r3 })).s === 200);
+  await A({ action: 'endTurn', roomId: r3 });
+  const s3 = (await A({ action: 'state', roomId: r3 })).b;
+  const left = Math.round((s3.room.deadline - Date.now()) / 1000);
+  ok('한 명 마감 → 90초 안쪽 카운트다운 (봇은 마감 인원에 안 셈)', s3.room.countdown === true && left <= 92 && left >= 60, `left=${left}s countdown=${s3.room.countdown}`);
+  await A({ action: 'leave', roomId: r3 });
+  await B({ action: 'leave', roomId: r3 });
+}
 done();
