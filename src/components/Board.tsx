@@ -368,7 +368,7 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
   const seen = new Set<string>();
   const evs = market.events.filter((e) => {
     if (e.day < day) return false;
-    const k = e.day + e.kind;
+    const k = e.day + e.kind + (e.symbol ?? '');
     if (seen.has(k)) return false;
     seen.add(k);
     // 이어지는 실적 발표 주간은 첫날만 (진행 중이면 오늘로)
@@ -385,7 +385,7 @@ export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: nu
           <button key={i} role="listitem" className={'sched-chip k-' + e.kind + (dd === 0 ? ' today' : dd <= 2 ? ' soon' : '')} onClick={onOpen}>
             <b>{dd === 0 ? '오늘' : 'D-' + dd}</b>
             <span>
-              <Icon name={EV_ICON2[e.kind]} size={13} className={'ev ev-' + e.kind} /> {EV_SHORT[e.kind]}
+              <Icon name={EV_ICON2[e.kind]} size={13} className={'ev ev-' + e.kind} /> {e.kind === 'story' ? e.title : EV_SHORT[e.kind]}
             </span>
           </button>
         );
