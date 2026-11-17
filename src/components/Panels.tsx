@@ -4,7 +4,7 @@ import { GameCard } from './GameCard';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
-import { ITEM_MAP, ITEMS, canBuy, canUse, itemCost, holdLimit, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
+import { ITEM_MAP, ITEMS, INFO_ONE_PER_DAY_VERSION, canBuy, canUse, itemCost, holdLimit, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
 import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
@@ -624,7 +624,9 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
         <div className="gc-grid">
           {owned.map(([k, n]) => {
             const d = ITEM_MAP[k];
-            const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) : (blockReason ?? '지금은 쓸 수 없어요');
+            // (v14) 정보 카드는 하루 1장 — 오늘 이미 다른 정보 카드를 썼으면 미리 흐리게
+            const infoDone = version >= INFO_ONE_PER_DAY_VERSION && d.type === 'info' && [...usedToday].some((u) => ITEM_MAP[u as ItemKind]?.type === 'info');
+            const why = canAct ? canUse(mine, k, day, totalDays, usedToday.has(k)) ?? (infoDone ? '정보 카드는 하루에 1장만 쓸 수 있어요' : null) : (blockReason ?? '지금은 쓸 수 없어요');
             return (
               <GameCard
                 key={k}

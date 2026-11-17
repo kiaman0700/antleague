@@ -6,8 +6,8 @@ import { GameCard } from './GameCard';
 import { Sheet } from './PrefsPanel';
 
 const TYPE: Record<ItemType, { label: string; tip: string }> = {
-  info: { label: '정보', tip: '나만 보는 정보를 줘요' },
-  attack: { label: '방해', tip: '상대를 골라 다음 날 불리하게' },
+  info: { label: '정보', tip: '나만 보는 정보를 줘요 · 하루에 1장까지' },
+  attack: { label: '방해', tip: '상대를 골라 다음 날 불리하게 · 한 사람에게 하루 1번까지' },
   defense: { label: '방어', tip: '갖고만 있으면 방해를 자동으로 막아요' },
   bonus: { label: '보너스', tip: '쓰면 바로 이득' },
 };
