@@ -153,6 +153,25 @@ describe('업적', () => {
   });
 });
 
+describe('기권한 사람은 업적 없음 (2026-11-17 — 현금만 들고 기권해 투자왕·존버의 미학을 받던 빈틈)', () => {
+  it('기권한 사람은 재산이 더 많아도 투자왕이 아니고 업적을 하나도 못 받음, 남은 사람이 1위', () => {
+    const m = generateMarket(SEED, 10);
+    const px = m.bars.CORE[0].open;
+    const res = computeAchievements({
+      market: m,
+      seed: SEED,
+      items: [],
+      players: [
+        { id: 'quit', trades: [], spends: [], filledOrders: 0, left: true },
+        // 남은 사람은 비싸게 사서 손해 (재산은 기권한 사람보다 적음)
+        { id: 'stay', trades: [{ player_id: 'stay', day: 0, symbol: 'CORE', side: 'buy', qty: 3, price: px * 3, fee: 0.001 }], spends: [], filledOrders: 0 },
+      ],
+    });
+    expect(res.quit).toEqual([]);
+    expect(res.stay).toContain('winner');
+  });
+});
+
 describe('웃픈 업적 (design/achievements-v2.md)', () => {
   const m = generateMarket(SEED, 10);
   const start = startCashFor(m.version);

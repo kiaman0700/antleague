@@ -863,6 +863,7 @@ export function finalResults(d: GameData) {
       spends: spendsOf(d, p.id),
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
       bot: p.bot_level ?? null,
+      left: !!p.left_game,
     })),
   });
   const results = players.map((p) => {

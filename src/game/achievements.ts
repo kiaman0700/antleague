@@ -83,7 +83,7 @@ export function titleOf(ids: string[]): Badge | null {
 export interface AchievementInput {
   market: Market;
   seed: number;
-  players: { id: string; trades: Trade[]; spends: Spend[]; filledOrders: number; /** 봇이면 난이도 */ bot?: number | null }[];
+  players: { id: string; trades: Trade[]; spends: Spend[]; filledOrders: number; /** 봇이면 난이도 */ bot?: number | null; /** 기권함 — 업적 없음, 순위는 맨 뒤 */ left?: boolean }[];
   items: ItemRow[];
 }
 
@@ -96,8 +96,11 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const finalEq = (id: string) => hist[id][hist[id].length - 1];
   const indexRet = m.index[last].close / KR_INDEX_BASE - 1;
   const ids = inp.players.map((p) => p.id);
-  const byFinal = [...ids].sort((x, y) => finalEq(y) - finalEq(x));
-  const winner = !solo && finalEq(byFinal[0]) !== finalEq(byFinal[1]) ? byFinal[0] : null;
+  // 기권한 사람은 재산과 상관없이 맨 뒤 (화면 순위·랭킹 점수와 같게), 1위는 끝까지 한 사람 중에서만
+  const leftSet = new Set(inp.players.filter((p) => p.left).map((p) => p.id));
+  const byFinal = [...ids].sort((x, y) => Number(leftSet.has(x)) - Number(leftSet.has(y)) || finalEq(y) - finalEq(x));
+  const stay = byFinal.filter((x) => !leftSet.has(x));
+  const winner = !solo && stay.length >= 1 && (stay.length === 1 || finalEq(stay[0]) !== finalEq(stay[1])) ? stay[0] : null;
 
   // 각 종목의 게임 중 최저가
   const minPrice: Record<string, number> = {};
@@ -105,6 +108,11 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
 
   const out: Record<string, string[]> = {};
   for (const p of inp.players) {
+    // 기권한 사람은 업적 없음 (현금만 들고 기권해 투자왕·존버의 미학 등을 받던 빈틈)
+    if (p.left) {
+      out[p.id] = [];
+      continue;
+    }
     const got = new Set<string>();
     const ret = finalEq(p.id) / startCashFor(m.version) - 1;
     if (winner === p.id) got.add('winner');

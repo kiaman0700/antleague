@@ -233,10 +233,15 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             <div className="crown"><Icon name="crown" size={40} /></div>
             <h1>{winner.nickname} 승리!</h1>
             <p>
-              {ranked.slice(1).every((r) => r.left)
-                ? ranked.length > 2 ? '다른 사람들이 모두 기권해서 이겼어요' : '상대가 기권해서 이겼어요'
-                : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
-              · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
+              {/* 내가 기권했으면 '상대가 기권해서 이겼어요'가 아니라 내 기권을 알려 줌 */}
+              {ranked.find((r) => r.id === session.playerId)?.left
+                ? `기권해서 이 판은 마지막 순위예요 · 나는 ${rankOf(session.playerId) + 1}위`
+                : <>
+                    {ranked.slice(1).every((r) => r.left)
+                      ? ranked.length > 2 ? '다른 사람들이 모두 기권해서 이겼어요' : '상대가 기권해서 이겼어요'
+                      : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
+                    · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
+                  </>}
             </p>
           </>
         ) : (
