@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { FIRST_WIN_XP, GAME_XP_CAP, LEVEL_BADGES, MAX_LEVEL, levelNeed, MISSIONS, MISSION_MAP, capXp, firstWinEligible, gameXp, levelBadges, levelOf, missionGain, missionPeriods, pickMissions, type MissionGame } from './missions.js';
+import { FIRST_WIN_XP, GAME_XP_CAP, LEVEL_BADGES, MAX_LEVEL, levelNeed, MISSIONS, MISSION_MAP, capXp, firstWinEligible, gameXp, levelBadges, levelOf, missionGain, missionPeriods, pickMissions, REROLLS, rerollPick, type MissionGame } from './missions.js';
 import { BADGE_MAP } from './achievements.js';
 import { AVATARS } from './avatars.js';
 
@@ -21,47 +21,86 @@ const game = (g: Partial<MissionGame> = {}): MissionGame => ({
   ...g,
 });
 
-describe('미션 고르기', () => {
-  it('오늘: 쉬움 2 + 보통 1 (겹치지 않음), 이번 주: 어려움 1', () => {
-    for (let i = 0; i < 200; i++) {
-      const day = pickMissions(hex('u' + i, 'd:2026-11-17'), 'day');
-      expect(day).toHaveLength(3);
-      expect(new Set(day).size).toBe(3);
-      expect(day.map((id) => MISSION_MAP[id].tier)).toEqual(['easy', 'easy', 'normal']);
-      const week = pickMissions(hex('u' + i, 'w:2026-11-16'), 'week');
-      expect(week).toHaveLength(1);
-      expect(MISSION_MAP[week[0]].tier).toBe('hard');
+describe('미션 고르기 (2판: 일일 6 · 주간 3)', () => {
+  it('일일: 쉬움 3 + 보통 3, 주간: 보통 1 + 어려움 2 — 겹치지 않고 각자 목록에서만', () => {
+    for (let i = 0; i < 300; i++) {
+      const day = pickMissions(hex('u' + i, 'd2:2026-11-18'), 'day');
+      expect(day).toHaveLength(6);
+      expect(new Set(day).size).toBe(6);
+      expect(day.map((id) => MISSION_MAP[id].tier)).toEqual(['easy', 'easy', 'easy', 'normal', 'normal', 'normal']);
+      expect(day.every((id) => MISSION_MAP[id].scope === 'day')).toBe(true);
+      const week = pickMissions(hex('u' + i, 'w2:2026-11-16'), 'week');
+      expect(week).toHaveLength(3);
+      expect(new Set(week).size).toBe(3);
+      expect(week.map((id) => MISSION_MAP[id].tier)).toEqual(['normal', 'hard', 'hard']);
+      expect(week.every((id) => MISSION_MAP[id].scope === 'week')).toBe(true);
     }
   });
-  it('같은 계정·같은 날은 같은 미션, 계정·날짜가 바뀌면 여러 가지가 나옴', () => {
-    expect(pickMissions(hex('a', 'd:2026-11-17'), 'day')).toEqual(pickMissions(hex('a', 'd:2026-11-17'), 'day'));
-    const seen = new Set<string>();
-    for (let i = 0; i < 50; i++) seen.add(pickMissions(hex('a', 'd:2026-11-' + (10 + i)), 'day').join());
-    expect(seen.size).toBeGreaterThan(10);
+  it('같은 계정·같은 날은 같은 미션, 사람·날짜마다 여러 가지, 모든 미션이 나올 수 있음', () => {
+    expect(pickMissions(hex('a', 'd2:2026-11-17'), 'day')).toEqual(pickMissions(hex('a', 'd2:2026-11-17'), 'day'));
+    const people = new Set<string>();
+    for (let i = 0; i < 50; i++) people.add(pickMissions(hex('p' + i, 'd2:2026-11-17'), 'day').join());
+    expect(people.size).toBeGreaterThan(30);
     const all = new Set<string>();
-    for (let i = 0; i < 300; i++) pickMissions(hex('x' + i, 'd:2026-11-17'), 'day').forEach((id) => all.add(id));
-    expect(all.size).toBe(MISSIONS.filter((m) => m.tier !== 'hard').length); // 모든 미션이 나올 수 있음
+    for (let i = 0; i < 600; i++) {
+      pickMissions(hex('x' + i, 'd2:2026-11-17'), 'day').forEach((id) => all.add(id));
+      pickMissions(hex('x' + i, 'w2:2026-11-16'), 'week').forEach((id) => all.add(id));
+    }
+    expect(all.size).toBe(MISSIONS.length);
+  });
+  it('일일·주간 목록은 겹치지 않음, 모든 미션에 게임 종류가 있음', () => {
+    const ids = MISSIONS.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const m of MISSIONS) expect(m.modes.length).toBeGreaterThan(0);
+  });
+  it('바꾸기: 같은 칸 등급·같은 목록에서, 지금 목록에 없는 것', () => {
+    const cur = pickMissions(hex('r', 'd2:2026-11-18'), 'day');
+    for (let n = 0; n < 50; n++) {
+      const slot = n % 6;
+      const id = rerollPick(hex('r', 'reroll:' + n), 'day', slot, cur)!;
+      expect(cur.includes(id)).toBe(false);
+      expect(MISSION_MAP[id].scope).toBe('day');
+      expect(MISSION_MAP[id].tier).toBe(MISSION_MAP[cur[slot]].tier);
+    }
+    expect(REROLLS).toEqual({ day: 3, week: 1 });
   });
 });
 
-describe('미션 판정 (서버가 끝난 판으로만)', () => {
+describe('미션 판정 (서버가 끝난 판으로만, 게임 종류별)', () => {
   it('기권했거나 거래가 없으면(끝까지 안 함) 아무것도 안 셈', () => {
     for (const m of MISSIONS) expect(missionGain(m.id, game({ finished: false, won: true, ret: 0.5, detectorUses: 3, kind: 'daily' }))).toBe(0);
   });
-  it('조건별', () => {
-    expect(missionGain('finish1', game())).toBe(1);
+  it('게임 종류가 맞아야 셈', () => {
+    expect(missionGain('bot1', game({ kind: 'bot' }))).toBe(1);
+    expect(missionGain('bot1', game({ kind: 'match' }))).toBe(0);
+    expect(missionGain('match1', game({ kind: 'match' }))).toBe(1);
+    expect(missionGain('match1', game({ kind: 'custom' }))).toBe(0);
+    expect(missionGain('custom1', game({ kind: 'friend' }))).toBe(1); // 친구 1대1 = 커스텀
     expect(missionGain('finish1', game({ kind: 'daily' }))).toBe(0);
     expect(missionGain('daily', game({ kind: 'daily' }))).toBe(1);
+    expect(missionGain('daily', game({ kind: 'bot' }))).toBe(0);
+    expect(missionGain('win1', game({ kind: 'bot', won: true }))).toBe(0);
+    expect(missionGain('win1', game({ kind: 'match', won: true }))).toBe(1);
+    expect(missionGain('w_ranked2', game({ kind: 'match', won: true, ranked: false }))).toBe(0);
+    expect(missionGain('w_ranked2', game({ kind: 'match', won: true, ranked: true }))).toBe(1);
+  });
+  it('조건별', () => {
     expect(missionGain('ret3', game({ ret: 0.029 }))).toBe(0);
     expect(missionGain('ret3', game({ ret: 0.031 }))).toBe(1);
-    expect(missionGain('beatbot', game({ won: true, botLevels: [1] }))).toBe(0);
-    expect(missionGain('beatbot', game({ won: true, botLevels: [2] }))).toBe(1);
-    expect(missionGain('beathard', game({ won: true, botLevels: [2, 3] }))).toBe(1);
+    expect(missionGain('beatbot', game({ kind: 'bot', won: true, botLevels: [1] }))).toBe(0);
+    expect(missionGain('beatbot', game({ kind: 'bot', won: true, botLevels: [2] }))).toBe(1);
+    expect(missionGain('beathard', game({ kind: 'bot', won: true, botLevels: [2, 3] }))).toBe(1);
     expect(missionGain('top3', game({ players: 3, rank: 1 }))).toBe(0);
     expect(missionGain('top3', game({ players: 4, rank: 3 }))).toBe(1);
-    expect(missionGain('win3', game({ won: true, players: 1 }))).toBe(0);
     expect(missionGain('card2', game({ cardUses: 2 }))).toBe(1);
     expect(missionGain('trade5', game({ trades: 5 }))).toBe(0);
+    expect(missionGain('krus', game({ boughtKr: true, boughtUs: false }))).toBe(0);
+    expect(missionGain('krus', game({ boughtKr: true, boughtUs: true }))).toBe(1);
+    expect(missionGain('beatidx', game({ ret: 0.01, indexRet: 0.02 }))).toBe(0);
+    expect(missionGain('beatidx', game({ ret: 0.03, indexRet: 0.02 }))).toBe(1);
+    expect(missionGain('w_trade30', game({ trades: 7 }))).toBe(7);
+    expect(missionGain('w_multi1', game({ players: 2, won: true }))).toBe(0);
+    expect(missionGain('w_multi1', game({ players: 3, won: true }))).toBe(1);
   });
 });
 
@@ -98,13 +137,13 @@ describe('기간', () => {
   it('한국 0시 기준 날짜와 그 주 월요일', () => {
     // 2026-11-17(화) 08:59 KST = 11-16 23:59 UTC
     const p = missionPeriods(Date.UTC(2026, 10, 16, 23, 59));
-    expect(p.day).toBe('d:2026-11-17');
-    expect(p.week).toBe('w:2026-11-16');
+    expect(p.day).toBe('d2:2026-11-17');
+    expect(p.week).toBe('w2:2026-11-16');
     expect(p.dayEndsAt).toBe(Date.UTC(2026, 10, 17, 15, 0)); // 11-18 0시 KST
     expect(p.weekEndsAt).toBe(Date.UTC(2026, 10, 22, 15, 0)); // 11-23(월) 0시 KST
     // 월요일 0시 KST 바로 뒤
     const m = missionPeriods(Date.UTC(2026, 10, 22, 15, 1));
-    expect(m.week).toBe('w:2026-11-23');
+    expect(m.week).toBe('w2:2026-11-23');
     expect(m.weekEndsAt).toBe(Date.UTC(2026, 10, 29, 15, 0));
   });
 });

@@ -147,7 +147,7 @@ import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPas
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
-import { evaluateMissions, missionState } from './missions.js';
+import { evaluateMissions, missionState, rerollMission } from './missions.js';
 import { EMOJIS, PHRASES } from '../../src/game/reactions.js';
 
 export interface ApiResult {
@@ -994,6 +994,12 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return missionState(sb, uid, Date.now(), room);
     }
 
+    case 'missionReroll': {
+      // 미완료 미션 바꾸기 (일일 하루 3번 · 주간 한 주 1번) — 횟수·완료 여부는 서버가 확인
+      rateLimit(uid + ':reroll', 10, 60_000);
+      return rerollMission(sb, uid, b);
+    }
+
     case 'react': {
       // 이모지 반응: 이 방 사람(기권 안 함)만, 정해진 목록만, 보낸 사람은 서버가 붙임 → 다른 사람 이름으로 못 보냄
       rateLimit(uid + ':react', 8, 10_000);
@@ -1804,7 +1810,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     const b = body as Body;
     const action = typeof b.action === 'string' ? b.action : '';
     // 화면 갱신과 행동(거래·마감 등)은 따로 셈 → 붐비는 방에서도 갱신 때문에 거래가 막히지 않게
-    if (['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'friends', 'resume', 'profile'].includes(action)) rateLimit(uid + ':state', 90, 20_000);
+    if (['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'friends', 'resume', 'profile', 'missions'].includes(action)) rateLimit(uid + ':state', 90, 20_000);
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)

@@ -1,10 +1,11 @@
-/** 미션 (설계서 design/missions.md): 오늘 3개 · 이번 주 1개 · 레벨 막대. 판정·경험치는 서버만 */
+/** 미션 2판 (설계서 design/missions-v2.md): 일일 6개 · 주간 3개 · 바꾸기(일일 하루 3번·주간 한 주 1번) · 레벨 막대. 판정·경험치는 서버만 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
 import { useAccount } from '../net/account';
 import { Icon } from './Icon';
 import { ErrorState, Loading } from './ui';
 import { HoverPop } from './HoverPop';
+import { ask } from './ConfirmHost';
 import { levelOf } from '../game/missions';
 
 interface MissionItem {
@@ -15,6 +16,8 @@ interface MissionItem {
   goal: number;
   progress: number;
   done: boolean;
+  /** 깰 수 있는 게임 종류 이름 (예: 봇전) */
+  modes?: string[];
 }
 export interface MissionInfo {
   member: boolean;
@@ -29,6 +32,8 @@ export interface MissionInfo {
   gameCap?: number;
   /** 결과 화면: 이 판에서 받은 판 경험치 */
   thisGame?: { xp: number; detail: string; firstWin: number } | null;
+  /** 남은 바꾸기 횟수 (회원만, 없으면 바꾸기 버튼 없음) */
+  rerolls?: { day: number; week: number } | null;
 }
 
 const EMPTY: MissionInfo = { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 };
@@ -78,7 +83,18 @@ export function useMissions(enabled = true, room?: string) {
     };
   }, [enabled, n, room, who]);
   const reload = useCallback(() => setN((x) => x + 1), []);
-  return { info, err, reload };
+  /** 서버가 돌려준 새 미션 정보를 바로 반영 (바꾸기 뒤) */
+  const put = useCallback(
+    (r: MissionInfo) => {
+      if (!room) {
+        shared.data = r;
+        shared.at = Date.now();
+      }
+      setInfo(r);
+    },
+    [room],
+  );
+  return { info, err, reload, put };
 }
 
 /** 갱신까지 남은 시간 (게임에서 흔한 '갱신까지 3시간 12분' 꼴) */
@@ -90,7 +106,9 @@ const left = (endsAt: number) => {
   return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${Math.max(1, m)}분`;
 };
 
-function Row({ m }: { m: MissionItem }) {
+/** 모든 게임 종류에서 깰 수 있으면 표시 안 함 */
+const ALL_MODES = 4;
+function Row({ m, onReroll, busy }: { m: MissionItem; onReroll?: () => void; busy?: boolean }) {
   return (
     <li className={'ms-row' + (m.done ? ' done' : '')}>
       <span className="ms-check" aria-hidden>
@@ -105,8 +123,14 @@ function Row({ m }: { m: MissionItem }) {
           </small>
         )}
         <span className="sr-only">{m.done ? ' (완료)' : ' (아직)'}</span>
+        {m.modes && m.modes.length < ALL_MODES && <span className="ms-modes">{m.modes.join(' · ')}</span>}
       </span>
       <b className="ms-xp">+{m.xp}</b>
+      {onReroll && !m.done && (
+        <button className="ms-reroll" onClick={onReroll} disabled={busy} aria-label={`${m.title} 다른 미션으로 바꾸기`} title="다른 미션으로 바꾸기">
+          <Icon name="refresh" size={14} />
+        </button>
+      )}
     </li>
   );
 }
@@ -135,7 +159,23 @@ export function LevelBar({ info }: { info: MissionInfo }) {
  */
 export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLevel, room }: { enabled?: boolean; onSignup?: () => void; retry?: number; src?: ReturnType<typeof useMissions>; /** 레벨 막대 빼고 오늘 받은 경험치만 (메뉴바 팝업 — 레벨은 프로필에) */ noLevel?: boolean; /** 결과 화면: 이 판에서 받은 경험치도 */ room?: string }) {
   const own = useMissions(enabled && !src, room);
-  const { info, err, reload } = src ?? own;
+  const { info, err, reload, put } = src ?? own;
+  const [busy, setBusy] = useState(false);
+  const [rerollErr, setRerollErr] = useState('');
+  const reroll = async (kind: 'day' | 'week', slot: number, title: string, progress: number) => {
+    if (progress > 0 && !(await ask(`'${title}' 미션을 바꾸면 지금까지의 진행이 사라져요. 바꿀까요?`, { ok: '바꾸기' }))) return;
+    setBusy(true);
+    setRerollErr('');
+    try {
+      put(await api<MissionInfo>('missionReroll', { kind, slot }));
+    } catch (e) {
+      setRerollErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  // 바꾸기는 회원 · 미션 칸(결과 화면 아님)에서만
+  const canReroll = !room && !!info?.member && !!info?.rerolls;
   // 결과 화면: 판정이 막 저장되는 중일 수 있어 잠깐 뒤 한 번 더
   const tries = useRef(0);
   useEffect(() => {
@@ -170,6 +210,12 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         </h3>
         <small className="muted">갱신까지 {left(info.today.endsAt)}</small>
       </div>
+      {canReroll && (
+        <p className="ms-reroll-left muted small">
+          <Icon name="refresh" size={12} /> 미완료 미션 바꾸기 · 일일 {info.rerolls!.day}번 · 주간 {info.rerolls!.week}번 남음
+        </p>
+      )}
+      {rerollErr && <p className="error small">{rerollErr}</p>}
       {/* 미션 칸에는 미션만 — 경험치 상한·규칙 설명은 빼고(사용자 요청 2026-11-17), 레벨 막대는 noLevel 이 아닐 때만 */}
       {info.member && !noLevel && <LevelBar info={info} />}
       {info.thisGame && (
@@ -184,8 +230,8 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         </p>
       )}
       <ul className="ms-list">
-        {info.today.list.map((m) => (
-          <Row key={m.id} m={m} />
+        {info.today.list.map((m, i) => (
+          <Row key={m.id} m={m} busy={busy} onReroll={canReroll && info.rerolls!.day > 0 ? () => reroll('day', i, m.title, m.progress) : undefined} />
         ))}
       </ul>
       <div className="ms-head ms-week">
@@ -193,8 +239,8 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         <small className="muted">갱신까지 {left(info.week.endsAt)}</small>
       </div>
       <ul className="ms-list">
-        {info.week.list.map((m) => (
-          <Row key={m.id} m={m} />
+        {info.week.list.map((m, i) => (
+          <Row key={m.id} m={m} busy={busy} onReroll={canReroll && info.rerolls!.week > 0 ? () => reroll('week', i, m.title, m.progress) : undefined} />
         ))}
       </ul>
       {!info.member && (

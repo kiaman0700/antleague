@@ -6,8 +6,11 @@
  */
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { finalResults, marketFor, type GameData } from '../../src/engine/engine.js';
-import { BADGE_XP, DAILY_XP_CAP, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, type MissionGame } from '../../src/game/missions.js';
+import { finalResults, GameError, marketFor, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
+import { BADGE_XP, DAILY_XP_CAP, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
+import { KR_INDEX_BASE } from '../../src/game/market.js';
+import { preRumors } from '../../src/game/rumors.js';
+import { STOCK_MAP } from '../../src/game/stocks.js';
 import { earnedBadges } from './accounts.js';
 
 function pickHex(uid: string, period: string) {
@@ -16,6 +19,58 @@ function pickHex(uid: string, period: string) {
 export function missionsFor(uid: string, now = Date.now()) {
   const p = missionPeriods(now);
   return { ...p, dayIds: pickMissions(pickHex(uid, p.day), 'day'), weekIds: pickMissions(pickHex(uid, p.week), 'week') };
+}
+
+/* ---- 미션 바꾸기 (2판): mission_rerolls(계정, 기간)에 바꾼 횟수와 칸별로 바뀐 미션 ---- */
+interface Rerolls {
+  ok: boolean;
+  day: { count: number; slots: Record<string, string> };
+  week: { count: number; slots: Record<string, string> };
+}
+async function loadRerolls(sb: SupabaseClient, uid: string, day: string, week: string): Promise<Rerolls> {
+  const empty = { count: 0, slots: {} };
+  const r = await sb.from('mission_rerolls').select('period, count, slots').eq('user_id', uid).in('period', [day, week]);
+  if (r.error) return { ok: false, day: empty, week: empty }; // 041 적용 전: 바꾸기만 꺼짐
+  const rows = (r.data ?? []) as { period: string; count: number; slots: Record<string, string> | null }[];
+  const of = (period: string) => {
+    const x = rows.find((y) => y.period === period);
+    return x ? { count: x.count ?? 0, slots: x.slots ?? {} } : empty;
+  };
+  return { ok: true, day: of(day), week: of(week) };
+}
+const applySlots = (ids: string[], slots: Record<string, string>) => ids.map((id, i) => (slots[String(i)] && MISSION_MAP[slots[String(i)]] ? slots[String(i)] : id));
+/** 바꾼 것까지 반영한 그 사람의 일일·주간 미션 */
+async function missionsForUser(sb: SupabaseClient, uid: string, now = Date.now()) {
+  const ms = missionsFor(uid, now);
+  const rr = await loadRerolls(sb, uid, ms.day, ms.week);
+  return { ...ms, dayIds: applySlots(ms.dayIds, rr.day.slots), weekIds: applySlots(ms.weekIds, rr.week.slots), rerolls: rr };
+}
+
+/** 미완료 미션 하나를 다른 것으로 (일일 하루 3번 · 주간 한 주 1번, 서버가 횟수·완료 여부 확인, 동시 요청은 한 번만) */
+export async function rerollMission(sb: SupabaseClient, uid: string, b: { kind?: unknown; slot?: unknown }, now = Date.now()) {
+  const kind = b.kind === 'day' || b.kind === 'week' ? b.kind : null;
+  const slot = typeof b.slot === 'number' && Number.isInteger(b.slot) ? b.slot : -1;
+  if (!kind || slot < 0 || slot >= (kind === 'day' ? 6 : 3)) throw new GameError('바꿀 미션을 다시 골라 주세요.');
+  const prof = await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle();
+  if (prof.error || !prof.data) throw new GameError('미션은 회원만 바꿀 수 있어요.', 403);
+  const st = await missionsForUser(sb, uid, now);
+  if (!st.rerolls.ok) throw new GameError('지금은 미션을 바꿀 수 없어요. 잠시 뒤에 다시 해 주세요.', 503);
+  const period = kind === 'day' ? st.day : st.week;
+  const ids = kind === 'day' ? st.dayIds : st.weekIds;
+  const cur = st.rerolls[kind];
+  if (cur.count >= REROLLS[kind]) throw new GameError(kind === 'day' ? '오늘은 일일 미션을 더 바꿀 수 없어요.' : '이번 주는 주간 미션을 더 바꿀 수 없어요.', 409);
+  const pr = await sb.from('mission_progress').select('done').eq('user_id', uid).eq('period', period).eq('mission', ids[slot]).maybeSingle();
+  if ((pr.data as { done?: boolean } | null)?.done) throw new GameError('이미 완료한 미션은 바꿀 수 없어요.', 409);
+  const next = rerollPick(pickHex(uid, period + ':reroll:' + cur.count + ':' + slot), kind, slot, ids);
+  if (!next) throw new GameError('바꿀 수 있는 미션이 없어요.', 409);
+  const slots = { ...cur.slots, [String(slot)]: next };
+  // 횟수가 그대로일 때만 바꿈 (연타·동시 요청은 한 번만)
+  const w =
+    cur.count === 0 && !Object.keys(cur.slots).length
+      ? await sb.from('mission_rerolls').insert({ user_id: uid, period, count: 1, slots }).select('period')
+      : await sb.from('mission_rerolls').update({ count: cur.count + 1, slots }).eq('user_id', uid).eq('period', period).eq('count', cur.count).select('period');
+  if (w.error || !(w.data ?? []).length) throw new GameError('잠시 뒤에 다시 해 주세요.', 409);
+  return missionState(sb, uid, now);
 }
 
 interface ProgressRow {
@@ -80,8 +135,8 @@ async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game
 /** 오늘 0시(한국) 뒤에 받은 미션 경험치 */
 async function xpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
   const since = new Date(dayEndsAt - 86_400_000).toISOString();
-  const r = await sb.from('mission_progress').select('xp').eq('user_id', uid).eq('done', true).gte('done_at', since);
-  return ((r.data ?? []) as { xp: number }[]).reduce((s, x) => s + (x.xp ?? 0), 0);
+  const r = await sb.from('mission_progress').select('xp, mission').eq('user_id', uid).eq('done', true).gte('done_at', since);
+  return ((r.data ?? []) as { xp: number; mission: string }[]).filter((x) => MISSION_MAP[x.mission]?.scope !== 'week').reduce((s, x) => s + (x.xp ?? 0), 0);
 }
 
 /** 끝난 판 하나로 그 판 회원들의 미션 진행 (서버만, 한 번만) */
@@ -127,9 +182,19 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       detectorUses: uses.filter((i) => i.kind === 'detector').length,
       cardUses: uses.length,
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
+      ranked: !!d.room.ranked,
+      boughtKr: trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.currency !== 'USD' && !STOCK_MAP[t.symbol]?.etf),
+      boughtUs: trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.currency === 'USD'),
+      boughtEtf: trades.some((t) => t.side === 'buy' && !!STOCK_MAP[t.symbol]?.etf),
+      // 그날 장 전 찌라시(진짜·헛소문 모두)에 나온 업종의 종목을 그날 삼
+      boughtRumorSector:
+        (d.room.version ?? 1) >= PREMARKET_VERSION &&
+        trades.some((t) => t.side === 'buy' && preRumors(m, t.day, d.room.salt ?? String(d.room.seed)).some((r) => r.sector === STOCK_MAP[t.symbol]?.sector)),
+      indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
     };
-    const ms = missionsFor(uid, now);
-    await grantGameXp(sb, uid, d.room.id, game, ms.day, ms.dayEndsAt);
+    const ms = await missionsForUser(sb, uid, now);
+    // 오늘 첫 승은 예전과 같은 날짜 열쇠 (미션 2판으로 기간 이름이 바뀌어도 하루 한 번)
+    await grantGameXp(sb, uid, d.room.id, game, ms.day.replace(/^d2:/, 'd:'), ms.dayEndsAt);
     const todo = [...ms.dayIds.map((id) => ({ id, period: ms.day })), ...ms.weekIds.map((id) => ({ id, period: ms.week }))].filter((x) => missionGain(x.id, game) > 0);
     if (!todo.length) continue;
     let budget = DAILY_XP_CAP - (await xpToday(sb, uid, ms.dayEndsAt));
@@ -139,7 +204,8 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       if (cur?.done) continue;
       const progress = Math.min(def.goal, (cur?.progress ?? 0) + missionGain(t.id, game));
       const done = progress >= def.goal;
-      const xp = done ? Math.max(0, Math.min(def.xp, budget)) : 0;
+      // 하루 상한은 일일 미션만 (주간 미션은 따로)
+      const xp = done ? (def.scope === 'week' ? def.xp : Math.max(0, Math.min(def.xp, budget))) : 0;
       const row = { user_id: uid, period: t.period, mission: t.id, progress, goal: def.goal, xp, done, done_at: done ? new Date(now).toISOString() : null };
       // 동시에 다른 판이 같은 줄을 바꿨으면(진행이 달라졌으면) 이번 칸은 건너뜀 → 경험치를 두 번 주지 않음
       const w = cur
@@ -147,7 +213,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
         : await sb.from('mission_progress').insert(row).select('mission');
       if (w.error || !(w.data ?? []).length) continue;
       if (done && xp > 0) {
-        budget -= xp;
+        if (def.scope === 'day') budget -= xp;
         const add = await sb.rpc('add_xp', { p_user: uid, p_xp: xp });
         if (add.error) console.error('[api] add_xp', add.error.message);
       }
@@ -157,7 +223,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
 
 /** 화면용: 내 오늘·이번 주 미션, 레벨 (비밀값·다른 사람 정보 없음) */
 export async function missionState(sb: SupabaseClient, uid: string, now = Date.now(), roomId?: string) {
-  const ms = missionsFor(uid, now);
+  const ms = await missionsForUser(sb, uid, now);
   const prof = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
   const member = !prof.error && !!prof.data;
   const xp = member ? ((prof.data as { xp?: number }).xp ?? 0) : 0;
@@ -169,7 +235,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   const view = (id: string, period: string) => {
     const def = MISSION_MAP[id];
     const row = rows.find((x) => x.period === period && x.mission === id);
-    return { id, title: def.title, tier: def.tier, xp: row?.done ? row.xp : def.xp, goal: def.goal, progress: row?.progress ?? 0, done: !!row?.done };
+    return { id, title: def.title, tier: def.tier, xp: row?.done ? row.xp : def.xp, goal: def.goal, progress: row?.progress ?? 0, done: !!row?.done, modes: def.modes.map((m) => MODE_LABEL[m]) };
   };
   const todayXp = member ? await xpToday(sb, uid, ms.dayEndsAt) : 0;
   const gameToday = member ? ((await gameXpToday(sb, uid, ms.dayEndsAt)) ?? 0) : 0;
@@ -178,7 +244,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   if (member && roomId) {
     const g = await sb.from('xp_log').select('xp, detail').eq('user_id', uid).eq('key', 'game:' + roomId).maybeSingle();
     if (!g.error && g.data) {
-      const fw = await sb.from('xp_log').select('xp').eq('user_id', uid).eq('key', 'firstwin:' + ms.day).eq('detail', 'room:' + roomId).maybeSingle();
+      const fw = await sb.from('xp_log').select('xp').eq('user_id', uid).eq('key', 'firstwin:' + ms.day.replace(/^d2:/, 'd:')).eq('detail', 'room:' + roomId).maybeSingle();
       const row = g.data as { xp: number; detail: string | null };
       thisGame = { xp: row.xp, detail: row.detail ?? '', firstWin: !fw.error && fw.data ? (fw.data as { xp: number }).xp : 0 };
     }
@@ -194,6 +260,8 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     gameToday,
     gameCap: GAME_XP_CAP,
     thisGame,
+    // 남은 바꾸기 횟수 (회원·041 적용 뒤에만)
+    rerolls: member && ms.rerolls.ok ? { day: Math.max(0, REROLLS.day - ms.rerolls.day.count), week: Math.max(0, REROLLS.week - ms.rerolls.week.count) } : null,
   };
 }
 export type MissionState = Awaited<ReturnType<typeof missionState>>;

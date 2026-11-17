@@ -1,9 +1,15 @@
 /**
- * 미션 (설계서 design/missions.md): 오늘의 미션 3개(쉬움 2 + 보통 1) · 이번 주 미션 1개(어려움).
+ * 미션 2판 (설계서 design/missions-v2.md): 일일 미션 6개(쉬움 3 + 보통 3) · 주간 미션 3개(보통 1 + 어려움 2).
+ * 일일·주간은 서로 다른 목록에서만 나오고, 미션마다 깰 수 있는 게임 종류(modes)가 정해져 있음.
  * 판정은 서버가 끝난 판의 데이터로만 (화면이 보내는 '했어요'는 없음). 보상은 경험치 → 레벨 → 레벨 업적(사진·칭호).
  * 서버·화면 공용 (상대 import 에 .js)
  */
 export type MissionTier = 'easy' | 'normal' | 'hard';
+/** 미션을 깰 수 있는 게임 종류: match = 랭킹전·일반전(매칭), bot = 봇전, daily = 오늘의 도전, custom = 커스텀 방·친구 1대1 */
+export type MissionMode = 'match' | 'bot' | 'daily' | 'custom';
+export const MODE_LABEL: Record<MissionMode, string> = { match: '일반·랭킹전', bot: '봇전', daily: '오늘의 도전', custom: '커스텀' };
+const ALL: MissionMode[] = ['match', 'bot', 'daily', 'custom'];
+const VERSUS: MissionMode[] = ['match', 'bot', 'custom'];
 export interface MissionDef {
   id: string;
   title: string;
@@ -11,26 +17,58 @@ export interface MissionDef {
   xp: number;
   /** 몇 번 해야 완료 (대부분 1) */
   goal: number;
+  /** 일일 / 주간 목록 (서로 겹치지 않음) */
+  scope: 'day' | 'week';
+  /** 깰 수 있는 게임 종류 */
+  modes: MissionMode[];
 }
 
 export const MISSIONS: MissionDef[] = [
-  { id: 'finish1', title: '대결 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1 },
-  { id: 'detector', title: '루머 감별기 1번 쓰기', tier: 'easy', xp: 20, goal: 1 },
-  { id: 'order', title: '예약 주문 1번 체결시키기', tier: 'easy', xp: 20, goal: 1 },
-  { id: 'breaking', title: '장중 속보가 뜬 종목 사기', tier: 'easy', xp: 20, goal: 1 },
-  { id: 'daily', title: '오늘의 도전 하기', tier: 'easy', xp: 30, goal: 1 },
-  { id: 'trade5', title: '한 판에서 5번 넘게 거래하기', tier: 'easy', xp: 20, goal: 1 },
-  { id: 'ret3', title: '수익률 +3% 넘게 마감', tier: 'normal', xp: 50, goal: 1 },
-  { id: 'beatbot', title: '봇전에서 보통 이상 봇 이기기', tier: 'normal', xp: 50, goal: 1 },
-  { id: 'top3', title: '4명 이상 판에서 3위 안', tier: 'normal', xp: 50, goal: 1 },
-  { id: 'card2', title: '한 판에서 찬스 카드 2장 쓰기', tier: 'normal', xp: 40, goal: 1 },
-  { id: 'win3', title: '대결 3판 이기기', tier: 'hard', xp: 150, goal: 3 },
-  { id: 'beathard', title: '고수봇이 있는 판에서 1위', tier: 'hard', xp: 150, goal: 1 },
-  { id: 'ret10', title: '수익률 +10% 넘게 마감', tier: 'hard', xp: 150, goal: 1 },
+  // ---- 일일 · 쉬움 ----
+  { id: 'finish1', title: '대결 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: VERSUS },
+  { id: 'detector', title: '루머 감별기 1번 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'order', title: '예약 주문 1번 체결시키기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'breaking', title: '장중 속보가 뜬 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'daily', title: '오늘의 도전 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['daily'] },
+  { id: 'trade5', title: '한 판에서 5번 넘게 거래하기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'bot1', title: '봇전 1판 끝까지 하기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ['bot'] },
+  { id: 'match1', title: '일반전·랭킹전 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['match'] },
+  { id: 'custom1', title: '커스텀 방에서 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['custom'] },
+  { id: 'rumorbuy', title: '찌라시에 나온 업종 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'krus', title: '한 판에서 국내·미국 종목 둘 다 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'etf1', title: 'ETF 사 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  // ---- 일일 · 보통 ----
+  { id: 'ret3', title: '수익률 +3% 넘게 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
+  { id: 'beatbot', title: '보통 이상 봇 이기기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['bot'] },
+  { id: 'top3', title: '4명 이상 판에서 3위 안', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['match', 'custom'] },
+  { id: 'card2', title: '한 판에서 찬스 카드 2장 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: VERSUS },
+  { id: 'win1', title: '일반전·랭킹전 1판 이기기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['match'] },
+  { id: 'beatidx', title: '종합지수보다 높은 수익률로 마감', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'dailyplus', title: '오늘의 도전 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['daily'] },
+  { id: 'customwin', title: '커스텀 방에서 1위', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ['custom'] },
+  // ---- 주간 · 보통 ----
+  { id: 'w_finish5', title: '대결 5판 끝까지 하기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: VERSUS },
+  { id: 'w_bot3', title: '봇전 3판 이기기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['bot'] },
+  { id: 'w_daily3', title: '오늘의 도전 3번 하기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['daily'] },
+  { id: 'w_trade30', title: '거래 30번 하기', tier: 'normal', xp: 120, goal: 30, scope: 'week', modes: ALL },
+  // ---- 주간 · 어려움 ----
+  { id: 'win3', title: '일반전·랭킹전 3판 이기기', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['match'] },
+  { id: 'beathard', title: '고수봇이 있는 판에서 1위', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ['bot', 'custom'] },
+  { id: 'ret10', title: '수익률 +10% 넘게 마감', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ALL },
+  { id: 'w_ranked2', title: '랭킹전 2판 이기기', tier: 'hard', xp: 200, goal: 2, scope: 'week', modes: ['match'] },
+  { id: 'w_multi1', title: '3명 이상 판에서 1위', tier: 'hard', xp: 150, goal: 1, scope: 'week', modes: ['match', 'custom'] },
+  { id: 'w_custom3', title: '커스텀 방에서 3판 끝까지 하기', tier: 'hard', xp: 150, goal: 3, scope: 'week', modes: ['custom'] },
 ];
 export const MISSION_MAP: Record<string, MissionDef> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
-/** 하루에 미션으로 받을 수 있는 경험치 상한 (짜고 치기 막기) */
-export const DAILY_XP_CAP = 300;
+/** 하루에 일일 미션으로 받을 수 있는 경험치 상한 (짜고 치기 막기) — 주간 미션은 따로 */
+export const DAILY_XP_CAP = 450;
+/** 미완료 미션 바꾸기 횟수: 일일은 하루 3번, 주간은 한 주 1번 — 각각 갱신 때 다시 채워짐 (사용자 결정 2026-11-18) */
+export const REROLLS: Record<'day' | 'week', number> = { day: 3, week: 1 };
+export const DAY_COUNT = 6;
+export const WEEK_COUNT = 3;
+/** 칸 순서: 일일 [쉬움 3, 보통 3], 주간 [보통 1, 어려움 2] */
+const SLOT_TIERS: Record<'day' | 'week', MissionTier[]> = { day: ['easy', 'easy', 'easy', 'normal', 'normal', 'normal'], week: ['normal', 'hard', 'hard'] };
+export const slotTier = (kind: 'day' | 'week', slot: number) => SLOT_TIERS[kind][slot];
 
 /** 최대 레벨 (2026-11-17 사용자: 오래 걸렸으면) — 매일 미션 + 5판쯤이면 1년쯤 */
 export const MAX_LEVEL = 100;
@@ -61,25 +99,29 @@ export const levelBadges = (xp: number) => {
 };
 
 /**
- * 그 사람의 오늘·이번 주 미션 고르기: hex = 서버 비밀 키로 만든 HMAC(계정+기간) — 미리 알 수 없고 사람마다 다름
- * 오늘: 쉬움 2 + 보통 1 / 이번 주: 어려움 1
+ * 그 사람의 일일·주간 미션 고르기: hex = 서버 비밀 키로 만든 HMAC(계정+기간) — 미리 알 수 없고 사람마다 다름.
+ * 칸마다 정해진 등급(SLOT_TIERS)에서, 그 목록(일일/주간) 안에서만, 겹치지 않게
  */
 export function pickMissions(hex: string, kind: 'day' | 'week'): string[] {
   const nums = (hex.match(/.{1,6}/g) ?? ['0']).map((h) => parseInt(h, 16));
-  const take = (tier: MissionTier, n: number, from: number) => {
-    const pool = MISSIONS.filter((m) => m.tier === tier).map((m) => m.id);
-    const out: string[] = [];
-    for (let i = 0; out.length < n && i < 20; i++) {
-      const id = pool[(nums[(from + i) % nums.length] ?? i) % pool.length];
-      if (!out.includes(id)) out.push(id);
-    }
-    return out;
-  };
-  return kind === 'day' ? [...take('easy', 2, 0), ...take('normal', 1, 3)] : take('hard', 1, 5);
+  const out: string[] = [];
+  SLOT_TIERS[kind].forEach((tier, slot) => {
+    const pool = MISSIONS.filter((m) => m.scope === kind && m.tier === tier && !out.includes(m.id)).map((m) => m.id);
+    out.push(pool[(nums[(slot * 2) % nums.length] ?? slot) % pool.length]);
+  });
+  return out;
+}
+/** 미션 바꾸기: 같은 칸 등급·같은 목록에서 지금 목록에 없는 것 하나 (hex = 바꾼 횟수까지 넣은 HMAC) */
+export function rerollPick(hex: string, kind: 'day' | 'week', slot: number, current: string[]): string | null {
+  const tier = SLOT_TIERS[kind][slot];
+  const pool = MISSIONS.filter((m) => m.scope === kind && m.tier === tier && !current.includes(m.id)).map((m) => m.id);
+  if (!pool.length) return null;
+  return pool[parseInt(hex.slice(0, 8), 16) % pool.length];
 }
 
 /** 끝난 판 하나에서 그 사람이 한 일 (서버가 만들어 넘김) */
 export interface MissionGame {
+  /** rooms.kind: match · bot · daily · custom · friend */
   kind: string;
   /** 끝까지 함 (기권 아님) */
   finished: boolean;
@@ -94,24 +136,48 @@ export interface MissionGame {
   detectorUses: number;
   cardUses: number;
   filledOrders: number;
+  /** (2판) 랭킹전 */
+  ranked?: boolean;
+  boughtKr?: boolean;
+  boughtUs?: boolean;
+  boughtEtf?: boolean;
+  /** 그날 장 전 찌라시에 나온 업종의 종목을 그날 삼 */
+  boughtRumorSector?: boolean;
+  /** 종합지수 수익률 */
+  indexRet?: number;
 }
+/** 판 종류 → 미션 모드 (친구 1대1은 커스텀) */
+export const modeOf = (kind: string): MissionMode => (kind === 'match' || kind === 'bot' || kind === 'daily' ? kind : 'custom');
 
 /** 이 판으로 각 미션이 몇 칸 나아가는지 (0 이면 해당 없음) */
 export function missionGain(id: string, g: MissionGame): number {
   if (!g.finished) return 0;
+  const def = MISSION_MAP[id];
+  if (!def || !def.modes.includes(modeOf(g.kind))) return 0;
   switch (id) {
     case 'finish1':
-      return g.kind !== 'daily' ? 1 : 0;
+    case 'bot1':
+    case 'match1':
+    case 'custom1':
+    case 'daily':
+    case 'w_finish5':
+    case 'w_daily3':
+    case 'w_custom3':
+      return 1;
     case 'detector':
       return g.detectorUses > 0 ? 1 : 0;
     case 'order':
       return g.filledOrders > 0 ? 1 : 0;
     case 'breaking':
       return g.boughtBreaking ? 1 : 0;
-    case 'daily':
-      return g.kind === 'daily' ? 1 : 0;
     case 'trade5':
       return g.trades > 5 ? 1 : 0;
+    case 'rumorbuy':
+      return g.boughtRumorSector ? 1 : 0;
+    case 'krus':
+      return g.boughtKr && g.boughtUs ? 1 : 0;
+    case 'etf1':
+      return g.boughtEtf ? 1 : 0;
     case 'ret3':
       return g.trades > 0 && g.ret >= 0.03 ? 1 : 0;
     case 'beatbot':
@@ -120,12 +186,27 @@ export function missionGain(id: string, g: MissionGame): number {
       return g.players >= 4 && g.rank <= 3 ? 1 : 0;
     case 'card2':
       return g.cardUses >= 2 ? 1 : 0;
+    case 'win1':
     case 'win3':
       return g.won && g.players >= 2 ? 1 : 0;
+    case 'beatidx':
+      return g.trades > 0 && g.indexRet !== undefined && g.ret > g.indexRet ? 1 : 0;
+    case 'dailyplus':
+      return g.trades > 0 && g.ret > 0 ? 1 : 0;
+    case 'customwin':
+      return g.won && g.players >= 2 ? 1 : 0;
+    case 'w_bot3':
+      return g.won ? 1 : 0;
+    case 'w_trade30':
+      return g.trades;
     case 'beathard':
       return g.won && g.botLevels.includes(3) ? 1 : 0;
     case 'ret10':
       return g.trades > 0 && g.ret >= 0.1 ? 1 : 0;
+    case 'w_ranked2':
+      return g.ranked && g.won ? 1 : 0;
+    case 'w_multi1':
+      return g.players >= 3 && g.won ? 1 : 0;
     default:
       return 0;
   }
@@ -165,5 +246,5 @@ export function missionPeriods(now = Date.now()) {
   const monday = new Date(kst.getTime() - dow * 86_400_000).toISOString().slice(0, 10);
   const nextMidnight = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() + 1) - 9 * 3600_000;
   const nextMonday = nextMidnight + ((7 - dow - 1 + 7) % 7) * 86_400_000;
-  return { day: 'd:' + day, week: 'w:' + monday, dayEndsAt: nextMidnight, weekEndsAt: nextMonday };
+  return { day: 'd2:' + day, week: 'w2:' + monday, dayEndsAt: nextMidnight, weekEndsAt: nextMonday };
 }
