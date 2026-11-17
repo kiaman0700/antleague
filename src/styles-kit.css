@@ -775,3 +775,25 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .bg-cell.hidden { opacity: 0.55; }
 .bg-cell.hidden i { font-style: normal; font-weight: 800; font-size: 18px; color: #6b6b6b; }
 .bg-hidden-row { margin-top: 8px; }
+
+/* ---- 마이프로필 머리 칸 2판 (2026-11-17): 이름·연필 한 줄 / @아이디 / 칭호 단추 / 긴 레벨 막대 ---- */
+.me-card .me-info { display: grid; gap: 6px; align-content: center; min-width: 0; flex: 1 1 auto; }
+.me-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.me-name-row .me-nick { font-size: 20px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-name-row .verified { color: #8b7bff; flex: none; }
+.me-nick-btn { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; border: 0; background: transparent; color: #9a9a9a; cursor: pointer; }
+.me-nick-btn:hover { background: #2e2e2e; color: #f2f2f2; }
+.me-nick-btn:focus-visible, .me-title-btn:focus-visible { outline: 2px solid #b9b0ff; outline-offset: 2px; }
+.me-id { color: #9a9a9a; font-size: 13px; margin-top: -4px; }
+.me-title-btn { justify-self: start; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 99px; border: 1px solid rgba(139, 123, 255, 0.35); background: rgba(139, 123, 255, 0.14); color: #b9b0ff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; max-width: 100%; }
+.me-title-btn:hover { background: rgba(139, 123, 255, 0.24); }
+.me-title-btn.empty { border-style: dashed; background: transparent; color: #9a9a9a; border-color: #4a4a4a; }
+.me-card .me-level { max-width: 460px; width: 100%; margin-top: 2px; }
+.me-card .me-level .ms-bar { height: 8px; border-radius: 4px; }
+.me-card .me-level .ms-bar i { border-radius: 4px; }
+.me-avatar-btn .me-av-edit { display: grid; place-items: center; }
+.me-nick-edit { display: grid; gap: 6px; max-width: 420px; }
+.acc-sheet { display: grid; gap: 10px; }
+.acc-sheet .acc-pw { display: grid; gap: 8px; }
+.acc-sheet input { width: 100%; }
+.acc-sec .more-row { width: 100%; }

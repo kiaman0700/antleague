@@ -15,6 +15,7 @@ import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover } from '../net/account';
 import { BADGES, givesTitle, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
+import { Sheet } from '../components/PrefsPanel';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { pct, tone } from '../lib/format';
 import { josa } from '../engine/engine';
@@ -368,8 +369,8 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [cur, setCur] = useState('');
-  // 꾸미기: 사진 | 칭호 (같은 모양 칸), 닉네임은 이름 옆 연필로 바로 고침
-  const [deco, setDeco] = useState<'avatar' | 'title'>('avatar');
+  // 사진·칭호·비밀번호·복구 코드는 각각 따로 여는 창 (사용자 요청 2026-11-17: 사진과 칭호는 따로, 계정 설정은 접어 두기)
+  const [sheet, setSheet] = useState<null | 'avatar' | 'title' | 'password' | 'recovery'>(null);
   const [editNick, setEditNick] = useState(false);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -428,10 +429,10 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         }
       />
       <section className="panel pad me-card">
-        <button className="me-avatar-btn" onClick={() => (setDeco('avatar'), document.getElementById('me-deco')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))} title="프로필 사진 바꾸기" aria-label="프로필 사진 바꾸기">
-          <Avatar id={p.avatar} name={p.nickname} size={64} />
+        <button className="me-avatar-btn" onClick={() => (setErr(''), setMsg(''), setSheet('avatar'))} title="프로필 사진 바꾸기" aria-label="프로필 사진 바꾸기">
+          <Avatar id={p.avatar} name={p.nickname} size={72} />
           <span className="me-av-edit">
-            <Icon name="settings" size={12} />
+            <Icon name="edit" size={12} />
           </span>
         </button>
         <div className="me-info">
@@ -467,19 +468,25 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
               )}
             </div>
           ) : (
-            <b className="me-nick">
-              {p.nickname} <Icon name="check" size={14} className="verified" />
-              <button className="icon-btn sm me-nick-btn" onClick={() => (setEditNick(true), setNick(p.nickname))} aria-label="닉네임 바꾸기" title="닉네임 바꾸기">
-                <Icon name="edit" size={14} />
+            <div className="me-name-row">
+              <b className="me-nick">{p.nickname}</b>
+              <Icon name="check" size={15} className="verified" />
+              <button className="me-nick-btn" onClick={() => (setEditNick(true), setNick(p.nickname))} aria-label="닉네임 바꾸기" title="닉네임 바꾸기">
+                <Icon name="edit" size={13} />
               </button>
-            </b>
+            </div>
           )}
-          {title && (
-            <span className="title-tag">
-              <BadgeIcon id={title.id} size={13} /> {title.name}
-            </span>
-          )}
-          <small className="muted">아이디 {p.username}</small>
+          <small className="me-id">@{p.username}</small>
+          <button className={'me-title-btn' + (title ? '' : ' empty')} onClick={() => (setErr(''), setMsg(''), setSheet('title'))} title="칭호 바꾸기" aria-label={title ? `칭호 ${title.name}, 눌러서 바꾸기` : '칭호 고르기'}>
+            {title ? (
+              <>
+                <BadgeIcon id={title.id} size={13} /> {title.name}
+              </>
+            ) : (
+              '칭호 고르기'
+            )}
+            <Icon name="down" size={12} />
+          </button>
           <LevelMeter xp={p.xp ?? 0} className="me-level" title="미션·대결로 경험치를 모아 레벨을 올려요 (최대 Lv.100)" />
         </div>
         <button className="me-rank" onClick={onRanking}>
@@ -511,25 +518,6 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       {msg && <p className="ok-msg">{msg}</p>}
       {err && <p className="error">{err}</p>}
 
-      <section className="panel pad me-deco" id="me-deco">
-        <div className="me-deco-head">
-          <h3>꾸미기</h3>
-          <div className="seg me-deco-tabs" role="tablist" aria-label="꾸미기">
-            <button role="tab" aria-selected={deco === 'avatar'} className={deco === 'avatar' ? 'on' : ''} onClick={() => setDeco('avatar')}>
-              프로필 사진
-            </button>
-            <button role="tab" aria-selected={deco === 'title'} className={deco === 'title' ? 'on' : ''} onClick={() => setDeco('title')}>
-              칭호
-            </button>
-          </div>
-        </div>
-        {deco === 'avatar' ? (
-          <DecoAvatars current={p.avatar ?? 'default'} nickname={p.nickname} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { avatar: id }), `프로필 사진을 '${name}'(으)로 바꿨어요`)} />
-        ) : (
-          <DecoTitles current={p.title} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { title: id }), id ? `대표 칭호를 '${name}'(으)로 정했어요` : '대표 칭호를 뺐어요')} />
-        )}
-      </section>
-
       <section className="panel pad">
         <h3>최근 대결</h3>
         {acc.recent.length === 0 ? (
@@ -560,57 +548,93 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         </button>
       </section>
 
-      <section className="panel pad acc-sec">
-        <h3>계정</h3>
-        <div className="acc-pw">
-          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
-          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" aria-label="새 비밀번호" maxLength={72} autoComplete="new-password" />
-          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
-          <button
-            className="btn sm"
-            disabled={!cur || pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) || pw !== pw2}
-            onClick={() =>
-              act(async () => {
-                await api('changePassword', { current: cur, password: pw });
-                // 비밀번호를 바꾸면 예전 세션이 끝나므로 새 비밀번호로 다시 로그인
-                await loginWith(p.username, pw);
-                setCur('');
-                setPw('');
-                setPw2('');
-              }, '비밀번호를 바꿨어요')
-            }
-          >
-            비밀번호 바꾸기
-          </button>
-        </div>
-        {(pw || pw2) && (
-          <p className="small pw-hint" aria-live="polite">
-            {pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) ? (
-              <span className="error">새 비밀번호는 8자 이상, 영어와 숫자를 함께 써 주세요</span>
-            ) : pw2 && pw !== pw2 ? (
-              <span className="error">새 비밀번호 두 칸이 서로 달라요</span>
-            ) : !cur ? (
-              <span className="muted">지금 비밀번호도 적어 주세요</span>
-            ) : pw === pw2 ? (
-              weakPw(pw) ? <span className="warn-msg">바꿀 수는 있지만 흔한 비밀번호예요. 더 길게 정하면 안전해요</span> : <span className="ok-msg">바꿀 준비가 됐어요</span>
-            ) : null}
-          </p>
-        )}
-        <button
-          className="btn sm ghost"
-          disabled={!cur}
-          title={cur ? '' : '위에 지금 비밀번호를 먼저 적어 주세요'}
-          onClick={() =>
-            act(async () => {
-              setRecovery((await api<{ recoveryCode: string }>('newRecovery', { current: cur })).recoveryCode);
-              setCur('');
-            }, '새 복구 코드를 받았어요')
-          }
-        >
-          <Icon name="key" size={14} /> 복구 코드 새로 받기
+      <section className="panel pad more-links acc-sec">
+        <h3 className="more-h">계정</h3>
+        <button className="more-row" onClick={() => (setErr(''), setMsg(''), setSheet('password'))}>
+          <Icon name="lock" /> <span className="mr-t"><b>비밀번호 바꾸기</b><small>지금 비밀번호가 필요해요 · 바꾸면 다른 기기는 로그아웃돼요</small></span> <Icon name="right" size={14} />
         </button>
-        <small className="muted acc-note">비밀번호 바꾸기·복구 코드 새로 받기는 지금 비밀번호를 적어야 해요.</small>
+        <button className="more-row" onClick={() => (setErr(''), setMsg(''), setSheet('recovery'))}>
+          <Icon name="key" /> <span className="mr-t"><b>복구 코드 새로 받기</b><small>비밀번호를 잊었을 때 쓰는 코드 · 예전 코드는 못 쓰게 돼요</small></span> <Icon name="right" size={14} />
+        </button>
       </section>
+      {sheet === 'avatar' && (
+        <Sheet title="프로필 사진" onClose={() => setSheet(null)} wide>
+          <DecoAvatars current={p.avatar ?? 'default'} nickname={p.nickname} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { avatar: id }), `프로필 사진을 '${name}'(으)로 바꿨어요`)} />
+          {err && <p className="error small">{err}</p>}
+          {msg && <p className="ok-msg small">{msg}</p>}
+        </Sheet>
+      )}
+      {sheet === 'title' && (
+        <Sheet title="칭호" onClose={() => setSheet(null)} wide>
+          <DecoTitles current={p.title} badges={acc.badges} onPick={(id, name) => act(() => api('updateProfile', { title: id }), id ? `대표 칭호를 '${name}'(으)로 정했어요` : '대표 칭호를 뺐어요')} />
+          {err && <p className="error small">{err}</p>}
+          {msg && <p className="ok-msg small">{msg}</p>}
+        </Sheet>
+      )}
+      {sheet === 'password' && (
+        <Sheet title="비밀번호 바꾸기" onClose={() => setSheet(null)}>
+          <div className="acc-sheet">
+            <div className="acc-pw">
+              <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
+              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" aria-label="새 비밀번호" maxLength={72} autoComplete="new-password" />
+              <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
+            </div>
+            {(pw || pw2) && (
+              <p className="small pw-hint" aria-live="polite">
+                {pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) ? (
+                  <span className="error">새 비밀번호는 8자 이상, 영어와 숫자를 함께 써 주세요</span>
+                ) : pw2 && pw !== pw2 ? (
+                  <span className="error">새 비밀번호 두 칸이 서로 달라요</span>
+                ) : !cur ? (
+                  <span className="muted">지금 비밀번호도 적어 주세요</span>
+                ) : pw === pw2 ? (
+                  weakPw(pw) ? <span className="warn-msg">바꿀 수는 있지만 흔한 비밀번호예요. 더 길게 정하면 안전해요</span> : <span className="ok-msg">바꿀 준비가 됐어요</span>
+                ) : null}
+              </p>
+            )}
+            <button
+              className="btn primary block"
+              disabled={!cur || pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw) || pw !== pw2}
+              onClick={() =>
+                act(async () => {
+                  await api('changePassword', { current: cur, password: pw });
+                  // 비밀번호를 바꾸면 예전 세션이 끝나므로 새 비밀번호로 다시 로그인
+                  await loginWith(p.username, pw);
+                  setCur('');
+                  setPw('');
+                  setPw2('');
+                  setSheet(null);
+                }, '비밀번호를 바꿨어요')
+              }
+            >
+              비밀번호 바꾸기
+            </button>
+            {err && <p className="error small">{err}</p>}
+          </div>
+        </Sheet>
+      )}
+      {sheet === 'recovery' && (
+        <Sheet title="복구 코드 새로 받기" onClose={() => setSheet(null)}>
+          <div className="acc-sheet">
+            <p className="muted small">새 코드를 받으면 예전 복구 코드는 더 이상 못 써요. 지금 비밀번호를 적어 주세요.</p>
+            <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
+            <button
+              className="btn primary block"
+              disabled={!cur}
+              onClick={() =>
+                act(async () => {
+                  setRecovery((await api<{ recoveryCode: string }>('newRecovery', { current: cur })).recoveryCode);
+                  setCur('');
+                  setSheet(null);
+                }, '새 복구 코드를 받았어요')
+              }
+            >
+              <Icon name="key" size={14} /> 새 복구 코드 받기
+            </button>
+            {err && <p className="error small">{err}</p>}
+          </div>
+        </Sheet>
+      )}
       <ForgetMe />
     </div>
   );
@@ -696,7 +720,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
   );
 }
 
-/** 꾸미기 · 프로필 사진: 얻은 것만 (못 딴 건 숨기고 개수만) — 칭호 칸과 같은 모양 */
+/** 프로필 사진 고르기 창: 얻은 것만 (못 딴 건 숨기고 개수만) — 칭호 창과 같은 칸 모양. 사진과 칭호는 따로 고름 */
 function DecoAvatars({ current, nickname, badges, onPick }: { current: string; nickname: string; badges: Record<string, number>; onPick: (id: string, name: string) => void }) {
   const mine = Object.keys(badges);
   const open = AVATARS.filter((a) => canUseAvatar(a.id, mine));
