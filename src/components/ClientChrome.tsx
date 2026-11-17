@@ -14,6 +14,7 @@ import { okWhileMatching } from '../net/matchStore';
 import type { PartyState } from './PartyPanel';
 import { tierShort } from './TierBadge';
 import { Avatar } from './Avatar';
+import { HoverPop } from './HoverPop';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string][] = [
@@ -47,6 +48,7 @@ export function TopBar({
   onAdmin,
   missions,
   onSignup,
+  playPicker,
 }: {
   active: NavTab | null;
   account: AccountState;
@@ -69,6 +71,8 @@ export function TopBar({
   /** 오늘의 미션 버튼 (마우스를 올리면 팝업) */
   missions?: ReactNode;
   onSignup?: () => void;
+  /** 플레이에 마우스를 올리면 뜨는 모드 고르기 */
+  playPicker?: ReactNode;
 }) {
   return (
     <header className="cl-top">
@@ -88,10 +92,29 @@ export function TopBar({
               )}
             </span>
           ) : (
-            <button className="cl-play" onClick={onPlay} title={playLabel ? `${playLabel}으로 바로 매칭 대기` : undefined}>
-              <span>플레이</span>
-              {playLabel && <small>{playLabel}</small>}
-            </button>
+            playPicker ? (
+              // 누르면 바로 찾기, 마우스를 0.3초 올려 두면 모드 고르기 팝업
+              <HoverPop
+                className="play-hpop"
+                btnClass="cl-play"
+                label={playLabel ? `플레이: ${playLabel}으로 바로 찾기 (마우스를 올리면 모드 바꾸기)` : '플레이'}
+                openDelay={300}
+                onButtonClick={onPlay}
+                button={
+                  <>
+                    <span>플레이</span>
+                    {playLabel && <small>{playLabel}</small>}
+                  </>
+                }
+              >
+                {playPicker}
+              </HoverPop>
+            ) : (
+              <button className="cl-play" onClick={onPlay} title={playLabel ? `${playLabel}으로 바로 매칭 대기` : undefined}>
+                <span>플레이</span>
+                {playLabel && <small>{playLabel}</small>}
+              </button>
+            )
           )
         )}
       </div>

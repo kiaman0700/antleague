@@ -17,6 +17,9 @@ export function HoverPop({
   children,
   popClass,
   btnClass,
+  openDelay = 0,
+  onButtonClick,
+  btnTitle,
 }: {
   className?: string;
   /** 버튼 안 내용 */
@@ -28,14 +31,21 @@ export function HoverPop({
   children: ReactNode;
   popClass?: string;
   btnClass?: string;
+  /** 마우스를 올리고 이만큼 머물러야 열림 (옆 메뉴로 지나가다 뜨지 않게) */
+  openDelay?: number;
+  /** 있으면 버튼을 누를 때 팝업 대신 이것 (예: 플레이 = 바로 찾기) */
+  onButtonClick?: () => void;
+  btnTitle?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pinned = useRef(false);
   const wrap = useRef<HTMLSpanElement>(null);
   const me = useId();
   const shut = useRef<number | undefined>(undefined);
+  const wait = useRef<number | undefined>(undefined);
   const show = () => {
     window.clearTimeout(shut.current);
+    window.clearTimeout(wait.current);
     if (!open) onOpen?.();
     setOpen(true);
     window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: me }));
@@ -46,6 +56,7 @@ export function HoverPop({
   };
   const hide = () => {
     window.clearTimeout(shut.current);
+    window.clearTimeout(wait.current);
     pinned.current = false;
     setOpen(false);
   };
@@ -54,7 +65,13 @@ export function HoverPop({
     window.clearTimeout(shut.current);
     shut.current = window.setTimeout(hide, 150);
   };
-  useEffect(() => () => window.clearTimeout(shut.current), []);
+  useEffect(() => () => (window.clearTimeout(shut.current), window.clearTimeout(wait.current)), []);
+  const enter = () => {
+    window.clearTimeout(shut.current);
+    if (open || !openDelay) return show();
+    window.clearTimeout(wait.current);
+    wait.current = window.setTimeout(show, openDelay);
+  };
   // 다른 팝업이 열리면 이건 닫힘
   useEffect(() => {
     const other = (e: Event) => (e as CustomEvent<string>).detail !== me && hide();
@@ -78,15 +95,24 @@ export function HoverPop({
     <span
       className={'hpop' + (open ? ' open' : '') + (className ? ' ' + className : '')}
       ref={wrap}
-      onPointerEnter={(e) => e.pointerType === 'mouse' && show()}
-      onPointerLeave={(e) => e.pointerType === 'mouse' && hideSoon()}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && enter()}
+      onPointerLeave={(e) => {
+        if (e.pointerType !== 'mouse') return;
+        window.clearTimeout(wait.current);
+        hideSoon();
+      }}
     >
       <button
         className={'hpop-btn' + (btnClass ? ' ' + btnClass : '')}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={label}
+        title={btnTitle}
         onClick={() => {
+          if (onButtonClick) {
+            hide();
+            return onButtonClick();
+          }
           if (open && pinned.current) close();
           else {
             pinned.current = true;

@@ -884,3 +884,14 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 /* 순위 칸·순위 목록에 사진 칸 추가 (순위 · 사진 · 이름 · 상태/재산) — 사진이 넓은 칸을 차지해 이름이 밀리던 것 */
 .rank-chip { grid-template-columns: auto auto minmax(0, 1fr) auto; }
 .rank-row { grid-template-columns: 36px auto minmax(0, 1fr) auto; }
+
+/* ---- 위 메뉴 플레이 팝업 (모드 고르기) ---- */
+.play-hpop .hpop-pop, html[data-device] .play-hpop .hpop-pop { left: 0; right: auto; width: 340px; }
+.play-picker { display: grid; gap: 12px; }
+.pp-row { display: grid; gap: 6px; }
+.pp-label { font-size: 12px; font-weight: 700; color: #9a9a9a; }
+.pp-seg button { height: 46px; font-size: 15px; }
+.pp-seg button:disabled small { color: #6b6b6b; }
+.pp-login { justify-self: start; margin-top: -6px; font-size: 12px; }
+.pp-go { margin-top: 2px; }
+.play-hpop .hpop-btn.cl-play { cursor: pointer; }

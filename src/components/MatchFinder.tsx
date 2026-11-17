@@ -24,6 +24,16 @@ export const loadPref = (): { kind: QueueKind; size: QueueSize; speed: QueueSpee
   }
   return { kind: 'casual', size: 'duel', speed: 'quick' };
 };
+/** 매칭 설정 저장 + 알림 (위 메뉴 플레이 팝업 ↔ 랭킹전·일반전 화면이 같은 값을 씀) */
+export const PREF_EVENT = 'stockduel:matchpref';
+export function savePref(p: { kind: QueueKind; size: QueueSize; speed: QueueSpeed }) {
+  try {
+    localStorage.setItem(PREF, JSON.stringify(p));
+  } catch {
+    /* 저장 못 해도 괜찮음 */
+  }
+  window.dispatchEvent(new Event(PREF_EVENT));
+}
 /** 결과 화면 '다시 찾기'·위 메뉴 '플레이' → 그 메뉴에 오면 바로 찾기 */
 export const FIND_AGAIN = 'stockduel.findAgain';
 
@@ -76,12 +86,14 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   const waited = searching ? Math.max(0, Math.floor((Date.now() - m.startedAt) / 1000)) : 0;
   const save = (p: typeof pref) => {
     setPref(p);
-    try {
-      localStorage.setItem(PREF, JSON.stringify(p));
-    } catch {
-      /* 저장 못 해도 괜찮음 */
-    }
+    savePref(p);
   };
+  // 위 메뉴 플레이 팝업에서 바꾸면 이 화면도 따라 바뀜
+  useEffect(() => {
+    const on = () => setPref(loadPref());
+    window.addEventListener(PREF_EVENT, on);
+    return () => window.removeEventListener(PREF_EVENT, on);
+  }, []);
 
   const begin = async (over?: { size: QueueSize; speed: QueueSpeed }) => {
     // 위 메뉴 '플레이'가 같은 설정으로 바로 찾을 수 있게 마지막 종류도 기억
@@ -378,4 +390,52 @@ export function playLabel(member: boolean, inParty = false) {
   const kind = p.kind === 'ranked' && member && !inParty ? 'ranked' : 'casual';
   const size = inParty ? 'multi' : p.size;
   return `${kind === 'ranked' ? '랭킹전' : '일반전'} · ${size === 'duel' ? '1대1' : '다인전'} · ${SPEED_PRESET[p.speed].label}`;
+}
+
+/**
+ * 위 메뉴 '플레이'에 마우스를 올리면 뜨는 모드 고르기 (2026-11-17 사용자 요청).
+ * 고르면 바로 저장(랭킹전·일반전 화면과 같은 값), '이대로 찾기'로 찾기 시작. 손님은 랭킹전 잠금, 파티면 일반전·다인전만
+ */
+export function PlayPicker({ member, inParty, onFind, onLogin }: { member: boolean; inParty: boolean; onFind: () => void; onLogin: () => void }) {
+  const [p, setP] = useState(loadPref);
+  useEffect(() => {
+    const on = () => setP(loadPref());
+    window.addEventListener(PREF_EVENT, on);
+    return () => window.removeEventListener(PREF_EVENT, on);
+  }, []);
+  const set = (next: Partial<typeof p>) => {
+    const v = { ...p, ...next };
+    setP(v);
+    savePref(v);
+  };
+  const kind: QueueKind = p.kind === 'ranked' && member && !inParty ? 'ranked' : 'casual';
+  const size: QueueSize = inParty ? 'multi' : p.size;
+  const seg = <T extends string>(label: string, value: T, items: [T, string, string, boolean?][], on: (v: T) => void) => (
+    <div className="pp-row">
+      <span className="pp-label">{label}</span>
+      <div className="st-seg pp-seg" role="radiogroup" aria-label={label}>
+        {items.map(([v, l, sub, off]) => (
+          <button key={v} role="radio" aria-checked={value === v} className={value === v ? 'on' : ''} disabled={off} onClick={() => on(v)}>
+            <span>{l}</span>
+            <small>{sub}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <section className="panel pad play-picker">
+      {seg('모드', kind, [['casual', '일반전', '점수 없이'], ['ranked', '랭킹전', member ? (inParty ? '파티는 못 해요' : '점수가 바뀌어요') : '회원만', !member || inParty]], (v) => set({ kind: v }))}
+      {!member && (
+        <button className="linkish-soft pp-login" onClick={onLogin}>
+          로그인하면 랭킹전도 할 수 있어요
+        </button>
+      )}
+      {seg('인원', size, [['duel', '1대1', '2명', inParty], ['multi', '다인전', '3~4명']], (v) => set({ size: v }))}
+      {seg('길이', p.speed, (['quick', 'normal'] as QueueSpeed[]).map((v) => [v, SPEED_PRESET[v].label, SPEED_PRESET[v].minutes.replace('약 ', '')] as [QueueSpeed, string, string]), (v) => set({ speed: v }))}
+      <button className="btn primary block pp-go" onClick={onFind}>
+        <Icon name="search" size={16} /> 이대로 찾기
+      </button>
+    </section>
+  );
 }

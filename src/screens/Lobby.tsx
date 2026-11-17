@@ -4,7 +4,7 @@ import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FeedbackSheet } from '../components/FeedbackSheet';
-import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel } from '../components/MatchFinder';
+import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPicker, PREF_EVENT } from '../components/MatchFinder';
 import { cancelMatch, followMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
@@ -1586,6 +1586,12 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const goMatchTab = () => go(matchTab);
   // 찾는 중 화면(랭킹전·일반전)에 이미 크게 보이면 아래 떠 있는 '매칭 중' 띠는 숨김 (같은 내용이 두 번, 내용도 가림)
   const onMatchPage = resolved === matchTab;
+  const [, setPrefTick] = useState(0);
+  useEffect(() => {
+    const on = () => setPrefTick((x) => x + 1);
+    window.addEventListener(PREF_EVENT, on);
+    return () => window.removeEventListener(PREF_EVENT, on);
+  }, []);
   const play = () => {
     if (matching) return goMatchTab();
     if (inParty && !party!.isLeader) return go('casual'); // 파티원은 파티장이 찾기를 시작 (일반전 화면에 안내가 있음)
@@ -1613,6 +1619,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onProfile={() => go('me')}
         onLogin={() => go('login')}
         onSignup={() => go('signup')}
+        playPicker={online ? <PlayPicker member={member} inParty={inParty} onFind={play} onLogin={() => go('login')} /> : undefined}
         socialBadge={badges.friends}
         socialOpen={wideSocial ? !socialFold : socialOpen}
         // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
