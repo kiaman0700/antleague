@@ -1705,7 +1705,16 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     }
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
     const { data, error } = await db().auth.getUser(token);
-    if (error || !data.user) return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
+    if (error || !data.user) {
+      // 토큰이 정말 틀렸거나 만료된 경우(401·403·400)만 '만료'. Supabase 가 잠깐 막히거나 느린 경우(429·5xx·연결 실패)는
+      // 다시 시도하라고 알려 줌 — 멀쩡한 사람이 로그인 화면으로 밀려나지 않게
+      const st = (error as { status?: number } | null)?.status ?? 0;
+      if (error && (st === 0 || st === 429 || st >= 500)) {
+        console.error('[api] auth check failed', st, error.message);
+        return { status: 503, body: { error: '잠시 연결이 불안정해요. 다시 시도해 주세요.' } };
+      }
+      return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
+    }
     const uid = data.user.id;
     if (!body || typeof body !== 'object' || Array.isArray(body)) return { status: 400, body: { error: '잘못된 요청이에요.' } };
     const b = body as Body;

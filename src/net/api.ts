@@ -46,6 +46,11 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
   try {
     return await apiOnce<T>(action, payload);
   } catch (e) {
+    // 서버가 잠깐 막힘(503: 로그인 확인 서버가 느리거나 바쁨) → 계정은 그대로 두고 잠깐 뒤 한 번만 다시
+    if (!retried && e instanceof ApiError && e.status === 503) {
+      await new Promise((r) => setTimeout(r, 900));
+      return api<T>(action, payload, true);
+    }
     // 서버가 이 로그인을 모른다고 함(계정이 지워졌거나 서버를 옮김) → 이 기기의 로그인을 지우고
     //   손님이면 새 손님으로 한 번만 다시 시도. 회원이면 다시 로그인하라고 안내
     if (!retried && e instanceof ApiError && e.status === 401 && supabase) {
@@ -164,7 +169,7 @@ export function useLiveView(roomId: string | null): LiveView {
       setError(null);
     } catch (e) {
       // 요청이 많다고 하면 화면은 그대로 두고 10초 동안 천천히 받음 (오류 문구로 놀라게 하지 않음)
-      if (e instanceof ApiError && e.status === 429) slowUntil.current = Date.now() + 10_000;
+      if (e instanceof ApiError && (e.status === 429 || e.status === 503)) slowUntil.current = Date.now() + 10_000;
       else {
         if (e instanceof ApiError && (e.status === 403 || e.status === 404)) goneRef.current = true;
         setError(e instanceof Error ? e.message : String(e));
