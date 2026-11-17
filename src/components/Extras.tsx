@@ -33,6 +33,13 @@ export function Calendar({ market, day, onSelect, compact = false, hideTitle = f
             <div className="cal-body">
               <b>{e.title}</b>
               <small>{e.desc}</small>
+              {e.kind === 'story' && e.symbol && STOCK_MAP[e.symbol] && (
+                <div className="related">
+                  <button className="rel-chip" onClick={() => onSelect(e.symbol!)}>
+                    {STOCK_MAP[e.symbol].name}
+                  </button>
+                </div>
+              )}
               {payers.length > 0 && (
                 <div className="related">
                   {payers.map((p) => (

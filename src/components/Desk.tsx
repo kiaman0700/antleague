@@ -73,8 +73,8 @@ export function AssetSummary({
 
 /* ---------------- 일정 타임라인 (가로 띠) ---------------- */
 
-const EV_ICON: Record<EventKind, IconName> = { fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
-const EV_LABEL: Record<EventKind, string> = { fomc: '미 연준', bok: '한은', earnings: '실적', expiry: '옵션 만기', dividend: '배당' };
+const EV_ICON: Record<EventKind, IconName> = { story: 'megaphone', fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
+const EV_LABEL: Record<EventKind, string> = { story: '사건 발표', fomc: '미 연준', bok: '한은', earnings: '실적', expiry: '옵션 만기', dividend: '배당' };
 
 export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
   const next = market.events.find((e) => e.day >= day) ?? null;

@@ -26,6 +26,7 @@ import { TradeJump } from '../components/TradeJump';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN } from '../components/MatchFinder';
 import { withLive } from '../game/live';
+import { withStoryEvents } from '../game/storyDates';
 import { BONUS_AMOUNT, FEE_BOMB_RATE, ITEM_MAP, spendsFromRows, type ItemKind, type ItemRow } from '../game/items';
 import { barNow, KR_INDEX_BASE, pricesAt, US_INDEX_BASE, type Market } from '../game/market';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor } from '../game/portfolio';
@@ -139,7 +140,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [tutStep, setTutStep] = useState(0);
   const [cardGuide, setCardGuide] = useState(false);
   // 서버가 보낸 '지금 칸까지의 장중 가격'을 오늘 막대에 합침 → 현재가·차트가 5초마다 움직임
-  const market = useMemo(() => (rawMarket ? withLive(rawMarket, view?.live) : null), [rawMarket, view?.live]);
+  // (v15) 예고 기사에 적힌 발표 날짜도 일정에 (보이는 기사 제목만 읽음)
+  const market = useMemo(() => (rawMarket ? withStoryEvents(withLive(rawMarket, view?.live), view?.room.day ?? 0) : null), [rawMarket, view?.live, view?.room.day]);
 
   const [viewDay, setViewDay] = useState<number | null>(null);
   const [closing, setClosing] = useState<number | null>(null);

@@ -359,9 +359,9 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
 
 /* ---------------- 일정 전용 띠 ---------------- */
 
-const EV_ICON2: Record<string, IconName> = { fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
+const EV_ICON2: Record<string, IconName> = { story: 'megaphone', fomc: 'dollar', bok: 'bank', earnings: 'bars', expiry: 'warn', dividend: 'coins' };
 
-const EV_SHORT: Record<string, string> = { fomc: '미 연준 금리', bok: '한은 금통위', earnings: '실적 시즌', expiry: '옵션 만기', dividend: '배당 기준일' };
+const EV_SHORT: Record<string, string> = { story: '사건 발표', fomc: '미 연준 금리', bok: '한은 금통위', earnings: '실적 시즌', expiry: '옵션 만기', dividend: '배당 기준일' };
 
 /** 모바일 상단 일정 영역: 짧은 칩을 가로로 넘겨 보고, 누르면 전체 일정 */
 export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: number; onOpen: () => void }) {

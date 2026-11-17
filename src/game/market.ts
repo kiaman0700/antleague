@@ -88,12 +88,14 @@ export interface Market {
   live?: { day: number; tick: number; n: number; startAt: number; endAt: number; tickMs?: number };
 }
 
-export type EventKind = 'fomc' | 'bok' | 'earnings' | 'expiry' | 'dividend';
+export type EventKind = 'fomc' | 'bok' | 'earnings' | 'expiry' | 'dividend' | 'story';
 export interface MarketEvent {
   day: number;
   kind: EventKind;
   title: string;
   desc: string;
+  /** (story) 화면이 예고 기사에서 읽은 발표 종목 */
+  symbol?: string;
 }
 export interface Dividend {
   day: number;
