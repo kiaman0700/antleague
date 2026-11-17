@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { markActiveGame } from '../lib/activeTab';
 import { Loading } from '../components/ui';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
@@ -132,6 +133,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const wide = useIsMobile('(min-width: 700px) and (min-height: 600px)');
   const tablet = mobile && wide;
   const { view, market: rawMarket, offset, error, act, busy, tutorialInfo } = useGameSource(session);
+  // 다른 창의 로비가 '연결이 끊겼어요' 팝업을 띄우지 않게 (이 창에서 하는 중이라고 적어 둠)
+  const activeRoom = session.mode === 'multi' ? session.roomId : null;
+  useEffect(() => (activeRoom ? markActiveGame(activeRoom) : undefined), [activeRoom]);
   const [tutStep, setTutStep] = useState(0);
   const [cardGuide, setCardGuide] = useState(false);
   // 서버가 보낸 '지금 칸까지의 장중 가격'을 오늘 막대에 합침 → 현재가·차트가 5초마다 움직임
@@ -1040,7 +1044,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           last={closing + 1 >= total}
           onNext={nextDay}
           // 장 전 시간이 진행 중이면 3초만 (찌라시·예약 주문 볼 시간을 덜 잡아먹게), 아니면 6초
-          autoSec={session.mode === 'multi' && closing + 1 < total ? (room?.preUntil && room.preUntil > now + offset ? 3 : 6) : undefined}
+          // 마지막 날은 1분 뒤 결과 화면으로 (예전엔 버튼을 눌러야 해서 결산 팝업에 멈춰 있었음 — 사용자 요청 2026-11-17)
+          autoSec={session.mode === 'multi' ? (closing + 1 >= total ? 60 : room?.preUntil && room.preUntil > now + offset ? 3 : 6) : undefined}
           pre={session.mode === 'multi' && closing + 1 < total && !!room?.preUntil && room.preUntil > now + offset}
         />
       )}

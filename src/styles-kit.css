@@ -544,7 +544,7 @@ body { background: var(--bg) !important; }
 @media (prefers-reduced-motion: reduce) { .toast.news { animation: none; } }
 
 /* ===== 티어표: 브론즈 → 마스터로 오르는 계단 (2026-11-17) ===== */
-.tier-ladder .tl-stairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(78px, 1fr)); align-items: end; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.tier-ladder .tl-stairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(70px, 1fr)); align-items: end; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
 .tier-ladder li.tl-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; padding: 0; background: none; box-shadow: none; border-radius: 0; }
 .hub-grid > .tier-ladder { grid-column: 1 / -1; }
 .tl-emb { display: grid; place-items: center; margin-bottom: -6px; position: relative; z-index: 1; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
@@ -895,3 +895,7 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .pp-login { justify-self: start; margin-top: -6px; font-size: 12px; }
 .pp-go { margin-top: 2px; }
 .play-hpop .hpop-btn.cl-play { cursor: pointer; }
+
+/* 결과 화면: 오래 가만히 있으면 홈으로 — 마지막 20초 안내 (시간이 걸린 상태 = 호박색) */
+.idle-exit { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px; background: #f5b83d; color: #1a1300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+.idle-exit .btn.sm { background: #1a1300; color: #f5b83d; border: 0; }

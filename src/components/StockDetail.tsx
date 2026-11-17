@@ -1,5 +1,5 @@
 import { LEVERAGE_CAP } from "../engine/engine";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getEffective } from "../prefs";
 import { Icon, SectorIcon } from "./Icon";
 import type { Market, NewsEvent } from "../game/market";
@@ -23,7 +23,8 @@ import { num, pct, tone, won, wonShort } from "../lib/format";
 import type { OrderRow } from "../engine/engine";
 import type { UiMode } from "../session";
 import { useIsMobile } from "./Extras";
-import { drawKeyFor, ProChart } from "./ProChart";
+import { drawKeyFor, getDrawScope, ProChart } from "./ProChart";
+import { dayMeta, rememberDay, seenPath, synthPath } from "../game/pathCache";
 import { Term } from "./Term";
 
 interface Props {
@@ -65,17 +66,24 @@ interface Props {
 
 export function StockDetail(props: Props) {
   const [full, setFull] = useState(false);
-  const [view, setView] = useState<"live" | "daily">(
-    () => getEffective().chart,
-  );
-  // 장중 봉 간격(5초 칸 몇 개를 한 봉으로): 5초·30초·1분 — 이 기기에 기억
-  const [liveK, setLiveK] = useState<number>(() => {
+  // 봉 간격(초) — 5·10·20·30초, 0 = 일봉. 장중/일별을 나누지 않고 한 차트에서 (사용자 요청 2026-11-17). 이 기기에 기억
+  const [iv, setIvRaw] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem("stockduel.liveSec")) || 0;
+      const v = localStorage.getItem("stockduel.chartIv");
+      if (v != null) return Number(v) || 0;
     } catch {
-      return 0;
+      /* 무시 */
     }
+    return getEffective().chart === "daily" ? 0 : 5;
   });
+  const setIv = (v: number) => {
+    setIvRaw(v);
+    try {
+      localStorage.setItem("stockduel.chartIv", String(v));
+    } catch {
+      /* 무시 */
+    }
+  };
   // 세로 휴대폰은 화면이 길쭉하니 차트를 더 높게
   const tallChart = useIsMobile(
     "(max-width: 600px) and (orientation: portrait)",
@@ -183,68 +191,122 @@ export function StockDetail(props: Props) {
     ? (v: number) => "$" + v.toFixed(v < 100 ? 2 : 1)
     : (v: number) => Math.round(v).toLocaleString("ko-KR");
 
-  const liveChart = (big: boolean) => {
-    if (!live) return null;
-    // 봉 간격(초)을 칸 수로: 칸 길이(v11 1초, 예전 5초)로 나눠떨어지는 간격만, 봉이 4개 이상 나오는 것만
-    const tickSec = (live.tickMs ?? 5000) / 1000;
-    const daySec = live.n * tickSec;
-    const opts = LIVE_SEC.filter(([s]) => s % tickSec === 0 && Math.ceil(daySec / s) >= 4).map(([s, l]) => [s / tickSec, l, s] as const);
-    const want = opts.find(([, , s]) => s === liveK);
-    // 기본: 봉이 10개 이상 나오는 가장 넓은 간격
-    const k = want ? want[0] : ([...opts].reverse().find(([kk]) => Math.ceil(live.n / kk) >= 10)?.[0] ?? opts[0]?.[0] ?? 1);
+  // 오늘 받은 장중 가격을 이 기기에 기억 (다음 날부터 지난 날 흐름으로 이어 그림) — 모든 종목
+  const scope = getDrawScope();
+  useEffect(() => {
+    if (!live) return;
+    const paths: Record<string, number[] | undefined> = {};
+    for (const [k, arr] of Object.entries(market.bars)) paths[k] = arr[day]?.path;
+    for (const [k, arr] of Object.entries(market.usd)) paths["$" + k] = arr[day]?.path;
+    rememberDay(scope, day, paths, { n: live.n, tickMs: live.tickMs ?? 5000 });
+  }, [market, live, day, scope]);
+
+  // 장중 칸 정보: 오늘 장이 열려 있으면 그 값, 아니면 이 판에서 전에 본 값
+  const meta = live ? { n: live.n, tickMs: live.tickMs ?? 5000 } : dayMeta(scope);
+  const tickSec = meta ? meta.tickMs / 1000 : 0;
+  // 다 끝난 날 수 (장이 열려 있으면 오늘은 따로 이어 붙임, 오늘 장이 끝났으면 오늘까지)
+  const doneDays = live ? day : closed ? day + 1 : day;
+  const ivOpts: [number, string][] = [
+    ...(meta && doneDays + (live ? 1 : 0) > 0 ? IV_SEC.filter(([sec]) => sec % tickSec === 0) : []),
+    [0, "일"],
+  ];
+  const ivNow = ivOpts.some(([v]) => v === iv) ? iv : live && ivOpts.length > 1 ? ivOpts[0][0] : 0;
+
+  const chartFor = (big: boolean) => {
+    const intervalBar = ivOpts.length > 1 && (
+      <div className="pc-seg live-k" role="group" aria-label="봉 간격">
+        {ivOpts.map(([v, l]) => (
+          <button key={v} className={ivNow === v ? "on" : ""} aria-pressed={ivNow === v} onClick={() => setIv(v)}>
+            {l}
+          </button>
+        ))}
+      </div>
+    );
+    if (ivNow === 0 || !meta)
+      return (
+        <>
+          {intervalBar}
+          <ProChart
+            key={symbol}
+            ui={ui}
+            symbol={symbol}
+            bars={bars}
+            totalDays={market.totalDays}
+            liveOpenOnly={liveDaily}
+            refLine={ref}
+            markers={markers}
+            fmt={chartFmt}
+            tall={big || tallChart}
+            onExpand={big ? undefined : () => setFull(true)}
+          />
+        </>
+      );
+    // 여러 날을 이은 장중 차트: 지난 날(이 기기가 본 흐름, 못 봤으면 시가·고가·저가·종가로 채운 흐름) + 오늘(지금까지)
+    const n = meta.n;
+    const k = ivNow / tickSec;
+    const perDay = Math.ceil(n / k);
+    const round = isUS ? roundUsd : roundPrice;
+    const all: ReturnType<typeof intradayBars> = [];
+    const dayMarks: { day: number; tone: "good" | "bad" | "day" }[] = [];
+    for (let d = 0; d < doneDays; d++) {
+      const bar = series[d];
+      const path = seenPath(scope, isUS ? "$" + symbol : symbol, d, n) ?? synthPath(bar, n, `${symbol}:${d}`, round);
+      if (d > 0) dayMarks.push({ day: all.length, tone: "day" });
+      all.push(...intradayBars(bar.open, path, k, `${symbol}:${d}`, round));
+    }
+    const offset = live ? all.length : Math.max(0, all.length - perDay);
+    if (live) {
+      if (doneDays > 0) dayMarks.push({ day: all.length, tone: "day" });
+      all.push(...intradayBars(series[day].open, series[day].path, k, `${symbol}:${day}`, round));
+    }
+    const total = live ? offset + perDay : all.length;
+    // 칸 i 가 몇째 날 몇 초인지
+    const at = (i: number) => {
+      const d = Math.max(0, Math.min(Math.floor(i / perDay), live ? day : doneDays - 1));
+      return { d, sec: (i - d * perDay) * k * tickSec };
+    };
     return (
       <>
-        {opts.length > 1 && (
-          <div className="pc-seg live-k" role="group" aria-label="봉 간격">
-            {opts.map(([v, l, s]) => (
-              <button
-                key={v}
-                className={k === v ? "on" : ""}
-                onClick={() => {
-                  setLiveK(s);
-                  try {
-                    localStorage.setItem("stockduel.liveSec", String(s));
-                  } catch {
-                    /* 무시 */
-                  }
-                }}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        )}
+        {intervalBar}
         <ProChart
-          key={symbol + ":live:" + k}
+          key={symbol + ":iv:" + ivNow}
           ui={ui}
-          symbol={symbol + "-live"}
-          bars={intradayBars(series[day].open, series[day].path, k, `${symbol}:${day}`, isUS ? roundUsd : roundPrice)}
-          totalDays={Math.ceil(live.n / k)}
+          symbol={symbol + "-iv"}
+          bars={all}
+          totalDays={total}
           liveOpenOnly={false}
           refLine={
             ref ?? {
               value: prevNative,
-              label: `어제 종가 ${isUS ? fmtUsd(prevNative) : num(prevNative)}`,
+              label: `${live ? "어제 종가" : "전날 종가"} ${isUS ? fmtUsd(prevNative) : num(prevNative)}`,
             }
           }
-          markers={newsTicks.map((t) => ({
-            day: Math.min(Math.ceil(live.n / k) - 1, Math.floor(t.tick / k)),
-            tone: t.tone,
-          }))}
+          markers={[
+            ...dayMarks,
+            ...newsTicks.map((t) => ({
+              day: offset + Math.min(perDay - 1, Math.floor(t.tick / k)),
+              tone: t.tone,
+            })),
+          ]}
           fmt={chartFmt}
           tall={big || tallChart}
           onExpand={big ? undefined : () => setFull(true)}
           unit={{
-            axis: (i) => clock(i * k * tickSec),
-            tip: (i) =>
-              `${clock(i * k * tickSec)} ~ ${clock((i + 1) * k * tickSec)} (장 시작 뒤)`,
-            ranges: [
-              // 최근 약 2분
-              [Math.max(4, Math.round(120 / (k * tickSec))), "최근"],
-              [null, "오늘 전체"],
-            ],
-            drawKey: drawKeyFor(symbol, day),
-            now: { tick: live.tick, perBar: k, startAt: live.startAt, n: live.n, tickSec },
+            axis: (i) => {
+              const { d, sec } = at(i);
+              return sec === 0 ? `${d + 1}일` : clock(sec);
+            },
+            when: (i) => {
+              const { d, sec } = at(i);
+              return `${d + 1}일 ${clock(sec)}`;
+            },
+            tip: (i) => {
+              const { d, sec } = at(i);
+              return `${d + 1}일 ${clock(sec)} ~ ${clock(sec + k * tickSec)}`;
+            },
+            offset,
+            drawKey: drawKeyFor(symbol + "-iv" + ivNow),
+            now: live ? { tick: live.tick, perBar: k, startAt: live.startAt, n: live.n, tickSec } : undefined,
           }}
         />
       </>
@@ -338,47 +400,7 @@ export function StockDetail(props: Props) {
       </div>
 
       <div className="chart-wrap">
-        {live && (
-          <div
-            className="pc-seg chart-view"
-            role="tablist"
-            aria-label="차트 보기"
-          >
-            <button
-              role="tab"
-              aria-selected={view === "live"}
-              className={view === "live" ? "on" : ""}
-              onClick={() => setView("live")}
-            >
-              오늘 장중
-            </button>
-            <button
-              role="tab"
-              aria-selected={view === "daily"}
-              className={view === "daily" ? "on" : ""}
-              onClick={() => setView("daily")}
-            >
-              일별
-            </button>
-          </div>
-        )}
-        {live && view === "live" ? (
-          <>{liveChart(false)}</>
-        ) : (
-          <ProChart
-            key={symbol}
-            ui={ui}
-            symbol={symbol}
-            bars={bars}
-            totalDays={market.totalDays}
-            liveOpenOnly={liveDaily}
-            refLine={ref}
-            markers={markers}
-            fmt={chartFmt}
-            tall={tallChart}
-            onExpand={() => setFull(true)}
-          />
-        )}
+        {chartFor(false)}
         {full && (
           <div className="chart-full" role="dialog" aria-label="차트 크게 보기">
             <div className="cf-head">
@@ -397,21 +419,7 @@ export function StockDetail(props: Props) {
                 <Icon name="x" size={18} />
               </button>
             </div>
-            {live && view === "live" ? (
-              liveChart(true)
-            ) : (
-              <ProChart
-                ui={ui}
-                symbol={symbol}
-                bars={bars}
-                totalDays={market.totalDays}
-                liveOpenOnly={liveDaily}
-                refLine={ref}
-                markers={markers}
-                fmt={chartFmt}
-                tall
-              />
-            )}
+            {chartFor(true)}
           </div>
         )}
         {ui === "pro" && (
@@ -1002,13 +1010,12 @@ export function TradePanel({
   );
 }
 
-/** 장중 봉 간격 선택지: [초, 이름] — 칸 길이로 나눠떨어지는 것만 보여 줌 */
-const LIVE_SEC: [number, string][] = [
-  // 가격은 1초마다 바뀌지만, 봉은 5초부터 (1초 봉은 너무 잘게 쪼개져 보기 어려움)
+/** 봉 간격 선택지(초): 칸 길이로 나눠떨어지는 것만 보여 줌 + '일' (사용자 요청: 5·10·20·30초·일) */
+const IV_SEC: [number, string][] = [
   [5, "5초"],
-  [15, "15초"],
+  [10, "10초"],
+  [20, "20초"],
   [30, "30초"],
-  [60, "1분"],
 ];
 /** 장 시작부터 지난 시간 → 0:30 */
 function clock(sec: number) {

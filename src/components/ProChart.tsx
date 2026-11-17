@@ -51,7 +51,7 @@ interface Props {
   /** 오늘 봉이 진행 중이면 시가만 */
   liveOpenOnly: boolean;
   refLine?: { value: number; label: string } | null;
-  markers?: { day: number; tone: "good" | "bad" }[];
+  markers?: { day: number; tone: "good" | "bad" | "day" }[];
   fmt?: (v: number) => string;
   /** 전체 화면용 */
   tall?: boolean;
@@ -60,7 +60,12 @@ interface Props {
   unit?: {
     axis: (i: number) => string;
     tip: (i: number) => string;
-    ranges: [number | null, string][];
+    /** 최고·최저 표시에 쓸 시각 (예: '2일 0:45') — 없으면 axis */
+    when?: (i: number) => string;
+    /** 기간 버튼: 봉 수(최근 n개) · null(전체) · 'today'(offset 부터 끝까지 = 오늘 하루) */
+    ranges?: [number | null | "today", string][];
+    /** 여러 날을 이은 장중 차트에서 '오늘'(또는 마지막 날)이 시작하는 칸 — 처음 화면과 '지금' 줄 위치 기준 */
+    offset?: number;
     drawKey: string;
     /** 장중: 지금 칸(5초 단위)과 봉 하나에 든 칸 수 — 아래 '지금' 줄의 표시가 시간에 맞춰 부드럽게 움직임 */
     now?: { tick: number; perBar: number; startAt?: number; n?: number; tickSec?: number };
@@ -72,6 +77,8 @@ const W = 680;
 /** 차트에 그은 선은 판마다 따로 저장 (지난 판의 선이 새 판에 나타나지 않게). 게임 화면이 판이 바뀔 때 정함 */
 let drawScope = 'x';
 export const drawKeyFor = (symbol: string, day?: number) => `stockduel.draw.${drawScope}.${symbol}` + (day === undefined ? '' : `.d${day}`);
+/** 지금 판을 가리키는 짧은 이름 (차트에 그은 선·지난 날 장중 흐름 저장 칸) */
+export const getDrawScope = () => drawScope;
 export function setDrawScope(scope: string) {
   drawScope = scope.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'x';
   // 다른 판에서 그은 선은 지움 (이 기기 저장 공간이 계속 쌓이지 않게)
@@ -171,21 +178,36 @@ export function ProChart({
   // 보이는 구간 [v0, v1] (날짜 인덱스, 실수)
   const lastIdx = bars.length - 1;
   // 기본 화면: 지나온 날 + 약간의 여유 (초반에 빈 미래 칸이 대부분이 되지 않게)
+  const offset = unit?.offset;
   const defaultView = useCallback(
-    (): [number, number] => [
-      0,
-      Math.min(
-        totalDays - 1,
-        Math.max(lastIdx + 2, Math.min(totalDays - 1, 9)),
-      ),
-    ],
-    [totalDays, lastIdx],
+    (): [number, number] =>
+      offset != null
+        ? // 오늘 하루 + 왼쪽에 전날 끝부분 조금 (지난 날이 이어진다는 게 보이게)
+          [Math.max(0, offset - Math.round((totalDays - offset) * 0.25)), totalDays - 1]
+        : [
+            0,
+            Math.min(
+              totalDays - 1,
+              Math.max(lastIdx + 2, Math.min(totalDays - 1, 9)),
+            ),
+          ],
+    [totalDays, lastIdx, offset],
   );
-  const [view, setView] = useState<[number, number]>(defaultView);
-  useEffect(
-    () => setView(defaultView()),
-    [symbol, totalDays, lastIdx, defaultView],
-  );
+  const [view, setViewRaw] = useState<[number, number]>(defaultView);
+  // 사용자가 끌거나 확대했으면 새 봉이 생겨도 화면을 처음 자리로 되돌리지 않음 (지난 날을 보는 중에 1초마다 튀어 돌아가지 않게)
+  const moved = useRef(false);
+  const setView: typeof setViewRaw = (v) => {
+    moved.current = true;
+    setViewRaw(v);
+  };
+  useEffect(() => {
+    moved.current = false;
+    setViewRaw(defaultView());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, totalDays, offset]);
+  useEffect(() => {
+    if (!moved.current) setViewRaw(defaultView());
+  }, [lastIdx, defaultView]);
   const span = view[1] - view[0] + 1;
   const slot = plotW / span;
 
@@ -258,11 +280,15 @@ export function ProChart({
         hi = Math.max(hi, refLine.value);
       }
     }
-    if (lo === hi) {
-      lo *= 0.98;
-      hi *= 1.02;
+    // 세로 범위는 최소 가격의 0.6% — 100원(한 호가)만 움직여도 칸 끝까지 튀어 보이던 것. 작은 움직임은 가운데서 작게
+    const minSpan = ((lo + hi) / 2) * 0.006;
+    if (hi - lo < minSpan) {
+      const mid = (lo + hi) / 2;
+      lo = mid - minSpan / 2;
+      hi = mid + minSpan / 2;
     }
-    const pad = (hi - lo) * 0.1;
+    // 실제 주식 차트처럼 위·아래에 여백을 넉넉히 (그래프가 칸을 꽉 채우지 않고 가운데서 오르내리게)
+    const pad = (hi - lo) * 0.22;
     return [lo - pad, hi + pad];
   }, [i0, i1, bars, liveOpenOnly, lastIdx, series, refLine]);
 
@@ -464,28 +490,24 @@ export function ProChart({
     }
   };
 
-  const setRange = (days: number | null) => {
-    if (days === null) return setView([0, totalDays - 1]);
-    const end = Math.min(totalDays - 1, lastIdx + 1);
-    setView(clampView(end - days + 0.5, end + 0.5));
-  };
 
   // ---------- 그리기 ----------
   // 가격 눈금: 실제 증권 앱처럼 딱 떨어지는 값(1·2·2.5·5 × 10ⁿ 간격)
   const gridVals = (() => {
     const span = yMax - yMin;
     if (!(span > 0)) return [yMin];
-    const raw = span / 4;
+    // 눈금은 6칸 안팎 (예전 4칸이라 가격 눈금이 2~3개뿐이었음)
+    const raw = span / 6;
     const p10 = Math.pow(10, Math.floor(Math.log10(raw)));
     const step = [1, 2, 2.5, 5, 10].map((m) => m * p10).find((s) => s >= raw) ?? 10 * p10;
     const out: number[] = [];
-    for (let v = Math.ceil(yMin / step) * step; v <= yMax && out.length < 8; v += step) out.push(v);
+    for (let v = Math.ceil(yMin / step) * step; v <= yMax && out.length < 10; v += step) out.push(v);
     return out;
   })();
   const lastPrice = closes[lastIdx];
   const visible = (i: number) => i >= view[0] - 1 && i <= view[1] + 1;
-  // 봉 굵기: 칸의 70% (실제 차트처럼 봉 사이 틈은 좁게)
-  const bw = Math.max(2, Math.min(24, slot * 0.7));
+  // 봉 굵기: 칸의 72% — 봉이 적을 때도 사이가 너무 벌어져 보이지 않게 최대 굵기를 넉넉히
+  const bw = Math.max(2, Math.min(34, slot * 0.72));
   const up = lastIdx > 0 ? lastPrice >= closes[0] : true;
   const lineColor = up ? "var(--up)" : "var(--down)";
   const pathOf = (vals: (number | null)[]) => {
@@ -535,28 +557,7 @@ export function ProChart({
             </button>
           ))}
         </div>
-        <div className="pc-seg" role="group" aria-label="기간">
-          {(
-            unit?.ranges ??
-            ([
-              [5, "5일"],
-              [10, "10일"],
-              [null, "전체"],
-            ] as [number | null, string][])
-          ).map(([d, l]) => (
-            <button
-              key={l}
-              className={
-                (d === null ? span >= totalDays - 0.01 : Math.round(span) === d)
-                  ? "on"
-                  : ""
-              }
-              onClick={() => setRange(d)}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        {/* 기간 버튼(5일·10일·전체, 최근·오늘)은 없앰 — 확대·끌기로 보고, 두 번 눌러 처음 화면 (사용자 요청 2026-11-17) */}
         <div className="pc-tools">
           <button
             className={"pc-ic" + (indOpen || inds.length ? " on" : "")}
@@ -661,7 +662,10 @@ export function ProChart({
         onPointerUp={onUp}
         onPointerCancel={onUp}
         onPointerLeave={(e) => e.pointerType === "mouse" && setCross(null)}
-        onDoubleClick={() => setView(defaultView())}
+        onDoubleClick={() => {
+          setView(defaultView());
+          moved.current = false;
+        }}
         role="img"
         aria-label="가격 차트. 드래그로 이동, 휠이나 두 손가락으로 확대"
       >
@@ -714,7 +718,7 @@ export function ProChart({
             </text>
           ))}
 
-        {unit?.now && <NowRow now={unit.now} x={x} padL={padL} right={W - padR} top={padT} plotBottom={H - padB} H={H} />}
+        {unit?.now && <NowRow now={unit.now} x={(i) => x(i + (offset ?? 0))} padL={padL} right={W - padR} top={padT} plotBottom={H - padB} H={H} />}
         <g clipPath={`url(#${clipId})`}>
           {/* 아직 오지 않은 날 */}
           {lastIdx < totalDays - 1 && (
@@ -887,7 +891,7 @@ export function ProChart({
                 const px = x(i);
                 const vy = y(v);
                 const diff = lastPrice ? (v - lastPrice) / lastPrice : 0;
-                const when = unit ? unit.axis(i) : `${i + 1}일`;
+                const when = unit ? (unit.when ?? unit.axis)(i) : `${i + 1}일`;
                 const shown = fmt(v);
                 const label = `${shown}${shown.startsWith("$") ? "" : "원"} (${diff > 0 ? "+" : ""}${(diff * 100).toFixed(2)}%, ${when})`;
                 // 휴대폰처럼 차트가 줄어들면 화면 기준 11.5px, 커지면 다른 눈금 글자처럼 함께 커짐

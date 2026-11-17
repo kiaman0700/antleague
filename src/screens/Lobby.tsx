@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
@@ -1343,6 +1344,8 @@ function Reconnect({ onWaiting, onGame }: Pick<Props, 'onWaiting' | 'onGame'>) {
         // 답이 오는 사이 다른 창(봇전·도전 등)을 이미 열었으면 겹쳐 띄우지 않고 작은 띠로만
         // (이미 이 팝업을 띄웠으면 그건 '다른 창'이 아님 — 개발 모드처럼 두 번 확인해도 숨기지 않게)
         if (r && !gotResume.current && document.querySelector('.modal-bg')) setHidden(true);
+        // 같은 대결을 이 기기의 다른 창에서 하고 있으면 '끊겼어요' 팝업 대신 작은 띠만
+        if (r && r.status === 'playing' && gameOpenElsewhere(r.roomId)) setHidden(true);
         if (r) gotResume.current = true;
         setMulti(r);
       })

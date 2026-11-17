@@ -421,3 +421,9 @@
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+/* 여러 날을 이은 장중 차트: 날이 바뀌는 자리 */
+.chart .marker.day {
+  stroke: var(--text-3, #6a6a6a);
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}

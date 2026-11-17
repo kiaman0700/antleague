@@ -1,4 +1,5 @@
 import { api } from '../net/api';
+import { setFlash } from '../lib/flash';
 import { balancedCols } from '../components/ui';
 import { TierBadge } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
@@ -480,6 +481,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       {matchKind === 'daily' && <DailyResult />}
       {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
       {session.mode === 'multi' && <MissionsPanel retry={2} room={session.roomId ?? undefined} />}
+      {session.mode === 'multi' && <IdleExit onExit={onExit} />}
       <div className="center-actions">
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기
@@ -528,6 +530,47 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 결과 화면에서 한동안(3분) 아무것도 안 하면 홈으로 (사용자 요청 2026-11-17).
+ * 결과 화면도 8초마다 서버에 '한 판 더' 방을 묻고 있어서, 켜 둔 채 자리를 비우면 요청이 계속 나감.
+ * 누르기·스크롤·키 입력이 있으면 처음부터 다시 셈. 마지막 20초는 아래에 안내 + '더 보기'
+ */
+const IDLE_MS = 180_000;
+const WARN_MS = 20_000;
+function IdleExit({ onExit }: { onExit: () => void }) {
+  const last = useRef(Date.now());
+  const [left, setLeft] = useState(IDLE_MS);
+  const exitRef = useRef(onExit);
+  exitRef.current = onExit;
+  useEffect(() => {
+    const bump = () => (last.current = Date.now());
+    const evs = ['pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart'] as const;
+    evs.forEach((e) => window.addEventListener(e, bump, { passive: true, capture: true }));
+    const t = setInterval(() => {
+      const l = IDLE_MS - (Date.now() - last.current);
+      setLeft(l);
+      if (l <= 0) {
+        clearInterval(t);
+        setFlash('결과 화면에 오래 머물러 홈으로 돌아왔어요. 전적은 업적 화면에 남아 있어요');
+        exitRef.current();
+      }
+    }, 1000);
+    return () => {
+      clearInterval(t);
+      evs.forEach((e) => window.removeEventListener(e, bump, { capture: true }));
+    };
+  }, []);
+  if (left > WARN_MS) return null;
+  return (
+    <div className="idle-exit" role="status">
+      <span>{Math.max(1, Math.ceil(left / 1000))}초 뒤 홈으로 돌아가요</span>
+      <button className="btn sm" onClick={() => ((last.current = Date.now()), setLeft(IDLE_MS))}>
+        더 보기
+      </button>
     </div>
   );
 }

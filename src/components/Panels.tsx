@@ -667,7 +667,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
         </button>
         {autoSec ? (
           <div className="muted close-auto-note">
-            {pre ? `장 전 시간이에요. 찌라시를 보고 예약 주문을 걸어 두세요 (${left}초 뒤 자동으로 넘어가요)` : `다음 날 장이 이미 열렸어요. ${left}초 뒤 자동으로 넘어가요`}
+            {last ? `${left}초 뒤 최종 결과로 넘어가요` : pre ? `장 전 시간이에요. 찌라시를 보고 예약 주문을 걸어 두세요 (${left}초 뒤 자동으로 넘어가요)` : `다음 날 장이 이미 열렸어요. ${left}초 뒤 자동으로 넘어가요`}
           </div>
         ) : null}
       </div>
