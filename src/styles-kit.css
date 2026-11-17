@@ -702,3 +702,39 @@ html[data-device="pc"] body { min-width: 900px; }
 @media (min-width: 600px) {
   .m-page .tray-cards.gc-row { grid-template-columns: repeat(auto-fill, minmax(150px, 190px)) !important; justify-content: start; }
 }
+
+/* ---- 위 메뉴바 팝업 버튼: 미션 · 내 프로필 (2026-11-17, HoverPop) ---- */
+.hpop { position: relative; display: inline-flex; }
+.msb .hpop-btn { height: 40px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px 0 9px; border-radius: 10px; border: 1px solid var(--line-2, #333); background: var(--surface-2, #242424); color: #f2f2f2; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.msb .msb-ring { color: #8b7bff; flex: none; }
+.msb .hpop-btn b { font-variant-numeric: tabular-nums; font-weight: 800; color: #c8c8c8; }
+.msb.all .msb-ring { color: #3ecf8e; }
+.msb .hpop-btn:hover, .msb.open .hpop-btn { border-color: #4a4a4a; background: #2e2e2e; }
+.hpop-btn:focus-visible { outline: 2px solid #b9b0ff; outline-offset: 2px; }
+.msb.compact .hpop-btn { height: 36px; padding: 0 9px 0 7px; gap: 5px; font-size: 13px; }
+.acc-pop.open .acc-chip { border-color: #4a4a4a; background: #2e2e2e; }
+/* 팝업: 버튼 아래. 버튼과 팝업 사이 빈틈에서도 마우스가 이어지게 위쪽 여백은 padding 으로 */
+.hpop-pop { position: absolute; top: 100%; right: 0; z-index: 60; padding-top: 8px; width: 340px; }
+.hpop-pop > .panel { margin: 0; background: var(--surface, #1c1c1c); border: 1px solid #333; border-radius: 14px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); max-height: min(560px, calc(100dvh - 90px)); overflow: auto; }
+@media (max-width: 860px) {
+  .hpop { position: static; }
+  .hpop-pop { position: fixed; top: 56px; left: 12px; right: 12px; width: auto; }
+}
+html[data-device="pc"] .hpop { position: relative; }
+html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; right: 0; width: 340px; }
+.ms-today { margin: 0; }
+.ms-today b { color: #b9b0ff; font-variant-numeric: tabular-nums; }
+/* 내 프로필 팝업 */
+.pfc { display: flex; flex-direction: column; gap: 12px; }
+.pfc-head { display: flex; align-items: center; gap: 12px; }
+.pfc-name { display: grid; gap: 2px; min-width: 0; }
+.pfc-name b { font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pfc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #161616; }
+.pfc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
+.pfc-stats div { display: grid; gap: 2px; text-align: center; padding: 8px 4px; border-radius: 10px; background: #161616; }
+.pfc-stats dt { font-size: 12px; color: #9a9a9a; }
+.pfc-stats dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* 옆 칸이 없는 대결 화면(손님 일반전)은 한 칸 */
+.hub-stage.solo { grid-template-columns: minmax(0, 1fr); }
+.ms-gain { margin: 0; padding: 8px 10px; border-radius: 10px; background: #161616; font-size: 14px; }
+.ms-gain b { color: #b9b0ff; font-variant-numeric: tabular-nums; }

@@ -32,17 +32,21 @@ export const MISSION_MAP: Record<string, MissionDef> = Object.fromEntries(MISSIO
 /** 하루에 미션으로 받을 수 있는 경험치 상한 (짜고 치기 막기) */
 export const DAILY_XP_CAP = 300;
 
-/** 레벨: 레벨마다 필요한 경험치 100 + 20×(레벨−1) */
+/** 최대 레벨 (2026-11-17 사용자: 오래 걸렸으면) — 매일 미션 + 5판쯤이면 1년쯤 */
+export const MAX_LEVEL = 100;
+/** 레벨 l 에서 다음 레벨까지 필요한 경험치: 100 에서 시작해 레벨마다 4.5%씩 늘어남 (10 단위) */
+export const levelNeed = (l: number) => Math.round((100 * Math.pow(1.045, l - 1)) / 10) * 10;
+/** 레벨 (최대 레벨이면 need 0) */
 export function levelOf(xp: number) {
   let level = 1;
   let left = Math.max(0, Math.floor(xp));
-  for (;;) {
-    const need = 100 + 20 * (level - 1);
+  while (level < MAX_LEVEL) {
+    const need = levelNeed(level);
     if (left < need) return { level, into: left, need };
     left -= need;
     level++;
-    if (level > 999) return { level, into: 0, need };
   }
+  return { level: MAX_LEVEL, into: 0, need: 0 };
 }
 /** 레벨 업적 (사진·대표 칭호를 엶) — achievements.ts 의 BADGES 에도 있음 */
 export const LEVEL_BADGES: { level: number; id: string }[] = [
@@ -126,6 +130,32 @@ export function missionGain(id: string, g: MissionGame): number {
       return 0;
   }
 }
+
+/* ---- 판 경험치 (설계서 design/game-xp.md) — 미션과 따로, 판마다 한 번, 판정·지급은 서버만 ---- */
+export const GAME_XP_CAP = 600;
+export const FIRST_WIN_XP = 50;
+export const BADGE_XP = 20;
+/** 이 판으로 받는 경험치 항목 (커스텀·친구 1대1·기권·거래 없음은 없음) */
+export function gameXp(g: MissionGame): { label: string; xp: number }[] {
+  if (!g.finished || g.trades <= 0) return [];
+  if (g.kind === 'match') {
+    const out = [{ label: '끝내기', xp: 40 }];
+    if (g.won) out.push({ label: '1위', xp: 30 });
+    else if (g.players >= 3 && g.rank === 2) out.push({ label: '2위', xp: 10 });
+    return out;
+  }
+  if (g.kind === 'bot') {
+    const out = [{ label: '봇전', xp: 10 }];
+    if (g.won) out.push({ label: g.botLevels.includes(3) ? '어려움 봇 이김' : '1위', xp: g.botLevels.includes(3) ? 10 : 5 });
+    return out;
+  }
+  if (g.kind === 'daily') return [{ label: '오늘의 도전', xp: 20 }];
+  return [];
+}
+/** 오늘 첫 승 보너스를 받을 수 있는 판 (랭킹전·일반전 1위) */
+export const firstWinEligible = (g: MissionGame) => g.kind === 'match' && g.finished && g.trades > 0 && g.won;
+/** 하루 상한 안에서 줄 수 있는 만큼 */
+export const capXp = (want: number, budget: number) => Math.max(0, Math.min(want, budget));
 
 /** 한국 날짜와 그 주 월요일 (기간 이름) */
 export function missionPeriods(now = Date.now()) {

@@ -217,10 +217,13 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
               <p className="muted small mf-note">파티는 다인전으로 같이 찾아요 (4명, 1분 30초 뒤엔 3명도).</p>
             ) : (
               <div className="st-seg" role="radiogroup" aria-labelledby="st-size">
-                {([['duel', '1대1', nWaitOf('duel')], ['multi', '다인전 3~4명', nWaitOf('multi')]] as [QueueSize, string, number][]).map(([v, l, n]) => (
+                {([['duel', '1대1', '2명', nWaitOf('duel')], ['multi', '다인전', '3~4명', nWaitOf('multi')]] as [QueueSize, string, string, number][]).map(([v, l, who, n]) => (
                   <button key={v} role="radio" aria-checked={sizeEff === v} className={sizeEff === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, size: v })}>
-                    {l}
-                    {n > 0 && <small>{n}명 대기</small>}
+                    <span>{l}</span>
+                    <small>
+                      {who}
+                      {n > 0 && ` · ${n}명 대기`}
+                    </small>
                   </button>
                 ))}
               </div>
@@ -231,7 +234,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <div className="st-seg" role="radiogroup" aria-labelledby="st-speed">
               {(['quick', 'normal'] as QueueSpeed[]).map((v) => (
                 <button key={v} role="radio" aria-checked={pref.speed === v} className={pref.speed === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, speed: v })}>
-                  {SPEED_PRESET[v].label} {SPEED_PRESET[v].minutes.replace('약 ', '')}
+                  <span>{SPEED_PRESET[v].label}</span>
+                  <small>{SPEED_PRESET[v].minutes.replace('약 ', '')}</small>
                 </button>
               ))}
             </div>

@@ -21,7 +21,8 @@ import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
-import { MissionsPanel } from '../components/Missions';
+import { MissionsButton } from '../components/Missions';
+import { useIsMobile } from '../components/Extras';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -640,7 +641,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="trophy" /> 전체 랭킹 보기
               </button>
             </section>
-            <MissionsPanel />
             </aside>
           </div>
         ) : (
@@ -670,15 +670,16 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'casual' &&
         (online ? (
-          <div className="hub-stage">
+          <div className={'hub-stage' + (member ? '' : ' solo')}>
             <div className="hs-main">
               {finder('casual', true)}
               {quickRow}
             </div>
-            <aside className="hs-side">
-              <MissionsPanel enabled={account.status !== 'loading'} onSignup={member ? undefined : () => go('signup')} />
-              {member && <PartyPanel party={party} reload={reloadParty} />}
-            </aside>
+            {member && (
+              <aside className="hs-side">
+                <PartyPanel party={party} reload={reloadParty} />
+              </aside>
+            )}
           </div>
         ) : (
           <OfflineNote />
@@ -805,7 +806,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           </button>
         </nav>
       )}
-      {tab === 'practice' && online && <MissionsPanel enabled={account.status !== 'loading'} onSignup={member ? undefined : () => go('signup')} />}
 
       {tab === 'more' && (
         <div className="more-page">
@@ -813,7 +813,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <h3>내 계정</h3>
             {member ? (
               <div className="more-acc">
-                <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} />
+                <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} plain />
               </div>
             ) : account.status === 'loading' ? (
               <Loading inline label="내 계정을 확인하는 중…" />
@@ -1453,6 +1453,8 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
   const [socialOpen, setSocialOpen] = useState(false);
+  // 1280px 이상은 소셜 칸이 옆에 붙어 있음 → 친구 버튼은 칸 접기·펴기 (버튼은 늘 그 자리)
+  const wideSocial = useIsMobile('(min-width: 1280px)');
   // 넓은 화면(1280px 이상)에서 오른쪽 소셜 칸 접기 — 이 기기에 기억
   const [socialFold, setSocialFold] = useState(() => {
     try {
@@ -1612,9 +1614,10 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onProfile={() => go('me')}
         onLogin={() => go('login')}
         socialBadge={badges.friends}
-        socialOpen={socialOpen}
+        socialOpen={wideSocial ? !socialFold : socialOpen}
         // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
-        onSocial={() => (socialFold && matchMedia('(min-width: 1280px)').matches ? fold(false) : setSocialOpen((v) => !v))}
+        onSocial={() => (wideSocial ? fold(!socialFold) : setSocialOpen((v) => !v))}
+        missions={online ? <MissionsButton onSignup={account.status === 'member' ? undefined : () => go('signup')} /> : undefined}
         adminUnread={adminUnread}
         onAdmin={() => go('admin')}
       />
@@ -1623,6 +1626,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
           <div className="lobby-topbar">
             <Brand />
             <span className="lt-right">
+              {online && <MissionsButton compact onSignup={account.status === 'member' ? undefined : () => go('signup')} />}
               {adminUnread !== undefined && <AdminInboxButton unread={adminUnread} onClick={() => go('admin')} compact />}
               <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} compact />
             </span>

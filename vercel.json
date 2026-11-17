@@ -2,6 +2,12 @@
   "regions": [
     "icn1"
   ],
+  "git": {
+    "deploymentEnabled": {
+      "dev": false,
+      "device-layout": false
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/|assets/)[^.]*)",

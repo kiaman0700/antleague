@@ -535,11 +535,8 @@
     display: none;
   }
 }
-/* 1280px 이상: 소셜 패널 늘 보임 → 친구 버튼은 숨김 */
+/* 1280px 이상: 소셜 패널 늘 보임 — 친구 버튼은 그대로 두고 칸 접기·펴기 (사용자 요청 2026-11-17: 눌러도 버튼이 사라지지 않게) */
 @media (min-width: 1280px) {
-  .cl-social-btn {
-    display: none;
-  }
   .cl-social-wrap .cs-head .icon-btn[aria-label='닫기'] {
     display: none;
   }
@@ -1788,5 +1785,4 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
 @media (min-width: 1280px) {
   .cs-fold { display: grid; }
   .cl-social-wrap.folded { display: none; }
-  .lobby-shell.social-folded .cl-social-btn { display: grid; }
 }

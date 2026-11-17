@@ -7,7 +7,8 @@
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { finalResults, marketFor, type GameData } from '../../src/engine/engine.js';
-import { DAILY_XP_CAP, MISSION_MAP, levelOf, missionGain, missionPeriods, pickMissions, type MissionGame } from '../../src/game/missions.js';
+import { BADGE_XP, DAILY_XP_CAP, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, type MissionGame } from '../../src/game/missions.js';
+import { earnedBadges } from './accounts.js';
 
 function pickHex(uid: string, period: string) {
   return createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('mission:' + uid + ':' + period).digest('hex');
@@ -27,6 +28,54 @@ interface ProgressRow {
   done_at: string | null;
 }
 const missing = (msg: string) => /mission_|xp|add_xp/.test(msg);
+
+/* ---- 판 경험치 (설계서 design/game-xp.md): xp_log 의 (계정, key) 기본키로 한 번만, 하루 상한 ---- */
+/** 오늘(한국 0시 뒤) 받은 판 경험치 (판·오늘 첫 승. 업적 보너스는 상한에 안 셈) */
+async function gameXpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
+  const since = new Date(dayEndsAt - 86_400_000).toISOString();
+  const r = await sb.from('xp_log').select('key, xp').eq('user_id', uid).gte('created_at', since);
+  if (r.error) return null;
+  return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:')).reduce((s, x) => s + (x.xp ?? 0), 0);
+}
+/** 기록 한 줄을 먼저 넣고(이미 있으면 안 줌) 그만큼 경험치를 더함 */
+async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, detail: string) {
+  const ins = await sb.from('xp_log').insert({ user_id: uid, key, xp, detail: detail.slice(0, 80) });
+  if (ins.error) {
+    if (!/duplicate|unique/i.test(ins.error.message) && !missing(ins.error.message)) console.error('[api] xp_log', ins.error.message);
+    return false;
+  }
+  if (xp > 0) {
+    const add = await sb.rpc('add_xp', { p_user: uid, p_xp: xp });
+    if (add.error) console.error('[api] add_xp', add.error.message);
+  }
+  return true;
+}
+/** 끝난 판 하나로 판 경험치·오늘 첫 승·새 업적 보너스 */
+async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game: MissionGame, day: string, dayEndsAt: number) {
+  const used = await gameXpToday(sb, uid, dayEndsAt);
+  if (used === null) return; // 039 적용 전: 판 경험치만 건너뜀
+  let budget = GAME_XP_CAP - used;
+  const parts = gameXp(game);
+  if (parts.length) {
+    const want = parts.reduce((s, x) => s + x.xp, 0);
+    const xp = capXp(want, budget);
+    if (await grant(sb, uid, 'game:' + roomId, xp, parts.map((x) => `${x.label} ${x.xp}`).join(' · '))) budget -= xp;
+  }
+  if (firstWinEligible(game) && budget > 0) await grant(sb, uid, 'firstwin:' + day, capXp(FIRST_WIN_XP, budget), 'room:' + roomId); // 어느 판에서 받았는지 (결과 화면 표시용)
+  // 새로 딴 업적: 처음 보는 계정은 지금까지 딴 것을 0 으로 적어 두기만 (예전 업적으로 한꺼번에 받지 않게)
+  try {
+    const ids = Object.keys(await earnedBadges(sb, uid)).filter((id) => !id.startsWith('lv'));
+    if (!ids.length) return;
+    const seen = await sb.from('xp_log').select('key').eq('user_id', uid).like('key', 'badge:%');
+    if (seen.error) return;
+    const have = new Set(((seen.data ?? []) as { key: string }[]).map((x) => x.key.slice(6)));
+    const fresh = ids.filter((id) => !have.has(id));
+    const first = have.size === 0;
+    for (const id of fresh) await grant(sb, uid, 'badge:' + id, first ? 0 : BADGE_XP, first ? '이전 업적' : '새 업적');
+  } catch (e) {
+    console.error('[api] badge xp', e instanceof Error ? e.message : e);
+  }
+}
 
 /** 오늘 0시(한국) 뒤에 받은 미션 경험치 */
 async function xpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
@@ -80,6 +129,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
     };
     const ms = missionsFor(uid, now);
+    await grantGameXp(sb, uid, d.room.id, game, ms.day, ms.dayEndsAt);
     const todo = [...ms.dayIds.map((id) => ({ id, period: ms.day })), ...ms.weekIds.map((id) => ({ id, period: ms.week }))].filter((x) => missionGain(x.id, game) > 0);
     if (!todo.length) continue;
     let budget = DAILY_XP_CAP - (await xpToday(sb, uid, ms.dayEndsAt));
@@ -106,7 +156,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
 }
 
 /** 화면용: 내 오늘·이번 주 미션, 레벨 (비밀값·다른 사람 정보 없음) */
-export async function missionState(sb: SupabaseClient, uid: string, now = Date.now()) {
+export async function missionState(sb: SupabaseClient, uid: string, now = Date.now(), roomId?: string) {
   const ms = missionsFor(uid, now);
   const prof = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
   const member = !prof.error && !!prof.data;
@@ -122,6 +172,17 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     return { id, title: def.title, tier: def.tier, xp: row?.done ? row.xp : def.xp, goal: def.goal, progress: row?.progress ?? 0, done: !!row?.done };
   };
   const todayXp = member ? await xpToday(sb, uid, ms.dayEndsAt) : 0;
+  const gameToday = member ? ((await gameXpToday(sb, uid, ms.dayEndsAt)) ?? 0) : 0;
+  // 결과 화면: 이 판에서 받은 판 경험치 (내 것만)
+  let thisGame: { xp: number; detail: string; firstWin: number } | null = null;
+  if (member && roomId) {
+    const g = await sb.from('xp_log').select('xp, detail').eq('user_id', uid).eq('key', 'game:' + roomId).maybeSingle();
+    if (!g.error && g.data) {
+      const fw = await sb.from('xp_log').select('xp').eq('user_id', uid).eq('key', 'firstwin:' + ms.day).eq('detail', 'room:' + roomId).maybeSingle();
+      const row = g.data as { xp: number; detail: string | null };
+      thisGame = { xp: row.xp, detail: row.detail ?? '', firstWin: !fw.error && fw.data ? (fw.data as { xp: number }).xp : 0 };
+    }
+  }
   return {
     member,
     xp,
@@ -130,6 +191,9 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     week: { endsAt: ms.weekEndsAt, list: ms.weekIds.map((id) => view(id, ms.week)) },
     todayXp,
     cap: DAILY_XP_CAP,
+    gameToday,
+    gameCap: GAME_XP_CAP,
+    thisGame,
   };
 }
 export type MissionState = Awaited<ReturnType<typeof missionState>>;

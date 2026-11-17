@@ -102,7 +102,16 @@ console.log('  이번 판:', JSON.stringify(g1.did), '확인할 미션:', expect
 ok('끝난 판으로 조건을 채운 미션은 모두 완료', expect.every((id) => after.today.list.concat(after.week.list).find((m) => m.id === id)?.done), JSON.stringify(gained.map((m) => m.id)));
 ok('조건을 안 채운 미션은 그대로 (오늘의 도전 등)', all(after).filter((m) => m.id === 'daily' || m.id === 'order').every((m) => m.progress === all(before).find((x) => x.id === m.id).progress));
 const doneXp = all(after).filter((m) => m.done && !all(before).find((x) => x.id === m.id)?.done).reduce((s, m) => s + m.xp, 0);
-ok('완료한 미션만큼 경험치 (하루 상한 안)', after.xp - before.xp === doneXp && after.todayXp <= after.cap, `xp ${before.xp}→${after.xp}, 완료 ${doneXp}`);
+// 판 경험치 (design/game-xp.md): 봇전 10~20, 하루 상한 600, 새 업적 +20 (처음엔 0)
+const tg = (await A({ action: 'missions', room: g1.roomId })).b;
+const gameGain = (tg.thisGame?.xp ?? 0) + (tg.thisGame?.firstWin ?? 0);
+ok('봇전 판 경험치 기록 (10~20, 상한이면 0)', !!tg.thisGame && tg.thisGame.firstWin === 0 && (tg.thisGame.xp === 0 ? tg.gameToday >= tg.gameCap - 20 : tg.thisGame.xp >= 10 && tg.thisGame.xp <= 20), JSON.stringify(tg.thisGame));
+const extra = after.xp - before.xp - doneXp - gameGain;
+ok('경험치 = 미션 + 판 (+ 새 업적 20씩)', extra >= 0 && extra % 20 === 0 && after.todayXp <= after.cap && tg.gameToday <= tg.gameCap, `xp ${before.xp}→${after.xp}, 미션 ${doneXp}, 판 ${gameGain}, 업적 ${extra}`);
+const other = (await A({ action: 'missions', room: '00000000-0000-0000-0000-000000000000' })).b;
+ok('다른(없는) 판 경험치는 없음', other.thisGame === null);
+const bad = await A({ action: 'missions', room: "x' or 1=1" });
+ok('이상한 room 값은 무시', bad.s === 200 && bad.b.thisGame === null);
 
 // 4) 같은 판을 다시 확인해도 두 번 안 셈 (상태를 여러 번 물어도)
 for (let i = 0; i < 3; i++) await A({ action: 'state', roomId: g1.roomId });
@@ -112,6 +121,7 @@ ok('같은 판은 한 번만 (경험치 그대로)', after2.xp === after.xp, `${
 // 5) 거래 없이 끝낸 판은 안 셈
 const g2 = await playBotGame(A, false);
 const after3 = (await A({ action: 'missions' })).b;
+ok('거래 없이 끝낸 판은 판 경험치도 없음', (await A({ action: 'missions', room: g2.roomId })).b.thisGame === null && after3.xp === after2.xp, `${after2.xp}→${after3.xp}`);
 ok('거래 없이 끝낸 판은 미션에 안 셈', g2.s?.room?.status === 'finished' && JSON.stringify(all(after3).map((m) => m.progress)) === JSON.stringify(all(after2).map((m) => m.progress)), JSON.stringify(all(after3).map((m) => [m.id, m.progress])));
 
 // 6) 프로필에 경험치, 다른 사람 화면 데이터엔 없음

@@ -985,7 +985,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'missions': {
       // 내 오늘·이번 주 미션과 레벨 (읽기만)
       rateLimit(uid + ':missions', 30, 60_000);
-      return missionState(sb, uid);
+      // room: 결과 화면이 그 판에서 받은 경험치를 볼 때 (내 기록만 읽음, 형식만 확인)
+      const room = typeof b.room === 'string' && /^[0-9a-f-]{36}$/i.test(b.room) ? b.room : undefined;
+      return missionState(sb, uid, Date.now(), room);
     }
 
     case 'react': {

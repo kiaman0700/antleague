@@ -7,7 +7,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { useDialogFocus } from './ui';
-import { tierText } from './TierBadge';
+import { TierBadge, tierText } from './TierBadge';
+import { HoverPop } from './HoverPop';
+import { LevelMeter } from './Missions';
+import type { MyProfile } from '../net/account';
 import { Avatar } from './Avatar';
 import { api } from '../net/api';
 import { loadNick, saveNick } from '../session';
@@ -68,8 +71,30 @@ export function Brand({ compact }: { compact?: boolean }) {
 }
 
 /** 회원이면 프로필 칩, 게스트면 로그인 버튼, 확인 중이면 빈 자리 */
-export function AccountChip({ account, online, onProfile, onLogin, compact }: { account: AccountState; online: boolean; onProfile: () => void; onLogin: () => void; compact?: boolean }) {
+export function AccountChip({ account, online, onProfile, onLogin, compact, plain }: { account: AccountState; online: boolean; onProfile: () => void; onLogin: () => void; compact?: boolean; /** 팝업 없이 누르면 바로 프로필 (더보기 화면 등) */ plain?: boolean }) {
   if (!online) return null;
+  if (account.status === 'member' && account.profile && !plain) {
+    const p = account.profile;
+    return (
+      <HoverPop
+        className={'acc-pop' + (compact ? ' compact' : '')}
+        btnClass={'acc-chip' + (compact ? ' compact' : '')}
+        label={`내 프로필: ${p.nickname}`}
+        button={
+          <>
+            <Avatar id={p.avatar} name={p.nickname} size={30} className="acc-av" />
+            {!compact && (
+              <span className="acc-txt">
+                <b>{p.nickname}</b>
+              </span>
+            )}
+          </>
+        }
+      >
+        <ProfileCard p={p} onProfile={onProfile} />
+      </HoverPop>
+    );
+  }
   if (account.status === 'member' && account.profile)
     return (
       <button className={'acc-chip' + (compact ? ' compact' : '')} onClick={onProfile} aria-label="마이프로필">
@@ -87,6 +112,44 @@ export function AccountChip({ account, online, onProfile, onLogin, compact }: { 
       </button>
     );
   return <span className="acc-chip-skel" aria-hidden />;
+}
+
+/** 메뉴바 내 프로필 팝업: 사진·닉네임·칭호 · 티어 · 레벨(경험치) · 전적 */
+function ProfileCard({ p, onProfile }: { p: MyProfile; onProfile: () => void }) {
+  const rate = p.games > 0 ? Math.round((p.wins / p.games) * 100) : null;
+  return (
+    <section className="panel pad pfc">
+      <div className="pfc-head">
+        <Avatar id={p.avatar} name={p.nickname} size={52} className="pfc-av" />
+        <span className="pfc-name">
+          <b>{p.nickname}</b>
+          <small className="muted">{p.title ?? '칭호 없음'}</small>
+        </span>
+      </div>
+      <div className="pfc-row">
+        <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} />
+        {p.rankPos ? <small className="muted">랭킹 {p.rankPos}위</small> : null}
+      </div>
+      <LevelMeter xp={p.xp ?? 0} className="pfc-level" title="미션·대결로 경험치를 모아 레벨을 올려요 (최대 Lv.100)" />
+      <dl className="pfc-stats">
+        <div>
+          <dt>판 수</dt>
+          <dd>{p.games}</dd>
+        </div>
+        <div>
+          <dt>1위</dt>
+          <dd>{p.wins}</dd>
+        </div>
+        <div>
+          <dt>승률</dt>
+          <dd>{rate === null ? '-' : rate + '%'}</dd>
+        </div>
+      </dl>
+      <button className="btn sm" onClick={onProfile}>
+        마이프로필 열기
+      </button>
+    </section>
+  );
 }
 
 /** 모바일·태블릿 세로: 아래 탭바 */

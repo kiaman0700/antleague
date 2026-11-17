@@ -470,7 +470,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       )}
       {matchKind === 'daily' && <DailyResult />}
       {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
-      {session.mode === 'multi' && <MissionsPanel retry={2} />}
+      {session.mode === 'multi' && <MissionsPanel retry={2} room={session.roomId ?? undefined} />}
       <div className="center-actions">
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기

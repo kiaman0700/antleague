@@ -2,7 +2,7 @@
  * PC 게임 클라이언트 틀: 위 메뉴바(로고 · 플레이 · 메뉴 · 내 계정) + 오른쪽 소셜 패널(파티 · 친구)
  * 1280px 이상은 소셜 패널이 늘 보이고, 861~1279px 은 위 메뉴의 친구 버튼으로 열고 닫음. 860px 이하는 모바일 틀(아래 탭바)
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Loading } from './ui';
 import { Icon } from './Icon';
 import { AccountChip, Brand, type NavTab } from './LobbyNav';
@@ -45,6 +45,7 @@ export function TopBar({
   socialOpen,
   adminUnread,
   onAdmin,
+  missions,
 }: {
   active: NavTab | null;
   account: AccountState;
@@ -64,6 +65,8 @@ export function TopBar({
   /** 운영자 계정이면 의견함 (안 읽은 수). 운영자가 아니면 undefined */
   adminUnread?: number;
   onAdmin?: () => void;
+  /** 오늘의 미션 버튼 (마우스를 올리면 팝업) */
+  missions?: ReactNode;
 }) {
   return (
     <header className="cl-top">
@@ -106,6 +109,7 @@ export function TopBar({
       </nav>
       <div className="cl-right">
         {adminUnread !== undefined && onAdmin && <AdminInboxButton unread={adminUnread} onClick={onAdmin} />}
+        {missions}
         <AccountChip account={account} online={online} onProfile={onProfile} onLogin={onLogin} />
         {online && (
           <button className={'cl-social-btn' + (socialOpen ? ' on' : '')} onClick={onSocial} aria-label="친구·파티" aria-expanded={socialOpen} title="친구·파티">
