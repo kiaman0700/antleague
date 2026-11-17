@@ -59,7 +59,7 @@ export interface RoomInfo {
 interface MatchResult {
   id: string;
   winner_nickname: string | null;
-  results: { nickname: string; equity: number; ret: number; badges?: string[] }[];
+  results: { nickname: string; equity: number; ret: number; badges?: string[]; /** 봇 자리면 난이도 (2026-11-17부터 기록) */ bot?: number }[];
   created_at: string;
   me?: string | null;
 }
@@ -1290,7 +1290,7 @@ function Records({ go }: Pick<Props, 'go'>) {
                 <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
                 <span className={'rec-rank' + (won || (draw && rank === 1) ? ' r1' : draw ? ' draw' : '')}>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</span>
                 <span className="rec-who muted">
-                  {h.results.length === 1 ? '오늘의 도전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
+                  {h.results.length === 1 ? '오늘의 도전' : h.results.some((r) => r.bot) ? '봇전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
                   {!won && h.winner_nickname && <small>승자 {h.winner_nickname}</small>}
                 </span>
                 <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>

@@ -874,7 +874,7 @@ export function finalResults(d: GameData) {
   const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
     const idle = isIdle(p);
-    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game, ...(idle ? { idle: true } : {}) };
+    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game, ...(idle ? { idle: true } : {}), ...(p.bot_level ? { bot: p.bot_level } : {}) };
   });
   // 기권한 사람 → 거래 0회(매칭)인 사람 순으로 뒤로 (끝까지 거래한 사람끼리는 재산 순)
   const back = (r: { left: boolean; idle?: boolean }) => (r.left ? 2 : r.idle ? 1 : 0);
