@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { deviceCss } from './device-css';
 
 /** 개발 중에도 /api/game 을 Vercel 함수처럼 쓰기 위한 미들웨어 (배포에서는 Vercel 이 api/game.ts 를 실행) */
 function devApi(): Plugin {
@@ -32,6 +33,8 @@ function devApi(): Plugin {
 
 export default defineConfig({
   plugins: [react(), devApi()],
+  // 화면 종류를 가르는 CSS 폭 규칙에 기기 조건 붙이기 (design/device-layout.md)
+  css: { postcss: { plugins: [deviceCss()] } },
   server: { port: 5173 },
   build: {
     rollupOptions: {

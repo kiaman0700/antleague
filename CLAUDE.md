@@ -104,6 +104,7 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 로비 글은 줄이기(사용자: '너무 AI 같다'): 설명 글머리표 상자 대신 큰 숫자(`mf-spec`), 규칙은 접어 둠(`rk-help`)
 - 글꼴: 한글 자간 −0.01em, 굵기 700/800, 시간 숫자는 mono 대신 tabular-nums
 - 실시간 장: `src/game/intraday.ts` (5초 칸, 일별 가격과 다른 난수) · 엔진 `dayClock`(장 시작 = day_deadline − 제한 시간) · 화면 데이터 `View.live` 는 지금 칸까지만 · 화면은 `src/game/live.ts` 의 `withLive` 로 오늘 막대에 합침 · 장중 속보 `NewsEvent.at` 는 공개 칸 전엔 화면 데이터에 없음 · 예약 주문은 상태 요청 때마다 지금 칸까지 체결(`resolveOrders(d, day, 칸, final)`)
+- 화면 종류는 **기기로** 고름(2026-11-17, 설계서 design/device-layout.md 2판): `src/lib/device.ts` 가 단서 여러 개(브라우저 정보 → 안드로이드는 크롬의 기기 종류 → 터치 지점·기기 화면 크기)로 `<html data-device="pc|tablet|phone">`. 입력 장치보다 기기 자체를 먼저 봄 — 태블릿+마우스는 태블릿, 터치 노트북·DeX·TV 는 PC. 폴더블은 펼치면(거의 정사각형·짧은 쪽 600+) tablet + data-fold="open"(로비·게임 모두 아래 탭 화면), 접으면 phone — 접고 펼칠 때 그 자리에서 다시 판단. 설정에서 고르는 기능은 없음(사용자: 별로). 시험용 ?device=pc|tablet|phone|auto (그 창만). CSS 의 860·960 폭 규칙은 **빌드 때 `device-css.ts`(postcss)가 기기 조건을 :where() 로 붙임** — PC 는 좁은 창도 PC 화면(900px 아래 가로 스크롤), 휴대폰은 넓어져도 휴대폰 화면, 원본 CSS 는 폭 규칙 그대로. 게임 화면 고르기 `useMobileLayout()`. 기기 흉내 시험 `npm run e2e:devices`(17개 기기, 이 컴퓨터 크롬)
 - 화면 모드: 초보/일반/커스텀. 커스텀 설정은 `src/prefs.ts`(이 기기 localStorage, `effective()` 로 적용값). 화면 편집 = `/customize`(저장 안 되는 가상 게임 `makeDemo`) 또는 게임 중 조절 버튼 → `EditSlot` 으로 순서·보이기
 - 금액 표시는 `won()`(=`wonShort`) 하나로: 초보 만원(끝자리까지) · 일반 원, 커스텀에서 변경
 - 아이콘은 이모지 대신 `src/components/Icon.tsx`(Lucide). 업종 `SectorIcon`, 카드 `CardIcon`, 업적 `BadgeIcon`

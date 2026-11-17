@@ -15,6 +15,10 @@ import './styles-ui.css';
 import './styles-nav.css';
 import './styles-client.css';
 import './styles-kit.css';
+import { startDeviceWatch } from './lib/device';
+
+// 기기 종류(PC·태블릿·휴대폰)로 화면 고르기 — 그리기 전에 (design/device-layout.md)
+startDeviceWatch();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

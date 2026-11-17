@@ -695,3 +695,10 @@ body { background: var(--bg) !important; }
 @media (max-height: 500px) and (orientation: landscape) {
   .m-game .m-top .end-status { display: none; }
 }
+
+/* PC: 창을 아주 좁게 줄여도 PC 화면 그대로, 900px 아래는 옆으로 스크롤 (design/device-layout.md, 사용자 결정 2026-11-17) */
+html[data-device="pc"] body { min-width: 900px; }
+/* 태블릿(폭 600 이상): 카드가 칸 너비만큼 끝없이 커지지 않게 한 장 150~190px (휴대폰은 그대로 한 줄 3장) */
+@media (min-width: 600px) {
+  .m-page .tray-cards.gc-row { grid-template-columns: repeat(auto-fill, minmax(150px, 190px)) !important; justify-content: start; }
+}

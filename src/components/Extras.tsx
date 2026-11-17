@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import type { Device } from '../lib/device';
 import { Icon } from './Icon';
 import { EmptyState } from './ui';
 import type { OrderRow } from '../engine/engine';
@@ -143,6 +144,29 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
 }
 
 /** 화면 폭으로 모바일/PC 구분 */
+/** 지금 기기 (설정·?device= 로 바뀌면 다시 그림) */
+export function useDevice(): Device {
+  const [d, setD] = useState<Device>(() => (typeof document !== 'undefined' && (document.documentElement.dataset.device as Device)) || 'pc');
+  useEffect(() => {
+    const on = () => setD((document.documentElement.dataset.device as Device) || 'pc');
+    window.addEventListener('stockduel:device', on);
+    on();
+    return () => window.removeEventListener('stockduel:device', on);
+  }, []);
+  return d;
+}
+/**
+ * 게임을 휴대폰 화면(아래 탭)으로 그릴지: 휴대폰은 늘, PC 는 창이 좁아도 안 함, 태블릿은 세로(좁을 때)만
+ * (예전엔 창 폭 960px 로만 정해서 PC 창을 줄이면 휴대폰 화면이 나왔음)
+ */
+export function useMobileLayout(): boolean {
+  const device = useDevice();
+  const narrow = useIsMobile('(max-width: 960px)');
+  // 펼친 폴더블은 태블릿이지만 화면이 작아 늘 아래 탭 화면 (로비와 같게)
+  const foldOpen = typeof document !== 'undefined' && document.documentElement.dataset.fold === 'open';
+  return device === 'phone' || foldOpen ? true : device === 'pc' ? false : narrow;
+}
+
 export function useIsMobile(query = '(max-width: 960px)') {
   const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
   useEffect(() => {
