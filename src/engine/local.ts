@@ -1,6 +1,7 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
 import { buildView, CURRENT_RULES_VERSION, dayClock, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
 import { STOCK_MAP } from '../game/stocks.js';
+import { botInfo, MAX_BOTS, runBots, type BotRun } from './bots.js';
 
 const KEY = 'stockduel.solo2';
 /** 혼자 연습 하루 길이 선택지(초) */
@@ -155,15 +156,41 @@ function randomSalt(): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true): SoloSave {
+/** 봇전: 봇 이름 (같은 난이도가 여럿이면 번호) */
+function botNames(levels: number[]) {
+  const seen: Record<number, number> = {};
+  const total: Record<number, number> = {};
+  for (const l of levels) total[l] = (total[l] ?? 0) + 1;
+  return levels.map((l) => {
+    seen[l] = (seen[l] ?? 0) + 1;
+    const name = botInfo(l)?.name ?? '봇';
+    return total[l] > 1 ? `${name} ${seen[l]}` : name;
+  });
+}
+
+/** 봇이 한 일을 저장 데이터에 반영 */
+function applyBots(d: GameData, run: BotRun) {
+  if (!Object.keys(run.steps).length) return false;
+  for (const t of run.trades) d.trades.push({ ...t, id: uid() });
+  for (const it of run.items) d.items.push({ ...it, id: uid() });
+  d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id] } : p));
+  return true;
+}
+
+export function newSolo(nickname: string, totalDays: number, daySec: number = DEFAULT_SOLO_DAY, persist = true, botLevels: number[] = []): SoloSave {
   const seed = Math.floor(Math.random() * 2_000_000_000);
   const sec = (SOLO_DAY_OPTIONS as readonly number[]).includes(daySec) ? daySec : DEFAULT_SOLO_DAY;
+  const bots = botLevels.filter((l) => l >= 1 && l <= 3).slice(0, MAX_BOTS);
   const dl = freshDeadline(sec, Date.now());
   const s: SoloSave = {
     nickname,
     data: {
       room: { id: 'solo', code: 'SOLO00', seed, salt: randomSalt(), status: 'playing', total_days: totalDays, turn_seconds: sec, day: 0, deadline: dl, day_deadline: dl, host_id: 'me', version: CURRENT_RULES_VERSION },
-      players: [{ id: 'me', room_id: 'solo', nickname, mode: 'easy', ready: true, ended_day: -1, created_at: new Date().toISOString(), version: 0 }],
+      players: [
+        { id: 'me', room_id: 'solo', nickname, mode: 'easy', ready: true, ended_day: -1, created_at: new Date().toISOString(), version: 0 },
+        // 봇전: 봇 1~5명 (난이도 1·2·3)
+        ...botNames(bots).map((name, i) => ({ id: 'bot' + (i + 1), room_id: 'solo', nickname: name, mode: 'pro' as const, ready: true, ended_day: -1, created_at: String(i + 2), version: 0, bot_level: bots[i] })),
+      ],
       trades: [],
       items: [],
       orders: [],
@@ -210,6 +237,8 @@ export function soloSync(s: SoloSave, now = Date.now()): SoloSave {
   const d: GameData = structuredClone(s.data);
   let changed = false;
   if (d.orders.some((o) => o.day === d.room.day && o.status === 'open')) changed = applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, now).tick, false));
+  // 봇전: 봇이 움직일 칸이 됐으면 움직임 (시간이 다 됐으면 남은 칸까지 하고 넘어감)
+  if (d.room.deadline !== null && !s.tutorial) changed = applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined, humansDone: now >= d.room.deadline })) || changed;
   if (d.room.deadline !== null && now >= d.room.deadline) changed = advance(d, now) || changed;
   if (!changed) return s;
   const out = { ...s, data: d };
@@ -250,6 +279,8 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'endTurn': {
       // 혼자 연습: 장 마감을 누르면 남은 시간을 건너뛰고 바로 다음 날
       const { day } = validateEndTurn(d, 'me', now);
+      // 봇전: 내가 마감하면 봇도 남은 움직임을 지금 하고 같이 마감
+      if (!s.tutorial) applyBots(d, runBots(d, now, { salt: d.room.salt ?? undefined, humansDone: true }));
       // 튜토리얼: 봇도 같이 마감
       for (const p of d.players) if (p.id === 'me' || s.tutorial) p.ended_day = day;
       if (advance(d, now) && s.tutorial) botActs(d);

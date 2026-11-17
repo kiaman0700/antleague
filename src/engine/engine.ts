@@ -41,7 +41,7 @@ export interface RoomRow {
   /** 한 판 더: 끝난 방에서 만든 새 방 코드 */
   next_code?: string | null;
   /** 매칭으로 만든 방 / 랭킹전 (016) */
-  kind?: 'custom' | 'match';
+  kind?: 'custom' | 'match' | 'friend' | 'bot' | 'daily';
   ranked?: boolean;
 }
 
@@ -62,6 +62,10 @@ export interface PlayerRow {
   last_seen?: string | null;
   /** (v7) 장 전 '준비 완료'를 누른 날 — 025 마이그레이션 */
   pre_day?: number;
+  /** 봇이면 난이도 1·2·3 (사람은 없음) — 032 마이그레이션, 봇전(브라우저)도 같은 칸 */
+  bot_level?: number | null;
+  /** 봇이 마지막으로 움직인 칸 (bots.ts stepKey) — 같은 칸을 두 번 움직이지 않게 */
+  bot_step?: number | null;
 }
 
 /** 지정가(예약) 주문 — 그날 장중 가격이 닿으면 지정한 가격에 체결, 못 닿으면 장 마감 때 만료 */
@@ -110,6 +114,8 @@ export interface PublicPlayer {
   verified?: boolean;
   /** (v7) 오늘 장 전 '준비 완료'를 눌렀는지 */
   preReady?: boolean;
+  /** 봇이면 난이도 1·2·3 (이름 옆 '봇' 표시) */
+  bot?: number;
 }
 
 /** 상대 수익률을 보여 주는 구간 폭(%p) */
@@ -124,7 +130,7 @@ export interface Notice {
 }
 
 export interface View {
-  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; /** (v7) 장 전이면 장이 열리는 시각 */ preUntil?: number | null; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number; ranked?: boolean; kind?: 'custom' | 'match' };
+  room: { id: string; code: string; status: RoomStatus; day: number; totalDays: number; turnSeconds: number; deadline: number | null; countdown: boolean; /** (v7) 장 전이면 장이 열리는 시각 */ preUntil?: number | null; hostId: string | null; title: string; maxPlayers: number; isPrivate: boolean; nextCode?: string | null; rulesVersion?: number; ranked?: boolean; kind?: 'custom' | 'match' | 'friend' | 'bot' | 'daily' };
   serverNow: number;
   meId: string;
   players: PublicPlayer[];
@@ -457,7 +463,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     room: { id: r.id, code: r.code, status: r.status, day: r.day, totalDays: r.total_days, turnSeconds: r.turn_seconds, deadline: r.deadline, countdown: isCountdown(r), hostId: r.host_id, title: r.title ?? '개미리그', maxPlayers: r.max_players ?? 2, isPrivate: !!r.is_private, nextCode: r.status === 'finished' ? (r.next_code ?? null) : null, rulesVersion: r.version ?? 1, ranked: !!r.ranked, kind: r.kind ?? 'custom' },
     serverNow: now,
     meId,
-    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: startCashFor(r.version), tradeCount: 0, verified: !!verified?.has(p.id), preReady: (p.pre_day ?? -1) >= r.day, status: p.left_game ? ('left' as const) : isActive(p, now) ? ('on' as const) : ('away' as const) })),
+    players: players.map((p) => ({ id: p.id, nickname: p.nickname, mode: p.mode, ready: p.ready, endedDay: p.ended_day, equity: startCashFor(r.version), tradeCount: 0, verified: !!verified?.has(p.id), preReady: p.bot_level ? true : (p.pre_day ?? -1) >= r.day, status: p.left_game ? ('left' as const) : p.bot_level || isActive(p, now) ? ('on' as const) : ('away' as const), ...(p.bot_level ? { bot: p.bot_level } : {}) })),
     market: null,
     live: null,
     marketKey: 'waiting',
@@ -745,7 +751,8 @@ export function validateEndTurn(d: GameData, meId: string, now: number) {
 export const AWAY_MS = 90_000;
 /** 지금 게임에 참여 중인지 (나가지 않았고 최근에 접속). 기록이 없으면(예전 데이터) 참여 중으로 봄 */
 export function isActive(p: PlayerRow, now: number): boolean {
-  if (p.left_game) return false;
+  // 봇은 카운트다운·장 전 준비 기준에서 빠짐 (사람이 모두 마감하면 봇도 따라 마감)
+  if (p.left_game || p.bot_level) return false;
   if (!p.last_seen) return true;
   return now - new Date(p.last_seen).getTime() < AWAY_MS;
 }
@@ -753,7 +760,7 @@ const activePlayers = (d: GameData, now: number) => d.players.filter((p) => isAc
 const endedCount = (d: GameData, now: number) => activePlayers(d, now).filter((p) => p.ended_day >= d.room.day).length;
 /** 나가지 않은 모든 사람이 오늘 마감했는지 (자리 비운 사람도 마감해야 '바로' 넘어감 — 잠깐 앱을 바꾼 사람을 건너뛰지 않게) */
 const allStayingEnded = (d: GameData) => {
-  const staying = d.players.filter((p) => !p.left_game);
+  const staying = d.players.filter((p) => !p.left_game && !p.bot_level);
   return staying.length > 0 && staying.every((p) => p.ended_day >= d.room.day);
 };
 
@@ -809,7 +816,10 @@ export function nextRoomState(d: GameData, now: number): Pick<RoomRow, 'day' | '
   if (r.status !== 'playing') return null;
   // 나가지 않은 사람이 모두 마감하면 바로 (자리 비운 사람은 카운트다운으로만 기다림). 아무도 없으면 시간까지
   // 대결에서 나머지가 모두 기권했으면 남은 한 사람의 승리로 바로 끝 (혼자 남은 날을 다 넘기지 않게)
-  if (d.players.length >= 2 && d.players.filter((p) => !p.left_game).length <= 1) return { day: r.total_days, status: 'finished', deadline: null, day_deadline: null };
+  const staying = d.players.filter((p) => !p.left_game);
+  // 봇이 있는 판: 사람이 모두 나가면 끝 (봇만 남아 계속 돌지 않게)
+  const humansLeftAll = d.players.some((p) => p.bot_level) && !staying.some((p) => !p.bot_level);
+  if ((d.players.length >= 2 && staying.length <= 1) || humansLeftAll) return { day: r.total_days, status: 'finished', deadline: null, day_deadline: null };
   const allEnded = allStayingEnded(d);
   const timeUp = r.deadline !== null && now >= r.deadline;
   if (!allEnded && !timeUp) return null;
@@ -853,6 +863,7 @@ export function finalResults(d: GameData) {
       trades: d.trades.filter((t) => t.player_id === p.id),
       spends: spendsOf(d, p.id),
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
+      bot: p.bot_level ?? null,
     })),
   });
   const results = players.map((p) => {

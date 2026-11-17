@@ -35,7 +35,7 @@ ok('기록에 내 닉네임(me)이 표시됨', mine?.me === nB, String(mine?.me)
 const raw = JSON.stringify(hb ?? []);
 ok('기록 안에 방 id·계정 id·시드 없음', !/room_id|user_id|player_id|seed|salt/.test(raw) && !raw.includes(roomId), raw.slice(0, 120));
 // 그 판에 없던 C 가 방 ID 만 알고 하는 요청은 모두 거절 (다시 하기·상태·이어하기 코드·나가기·마감·준비)
-for (const act of ['rematch', 'state', 'rejoinCode', 'leave', 'endTurn', 'preReady', 'trade']) {
+for (const act of ['rematch', 'state', 'leave', 'endTurn', 'preReady', 'trade']) {
   const r = await C({ action: act, roomId, symbol: 'CORE', side: 'buy', qty: 1 });
   ok(`남의 방 ${act} 거절`, r.s === 403, `${r.s} ${r.b?.error ?? ''}`);
 }

@@ -26,7 +26,7 @@ interface Props {
   nextCode?: string | null;
   onRematch?: () => Promise<void>;
   /** 매칭으로 만든 방 (다시 찾기) · 랭킹전 */
-  matchKind?: 'custom' | 'match';
+  matchKind?: 'custom' | 'match' | 'friend' | 'bot' | 'daily';
   ranked?: boolean;
   onFindAgain?: () => void;
   /** 판 정보 (한 판 더 버튼에 모드·설정을 보여 주려고) */

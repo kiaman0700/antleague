@@ -19,6 +19,7 @@ import { InviteCenter } from '../components/InviteCenter';
 import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
+import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -71,16 +72,6 @@ interface Props {
 }
 
 type Joined = { roomId: string; playerId: string; code: string };
-
-/** 이어하기 코드로 자리를 옮긴 뒤: 대기 중이면 대기실, 진행 중이면 바로 게임 */
-function rejoined(
-  r: { roomId: string; playerId: string; code: string; status: string; nickname: string; mode: string },
-  onWaiting: (roomId: string, playerId: string, nickname: string, code: string) => void,
-  onGame?: (s: Session) => void,
-) {
-  if (r.status === 'playing' && onGame) onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname: r.nickname, ui: (r.mode as UiMode) ?? 'easy' });
-  else onWaiting(r.roomId, r.playerId, r.nickname, r.code);
-}
 
 /** 화면 모드: 초보 / 일반 / 커스텀. 커스텀은 '바탕 모드'(초보·일반) 위에 내 설정을 덮어씀 */
 export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChange: (m: UiMode) => void; onEdit?: () => void }) {
@@ -202,39 +193,22 @@ function PageHead({ title, onBack, right }: { title: string; onBack: () => void;
   );
 }
 
-type Rejoined = { roomId: string; playerId: string; code: string; status: string; nickname: string; mode: string };
-
 function CodeJoin({
   initial,
   onJoined,
-  onRejoin,
   onClose,
 }: {
   initial: string;
   onJoined: (r: Joined) => void;
-  onRejoin: (r: Rejoined) => void;
   onClose: () => void;
 }) {
   const [code, setCode] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  // 방 코드(6자리) 또는 다른 기기에서 받은 이어하기 코드(방코드-10자리)
-  const isRejoin = code.includes('-');
-  const valid = isRejoin ? /^[A-Z0-9]{6}-[A-Z0-9]{10}$/.test(code) : code.length === 6;
+  const valid = code.length === 6;
   const submit = async () => {
     setErr('');
-    if (!valid) return setErr(isRejoin ? '이어하기 코드는 "방코드-10자리" 모양이에요.' : '6자리 방 코드를 입력해 주세요.');
-    if (isRejoin) {
-      setBusy(true);
-      try {
-        onRejoin(await api<Rejoined>('rejoin', { code }));
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : String(e));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
+    if (!valid) return setErr('6자리 방 코드를 입력해 주세요.');
     setBusy(true);
     try {
       onJoined(await api<Joined>('join', { code, nickname: loadNick().trim(), mode: loadUi() }));
@@ -246,7 +220,7 @@ function CodeJoin({
   };
   return (
     <Modal title={<><Icon name="key" size={18} /> 코드로 입장</>} onClose={onClose}>
-      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요. 다른 기기에서 하던 대결은 '이어하기 코드'(방코드-10자리)를 넣으면 이어서 할 수 있어요.</p>
+      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
       <form
         className="join"
         onSubmit={(e) => {
@@ -258,18 +232,18 @@ function CodeJoin({
           className="code-input"
           autoFocus
           value={code}
-          maxLength={17}
-          placeholder="방 코드 또는 이어하기 코드"
+          maxLength={6}
+          placeholder="6자리 방 코드"
           inputMode="text"
           autoCapitalize="characters"
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-+/g, '-'))}
+          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
         />
         <button className="btn primary" disabled={busy || !online}>
-          {isRejoin ? '이어하기' : '입장'}
+          입장
         </button>
       </form>
       {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
-      {!err && code.length > 0 && !isRejoin && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
+      {!err && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
       {err && <p className="error">{err}</p>}
     </Modal>
   );
@@ -308,6 +282,83 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
           취소
         </button>
         <button className="btn primary" onClick={() => onStart(days, daySec)}>
+          시작하기
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** 봇전: 봇 1~5명 + 난이도 + 판 길이 → 이 기기에서 바로 시작 (설계서 design/bots-daily.md) */
+function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number, bots: number[]) => void; onClose: () => void }) {
+  const [bots, setBots] = useState<number[]>([2]);
+  const [days, setDays] = useState(10);
+  const [daySec, setDaySec] = useState<number>(60);
+  const setLevel = (i: number, lv: number) => setBots((b) => b.map((x, j) => (j === i ? lv : x)));
+  return (
+    <Modal title={<><Icon name="bot" size={18} /> 봇전</>} onClose={onClose}>
+      <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 점수는 바뀌지 않고, 이 기기에 저장돼요.</p>
+      <div className="field">
+        <span>상대 봇 ({bots.length}명)</span>
+        <ul className="bot-pick">
+          {bots.map((lv, i) => (
+            <li key={i}>
+              <Icon name="bot" size={16} />
+              <div className="seg sm" role="radiogroup" aria-label={`봇 ${i + 1} 난이도`}>
+                {BOT_LEVELS.map((b) => (
+                  <button key={b.level} role="radio" aria-checked={lv === b.level} className={lv === b.level ? 'on' : ''} onClick={() => setLevel(i, b.level)}>
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              {bots.length > 1 && (
+                <button className="icon-btn sm" aria-label={`봇 ${i + 1} 빼기`} onClick={() => setBots((b) => b.filter((_, j) => j !== i))}>
+                  <Icon name="x" size={14} />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {bots.length < MAX_BOTS && (
+          <button className="btn sm" onClick={() => setBots((b) => [...b, b[b.length - 1] ?? 2])}>
+            <Icon name="plus" size={14} /> 봇 더하기
+          </button>
+        )}
+        <ul className="bot-levels muted small">
+          {BOT_LEVELS.map((b) => (
+            <li key={b.level}>
+              <b>{b.label}</b> {b.desc}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="field">
+        <span>게임 길이</span>
+        <div className="seg">
+          {DAY_OPTIONS.filter((o) => o.days <= 20).map((o) => (
+            <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+              <b>{o.label}</b>
+              <small>최대 {Math.round((o.days * (daySec + 8)) / 60)}분</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <span>하루(장) 길이</span>
+        <div className="seg">
+          {[60, 180].map((sec) => (
+            <button key={sec} aria-pressed={daySec === sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
+              <b>{sec / 60}분</b>
+              <small>{sec === 60 ? '빠르게' : '여유'}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="modal-actions">
+        <button className="btn ghost" onClick={onClose}>
+          취소
+        </button>
+        <button className="btn primary" onClick={() => onStart(days, daySec, bots)}>
           시작하기
         </button>
       </div>
@@ -357,7 +408,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const account = useAccount();
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
-  const [modal, setModal] = useState<null | 'code' | 'practice'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots'>(null);
   const [roomList, setRoomList] = useState<RoomInfo[] | null>(null);
   const openRooms = roomList ? roomList.filter((x) => !x.joined).length : null;
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
@@ -384,8 +435,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
   const nick = () => (member ? account.profile!.nickname : loadNick().trim());
   const joined = (r: Joined) => onWaiting(r.roomId, r.playerId, nick(), r.code);
-  const startPractice = (days: number, daySec: number) => {
-    const s = newSolo(nick() || '나', days, daySec);
+  const startPractice = (days: number, daySec: number, bots: number[] = []) => {
+    const s = newSolo(nick() || '나', days, daySec, true, bots);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   const head = TAB_HEAD[tab];
@@ -596,6 +647,11 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'practice' && (
         <nav className="home-actions">
+          <button className="tile" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
+            <i><Icon name="bot" size={24} /></i>
+            <b>봇전</b>
+            <small>기다림 없이 봇과 한 판</small>
+          </button>
           <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && setModal('practice')}>
             <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
@@ -700,8 +756,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         </div>
       )}
 
-      {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onRejoin={(r) => rejoined(r, onWaiting, onGame)} onClose={() => setModal(null)} />}
+      {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
+      {modal === 'bots' && <BotStart onStart={startPractice} onClose={() => setModal(null)} />}
       {gate.el}
     </div>
   );
@@ -892,7 +949,6 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <CodeJoin
           initial=""
           onJoined={(r) => onWaiting(r.roomId, r.playerId, account.profile?.nickname ?? loadNick().trim(), r.code)}
-          onRejoin={(r) => rejoined(r, onWaiting)}
           onClose={() => setCodeOpen(false)}
         />
       )}
@@ -1170,7 +1226,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history !== null && !histErr && (
         <section className="panel pad">
           <h3>
-            <Icon name="medal" /> 업적 {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
+            <Icon name="medal" /> 업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{BADGES.length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>
           <div className="badge-grid">
             {BADGES.map((b) => (

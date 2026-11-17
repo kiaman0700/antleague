@@ -66,21 +66,16 @@ async function room(players, opts = {}) {
   ok('기권한 게임은 이어하기 목록에 안 나옴', back.s === 200 && (back.b === null || back.b.roomId !== roomId));
 }
 
-// ---- 기기 바꿔 이어하기 ----
+// ---- '다른 기기로 옮기기(이어하기 코드)'는 없앤 기능 (2026-11-17) — 서버가 받지 않아야 함 ----
 {
-  const { us: [A, B], roomId, code, ids } = await room(2);
+  const { us: [A, B], roomId, code } = await room(2);
   await A({ action: 'start', roomId });
   const rc = await B({ action: 'rejoinCode', roomId });
-  ok('이어하기 코드 받기', rc.s === 200 && new RegExp(`^${code}-[A-Z0-9]{10}$`).test(rc.b?.code ?? ''), rc.b?.error ?? rc.b?.code);
-  const other = X1;
-  const wrong = await other({ action: 'rejoin', code: `${code}-AAAAAAAAAA` });
-  ok('틀린 코드는 거절', wrong.s === 403, wrong.b?.error);
-  const re = await other({ action: 'rejoin', code: rc.b.code });
-  ok('새 기기로 자리 옮기기', re.s === 200 && re.b.playerId === ids[1] && re.b.status === 'playing', re.b?.error ?? '');
-  const oldDev = await B({ action: 'state', roomId });
-  ok('예전 기기는 더 이상 그 자리가 아님', oldDev.s === 403, oldDev.b?.error);
-  const again = await X2({ action: 'rejoin', code: rc.b.code });
-  ok('이어하기 코드는 한 번만', again.s === 403, again.b?.error);
+  ok('이어하기 코드 받기는 없는 기능 (400)', rc.s === 400, rc.b?.error);
+  const re = await X1({ action: 'rejoin', code: `${code}-AAAAAAAAAA` });
+  ok('이어하기 코드로 자리 옮기기도 없음 (400)', re.s === 400, re.b?.error);
+  const still = await B({ action: 'state', roomId });
+  ok('원래 사람은 그대로 자기 자리', still.s === 200);
 }
 
 // ---- 한 판 더 ----

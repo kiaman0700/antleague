@@ -43,7 +43,6 @@ for (const p of PAYLOADS) {
   if (t.s === 200) await U({ action: 'leave', roomId: t.b.roomId });
   if (p.includes('<')) ok(`방 제목 '${p.slice(0, 20)}' 거절`, t.s === 400);
   await probe('join.code', { action: 'join', code: p, nickname: '정상', mode: 'easy' });
-  await probe('rejoin', { action: 'rejoin', code: p });
   await probe('joinRoom', { action: 'joinRoom', roomId: p, nickname: '정상', mode: 'easy', password: p });
   await probe('state', { action: 'state', roomId: p });
   await probe('check', { action: 'checkAvailable', username: p, nickname: p });

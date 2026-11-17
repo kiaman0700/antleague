@@ -36,6 +36,15 @@ export const AVATARS: AvatarDef[] = [
   { id: 'zen2', name: '존버의 미학', icon: 'badge:zen', bg: '#2f6b5e', need: 'zen' },
   { id: 'phoenix', name: '대역전극', icon: 'badge:comeback', bg: '#9a5a1f', need: 'comeback' },
   { id: 'jackpot', name: '한 방', icon: 'sparkles', bg: '#6b2f8a', need: 'big_win' },
+  // 2026-11-17 새 업적
+  { id: 'botslayer', name: '고수봇 사냥꾼', icon: 'badge:bot_slayer', bg: '#3a4a6b', need: 'bot_slayer' },
+  { id: 'moneybag', name: '대박', icon: 'badge:ret30', bg: '#2f6b3a', need: 'ret30' },
+  { id: 'streak', name: '연전연승', icon: 'badge:streak7', bg: '#6b4a2f', need: 'streak7' },
+  { id: 'ice', name: '무결점', icon: 'badge:flawless', bg: '#2f5f7a', need: 'flawless' },
+  { id: 'king', name: '다인전의 왕', icon: 'badge:multi_win', bg: '#7a5a2a', need: 'multi_win' },
+  { id: 'scoop', name: '사건 해결사', icon: 'badge:news_jump', bg: '#5a3a6b', need: 'news_jump' },
+  { id: 'umbrella', name: '하락장 생존자', icon: 'badge:bear_proof', bg: '#3a5a5a', need: 'bear_proof' },
+  { id: 'sniper', name: '명중', icon: 'badge:sniper', bg: '#6b2f2f', need: 'sniper' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));
 export const avatarOf = (id: string | null | undefined) => (id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default);

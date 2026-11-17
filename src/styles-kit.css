@@ -438,3 +438,12 @@ body { background: var(--bg) !important; }
 }
 /* 불러오기 실패 '다시 시도' 버튼: 빨간 글자 대비 4.5:1 이상 */
 .ui-empty.error .btn { color: var(--danger-text); }
+/* 봇: 이름 옆 작은 '봇' 표시 · 봇전 고르는 창 */
+.bot-tag { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--text-2); font-size: 11px; font-weight: 700; line-height: 16px; vertical-align: 1px; }
+.bot-pick { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 6px; }
+.bot-pick li { display: flex; align-items: center; gap: 8px; }
+.bot-pick li > svg { flex: none; color: var(--text-2); }
+.bot-pick .seg { flex: 1; min-width: 0; }
+.bot-levels { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.bot-levels b { color: var(--text-2); margin-right: 4px; }
+.badge-count { font-size: 13px; font-weight: 600; margin-left: 2px; }

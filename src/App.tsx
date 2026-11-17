@@ -103,9 +103,9 @@ export default function App() {
           onExit={() => navigate({ kind: 'lobby' })}
           onReplay={
             route.session.mode === 'solo'
-              ? (days, sec) => {
-                  // 연습: 같은 설정으로 새 판 (새 시장)
-                  newSolo(route.session.nickname, days, sec);
+              ? (days, sec, bots) => {
+                  // 연습·봇전: 같은 설정(같은 봇)으로 새 판 (새 시장)
+                  newSolo(route.session.nickname, days, sec, true, bots);
                   setReplay((n) => n + 1);
                 }
               : undefined

@@ -1,5 +1,6 @@
+import { startCashFor } from '../game/portfolio.js';
 import { describe, expect, it } from 'vitest';
-import { computeAchievements } from '../game/achievements.js';
+import { BADGES, computeAchievements } from '../game/achievements.js';
 import { generateMarket } from '../game/market.js';
 import { computePortfolio } from '../game/portfolio.js';
 import { dayTicks } from '../game/intraday.js';
@@ -113,5 +114,31 @@ describe('업적', () => {
       players: [{ id: 'cash', trades: [], spends: [], filledOrders: 0 }],
     });
     expect(res.cash ?? []).not.toContain('beat_market');
+  });
+  it('새 업적: 첫 거래·ETF 입문·몰빵, 고수봇이 있는 판에서 1위면 고수봇 사냥꾼 (2026-11-17)', () => {
+    const m = generateMarket(SEED, 10);
+    const buy = (id: string, sym: string, qty: number) => ({ player_id: id, day: 0, symbol: sym, side: 'buy' as const, qty, price: m.bars[sym][0].open, fee: 0.001 });
+    const qty = Math.floor((startCashFor(m.version) * 0.9) / m.bars.KIDX[0].open);
+    const res = computeAchievements({
+      market: m,
+      seed: SEED,
+      items: [],
+      players: [
+        { id: 'me', trades: [buy('me', 'KIDX', qty)], spends: [], filledOrders: 0 },
+        { id: 'bot', trades: [], spends: [], filledOrders: 0, bot: 3 },
+      ],
+    });
+    expect(res.me).toEqual(expect.arrayContaining(['first_trade', 'etf_fan', 'all_in']));
+    expect(res.bot ?? []).not.toContain('first_trade');
+    // 1위였다면 고수봇 사냥꾼도
+    if (res.me.includes('winner')) expect(res.me).toContain('bot_slayer');
+    else expect(res.me).not.toContain('bot_slayer');
+  });
+  it('업적 id 는 겹치지 않고, 귀한 것부터 순서대로 (칭호는 가장 앞의 것)', () => {
+    const ids = BADGES.map((b) => b.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const r = BADGES.map((b) => b.rarity);
+    expect([...r].sort((a, b) => b - a)).toEqual(r);
+    expect(BADGES.length).toBeGreaterThanOrEqual(35);
   });
 });

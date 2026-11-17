@@ -564,62 +564,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return leaveSeat(roomId, playerId);
     }
 
-    case 'rejoinCode': {
-      // 다른 기기에서 이어하기: 방 코드 + 비밀값. 비밀값은 해시만 저장, 새로 받으면 예전 코드는 못 씀
-      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
-      rateLimit(uid + ':rejoinCode', 5, 600_000);
-      // 회원 자리는 옮길 수 없음 (다른 기기에서 같은 아이디로 로그인하면 이어짐) — 랭킹전에서 지는 판을 다른 계정으로 넘겨 점수를 피하지 못하게
-      if ((await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data)
-        throw new GameError('회원은 다른 기기에서 같은 아이디로 로그인하면 바로 이어할 수 있어요.', 409);
-      const room = must(await sb.from('rooms').select('code, status').eq('id', roomId).single(), 'room') as { code: string; status: string };
-      if (room.status === 'finished') throw new GameError('끝난 게임이에요.', 409);
-      let secret = '';
-      for (let i = 0; i < 10; i++) secret += CODE_CHARS[randomInt(CODE_CHARS.length)];
-      // 10분 안에만 쓸 수 있게 만료 시각을 해시 앞에 붙여 저장 ("만료ms|소금:해시")
-      const res = await sb.from('players').update({ rejoin_hash: `${Date.now() + 600_000}|${hashPassword(secret)}` }).eq('id', playerId);
-      if (res.error && /rejoin_hash/.test(res.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
-      must(res, 'rejoin code');
-      return { code: `${room.code}-${secret}`, expiresIn: 600 };
-    }
-
-    case 'rejoin': {
-      // 이어하기 코드로 내 자리를 이 기기(계정)로 옮김 — 한 번 쓰면 끝
-      rateLimit(uid + ':rejoin', 8, 600_000);
-      const raw = typeof b.code === 'string' ? b.code.toUpperCase().replace(/\s/g, '') : '';
-      const m = /^([A-Z0-9]{6})-([A-Z0-9]{10})$/.exec(raw);
-      if (!m) throw new GameError('이어하기 코드는 "방코드-10자리" 모양이에요.');
-      pwGuard(uid + ':rejoin');
-      const room = must(await sb.from('rooms').select('id, code, status').eq('code', m[1]).maybeSingle(), 'find room') as { id: string; code: string; status: string } | null;
-      const fail = () => {
-        pwFail(uid + ':rejoin');
-        return new GameError('이어하기 코드가 맞지 않아요.', 403);
-      };
-      if (!room || room.status === 'finished') throw fail();
-      await roomPwGuard(room.id); // 방 기준 시도 제한 (계정을 새로 만들어도 유지)
-      const ps = must(await sb.from('players').select('id, user_id, nickname, mode, rejoin_hash').eq('room_id', room.id), 'players') as { id: string; user_id: string; nickname: string; mode: string; rejoin_hash: string | null }[];
-      const live = (h: string | null) => {
-        if (!h) return null;
-        const [exp, hash] = h.includes('|') ? h.split('|') : ['0', ''];
-        return Number(exp) > Date.now() ? hash : null;
-      };
-      const hit = ps.find((p) => {
-        const h = live(p.rejoin_hash);
-        return !!h && checkPassword(m[2], h);
-      });
-      if (!hit) {
-        await roomPwFail(room.id);
-        throw fail();
-      }
-      // 회원 자리는 옮기지 않음 (코드가 회원이 되기 전에 만들어졌어도)
-      if (hit.user_id && (await sb.from('profiles').select('user_id').eq('user_id', hit.user_id).maybeSingle()).data) throw fail();
-      const mine = ps.find((p) => p.user_id === uid);
-      if (mine && mine.id !== hit.id) throw new GameError('이 기기는 이미 이 방에 다른 자리로 들어와 있어요.', 409);
-      await ensureFree(uid, room.id); // 다른 대결 중이면 옮겨 오지 못함 (한 사람은 한 방에만)
-      const moved = must(await sb.from('players').update({ user_id: uid, rejoin_hash: null }).eq('id', hit.id).eq('rejoin_hash', hit.rejoin_hash!).select('id'), 'rejoin') as unknown[];
-      if (!moved.length) throw fail(); // 같은 코드로 동시에 두 번 — 한 번만 성공
-      await touchRoom(room.id);
-      return { roomId: room.id, playerId: hit.id, code: room.code, status: room.status, nickname: hit.nickname, mode: hit.mode };
-    }
+    // (2026-11-17) '다른 기기로 옮기기(이어하기 코드)'는 없앰 — 회원은 같은 아이디로 로그인하면 이어짐
 
     case 'rematch': {
       // 한 판 더: 끝난 방과 같은 설정으로 새 방. 이미 누가 만들었으면 그 코드로 (같은 방 사람만)

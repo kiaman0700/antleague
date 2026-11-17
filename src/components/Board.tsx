@@ -28,6 +28,8 @@ export interface RankRow {
   rank?: number;
   /** 회원(로그인) — 이름 옆 인증 표시 */
   verified?: boolean;
+  /** 봇이면 난이도(1~3), 사람은 0 */
+  bot?: number;
   /** 수익률 (시작 돈 기준 — 방 규칙마다 시작 돈이 다름) */
   ret: number;
 }
@@ -43,7 +45,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
-    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified }))
+    .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, bot: p.bot ?? 0 }))
     // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity));
 }
@@ -60,6 +62,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
               <FitText>
                 {r.nickname}
                 {r.verified && <Icon name="check" size={11} className="verified" />}
+                {!!r.bot && <span className="bot-tag">봇</span>}
               </FitText>
             </b>
             {r.band ? (
@@ -136,6 +139,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
               <FitText>
                 {r.nickname}
                 {r.verified && <Icon name="check" size={12} className="verified" />}
+                {!!r.bot && <span className="bot-tag">봇</span>}
                 {r.me && <em> (나)</em>}
               </FitText>
             </b>

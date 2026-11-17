@@ -43,7 +43,7 @@ interface Props {
   /** 한 판 더: 새 방 대기실로 */
   onWaiting?: (roomId: string, playerId: string, nickname: string, code: string) => void;
   /** (연습) 같은 설정으로 한 판 더 */
-  onReplay?: (days: number, daySec: number) => void;
+  onReplay?: (days: number, daySec: number, bots: number[]) => void;
 }
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
@@ -198,8 +198,6 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [exitAsk, setExitAsk] = useState(false);
   // PC: 뉴스 크게 보기 (넓은 창)
   const [newsBig, setNewsBig] = useState(false);
-  const [rejoinCode, setRejoinCode] = useState<string | null>(null);
-  // 회원은 이어하기 코드 대신 같은 아이디로 로그인
   const memberAcc = useAccount().status === 'member';
   // 결과 화면: 파티로 한 판 했으면 파티 상태를 살짝 봄(peek — 아직 '돌아옴'으로 치지 않음) → '파티로 돌아가기'·파티장이 다시 찾는 중 알림
   const [partyAfter, setPartyAfter] = useState<{ isLeader: boolean; searching: boolean } | null>(null);
@@ -340,6 +338,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, room?.status, players.length]);
   const opponent = players.find((p) => p.id !== me) ?? null;
+  // 봇전(브라우저에서 도는 판 + 봇): 연습처럼 돌지만 화면은 대결처럼 순위·상대를 보여 줌, 방해 카드도 봇에게
+  const vsBots = solo && players.some((p) => p.bot);
+  const rivals = !solo || vsBots;
   const meRow = players.find((p) => p.id === me);
   const endedToday = !solo && (meRow?.endedDay ?? -1) >= day;
   const effects = view?.effectsToday ?? [];
@@ -516,7 +517,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     });
   const useCard = (kind: ItemKind, given?: ItemRow['payload']) => {
     let payload: NonNullable<ItemRow['payload']> = { ...(given ?? {}) };
-    const needsTarget = !solo && (ITEM_MAP[kind].type === 'attack' || kind === 'spy');
+    const needsTarget = rivals && (ITEM_MAP[kind].type === 'attack' || kind === 'spy');
     if (needsTarget && !payload.target) {
       const others = players.filter((p) => p.id !== me && p.status !== 'left');
       if (others.length === 0) return showToast('카드를 쓸 상대가 없어요. 모두 나갔어요.', 'warn');
@@ -677,14 +678,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   }, [mobile]);
 
   // ---------- 화면 ----------
-  // 자리를 다른 기기로 옮겼거나(이어하기 코드), 방이 사라졌거나, 로그인이 바뀌었으면 — 다시 연결을 기다리지 않고 안내
+  // 방이 사라졌거나 로그인이 바뀌었으면 — 다시 연결을 기다리지 않고 안내
   const seatGone = session.mode === 'multi' && !!error && /참가하지 않았어요|찾을 수 없어요|잘못된 방/.test(error);
   if (seatGone) {
     return (
       <div className="center-msg">
         <Icon name="door" size={28} />
         <p>이 기기에서는 더 이상 이 대결을 할 수 없어요</p>
-        <p className="muted small">다른 기기로 자리를 옮겼거나, 방이 사라졌거나, 다른 계정으로 로그인했어요.</p>
+        <p className="muted small">방이 사라졌거나 다른 계정으로 로그인했어요.</p>
         <button className="btn primary" onClick={onExit}>
           홈으로
         </button>
@@ -723,7 +724,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         market={market}
         final={view.final}
         onExit={onExit}
-        onReplay={solo && !session.tutorial && !session.demo && onReplay ? () => onReplay(view.room.totalDays, view.room.turnSeconds) : undefined}
+        onReplay={solo && !session.tutorial && !session.demo && onReplay ? () => onReplay(view.room.totalDays, view.room.turnSeconds, view.players.filter((p) => p.bot).map((p) => p.bot!)) : undefined}
         nextCode={view.room.nextCode ?? null}
         matchKind={view.room.kind}
         dayInfo={{ days: view.room.totalDays, daySec: view.room.turnSeconds }}
@@ -883,7 +884,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const cards = (
     <CardsPanel
       version={view.room.rulesVersion ?? 1}
-      solo={solo}
+      solo={solo && !vsBots}
       players={players.length}
       day={day}
       totalDays={total}
@@ -950,40 +951,6 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               <Icon name="door" size={16} /> 기권하고 나가기
               <small>지금 재산으로 순위에 남고, 남은 사람들은 더 이상 나를 기다리지 않아요. 다시 들어올 수 없어요</small>
             </button>
-            <div className="rejoin-box">
-              <b>
-                <Icon name="share" size={14} /> 다른 기기로 옮기기 (기권 아님)
-              </b>
-              {memberAcc ? (
-                <small className="muted">회원은 코드가 필요 없어요. 다른 기기에서 같은 아이디로 로그인하면 이 대결로 바로 이어져요.</small>
-              ) : (
-              <small className="muted">휴대폰↔PC로 옮길 때, 이 코드를 그 기기의 '코드로 입장'에 넣으세요. 10분 안에 한 번만 쓸 수 있고, 다른 사람에게 보여 주면 자리를 뺏길 수 있어요.</small>
-              )}
-              {memberAcc ? null : rejoinCode ? (
-                <button
-                  className="code-big"
-                  onClick={() => navigator.clipboard?.writeText(rejoinCode).then(() => showToast('이어하기 코드를 복사했어요'), () => {})}
-                  title="눌러서 복사"
-                >
-                  {rejoinCode} <Icon name="copy" size={14} />
-                </button>
-              ) : (
-                <button
-                  className="btn sm ghost"
-                  onClick={() =>
-                    api<{ code: string }>('rejoinCode', { roomId: session.roomId })
-                      .then((r) => {
-                        setRejoinCode(r.code);
-                        // 만료되면 화면에서도 지움
-                        window.setTimeout(() => setRejoinCode(null), 600_000);
-                      })
-                      .catch((e) => showToast(e instanceof Error ? e.message : '코드를 만들지 못했어요', 'err'))
-                  }
-                >
-                  이어하기 코드 받기
-                </button>
-              )}
-            </div>
           </div>
         </Sheet>
       )}
@@ -1265,7 +1232,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               <b className="mh-eq">
                 {wonShort(equity)} <em className={tone(myRet)}>{pct(myRet, 1)}</em>
               </b>
-              {solo ? (
+              {!rivals ? (
                 <span className={'mh-cmp ' + tone(myRet - (idxNow / KR_INDEX_BASE - 1))}>
                   시장보다 {pct(myRet - (idxNow / KR_INDEX_BASE - 1), 1)}
                 </span>
@@ -1466,7 +1433,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       </header>
 
       <section className="score desk-score">
-        {!solo && players.length > 2 ? (
+        {rivals && players.length > 2 ? (
           <RankStrip rows={rows} />
         ) : (
         <div className="vs-box">
@@ -1475,7 +1442,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             <b>{wonShort(equity)}</b>
             <span className={tone(myRet)}>{pct(myRet)}</span>
           </div>
-          {!solo ? (
+          {rivals ? (
             <>
               <div className="tug-wrap">
                 <span className={'tug-lead ' + (opponent?.status === 'left' ? 'muted' : myRank === 1 ? 'up' : 'down')}>
