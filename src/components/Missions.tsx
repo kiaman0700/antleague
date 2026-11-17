@@ -212,7 +212,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
       </div>
       {canReroll && (
         <p className="ms-reroll-left muted small">
-          <Icon name="refresh" size={12} /> 미완료 미션 바꾸기 · 일일 {info.rerolls!.day}번 · 주간 {info.rerolls!.week}번 남음
+          <Icon name="refresh" size={12} /> 일일 미션 바꾸기 <b>{info.rerolls!.day}</b>번 남음 <span className="muted">(하루 3번)</span>
         </p>
       )}
       {rerollErr && <p className="error small">{rerollErr}</p>}
@@ -238,6 +238,11 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         <h4>주간 미션</h4>
         <small className="muted">갱신까지 {left(info.week.endsAt)}</small>
       </div>
+      {canReroll && (
+        <p className="ms-reroll-left muted small">
+          <Icon name="refresh" size={12} /> 주간 미션 바꾸기 <b>{info.rerolls!.week}</b>번 남음 <span className="muted">(한 주 1번)</span>
+        </p>
+      )}
       <ul className="ms-list">
         {info.week.list.map((m, i) => (
           <Row key={m.id} m={m} busy={busy} onReroll={canReroll && info.rerolls!.week > 0 ? () => reroll('week', i, m.title, m.progress) : undefined} />

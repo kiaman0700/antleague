@@ -81,6 +81,9 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
         className={'acc-pop' + (compact ? ' compact' : '')}
         btnClass={'acc-chip' + (compact ? ' compact' : '')}
         label={`내 프로필: ${p.nickname}`}
+        // 누르면 바로 마이프로필 (팝업은 마우스를 올렸을 때만 — 사용자 요청 2026-11-18)
+        onButtonClick={onProfile}
+        btnTitle="마이프로필"
         button={
           <>
             <Avatar id={p.avatar} name={p.nickname} size={30} className="acc-av" />

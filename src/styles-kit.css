@@ -1080,3 +1080,4 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .mr-more-wrap { position: relative; display: inline-flex; }
 .mr-more-pop { position: absolute; z-index: 20; bottom: calc(100% + 6px); right: 0; display: none; flex-wrap: wrap; gap: 4px; width: max-content; max-width: 240px; padding: 8px; border-radius: 10px; background: var(--surface-3, #2e2e2e); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5); }
 .mr-more-wrap:hover .mr-more-pop, .mr-more-wrap:focus-within .mr-more-pop { display: flex; }
+.ms-reroll-left b { color: var(--text); font-weight: 800; margin: 0 1px; }
