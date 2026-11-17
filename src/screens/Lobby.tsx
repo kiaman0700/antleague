@@ -623,7 +623,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               </div>
               <p className="muted small">
                 {isPlaced(account.profile!.ranked_games)
-                  ? `${account.profile!.rankPos ?? '-'}위 · ${account.profile!.games}판 ${account.profile!.wins}승`
+                  ? `${account.profile!.rankPos ? account.profile!.rankPos + '위 · ' : ''}${account.profile!.games}판 ${account.profile!.wins}승`
                   : `랭킹전 ${Math.max(1, PLACEMENT_GAMES - (account.profile!.ranked_games ?? 0))}판 더 하면 티어가 정해져요`}
               </p>
 {isPlaced(account.profile!.ranked_games) && <TierProgress rating={account.profile!.rating} />}

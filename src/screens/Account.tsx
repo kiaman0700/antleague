@@ -460,7 +460,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         <button className="me-rank" onClick={onRanking}>
           <small>랭크</small>
           <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} />
-          <small>{p.rankPos ? `${p.rankPos}위` : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
+          <small>{p.rankPos ? `${p.rankPos}위` : isPlaced(p.ranked_games) ? '랭킹 보기' : `랭킹전 ${PLACEMENT_GAMES}판(배치) 뒤 티어 공개`}</small>
         </button>
       </section>
 
@@ -666,7 +666,7 @@ interface RankRowT {
 }
 export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; onLogin: () => void; onPlay?: () => void }) {
   const acc = useAccount();
-  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number } | null } | null>(null);
+  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number; unlisted?: boolean } | null } | null>(null);
   const [err, setErr] = useState(false);
   const [tryN, setTryN] = useState(0);
   useEffect(() => {
@@ -690,7 +690,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
       {data?.me && (
         <section className="panel pad my-rank">
           <b>{data.me.nickname}</b>
-          <span>{data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 · 랭킹전 ${Math.max(1, PLACEMENT_GAMES - (data.me.ranked_games ?? 0))}판 더 하면 올라가요`}</span>
+          <span>{data.me.unlisted ? '시험용 계정이라 공개 랭킹에 안 나와요' : data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 · 랭킹전 ${Math.max(1, PLACEMENT_GAMES - (data.me.ranked_games ?? 0))}판 더 하면 올라가요`}</span>
           <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
           {onPlay && (
             <button className="btn sm primary" onClick={onPlay}>

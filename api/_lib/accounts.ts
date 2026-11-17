@@ -195,11 +195,15 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const p = await getProfile(sb, uid);
       if (!p) return { profile: null };
       const placed = isPlaced(p.ranked_games);
-      const above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', p.rating);
+      // 공개 랭킹 목록과 같은 기준: 시험 회원은 세지 않고, 내가 시험 회원이면 순위 없음
+      let above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', p.rating).eq('is_test', false);
+      if (above.error) above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', p.rating);
+      const tst = await sb.from('profiles').select('is_test').eq('user_id', uid).maybeSingle();
+      const unlisted = !tst.error && !!(tst.data as { is_test?: boolean } | null)?.is_test;
       const recent = ((await sb.from('match_players').select('room_id, rank, players, ret, rated, rating_before, rating_after, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)).data ?? []) as unknown[];
       const badges = await earnedBadges(sb, uid);
       const { user_id: _u, ...pub } = p;
-      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed ? (above.count ?? 0) + 1 : null }, recent, badges };
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null }, recent, badges };
     }
 
     case 'updateProfile': {
@@ -273,11 +277,14 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       }[];
       // uid 가 비었으면(로그인 없이 보는 공개 랭킹) 내 순위는 없음
       const me = uid ? await getProfile(sb, uid) : null;
-      let mine: { rank: number | null; rating: number; nickname: string; games: number; ranked_games: number } | null = null;
+      let mine: { rank: number | null; rating: number; nickname: string; games: number; ranked_games: number; unlisted?: boolean } | null = null;
       if (me) {
         let above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating).eq('is_test', false);
         if (above.error) above = await sb.from('profiles').select('user_id', { count: 'exact', head: true }).gte('ranked_games', PLACEMENT_GAMES).gt('rating', me.rating);
-        mine = { rank: isPlaced(me.ranked_games) ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games, ranked_games: me.ranked_games ?? 0 };
+        // 자동 시험 회원은 공개 목록에서 빠지므로 내 순위도 비움 (목록과 내 카드가 어긋나지 않게)
+        const t = await sb.from('profiles').select('is_test').eq('user_id', uid).maybeSingle();
+        const isTest = !t.error && !!(t.data as { is_test?: boolean } | null)?.is_test;
+        mine = { rank: isPlaced(me.ranked_games) && !isTest ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games, ranked_games: me.ranked_games ?? 0, ...(isTest ? { unlisted: true } : {}) };
       }
       return { top: top.map((t, i) => ({ rank: i + 1, ...t })), me: mine };
     }
