@@ -125,19 +125,27 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
       </div>
 
       <div className="field">
-        <span>차트 기본 보기</span>
+        <span>차트 봉 간격</span>
         <Seg
           value={p.chart}
-          onChange={(chart) => setPrefs({ chart })}
+          onChange={(chart) => {
+            setPrefs({ chart });
+            // 차트 위 간격 버튼으로 고른 값보다 이 설정이 바로 보이게
+            try {
+              localStorage.setItem('stockduel.chartIv', chart === 'daily' ? '0' : '5');
+            } catch {
+              /* 무시 */
+            }
+          }}
           options={[
-            { v: 'live', label: '오늘 장중' },
-            { v: 'daily', label: '일별' },
+            { v: 'live', label: '5초', sub: '지난 날까지 이어서' },
+            { v: 'daily', label: '일', sub: '하루에 봉 하나' },
           ]}
         />
       </div>
 
       <div className="field">
-        <span>일별 차트 모양</span>
+        <span>일봉 차트 모양</span>
         <Seg
           value={p.chartType}
           onChange={(chartType) => setPrefs({ chartType })}
@@ -151,12 +159,12 @@ export function PrefsPanel({ ui }: { ui: UiMode }) {
       </div>
 
       <div className="field">
-        <span>장중 차트 모양</span>
+        <span>초 단위 차트 모양</span>
         <Seg
           value={p.liveChartType ?? 'same'}
           onChange={(liveChartType) => setPrefs({ liveChartType })}
           options={[
-            { v: 'same', label: '일별과 같게', sub: '한쪽을 바꾸면 같이' },
+            { v: 'same', label: '일봉과 같게', sub: '한쪽을 바꾸면 같이' },
             { v: 'line', label: '라인', sample: 'line' },
             { v: 'candle', label: '캔들', sample: 'candle' },
             { v: 'ohlc', label: '바', sample: 'ohlc' },
