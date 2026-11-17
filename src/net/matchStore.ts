@@ -152,7 +152,8 @@ export async function startMatch(queue: string, nickname: string, mode: string) 
   gen++;
   cancelAsked = false;
   last = { queue, nickname, mode, follow: false };
-  awayStart = 0;
+  // 뒤에 있는 창에서 다시 찾기가 시작됐으면 '벗어나 있음'을 그대로 기억
+  awayStart = typeof document !== 'undefined' && document.visibilityState === 'hidden' ? awayStart || Date.now() : 0;
   set({ phase: 'joining', err: '', matched: null, startedAt: Date.now(), info: null }); // 지난 찾기의 시작 시각이 잠깐 보이지 않게
   try {
     await api('queueJoin', { queue, nickname, mode });
@@ -174,7 +175,7 @@ export function followMatch(queue: string | null) {
   if (st.phase !== 'idle') return;
   gen++;
   last = queue ? { queue, nickname: '', mode: '', follow: true } : null;
-  awayStart = 0;
+  awayStart = typeof document !== 'undefined' && document.visibilityState === 'hidden' ? awayStart || Date.now() : 0;
   set({ phase: 'searching', queue, startedAt: Date.now(), info: null, err: '', matched: null });
   startPoll();
 }
@@ -186,18 +187,22 @@ export async function cancelMatch(): Promise<boolean> {
     cancelAsked = true;
     return false;
   }
+  // 먼저 지금 돌고 있는 확인을 무효로 — 그만 찾기와 동시에 온 'none' 응답이 '다시 찾기'를 시작하지 않게
+  gen++;
+  stopPoll();
+  awayStart = 0;
   try {
     const r = await api<{ ok: boolean; pending?: boolean }>('queueLeave');
     if (r.pending) {
+      // 이미 상대가 잡혀 방을 만드는 중 → 결과를 받으러 다시 확인
       set({ phase: 'linking' });
+      startPoll();
       return false;
     }
   } catch {
     /* 연결이 끊겼어도 멈춤 — 서버가 10초 뒤 대기표를 정리 */
   }
-  gen++;
-  stopPoll();
-  set({ phase: 'idle', queue: null, info: null });
+  set({ phase: 'idle', queue: null, info: null, err: '' });
   return true;
 }
 /** 계정이 바뀔 때(로그인·로그아웃): 대기를 멈추고 남은 결과도 버림 */

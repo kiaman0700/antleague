@@ -87,7 +87,7 @@ select jsonb_build_object(
   'missions', jsonb_build_object(
     'doneToday', (select count(*) from public.mission_progress m, kst_today where m.done and m.done_at > kst_today.t and m.user_id not in (select user_id from testers))
   ),
-  'feedback', (select coalesce(jsonb_object_agg(kind, n), '{}'::jsonb) from (select kind, count(*) n from public.feedback, since where created_at > since.t group by kind) x)
+  'feedback', (select coalesce(jsonb_object_agg(kind, n), '{}'::jsonb) from (select kind, count(*) n from public.feedback, since where created_at > since.t and user_id is not null and user_id not in (select user_id from testers) group by kind) x)
 );
 $$;
 revoke all on function public.admin_stats(int) from public, anon, authenticated;

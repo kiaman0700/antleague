@@ -90,7 +90,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '루머 감별기 써 보기',
-    text: () => '루머 감별기를 써 보세요. 오늘 뉴스가 하나하나 사실인지 가짜인지 알려줘요.',
+    text: () => '루머 감별기를 써 보세요. 연습에선 오늘 뉴스를 모두 판정해 주지만, 실제 대결에선 오늘 소식(뉴스·찌라시) 중 하나를 골라 그것만 진짜인지 알려줘요. 값도 비싸니 큰돈이 걸린 소식에 쓰세요.',
     target: '.p-cards, .m-page .cards',
     tab: 'cards',
     wait: (c) => c.detectorUsed,

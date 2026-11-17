@@ -43,14 +43,18 @@ const fake = '00000000-0000-0000-0000-000000000000';
 for (const [fn, args] of [
   ['cleanup_stale', {}],
   ['revoke_user_sessions', { target: fake }],
-  ['apply_rating', { p_user: fake, p_delta: 100 }],
-  ['apply_rating2', { p_user: fake, p_delta: 100 }],
-  ['kick_player', { p_room: fake, p_player: fake }],
-  ['host_leave', { p_room: fake, p_player: fake }],
-  ['join_party', { p_party: fake, p_user: fake }],
+  ['apply_rating', { p_user: fake, p_delta: 100, p_win: true, p_ret: 1 }],
+  ['apply_rating2', { p_user: fake, p_delta: 100, p_win: true, p_ret: 1, p_ranked: true }],
+  ['kick_player', { p_room: fake, p_host: fake, p_target: fake }],
+  ['host_leave', { p_room: fake, p_host: fake }],
+  ['join_party', { p_party: fake, p_user: fake, p_max: 2 }],
+  ['admin_stats', { days: 14 }],
+  ['add_xp', { p_user: fake, p_xp: 100 }],
+  ['pw_attempt_fail', { p_room: fake, p_user: fake }],
 ]) {
   const r = await sb.rpc(fn, args);
-  ok(`서버 전용 함수 ${fn} 못 부름`, !!r.error, r.error?.message ?? 'no error');
+  // '함수를 찾을 수 없음'은 인자 이름이 틀린 것 — 권한을 시험한 게 아니므로 실패로 봄
+  ok(`서버 전용 함수 ${fn} 못 부름`, !!r.error && !/Could not find the function/.test(r.error.message), r.error?.message ?? 'no error');
 }
 // 운영자 권한 직접 만들기
 const up = await sb.auth.updateUser({ data: { role: 'admin' } });
