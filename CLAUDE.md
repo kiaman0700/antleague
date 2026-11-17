@@ -144,6 +144,6 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 봇 규칙: `PlayerRow.bot_level`(1~3)·`bot_step`(마지막으로 움직인 칸, 같은 칸 두 번 안 움직임). 봇은 카운트다운·장 전 준비 기준에서 빠지고(`isActive` false), 사람이 모두 마감하면 남은 칸을 '그 칸 시각' 가격으로 하고 바로 다음 날. 사람이 모두 나가면 판 끝. 화면 데이터 `players[].bot`
 - 봇전 = 연습 메뉴 '봇전'(브라우저, `newSolo(…, bots)`), 점수판은 대결처럼(`vsBots`), 방해 카드 대상은 봇
 - 커스텀 방 봇(DB 033 `players.bot_level`·`bot_step`, user_id 없음): 대기실 빈자리 '봇 추가'(방장·대기 중·커스텀만, 서버 `addBot`, 봇 5명까지), 빼기는 `kick`. 서버 `moveBots` 가 state·endTurn·기권 때 봇을 움직임 — `bot_step` 비교 후 갱신(차지한 요청만 거래·카드 넣음)으로 동시 요청에도 한 번. 방장은 봇에게 안 넘어감(033 `host_leave`). 마감 현황·카운트다운 안내는 사람만 셈. e2e `bots.mjs`
-- 다음 단계: 오늘의 도전(DB 034)
+- 오늘의 도전(DB 034 `daily_runs` 날짜·계정 기본키, 서버만): 연습 메뉴 '오늘의 도전' 칸(온라인), 서버 `dailyInfo`(내 기록·회원 점수표 상위 50, 시험 회원 제외, 계정 id 안 보냄)·`dailyStart`(기록 줄 먼저 넣어 하루 한 번, 실패하면 되돌림). 방 kind 'daily'·혼자·10일×60초·status playing 으로 바로 시작(max_players 는 DB 제한 때문에 2, 이미 진행 중이라 못 들어옴). 시드·salt = 서버 비밀 키 HMAC('daily-seed:/daily-salt:'+한국 날짜) → room_secrets 에만(v4+ 시장은 salt 로만 만듦). 끝나면 `maybeAdvance` 가, 중간에 나가면 `leaveSeat` 가 점수 기록. 한 판 더 불가. 결과 화면 `DailyResult`. e2e `daily.mjs`(시험 계정은 하루 한 번이라 같은 날 두 번째 실행부터는 시장 비교 등 일부를 건너뜀)
 - 업적 37개(`src/game/achievements.ts`, 목록 순서 = 귀한 순서, 칭호는 가장 앞), 새 업적 8개에 프로필 사진(`avatars.ts`). 업적 화면 제목에 모은 개수
 

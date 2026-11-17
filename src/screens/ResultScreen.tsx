@@ -16,6 +16,7 @@ import { pct, tone, won, wonShort } from '../lib/format';
 import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
+import { DailyResult } from '../components/Daily';
 
 interface Props {
   session: Session;
@@ -68,7 +69,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       setRematching(false);
     }
   };
-  const solo = session.mode === 'solo';
+  // 혼자 한 판: 연습, 또는 오늘의 도전(서버 판이지만 혼자) — 봇전은 봇과 겨루므로 대결처럼
+  const solo = (session.mode === 'solo' || matchKind === 'daily') && final.players.length < 2;
   const last = market.totalDays - 1;
   const START_CASH = startCashFor(market.version);
 
@@ -217,7 +219,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         {solo ? (
           <>
             <div className="crown"><Icon name={me.ret > indexRet ? 'trophy' : 'activity'} size={40} /></div>
-            <h1>연습 끝!</h1>
+            <h1>{matchKind === 'daily' ? '오늘의 도전 끝!' : '연습 끝!'}</h1>
             <p>
               내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
             </p>
@@ -465,6 +467,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
           )}
         </div>
       )}
+      {matchKind === 'daily' && <DailyResult />}
       <div className="center-actions">
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기

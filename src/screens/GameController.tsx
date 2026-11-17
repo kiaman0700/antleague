@@ -340,7 +340,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const opponent = players.find((p) => p.id !== me) ?? null;
   // 봇전(브라우저에서 도는 판 + 봇): 연습처럼 돌지만 화면은 대결처럼 순위·상대를 보여 줌, 방해 카드도 봇에게
   const vsBots = solo && players.some((p) => p.bot);
-  const rivals = !solo || vsBots;
+  // 오늘의 도전처럼 서버 판이라도 혼자면 상대 칸 대신 '오늘의 도전' 표시
+  const rivals = (!solo || vsBots) && players.length >= 2;
+  const humanCount = players.filter((p) => !p.bot).length;
   const meRow = players.find((p) => p.id === me);
   const endedToday = !solo && (meRow?.endedDay ?? -1) >= day;
   const effects = view?.effectsToday ?? [];
@@ -750,7 +752,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           onExit();
         }}
         onRematch={
-          session.mode === 'multi' && onWaiting
+          session.mode === 'multi' && onWaiting && view.room.kind !== 'daily'
             ? async () => {
                 const r = await api<{ roomId: string; playerId: string; code: string }>('rematch', { roomId: session.roomId });
                 onWaiting(r.roomId, r.playerId, session.nickname, r.code);
@@ -884,7 +886,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const cards = (
     <CardsPanel
       version={view.room.rulesVersion ?? 1}
-      solo={solo && !vsBots}
+      solo={!rivals}
       players={players.length}
       day={day}
       totalDays={total}
@@ -1279,7 +1281,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               </small>
             </button>
           </div>
-          {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} compact />}
+          {!solo && humanCount >= 2 && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} compact />}
           <div className="m-progress-row" aria-label={`${total}일 중 ${day + 1}일차`}>
             <span className="mp-now">
               <b>{day + 1}일차</b>
@@ -1475,11 +1477,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               </div>
             </>
           ) : (
-            <div className="score-solo muted">연습 모드</div>
+            <div className="score-solo muted">{room?.kind === 'daily' ? '오늘의 도전' : '연습 모드'}</div>
           )}
         </div>
         )}
-        {!solo && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} />}
+        {!solo && humanCount >= 2 && room?.status === 'playing' && closing === null && <EndStatus rows={rows} countdown={!!room.countdown} leftSec={preLeft > 0 ? room.turnSeconds : remaining} />}
         <AssetSummary
           ui={ui}
           cash={portfolio.cash}

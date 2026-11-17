@@ -13,7 +13,7 @@ const anon = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { a
 const made = await A({ action: 'create', nickname: 'DB점검', mode: 'pro', totalDays: 10, turnSeconds: 60, maxPlayers: 2, title: 'DB 점검' });
 const roomId = made.b?.roomId;
 
-const TABLES = ['blocks', 'feedback', 'friendships', 'guest_log', 'invites', 'items', 'match_history', 'match_players', 'match_tickets', 'orders', 'parties', 'party_members', 'players', 'profiles', 'room_secrets', 'trades'];
+const TABLES = ['blocks', 'daily_runs', 'feedback', 'friendships', 'guest_log', 'invites', 'items', 'match_history', 'match_players', 'match_tickets', 'orders', 'parties', 'party_members', 'players', 'profiles', 'room_secrets', 'trades'];
 for (const [who, c] of [
   ['로그인한 사람', sb],
   ['로그인 안 한 사람', anon],

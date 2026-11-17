@@ -133,7 +133,7 @@ import type { ItemRow } from '../../src/game/items.js';
 import { SOCIAL_ACTIONS, socialAct, touchSeen } from './social.js';
 import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
-import type { Trade } from '../../src/game/portfolio.js';
+import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
 
 export interface ApiResult {
@@ -312,6 +312,24 @@ async function verifiedPlayers(roomId: string): Promise<Set<string>> {
 }
 
 /** 시장 키를 섞을 방별 비밀값 (서버 비밀 키로 만든 HMAC — 화면은 절대 알 수 없음) */
+/* ---------------- 오늘의 도전 (설계서 design/bots-daily.md 3단계) ---------------- */
+export const DAILY_DAYS = 10;
+export const DAILY_TURN = 60;
+/** 한국 날짜 (YYYY-MM-DD) — 매일 0시(한국)에 새 시장 */
+export function kstDay(now = Date.now()) {
+  return new Date(now + 9 * 3600_000).toISOString().slice(0, 10);
+}
+/** 그날 모두에게 같은 시장: 시드·비밀값은 서버 비밀 키로 만든 HMAC — 화면 데이터에는 절대 안 나감 (room_secrets 에만) */
+function dailySecret(day: string) {
+  const h = (k: string) => createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update(k + day).digest('hex');
+  return { seed: parseInt(h('daily-seed:').slice(0, 8), 16) % 2_000_000_000, salt: h('daily-salt:').slice(0, 32) };
+}
+/** 오늘의 도전 점수 기록 (한 번만 — 아직 안 끝난 기록만 바꿈) */
+async function recordDaily(roomId: string, ret: number) {
+  const res = await db().from('daily_runs').update({ ret, finished: true, finished_at: new Date().toISOString() }).eq('room_id', roomId).eq('finished', false);
+  if (res.error && !/daily_runs/.test(res.error.message)) console.error('[api] daily', res.error.message);
+}
+
 function keySalt(roomId: string) {
   return createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('market-key:' + roomId).digest('hex');
 }
@@ -417,6 +435,7 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     const fresh = await loadGame(d.room.id);
     const fin = finalResults(fresh);
     await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
+    if (d.room.kind === 'daily' && fin.results[0]) await recordDaily(d.room.id, fin.results[0].ret);
     try {
       await recordMatch(db(), d.room.id, fin.results, !!d.room.ranked);
     } catch (e) {
@@ -603,6 +622,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (old.status !== 'finished') throw new GameError('게임이 끝난 뒤에 할 수 있어요.', 409);
       // 매칭 방은 '한 판 더' 대신 같은 조건으로 다시 찾기 (랭킹전 상대를 골라 반복하지 못하게)
       if (old.kind === 'match') throw new GameError('매칭 대결은 같은 조건으로 다시 찾아 주세요.', 409);
+      if (old.kind === 'daily') throw new GameError('오늘의 도전은 하루 한 번이에요. 내일 0시에 새 시장이 열려요.', 409);
       const me = must(await sb.from('players').select('nickname, mode').eq('id', playerId).single(), 'me') as { nickname: string; mode: string };
       const prof = await getProfile(sb, uid);
       if (prof) me.nickname = prof.nickname;
@@ -872,6 +892,91 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         // 반쯤 만들어진 방은 지우고(자리·비밀값도 함께 지워짐) 대기표는 다시 풀어 줌
         if (roomId) await sb.from('rooms').delete().eq('id', roomId);
         await sb.from('match_tickets').update({ claim: null, claimed_at: null, room_id: null, player_id: null, matched_at: null }).eq('claim', batch);
+        throw e;
+      }
+    }
+
+    case 'dailyInfo': {
+      // 오늘의 도전: 내 기록 + 오늘 점수표(회원·끝낸 판, 시험 회원 제외) — 계정 id 는 안 보냄
+      rateLimit(uid + ':dailyInfo', 40, 60_000);
+      const day = kstDay();
+      const mine = await sb.from('daily_runs').select('room_id, ret, finished, member').eq('day', day).eq('user_id', uid).maybeSingle();
+      if (mine.error && /daily_runs/.test(mine.error.message)) return { day, ready: false };
+      const my = must(mine, 'daily mine') as { room_id: string | null; ret: number | null; finished: boolean; member: boolean } | null;
+      const rows = must(await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).order('ret', { ascending: false }).limit(200), 'daily board') as { user_id: string; nickname: string; ret: number }[];
+      const ids = rows.map((r) => r.user_id);
+      const tests = new Set<string>();
+      if (ids.length) {
+        const pr = await sb.from('profiles').select('user_id, is_test').in('user_id', ids);
+        if (!pr.error) for (const p of pr.data as { user_id: string; is_test: boolean | null }[]) if (p.is_test) tests.add(p.user_id);
+      }
+      const board = rows.filter((r) => !tests.has(r.user_id));
+      const top = board.slice(0, 50).map((r, i) => ({ rank: i + 1, nickname: r.nickname, ret: Math.round(r.ret * 10000) / 10000, me: r.user_id === uid }));
+      const myIdx = board.findIndex((r) => r.user_id === uid);
+      let resume: { roomId: string; playerId: string; code: string } | null = null;
+      if (my && !my.finished && my.room_id) {
+        const seat = await sb.from('players').select('id, left_game, rooms!inner(code, status)').eq('room_id', my.room_id).eq('user_id', uid).maybeSingle();
+        const st = seat.data as { id: string; left_game: boolean | null; rooms: { code: string; status: string } } | null;
+        if (st && !st.left_game && st.rooms.status === 'playing') resume = { roomId: my.room_id, playerId: st.id, code: st.rooms.code };
+      }
+      return {
+        day,
+        ready: true,
+        played: !!my,
+        finished: !!my?.finished,
+        myRet: my?.finished ? my.ret : null,
+        myRank: myIdx >= 0 ? myIdx + 1 : null,
+        member: !!my?.member,
+        resume,
+        total: board.length,
+        top,
+      };
+    }
+
+    case 'dailyStart': {
+      // 하루에 계정마다 한 번: 기록 줄(날짜·계정 기본키)을 먼저 넣어 자리를 차지한 뒤 방을 만듦
+      rateLimit(uid + ':dailyStart', 6, 60_000);
+      const day = kstDay();
+      const nickname = await nickFor(uid, b.nickname);
+      const mode = cleanMode(b.mode);
+      const ex = await sb.from('daily_runs').select('room_id, finished').eq('day', day).eq('user_id', uid).maybeSingle();
+      if (ex.error && /daily_runs/.test(ex.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
+      if (ex.data) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);
+      await ensureFree(uid);
+      const member = !!(await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data;
+      const claim = await sb.from('daily_runs').insert({ day, user_id: uid, nickname, member });
+      if (claim.error) {
+        if (/duplicate|unique/i.test(claim.error.message)) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);
+        must(claim, 'daily claim');
+      }
+      const undo = async (roomId?: string) => {
+        if (roomId) await sb.from('rooms').delete().eq('id', roomId);
+        await sb.from('daily_runs').delete().eq('day', day).eq('user_id', uid).eq('finished', false);
+      };
+      let roomId: string | undefined;
+      try {
+        const deadline = iso(Date.now() + (DAILY_TURN + 3) * 1000);
+        const [, mm, dd] = day.split('-');
+        let room: { id: string; code: string } | null = null;
+        for (let i = 0; i < 5 && !room; i++) {
+          const res = await sb
+            .from('rooms')
+            .insert({ code: newCode(), total_days: DAILY_DAYS, turn_seconds: DAILY_TURN, title: `오늘의 도전 · ${Number(mm)}월 ${Number(dd)}일`, max_players: 2 /* DB 제한(2~6) — 이미 진행 중이라 아무도 못 들어옴 */, is_private: true, kind: 'daily', status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline })
+            .select('id, code')
+            .single();
+          if (!res.error) room = res.data;
+          else if (!/duplicate/i.test(res.error.message)) must(res, 'daily room');
+        }
+        if (!room) throw new GameError('도전을 시작하지 못했어요. 다시 시도해 주세요.', 500);
+        roomId = room.id;
+        const sec = dailySecret(day);
+        must(await sb.from('room_secrets').insert({ room_id: room.id, seed: sec.seed, password_hash: null, rules_version: CURRENT_RULES_VERSION, salt: sec.salt }), 'daily secret');
+        const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'daily player') as { id: string };
+        must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'daily host');
+        must(await sb.from('daily_runs').update({ room_id: room.id }).eq('day', day).eq('user_id', uid), 'daily link');
+        return { roomId: room.id, playerId: p.id, code: room.code };
+      } catch (e) {
+        await undo(roomId);
         throw e;
       }
     }
@@ -1455,6 +1560,11 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
     const d = await loadGame(roomId);
     const patch = validateLeave(d, playerId);
+    // 오늘의 도전: 중간에 나가면 지금 재산으로 기록하고 그날 기회는 끝 (다시 못 함)
+    if (d.room.kind === 'daily') {
+      const meNow = buildView(d, playerId, Date.now()).players.find((p) => p.id === playerId);
+      if (meNow) await recordDaily(roomId, meNow.equity / startCashFor(d.room.version) - 1);
+    }
     const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');

@@ -20,6 +20,7 @@ import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel'
 import { useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
+import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { BADGES, titleOf } from '../game/achievements';
 import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -366,6 +367,74 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
   );
 }
 
+/** 오늘의 도전: 모두 같은 시장으로 하루 한 번 (10일 · 하루 1분), 회원 점수표 */
+function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: (s: Session) => void; member: boolean }) {
+  const { info, err, reload } = useDailyInfo();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const start = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const nickname = loadNick().trim();
+      const r = await api<{ roomId: string; playerId: string; code: string }>('dailyStart', { nickname, mode: loadUi() });
+      onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname, ui: loadUi() });
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+      reload();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
+      <p className="muted small">오늘 하루, 모든 사람이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작해요. 기회는 하루에 한 번이고, 중간에 나가면 그때 재산으로 기록돼요.</p>
+      {!member && <p className="small warn-msg">게스트도 할 수 있지만 점수표에는 회원 기록만 올라가요.</p>}
+      {err ? (
+        <ErrorState what="오늘의 도전" onRetry={reload} compact />
+      ) : !info ? (
+        <Loading inline />
+      ) : !info.ready ? (
+        <p className="muted small">아직 준비 중인 기능이에요.</p>
+      ) : (
+        <>
+          <div className="daily-me">
+            {info.finished ? (
+              <span>
+                오늘 기록 <b className={(info.myRet ?? 0) > 0 ? 'up' : (info.myRet ?? 0) < 0 ? 'down' : ''}>{pct(info.myRet ?? 0, 1)}</b>
+                {info.myRank ? ` · ${info.total}명 중 ${info.myRank}위` : ''}
+              </span>
+            ) : info.resume ? (
+              <span>하던 도전이 있어요. 이어서 해요.</span>
+            ) : info.played ? (
+              <span>오늘 도전은 이미 했어요.</span>
+            ) : (
+              <span>아직 오늘 도전을 안 했어요.</span>
+            )}
+          </div>
+          <h4 className="daily-h">오늘 점수표 {info.total ? <small className="muted">{info.total}명</small> : null}</h4>
+          <DailyBoard info={info} />
+        </>
+      )}
+      {msg && <p className="error small">{msg}</p>}
+      <div className="modal-actions">
+        <button className="btn ghost" onClick={onClose}>
+          닫기
+        </button>
+        {info?.resume ? (
+          <button className="btn primary" onClick={() => onGame({ mode: 'multi', roomId: info.resume!.roomId, code: info.resume!.code, playerId: info.resume!.playerId, nickname: loadNick().trim(), ui: loadUi() })}>
+            이어하기
+          </button>
+        ) : (
+          <button className="btn primary" disabled={busy || !info?.ready || !!info?.played} onClick={start}>
+            {info?.played ? '내일 다시' : '도전 시작'}
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function HowTo({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
@@ -408,7 +477,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const account = useAccount();
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots' | 'daily'>(null);
   const [roomList, setRoomList] = useState<RoomInfo[] | null>(null);
   const openRooms = roomList ? roomList.filter((x) => !x.joined).length : null;
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
@@ -647,6 +716,13 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'practice' && (
         <nav className="home-actions">
+          {online && (
+            <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
+              <i><Icon name="daily" size={24} /></i>
+              <b>오늘의 도전</b>
+              <small>모두 같은 시장, 하루 한 번</small>
+            </button>
+          )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
             <i><Icon name="bot" size={24} /></i>
             <b>봇전</b>
@@ -759,6 +835,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'bots' && <BotStart onStart={startPractice} onClose={() => setModal(null)} />}
+      {modal === 'daily' && <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} />}
       {gate.el}
     </div>
   );
@@ -1213,7 +1290,7 @@ function Records({ go }: Pick<Props, 'go'>) {
                 <span className="rec-date">{new Date(h.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
                 <span className={'rec-rank' + (won || (draw && rank === 1) ? ' r1' : draw ? ' draw' : '')}>{draw ? (rank === 1 ? '공동 1위' : '무승부') : rank ? `${rank}위` : '-'}</span>
                 <span className="rec-who muted">
-                  {h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
+                  {h.results.length === 1 ? '오늘의 도전' : h.results.length === 2 ? '1대1' : `${h.results.length}명 대결`}
                   {!won && h.winner_nickname && <small>승자 {h.winner_nickname}</small>}
                 </span>
                 <b className={'rec-ret ' + (meR ? tone(meR.ret) : '')}>{meR ? pct(meR.ret, 1) : '-'}</b>

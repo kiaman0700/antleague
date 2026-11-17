@@ -455,3 +455,13 @@ body { background: var(--bg) !important; }
 /* 빈자리는 칸만 흐리게(글자·아이콘), '봇 추가' 버튼은 또렷하게 — 예전엔 칸 전체 투명도라 버튼이 꺼진 것처럼 보였음 */
 .wr-client .slot.empty, .slot.empty { opacity: 1; }
 .slot.empty > .avatar, .slot.empty > b, .slot.empty > small { opacity: 0.6; }
+/* 오늘의 도전: 점수표 · 내 기록 */
+.daily-board { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.daily-board li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 8px; }
+.daily-board li.me { background: var(--surface-3); }
+.daily-board .db-rank { color: var(--muted); font-weight: 800; font-variant-numeric: tabular-nums; text-align: center; }
+.daily-board .db-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daily-board b { font-variant-numeric: tabular-nums; }
+.daily-me { margin: 10px 0 4px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.daily-h { margin: 14px 0 0; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
+.daily-result { margin-top: 14px; }
