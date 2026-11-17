@@ -249,6 +249,8 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
   const cb = useRef(onReceive);
   cb.current = onReceive;
   const last = useRef(0);
+  const me = useRef(playerId);
+  me.current = playerId;
 
   useEffect(() => {
     if (!roomId || !supabase) return;
@@ -258,6 +260,8 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
       const emoji = typeof p.emoji === 'string' && EMOJIS.includes(p.emoji) ? p.emoji : undefined;
       const text = typeof p.text === 'string' && PHRASES.includes(p.text) ? p.text : undefined;
       if ((!emoji && !text) || typeof p.from !== 'string') return;
+      // 서버가 방송하면 보낸 나에게도 옴 — 내 화면엔 누를 때 이미 띄웠으니 건너뜀 (두 번 뜨던 것)
+      if (p.from === me.current) return;
       // 도배 방지: 0.7초에 하나
       const now = Date.now();
       if (now - last.current < 700) return;
@@ -274,7 +278,6 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
   // 보내기는 서버로: 서버가 이 방 사람인지 확인하고 '보낸 사람'을 직접 붙여 방송 (다른 사람 이름으로 보내기 막기, 2026-11-17)
   return (r: { emoji?: string; text?: string }) => {
     if (!roomId) return;
-    void playerId;
     api('react', { roomId, ...r }).catch(() => {});
   };
 }

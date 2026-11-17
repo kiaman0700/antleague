@@ -881,3 +881,6 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .acc-chip.compact { width: 40px; height: 40px; padding: 4px !important; justify-content: center; border-radius: 50%; gap: 0; }
 .acc-chip.compact .acc-av { width: 30px; height: 30px; }
 .acc-chip.compact .acc-txt { display: none; }
+/* 순위 칸·순위 목록에 사진 칸 추가 (순위 · 사진 · 이름 · 상태/재산) — 사진이 넓은 칸을 차지해 이름이 밀리던 것 */
+.rank-chip { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+.rank-row { grid-template-columns: 36px auto minmax(0, 1fr) auto; }
