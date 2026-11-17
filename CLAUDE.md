@@ -142,6 +142,8 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 ## 봇·업적 (2026-11-17, 설계서 `design/bots-daily.md`)
 - 봇 엔진 `src/engine/bots.ts`(서버·브라우저 공용): 봇은 자기 `buildView` 만 보고 `validate*` 로 움직임(미래·진실·상대 거래 모름). 난이도 1 새내기봇(악재 종목 사고 자주 갈아탐, 평균 -8%) · 2 개미봇(뉴스·소문 그대로, +7%) · 3 고수봇(하루 10번 보기·시황 안 속음·수수료 조심·사건 찌라시 들고 가기, +15%). 사용자 기준: 쉬움=초보도 거의 다 이김, 보통=몇 판 해 본 사람이면 이김, 어려움=상위 랭커 아니면 어려움. 확인 `node sim/build.mjs sim/levels.ts && node sim/.out/levels.mjs` (SIM_HARD=1 후보 비교, SIM_BASE=1 초보 기준)
 - 봇 규칙: `PlayerRow.bot_level`(1~3)·`bot_step`(마지막으로 움직인 칸, 같은 칸 두 번 안 움직임). 봇은 카운트다운·장 전 준비 기준에서 빠지고(`isActive` false), 사람이 모두 마감하면 남은 칸을 '그 칸 시각' 가격으로 하고 바로 다음 날. 사람이 모두 나가면 판 끝. 화면 데이터 `players[].bot`
-- 봇전 = 연습 메뉴 '봇전'(브라우저, `newSolo(…, bots)`), 점수판은 대결처럼(`vsBots`), 방해 카드 대상은 봇. 다음 단계: 커스텀 방 봇(DB 033) → 오늘의 도전(DB 034)
+- 봇전 = 연습 메뉴 '봇전'(브라우저, `newSolo(…, bots)`), 점수판은 대결처럼(`vsBots`), 방해 카드 대상은 봇
+- 커스텀 방 봇(DB 033 `players.bot_level`·`bot_step`, user_id 없음): 대기실 빈자리 '봇 추가'(방장·대기 중·커스텀만, 서버 `addBot`, 봇 5명까지), 빼기는 `kick`. 서버 `moveBots` 가 state·endTurn·기권 때 봇을 움직임 — `bot_step` 비교 후 갱신(차지한 요청만 거래·카드 넣음)으로 동시 요청에도 한 번. 방장은 봇에게 안 넘어감(033 `host_leave`). 마감 현황·카운트다운 안내는 사람만 셈. e2e `bots.mjs`
+- 다음 단계: 오늘의 도전(DB 034)
 - 업적 37개(`src/game/achievements.ts`, 목록 순서 = 귀한 순서, 칭호는 가장 앞), 새 업적 8개에 프로필 사진(`avatars.ts`). 업적 화면 제목에 모은 개수
 

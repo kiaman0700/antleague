@@ -37,7 +37,8 @@ export function graceText(players: number) {
 export const graceSeconds = (players: number) => (players <= 2 ? 90 : 30);
 /** 대기실·방 만들기 안내 한 문장: 하루가 카운트다운보다 짧으면 카운트다운 얘기는 빼고 (예: 1분 하루에 '1분 30초 뒤'는 말이 안 됨) */
 export function graceSentence(players: number, turnSeconds: number) {
-  return turnSeconds > graceSeconds(players) ? `${graceText(players)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요.` : '아니면 하루 시간이 끝날 때 자동으로 넘어가요.';
+  // 사람이 1명뿐(나머지는 봇)이면 카운트다운이 없음 — 내가 마감하면 바로 다음 날
+  return players >= 2 && turnSeconds > graceSeconds(players) ? `${graceText(players)} 카운트다운이 시작되고, 시간이 끝나면 자동으로 넘어가요.` : '아니면 하루 시간이 끝날 때 자동으로 넘어가요.';
 }
 
 /** 마감 후 결과 보여주는 시간 등 하루마다 드는 시간(초) */

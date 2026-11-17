@@ -447,3 +447,11 @@ body { background: var(--bg) !important; }
 .bot-levels { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
 .bot-levels b { color: var(--text-2); margin-right: 4px; }
 .badge-count { font-size: 13px; font-weight: 600; margin-left: 2px; }
+/* 대기실: 빈자리 '봇 추가' · 난이도 고르기 · 봇 자리 */
+.slot .slot-add-bot { margin-top: 4px; }
+.slot .slot-bot-pick { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.slot .slot-bot-pick .btn { padding: 4px 10px; min-height: 30px; }
+.slot .avatar.bot-av { background: var(--surface-3); color: var(--text-2); display: grid; place-items: center; }
+/* 빈자리는 칸만 흐리게(글자·아이콘), '봇 추가' 버튼은 또렷하게 — 예전엔 칸 전체 투명도라 버튼이 꺼진 것처럼 보였음 */
+.wr-client .slot.empty, .slot.empty { opacity: 1; }
+.slot.empty > .avatar, .slot.empty > b, .slot.empty > small { opacity: 0.6; }

@@ -42,7 +42,7 @@ export const BADGES: Badge[] = [
   { id: 'limit_order', emoji: '⏳', name: '예약의 달인', desc: '지정가 주문이 3번 이상 체결', rarity: 1 },
   { id: 'card_master', emoji: '🃏', name: '카드 마스터', desc: '찬스 카드를 4장 이상 사용', rarity: 1 },
   { id: 'trader', emoji: '⚡', name: '단타왕', desc: '거래 20회 이상', rarity: 1 },
-  { id: 'podium', emoji: '🥉', name: '시상대', desc: '3명 이상 판에서 3위 안', rarity: 1 },
+  { id: 'podium', emoji: '🥉', name: '시상대', desc: '4명 이상 판에서 3위 안', rarity: 1 },
   { id: 'plus', emoji: '➕', name: '플러스 마감', desc: '거래를 하고 수익률 플러스로 마감', rarity: 1 },
   { id: 'all_in', emoji: '🎲', name: '몰빵', desc: '장 마감에 재산의 80% 넘게를 한 종목에', rarity: 1 },
   { id: 'diversify', emoji: '🧺', name: '분산 투자', desc: '장 마감에 6종목 이상 보유', rarity: 1 },
@@ -109,7 +109,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     }
     const rank = byFinal.indexOf(p.id);
     if (ids.length >= 3 && winner === p.id) got.add('multi_win');
-    if (ids.length >= 3 && rank <= 2) got.add('podium');
+    if (ids.length >= 4 && rank <= 2) got.add('podium');
     if (winner === p.id && inp.players.some((o) => o.id !== p.id && o.bot === 3)) got.add('bot_slayer');
     if (p.trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.etf)) got.add('etf_fan');
     const sectors = new Set(p.trades.map((t) => STOCK_MAP[t.symbol]?.sector));

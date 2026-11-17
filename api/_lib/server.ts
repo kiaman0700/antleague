@@ -134,6 +134,7 @@ import { SOCIAL_ACTIONS, socialAct, touchSeen } from './social.js';
 import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import type { Trade } from '../../src/game/portfolio.js';
+import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
 
 export interface ApiResult {
   status: number;
@@ -184,13 +185,15 @@ async function loadGame(roomId: string): Promise<GameData> {
   const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
-    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day').eq('room_id', roomId),
+    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
   ]);
   // 007 마이그레이션 전이면 나감·접속 컬럼 없이 다시 읽음
   let pl = players as { data: unknown; error: { message: string } | null };
+  // 033(봇) 적용 전이면 봇 칸만 빼고 다시
+  if (pl.error && /bot_level|bot_step/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day').eq('room_id', roomId);
   // 025(pre_day) 적용 전이면 그 칸만 빼고 다시
   if (pl.error && /pre_day/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen').eq('room_id', roomId);
   if (pl.error && /left_game|last_seen/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version').eq('room_id', roomId);
@@ -379,6 +382,30 @@ async function fillOrdersNow(d: GameData): Promise<boolean> {
   return (await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, Date.now()).tick, false))) > 0;
 }
 
+/**
+ * 봇 움직이기 (커스텀 방): 움직일 칸이 된 봇만, 그 칸을 DB 에서 먼저 차지한(bot_step 바꾸기 성공) 요청만 거래·카드를 넣음
+ * → 여러 사람이 동시에 상태를 물어도 봇은 한 칸에 한 번만 움직임
+ */
+async function moveBots(d: GameData, now = Date.now()): Promise<boolean> {
+  if (d.room.status !== 'playing' || !d.players.some((p) => p.bot_level && !p.left_game)) return false;
+  const humans = d.players.filter((p) => !p.bot_level && !p.left_game);
+  const humansDone = (humans.length > 0 && humans.every((p) => p.ended_day >= d.room.day)) || (d.room.deadline !== null && now >= d.room.deadline);
+  const run = runBots(d, now, { salt: d.room.salt ?? undefined, humansDone });
+  let changed = false;
+  for (const [botId, step] of Object.entries(run.steps)) {
+    const prev = d.players.find((p) => p.id === botId)?.bot_step ?? null;
+    const base = db().from('players').update({ bot_step: step }).eq('id', botId).eq('room_id', d.room.id);
+    const claimed = must(await (prev === null ? base.is('bot_step', null) : base.eq('bot_step', prev)).select('id'), 'bot step') as unknown[];
+    if (!claimed.length) continue; // 다른 요청이 이미 움직임
+    const trades = run.trades.filter((t) => t.player_id === botId).map((t) => ({ room_id: d.room.id, ...t }));
+    const items = run.items.filter((i) => i.player_id === botId).map((i) => ({ room_id: d.room.id, ...i }));
+    if (trades.length) must(await db().from('trades').insert(trades), 'bot trades');
+    if (items.length) must(await db().from('items').insert(items), 'bot items');
+    changed = true;
+  }
+  return changed;
+}
+
 async function maybeAdvance(d: GameData): Promise<boolean> {
   const next = nextRoomState(d, Date.now());
   if (!next) return false;
@@ -540,6 +567,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       await seen(d, playerId);
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
+      if (await moveBots(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
       // 화면이 이미 가진 장중 칸 수 (숫자만 받음)
       const lf = typeof b.liveDay === 'number' && typeof b.liveFrom === 'number' ? { day: Math.floor(b.liveDay), from: Math.floor(b.liveFrom) } : undefined;
@@ -848,6 +876,30 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
     }
 
+    case 'addBot': {
+      // 커스텀 방 대기실에서 방장이 빈자리에 봇을 넣음 (설계서 design/bots-daily.md)
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      rateLimit(uid + ':addBot', 30, 60_000);
+      const level = typeof b.level === 'number' && [1, 2, 3].includes(b.level) ? b.level : null;
+      if (!level) throw new GameError('봇 난이도를 골라 주세요.');
+      const room = must(await sb.from('rooms').select('status, host_id, max_players, kind, ranked').eq('id', roomId).single(), 'room') as { status: string; host_id: string; max_players: number; kind: string | null; ranked: boolean | null };
+      if (room.host_id !== playerId) throw new GameError('방장만 봇을 넣을 수 있어요.', 403);
+      if (room.status !== 'waiting') throw new GameError('게임이 시작된 뒤에는 봇을 넣을 수 없어요.', 409);
+      if ((room.kind ?? 'custom') !== 'custom' || room.ranked) throw new GameError('봇은 커스텀 방에만 넣을 수 있어요.', 409);
+      const ps = must(await sb.from('players').select('id, nickname, bot_level').eq('room_id', roomId), 'players') as { id: string; nickname: string; bot_level: number | null }[];
+      if (ps.length >= room.max_players) throw new GameError('빈자리가 없어요.', 409);
+      if (ps.filter((p) => p.bot_level).length >= MAX_BOTS) throw new GameError(`봇은 ${MAX_BOTS}명까지 넣을 수 있어요.`, 409);
+      const base = botInfo(level)!.name;
+      const taken = new Set(ps.map((p) => p.nickname));
+      let nickname = base;
+      for (let i = 2; taken.has(nickname); i++) nickname = `${base} ${i}`;
+      const ins = await sb.from('players').insert({ room_id: roomId, user_id: null, nickname, mode: 'pro', ready: true, bot_level: level }).select('id').single();
+      if (ins.error && /bot_level/.test(ins.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
+      must(ins, 'add bot');
+      await touchRoom(roomId);
+      return { ok: true };
+    }
+
     case 'kick': {
       // 대기실에서 방장이 다른 사람을 내보냄 (준비 안 하고 자리만 차지하는 경우)
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
@@ -925,7 +977,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const d = await loadGame(roomId);
       const { day } = validateEndTurn(d, playerId, Date.now());
       await bumpPlayer(d, playerId, { ended_day: day });
-      const fresh = await loadGame(roomId);
+      let fresh = await loadGame(roomId);
+      if (await moveBots(fresh)) fresh = await loadGame(roomId);
       if (!(await maybeAdvance(fresh))) {
         // 마감 인원이 기준에 닿으면 카운트다운(1대1 90초, 3인 이상 ⅔ 마감 시 30초) — 더 이를 때만 당김
         const grace = graceDeadline(fresh, Date.now());
@@ -1405,7 +1458,8 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');
-    const fresh = await loadGame(roomId);
+    let fresh = await loadGame(roomId);
+    if (await moveBots(fresh)) fresh = await loadGame(roomId);
     if (!(await maybeAdvance(fresh))) {
       const grace = graceDeadline(fresh, Date.now());
       if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');

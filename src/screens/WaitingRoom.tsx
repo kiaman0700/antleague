@@ -1,3 +1,4 @@
+import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { useEffect, useRef, useState } from 'react';
 import { EmptyState, IconList, Loading, SectionTitle } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
@@ -67,6 +68,8 @@ interface Props {
 
 export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Props) {
   const { view, error, refresh } = useLiveView(roomId);
+  // 봇 추가: 난이도를 고르는 빈자리 번호 (훅은 맨 위 — 아래 이른 return 보다 먼저)
+  const [botSlot, setBotSlot] = useState<number | null>(null);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
   const [ui, setUi] = useState<UiMode>(loadUi);
@@ -117,6 +120,8 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   const me = view.players.find((p) => p.id === playerId);
   const others = view.players.filter((p) => p.id !== playerId);
   const isHost = room.hostId === playerId;
+  // 커스텀 방 방장은 빈자리에 봇을 넣을 수 있음 (매칭·랭킹 방 제외, 봇 5명까지)
+  const canAddBot = isHost && room.status === 'waiting' && (room.kind ?? 'custom') === 'custom' && !room.ranked && view.players.filter((p) => p.bot).length < MAX_BOTS;
   const notReady = others.filter((p) => !p.ready && p.id !== room.hostId);
   const link = `${location.origin}/room/${room.code}`;
   const canStart = isHost && view.players.length >= 2 && notReady.length === 0;
@@ -202,10 +207,45 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                     <Icon name="userPlus" size={18} />
                   </div>
                   <b>빈 자리</b>
-                  <small>초대를 기다리는 중</small>
+                  {canAddBot && botSlot === i ? (
+                    <div className="slot-bot-pick" role="group" aria-label="봇 난이도">
+                      {BOT_LEVELS.map((lv) => (
+                        <button key={lv.level} className="btn sm" title={lv.desc} onClick={() => { setBotSlot(null); void run(() => api('addBot', { roomId, level: lv.level })); }}>
+                          {lv.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : canAddBot ? (
+                    <button className="btn sm slot-add-bot" onClick={() => setBotSlot(i)}>
+                      <Icon name="bot" size={14} /> 봇 추가
+                    </button>
+                  ) : (
+                    <small>초대를 기다리는 중</small>
+                  )}
                 </div>
               );
             const host = room.hostId === p.id;
+            if (p.bot) {
+              const info = botInfo(p.bot);
+              return (
+                <div key={p.id} className="slot ready bot">
+                  <div className="avatar bot-av">
+                    <Icon name="bot" size={20} />
+                  </div>
+                  <b>
+                    {p.nickname}
+                    <span className="bot-tag">봇</span>
+                  </b>
+                  <small className="slot-state">난이도 {info?.label ?? ''}</small>
+                  <small className="muted">{info?.desc}</small>
+                  {isHost && (
+                    <button className="slot-kick" onClick={() => void run(() => api('kick', { roomId, target: p.id }))} aria-label={`${p.nickname} 빼기`} title="봇 빼기">
+                      <Icon name="x" size={14} />
+                    </button>
+                  )}
+                </div>
+              );
+            }
             return (
               <div key={p.id} className={'slot' + (p.ready || host ? ' ready' : '') + (p.id === playerId ? ' me' : '')}>
                 <div className={'avatar c' + (i % 6)}>{p.nickname.slice(0, 1)}</div>
@@ -235,7 +275,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <IconList
             items={[
               { icon: 'calendar', body: <><b>{room.totalDays}일</b> 동안 겨뤄요. 하루 장은 <b>{turnLabel}</b>이에요. 보통 <b>약 {estimateMinutes(room.totalDays, room.turnSeconds).typical}분</b>이면 끝나요.</> },
-              { icon: 'timer', body: <>모두 장 마감을 누르면 바로 다음 날로 가요. {graceSentence(room.maxPlayers, room.turnSeconds)}</> },
+              { icon: 'timer', body: <>모두 장 마감을 누르면 바로 다음 날로 가요. {graceSentence(room.maxPlayers - view.players.filter((p) => p.bot).length, room.turnSeconds)}</> },
               { icon: 'news', body: '둘째 날부터는 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸 수 있어요.' },
               { icon: 'cards', body: <>찬스 카드는 시작할 때 {START_CARDS}장, {GRANT_EVERY}일마다 1장 무료로 받아요. 상대를 방해하는 카드도 있어요.</> },
               { icon: 'trophy', body: '마지막 날 재산이 가장 많은 사람이 이겨요.' },
