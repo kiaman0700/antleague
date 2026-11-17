@@ -233,8 +233,8 @@ export function useLiveView(roomId: string | null): LiveView {
 
 /* ---------------- 이모지·한마디 ---------------- */
 
-export const EMOJIS = ['😂', '😭', '🔥', '👏', '😎', '🙏', '🤑', '💀'];
-export const PHRASES = ['가즈아!', '물렸다…', '부럽다', '이번엔 내가 이김', '살려줘', '잘 가~'];
+import { EMOJIS, PHRASES } from '../game/reactions';
+export { EMOJIS, PHRASES };
 
 export interface Reaction {
   id: number;
@@ -271,7 +271,10 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
     };
   }, [roomId]);
 
+  // 보내기는 서버로: 서버가 이 방 사람인지 확인하고 '보낸 사람'을 직접 붙여 방송 (다른 사람 이름으로 보내기 막기, 2026-11-17)
   return (r: { emoji?: string; text?: string }) => {
-    chRef.current?.send({ type: 'broadcast', event: 'react', payload: { ...r, from: playerId } });
+    if (!roomId) return;
+    void playerId;
+    api('react', { roomId, ...r }).catch(() => {});
   };
 }

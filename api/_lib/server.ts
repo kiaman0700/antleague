@@ -148,6 +148,7 @@ import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, 
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
 import { evaluateMissions, missionState } from './missions.js';
+import { EMOJIS, PHRASES } from '../../src/game/reactions.js';
 
 export interface ApiResult {
   status: number;
@@ -188,6 +189,19 @@ export async function retryingFetch(input: RequestInfo | URL, init?: RequestInit
       await new Promise((r) => setTimeout(r, i ? 600 : 250));
     }
   }
+}
+
+/** 이모지 반응 방송 (비공개 채널 react-방ID, 서버 비밀 키로 — 브라우저는 직접 보낼 수 없음, 038) */
+async function broadcastReact(roomId: string, payload: Record<string, string>) {
+  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) throw new GameError('서버 설정이 없어요.', 500);
+  const res = await fetch(url + '/realtime/v1/api/broadcast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', apikey: key, authorization: 'Bearer ' + key },
+    body: JSON.stringify({ messages: [{ topic: 'react-' + roomId, event: 'react', payload, private: true }] }),
+  });
+  if (!res.ok) throw new Error('react broadcast ' + res.status);
 }
 
 /** 예상 못 한 오류를 DB 에 짧게 남김 (036, 운영 점검용 — 행동 이름·문구만, 토큰·계정 id 없음). 실패해도 무시 */
@@ -972,6 +986,19 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 내 오늘·이번 주 미션과 레벨 (읽기만)
       rateLimit(uid + ':missions', 30, 60_000);
       return missionState(sb, uid);
+    }
+
+    case 'react': {
+      // 이모지 반응: 이 방 사람(기권 안 함)만, 정해진 목록만, 보낸 사람은 서버가 붙임 → 다른 사람 이름으로 못 보냄
+      rateLimit(uid + ':react', 8, 10_000);
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const emoji = typeof b.emoji === 'string' && EMOJIS.includes(b.emoji) ? b.emoji : undefined;
+      const text = typeof b.text === 'string' && PHRASES.includes(b.text) ? b.text : undefined;
+      if ((!emoji && !text) || (emoji && text)) throw new GameError('보낼 수 없는 반응이에요.');
+      const seat = must(await sb.from('players').select('left_game').eq('id', playerId).maybeSingle(), 'react seat') as { left_game: boolean | null } | null;
+      if (seat?.left_game) throw new GameError('기권한 판에는 반응을 보낼 수 없어요.', 403);
+      await broadcastReact(roomId, emoji ? { from: playerId, emoji } : { from: playerId, text: text! });
+      return { ok: true };
     }
 
     case 'dailyInfo': {
