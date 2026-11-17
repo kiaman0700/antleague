@@ -146,6 +146,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
   const [rect, setRect] = useState<DOMRect | null>(null);
   // 카드 자세히 창처럼 위에 뜬 창이 있으면 그 창(의 버튼)을 가리지 않게 말풍선을 비켜 둠
   const [avoid, setAvoid] = useState<{ top: number; bottom: number } | null>(null);
+  // 비춘 곳 안의 눌러야 할 버튼(예: 결산 창 '2일차 시작') — 말풍선이 이 버튼을 가리지 않게
+  const [keyBtn, setKeyBtn] = useState<{ top: number; bottom: number } | null>(null);
 
   // 비출 곳 위치를 계속 따라감 (화면이 바뀌거나 스크롤돼도)
   useEffect(() => {
@@ -157,6 +159,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
       const el = s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0);
       const r = el?.getBoundingClientRect() ?? null;
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
+      const kb = el?.querySelector('.btn.primary')?.getBoundingClientRect();
+      setKeyBtn((p) => (kb && kb.width > 0 ? (p && p.top === kb.top && p.bottom === kb.bottom ? p : { top: kb.top, bottom: kb.bottom }) : null));
       const m = document.querySelector('.gc-detail')?.getBoundingClientRect();
       setAvoid((p) => (m ? (p && p.top === m.top && p.bottom === m.bottom ? p : { top: m.top, bottom: m.bottom }) : null));
     };
@@ -189,6 +193,10 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
   const below = rect ? H - rect.bottom >= NEED : true;
   const above = rect ? rect.top >= NEED : false;
   const leftPc = rect ? Math.min(Math.max(12, rect.left), window.innerWidth - 392) : 12;
+  const Wd = window.innerWidth;
+  // 위아래 자리가 없을 때: PC 는 옆에 자리가 있으면 옆으로, 아니면 눌러야 할 버튼 반대쪽(버튼이 아래쪽이면 화면 위)
+  const sideLeft = rect && !ctx.mobile ? (Wd - rect.right >= 404 ? rect.right + 12 : rect.left >= 404 ? rect.left - 392 : null) : null;
+  const keyLow = !!keyBtn && keyBtn.bottom > H - 230;
   const avoidStyle: React.CSSProperties | null = avoid
     ? // 위 창 위쪽에 자리가 있으면 위에, 아니면 아래에 (가로는 화면 폭에 맞춤)
       avoid.top >= H - avoid.bottom
@@ -201,12 +209,18 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
         ? { top: rect.bottom + 12, left: 12, right: 12 }
         : above
           ? { bottom: H - rect.top + 12, left: 12, right: 12 }
-          : { bottom: 'calc(84px + env(safe-area-inset-bottom))', left: 12, right: 12 }
+          : keyLow
+            ? { top: 'calc(12px + env(safe-area-inset-top))', left: 12, right: 12 }
+            : { bottom: 'calc(84px + env(safe-area-inset-bottom))', left: 12, right: 12 }
       : below
         ? { top: rect.bottom + 12, left: leftPc }
         : above
           ? { bottom: H - rect.top + 12, left: leftPc }
-          : { bottom: 24, left: leftPc }
+          : sideLeft !== null
+            ? { top: Math.max(12, Math.min(rect.top, H - 260)), left: sideLeft }
+            : keyLow
+              ? { top: 12, left: leftPc }
+              : { bottom: 24, left: leftPc }
     : // 가운데: transform 대신 translate — 나타나는 움직임(pop-in, transform)이 가운데 맞춤을 덮어 잠깐 오른쪽으로 튀던 문제
       { top: '50%', left: '50%', translate: '-50% -50%' };
 

@@ -245,12 +245,12 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           <small className="muted">
             예상 대기 {waitLabel(info?.etaSec ?? null)}
             {/* inQueue 에는 나도 들어 있음 → '나 말고' 몇 명인지로 (혼자인데 '1명 대기 중'이라 헷갈리지 않게) */}
-            {info ? (info.inQueue > 1 ? ` · 나 말고 ${info.inQueue - 1}명이 찾는 중` : ' · 아직 찾는 사람이 나뿐이에요') : ''}
+            {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 아직 찾는 사람이 나뿐이에요') : ''}
           </small>
           <div className="mf-live-act">
             {alt && (
               <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>
-                <Icon name="refresh" size={14} /> {label(alt.size, alt.speed)}으로 바꿔 찾기{alt.n > 0 ? ` · ${alt.n}명 대기 중` : ''}
+                <Icon name="refresh" size={14} /> {label(alt.size, alt.speed)}으로 바꿔 찾기{alt.n > 0 ? ` (${alt.n}명 대기 중)` : ''}
               </button>
             )}
             {!linking && (
