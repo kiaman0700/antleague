@@ -2211,6 +2211,7 @@ button.tag:hover,
   margin: 10px 0;
 }
 .acc-form input:not([type='checkbox']),
+.acc-sheet input:not([type='checkbox']),
 .row-input input,
 .acc-pw input {
   width: 100%;
@@ -2223,6 +2224,7 @@ button.tag:hover,
   font: inherit;
 }
 .acc-form input:focus,
+.acc-sheet input:focus,
 .row-input input:focus,
 .acc-pw input:focus {
   outline: none;
