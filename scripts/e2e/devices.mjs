@@ -8,6 +8,9 @@ import { BASE, ok, done } from './lib.mjs';
 const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const UA_ANDROID = 'Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36';
 const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const UA_FOLD = 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36';
+const UA_WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+const UA_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 const UA_TAB = 'Mozilla/5.0 (Linux; Android 14; SM-X710N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const touch = (w, h, ua) => ({ viewport: { width: w, height: h }, screen: { width: w, height: h }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: ua });
 const pc = (w, h) => ({ viewport: { width: w, height: h }, screen: { width: 1920, height: 1080 } });
@@ -27,6 +30,10 @@ const DEVICES = [
   ['아이패드 세로', touch(820, 1180, UA_IPAD), 'tablet', 'mobile', 0],
   ['아이패드 가로', touch(1180, 820, UA_IPAD), 'tablet', 'desk', 0],
   ['갤럭시 탭 세로', touch(800, 1280, UA_TAB), 'tablet', 'mobile', 0],
+  ['갤럭시 폴드 접힘', touch(344, 882, UA_FOLD), 'phone', 'mobile', 0],
+  ['갤럭시 폴드 펼침', touch(884, 1104, UA_FOLD), 'tablet', 'mobile', 0],
+  ['터치 노트북(윈도우)', { viewport: { width: 1366, height: 768 }, screen: { width: 1366, height: 768 }, hasTouch: true, userAgent: UA_WIN }, 'pc', 'desk', 0],
+  ['아이패드 + 마우스(Mac 처럼 보임)', { viewport: { width: 1024, height: 1366 }, screen: { width: 1024, height: 1366 }, hasTouch: true, userAgent: UA_MAC }, 'tablet', 'desk', 0],
 ];
 const ROUTES = ['casual', 'ranked', 'learn', 'custom', 'more', 'ranking', 'records', 'companies', 'rooms', 'create'];
 
@@ -36,6 +43,8 @@ const shot = (p, name) => p.screenshot({ path: `scripts/e2e/.shots/${name.replac
 
 for (const [name, opts, wantDevice, wantGame, allowW] of DEVICES) {
   const ctx = await browser.newContext(opts);
+  // 아이패드처럼 터치 지점 수를 실제 기기와 같게 (시험용 크롬은 1개로 흉내 냄)
+  if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }));
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
@@ -94,17 +103,6 @@ for (const [name, opts, wantDevice, wantGame, allowW] of DEVICES) {
   await p.goto(BASE + '/casual?device=auto');
   await p.waitForTimeout(1200);
   ok('?device=auto → 다시 자동(PC)', (await p.evaluate(() => document.documentElement.dataset.device)) === 'pc');
-  // 설정 '화면 종류'로 고르면 새로고침해도 유지
-  await p.goto(BASE + '/more');
-  await p.waitForTimeout(1200);
-  await p.locator('[aria-label="화면 종류"] button', { hasText: '태블릿' }).click();
-  await p.waitForTimeout(400);
-  await p.reload();
-  await p.waitForTimeout(1200);
-  ok('설정 화면 종류 = 태블릿 → 새로고침해도 태블릿', (await p.evaluate(() => document.documentElement.dataset.device)) === 'tablet');
-  await p.locator('[aria-label="화면 종류"] button', { hasText: '자동' }).click();
-  await p.waitForTimeout(400);
-  ok('설정 자동 → PC 로 돌아옴', (await p.evaluate(() => document.documentElement.dataset.device)) === 'pc');
   await ctx.close();
 }
 await browser.close();

@@ -71,14 +71,15 @@ export function deviceCss(): Plugin {
         const wideStart = min.some((v) => WIDE_START.includes(v));
         if (narrow && max.some((v) => SPLIT.includes(v))) {
           // 휴대폰이면 폭과 상관없이 (가로로 눕혀 넓어져도 휴대폰 화면)
-          cloneFor(at, '[data-device="phone"]', (k, v) => k === 'max' && SPLIT.includes(v));
+          // 펼친 폴더블도 휴대폰·태블릿 세로형 화면 (로비·게임이 같게)
+          cloneFor(at, ':is([data-device="phone"],[data-fold="open"])', (k, v) => k === 'max' && SPLIT.includes(v));
         }
         if (wideStart) {
           // PC 면 창이 좁아도 넓은 화면 규칙
           cloneFor(at, '[data-device="pc"]', (k, v) => k === 'min' && WIDE_START.includes(v));
         }
         // 원본은 한 번만 감쌈 (둘 다면 태블릿만)
-        const cond = (narrow ? ':not([data-device="pc"])' : '') + (wideStart ? ':not([data-device="phone"])' : '');
+        const cond = (narrow ? ':not([data-device="pc"])' : '') + (wideStart ? ':not([data-device="phone"]):not([data-fold="open"])' : '');
         if (cond) gate(at, cond);
       }
     },

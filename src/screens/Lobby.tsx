@@ -27,8 +27,6 @@ import { pct, tone } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
 import { api } from '../net/api';
-import { DEVICE_LABEL, detectedDevice, loadDevicePref, setDevicePref, type DevicePref } from '../lib/device';
-import { useDevice } from '../components/Extras';
 import { ForgetMe } from '../components/ForgetMe';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
@@ -844,7 +842,6 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
           </section>
           <SoundSetting />
-          <DeviceSetting />
           <div className="more-menus">
             {/* 둘러보기: 휴대폰은 아래 탭에 없는 화면들. PC 는 위 메뉴에 이미 있어서 숨김 */}
             <section className="panel pad more-links more-browse">
@@ -1704,36 +1701,6 @@ function TierProgress({ rating }: { rating: number }) {
       </div>
       <small className="muted">{t.division ? `다음 단계까지 ${50 - t.points}점` : `마스터 +${t.points}점`}</small>
     </div>
-  );
-}
-
-/** 화면 종류: 자동(기기를 알아서) / PC / 태블릿 / 휴대폰 — 기기 판단이 틀렸을 때 직접 (이 기기에 저장, design/device-layout.md) */
-function DeviceSetting() {
-  const [pref, setPref] = useState<DevicePref>(loadDevicePref);
-  const now = useDevice();
-  const auto = detectedDevice();
-  const pick = (p: DevicePref) => {
-    setPref(p);
-    setDevicePref(p);
-  };
-  const opts: [DevicePref, string][] = [
-    ['auto', `자동 (${DEVICE_LABEL[auto]})`],
-    ['pc', 'PC'],
-    ['tablet', '태블릿'],
-    ['phone', '휴대폰'],
-  ];
-  return (
-    <section className="panel pad more-device">
-      <h3>화면 종류</h3>
-      <p className="muted small more-sub">기기에 맞는 화면을 알아서 골라요. 이상하게 보이면 직접 고르세요. 지금: {DEVICE_LABEL[now]} 화면</p>
-      <div className="seg four" role="radiogroup" aria-label="화면 종류">
-        {opts.map(([v, l]) => (
-          <button key={v} role="radio" aria-checked={pref === v} className={pref === v ? 'on' : ''} onClick={() => pick(v)}>
-            {l}
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }
 

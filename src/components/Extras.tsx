@@ -162,7 +162,9 @@ export function useDevice(): Device {
 export function useMobileLayout(): boolean {
   const device = useDevice();
   const narrow = useIsMobile('(max-width: 960px)');
-  return device === 'phone' ? true : device === 'pc' ? false : narrow;
+  // 펼친 폴더블은 태블릿이지만 화면이 작아 늘 아래 탭 화면 (로비와 같게)
+  const foldOpen = typeof document !== 'undefined' && document.documentElement.dataset.fold === 'open';
+  return device === 'phone' || foldOpen ? true : device === 'pc' ? false : narrow;
 }
 
 export function useIsMobile(query = '(max-width: 960px)') {
