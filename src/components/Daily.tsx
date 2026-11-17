@@ -77,3 +77,16 @@ export function DailyResult() {
     </div>
   );
 }
+
+/** 랭킹 화면: 오늘의 도전 점수표 (로그인 전이면 숨김) */
+export function DailyRankPanel() {
+  const { info } = useDailyInfo();
+  if (!info || !info.ready || !info.day) return null;
+  return (
+    <section className="panel pad daily-rank" aria-label="오늘의 도전 점수표">
+      <h3>오늘의 도전 점수표</h3>
+      <p className="muted small">모두 같은 시장으로 하루 한 번 겨룬 오늘 기록이에요. 연습 메뉴의 '오늘의 도전'에서 할 수 있어요.</p>
+      <DailyBoard info={info} limit={10} />
+    </section>
+  );
+}

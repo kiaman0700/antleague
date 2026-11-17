@@ -472,3 +472,4 @@ body { background: var(--bg) !important; }
 .hub-quick .hq-btn span { display: flex; flex-direction: column; min-width: 0; }
 .hub-quick .hq-btn small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 400px) { .hub-quick .hq-row { grid-template-columns: 1fr; } }
+.page.ranking .daily-rank { margin-top: 14px; }

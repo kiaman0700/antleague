@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, Loading } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 import { AVATARS, canUseAvatar } from '../game/avatars';
 import { TierBadge, TierLadder } from '../components/TierBadge';
+import { DailyRankPanel } from '../components/Daily';
 import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { api } from '../net/api';
 import { loadNick } from '../session';
@@ -712,6 +713,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
           })}
         </ol>
       )}
+      <DailyRankPanel />
       <TierLadder mine={data?.me ? { rating: data.me.rating, rankedGames: data.me.ranked_games } : undefined} />
     </div>
   );
