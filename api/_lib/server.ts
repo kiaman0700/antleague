@@ -148,8 +148,34 @@ function db(): SupabaseClient {
   const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('server env missing');
-  admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: retryingFetch } });
   return admin;
+}
+
+/**
+ * Supabase 로 가는 요청: 읽기(GET·HEAD)만 연결 실패·502·503·504 때 최대 2번 다시 (0.25초·0.6초 뒤).
+ * 배포 직후 새 서버가 처음 연결할 때 잠깐 실패하던 것 (2026-11-17 운영 점검에서 발견).
+ * 쓰기(POST·PATCH·DELETE·RPC)는 이미 들어갔을 수 있어 다시 보내지 않음
+ */
+export async function retryingFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+  const safe = method === 'GET' || method === 'HEAD';
+  for (let i = 0; ; i++) {
+    try {
+      const res = await fetch(input, init);
+      if (safe && i < 2 && (res.status === 502 || res.status === 503 || res.status === 504)) {
+        await new Promise((r) => setTimeout(r, i ? 600 : 250));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      if (!safe || i >= 2) {
+        console.error('[api] supabase fetch failed', method, e instanceof Error ? `${e.message} ${String((e as { cause?: unknown }).cause ?? '')}` : e);
+        throw e;
+      }
+      await new Promise((r) => setTimeout(r, i ? 600 : 250));
+    }
+  }
 }
 
 /* ---------------- 요청 제한 (사용자별) ---------------- */
