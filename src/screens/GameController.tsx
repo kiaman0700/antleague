@@ -1182,7 +1182,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <button className="btn sm ghost" onClick={() => setPrefsOpen(true)}>
           <Icon name="settings" size={14} /> 옵션
         </button>
-        <button className="btn sm ghost" onClick={resetLayout} title="배치 처음으로">
+        <button className="btn sm ghost" onClick={resetLayout} title="배치 처음으로" aria-label="배치 처음으로">
           {mobile ? <Icon name="refresh" size={14} /> : '배치 처음으로'}
         </button>
         <button className="btn sm primary" onClick={() => (session.demo ? onExit() : setEditing(false))}>

@@ -277,7 +277,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <IconList
             items={[
               { icon: 'calendar', body: <><b>{room.totalDays}일</b> 동안 겨뤄요. 하루 장은 <b>{turnLabel}</b>이에요. 보통 <b>약 {estimateMinutes(room.totalDays, room.turnSeconds).typical}분</b>이면 끝나요.</> },
-              { icon: 'timer', body: <>모두 장 마감을 누르면 바로 다음 날로 가요. {graceSentence(room.maxPlayers, room.turnSeconds)}</> },
+              { icon: 'timer', body: <>모두 장 마감을 누르면 바로 다음 날로 가요. {graceSentence(view.players.length >= 2 ? view.players.length : room.maxPlayers, room.turnSeconds)}</> },
               { icon: 'news', body: '둘째 날부터는 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸 수 있어요.' },
               { icon: 'cards', body: <>찬스 카드는 시작할 때 {START_CARDS}장, {GRANT_EVERY}일마다 1장 무료로 받아요. 상대를 방해하는 카드도 있어요.</> },
               { icon: 'trophy', body: '마지막 날 재산이 가장 많은 사람이 이겨요.' },

@@ -676,3 +676,5 @@ body { background: var(--bg) !important; }
 .fr-block { color: #ff8a98; }
 .news-card.bad .arrow { color: #5b9bff; }
 .news-card.good .arrow { color: #ff6b7d; }
+.prefs .seg button { min-width: 0; overflow: hidden; }
+.prefs .seg button svg { max-width: 100%; }

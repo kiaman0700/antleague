@@ -13,6 +13,9 @@ export function setMuted(m: boolean) {
 }
 
 function ac() {
+  // 이 페이지에서 아직 아무것도 누르지 않았으면 소리를 시도하지 않음 (브라우저가 막고 경고만 남김)
+  const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  if (ua && !ua.hasBeenActive) return null;
   if (!ctx) {
     const C = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;

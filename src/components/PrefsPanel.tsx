@@ -89,7 +89,7 @@ function ChartSample({ kind }: { kind: 'line' | 'candle' | 'ohlc' }) {
 
 function Seg<T extends string>({ value, options, onChange }: { value: T; options: { v: T; label: string; sub?: string; sample?: 'line' | 'candle' | 'ohlc' }[]; onChange: (v: T) => void }) {
   return (
-    <div className="seg" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
+    <div className="seg" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map((o) => (
         <button key={o.v} className={value === o.v ? 'on' : ''} onClick={() => onChange(o.v)}>
           {o.sample && <ChartSample kind={o.sample} />}

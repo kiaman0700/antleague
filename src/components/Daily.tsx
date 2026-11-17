@@ -39,7 +39,14 @@ export function useDailyInfo(enabled = true) {
 /** 오늘 점수표 (회원·끝낸 판만) */
 export function DailyBoard({ info, limit = 10 }: { info: DailyInfo; limit?: number }) {
   const top = (info.top ?? []).slice(0, limit);
-  if (!top.length) return <p className="muted small">아직 오늘 도전을 끝낸 회원이 없어요. 첫 기록의 주인공이 되어 보세요.</p>;
+  if (!top.length)
+    return (
+      <p className="muted small">
+        {info.finished
+          ? `아직 오늘 점수표에 오른 회원이 없어요.${info.member === false ? ' 게스트 기록은 점수표에 안 올라가요.' : ''}`
+          : '아직 오늘 도전을 끝낸 회원이 없어요. 첫 기록의 주인공이 되어 보세요.'}
+      </p>
+    );
   return (
     <ol className="daily-board">
       {top.map((r) => (
