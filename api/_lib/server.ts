@@ -66,6 +66,18 @@ async function roomPwFail(roomId: string) {
   await db().from('rooms').update({ pw_fails: st.fails + 1, pw_fail_at: st.since ?? new Date().toISOString() }).eq('id', roomId);
 }
 
+/** 사람·방마다 10분에 5번 (DB, 037 — 서버가 여러 대여도 같은 횟수). 037 전이면 메모리 제한만 */
+async function userPwGuard(roomId: string, uid: string) {
+  const r = await db().from('pw_attempts').select('n, first_at').eq('room_id', roomId).eq('user_id', uid).maybeSingle();
+  if (r.error || !r.data) return;
+  const row = r.data as { n: number; first_at: string };
+  if (Date.now() - new Date(row.first_at).getTime() < 600_000 && row.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.', 429);
+}
+async function userPwFail(roomId: string, uid: string) {
+  const r = await db().rpc('pw_attempt_fail', { p_room: roomId, p_user: uid });
+  if (r.error && !/pw_attempt/.test(r.error.message)) console.error('[api] pw attempt', r.error.message);
+}
+
 /** 방에 새 플레이어 추가 (인원·닉네임 검사) */
 /**
  * 한 사람은 한 방에만: 다른 대기실에 있으면 거기서 자동으로 나오고, 진행 중인 대결(기권 안 함)이 있으면 막음.
@@ -605,11 +617,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (room.is_private && !mine) {
         const key = uid + ':' + room.id;
         pwGuard(key);
+        await userPwGuard(room.id, uid);
         await roomPwGuard(room.id);
         const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', room.id).maybeSingle(), 'pw') as { password_hash: string | null } | null;
         const pw = typeof b.password === 'string' ? b.password.slice(0, 40) : '';
         if (!checkPassword(pw, secret?.password_hash ?? null)) {
           pwFail(key);
+          await userPwFail(room.id, uid);
           await roomPwFail(room.id);
           throw new GameError('비밀번호가 맞지 않아요.', 403);
         }
