@@ -8,7 +8,7 @@ import { PrefsPanel, Sheet } from '../components/PrefsPanel';
 import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, setPrefs, usePrefs, type MHeaderRow, type MTab } from '../prefs';
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
-import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile } from '../components/Extras';
+import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
@@ -126,7 +126,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 튜토리얼은 브라우저 엔진이지만 봇과 대결하는 화면으로 보여 줌
   const solo = session.mode === 'solo' && !session.tutorial;
   const me = session.playerId;
-  const mobile = useIsMobile();
+  const mobile = useMobileLayout();
   // 세로 태블릿(넓은 휴대폰 배치): 종목 목록과 차트·주문을 나란히
   // 가로로 눕힌 휴대폰(높이가 낮음)은 제외
   const wide = useIsMobile('(min-width: 700px) and (min-height: 600px)');
