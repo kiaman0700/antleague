@@ -127,7 +127,16 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     const box = catsRef.current;
     const chip = box?.querySelector<HTMLElement>('.nc-today');
     if (box && chip) box.scrollLeft = Math.max(0, chip.offsetLeft - box.offsetLeft - box.clientWidth / 2 + chip.offsetWidth / 2);
-  }, [day, totalDays]);
+    // PC: 마우스 휠(위아래)로도 날짜 줄이 좌우로 넘어가게 (스크롤바를 숨겨 둬서 휠로는 못 넘기던 것)
+    if (!box) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || box.scrollWidth <= box.clientWidth) return;
+      e.preventDefault();
+      box.scrollLeft += e.deltaY;
+    };
+    box.addEventListener('wheel', onWheel, { passive: false });
+    return () => box.removeEventListener('wheel', onWheel);
+  }, [day, totalDays, mode]);
   // 정식 기사와 소문 기사('루머' 표시)를 나눔 — 소문 기사는 찌라시 쪽에
   const official = news.filter((n) => !n.rumor);
   const rumorNews = news.filter((n) => n.rumor);
