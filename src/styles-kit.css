@@ -1763,3 +1763,5 @@ p { text-wrap: pretty; }
 .skip-link { position: fixed; left: 12px; top: -60px; z-index: 1000; padding: 10px 14px; border-radius: 10px; background: #6b58ee; color: #fff; font-weight: 700; text-decoration: none; transition: top 0.15s; }
 .skip-link:focus { top: 12px; outline: 2px solid #fff; outline-offset: 2px; }
 .lobby-main:focus { outline: none; }
+/* 휴대폰 방 만들기: 아래 고정 '방 만들기' 버튼을 '하던 게임 다시 보기' 알약이 가리지 않게 (이 화면에서만 숨김) */
+@media (max-width: 860px) { .lobby-shell:has(.create-bar) .rc-pill { display: none; } }
