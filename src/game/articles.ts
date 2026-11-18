@@ -71,6 +71,17 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
     lead = `${title.replace(/^\d{2}:\d{2} 기준 /, '')} — ${time} 기준 거래소 집계다.`;
     body.push(`${subject}에는 장중 내내 매수·매도 주문이 몰렸다. 시장에서는 "${good ? '단기 과열을 조심해야 한다' : '저가 매수 기회를 노리는 움직임도 있다'}"는 말이 나온다.`);
     body.push(`장 마감까지 흐름이 바뀔 수 있어 끝까지 지켜봐야 한다는 분석이다.`);
+  } else if (n.label === '시황' || n.label === '특징주') {
+    // 지난 움직임을 정리한 기사 (아침에 나오는 전날 정리 등)
+    lead = `${when}, '${title}' 소식이 전해졌다.`;
+    body.push(`${subject}에는 전날 ${good ? '매수세가 몰리며 강한 흐름' : '매도세가 이어지며 약한 흐름'}이 나타났다. ${others.length ? `${others.join('·')} 등 관련 종목도 함께 주목받았다.` : ''}`.trim());
+    body.push(`이 흐름이 이어질지는 오늘 나오는 소식에 달려 있다는 분석이다.`);
+  } else if (/발표 예정|앞둬|예고/.test(title)) {
+    // 사건 예고 기사: 결과는 아직 모름
+    const due = (/(\d+)일차 발표 예정/.exec(title) ?? [])[1];
+    lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '이', '가') : `${subject}이`} 시장의 관심을 모으고 있다.`;
+    body.push(`${due ? `발표가 예정된 ${due}일차까지` : '발표 전까지'} 기대와 걱정이 엇갈릴 것으로 보인다. 결과에 따라 주가가 크게 움직일 수 있다.`);
+    body.push(`발표 전에는 확인되지 않은 소문이 많이 돌 수 있어 주의가 필요하다는 지적도 나온다.`);
   } else if (n.kind === 'macro') {
     lead = `${when}, '${title}' 소식이 전해졌다. 금리·환율에 민감한 업종을 중심으로 영향이 예상된다.`;
     body.push(`시장 전문가들은 "${good ? '투자 심리가 살아날 수 있는 신호' : '당분간 변동성이 커질 수 있는 신호'}"라고 풀이했다.`);
@@ -90,11 +101,16 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   if (!n.rumor && n.kind !== 'macro' && n.label !== '시황' && qRoll < (fake ? 0.12 : 0.45)) {
     const insider = co && rng() < 0.5;
     const who = insider ? `${co} ${pick(['대표', '전무', 'IR 담당 상무'])} ${person()}` : `${pick(FIRMS)} 애널리스트 ${person()}`;
-    const said = good
-      ? pick(['이번 결과는 시장 기대를 웃도는 수준이라고 본다', '하반기까지 좋은 흐름이 이어질 것으로 예상한다', '숫자로 증명해 보이겠다'])
-      : pick(['당분간 부담이 이어질 수밖에 없다', '시장 기대에는 못 미치는 결과로 판단한다', '대응 방안을 마련 중이다']);
+    // 회사 사람과 애널리스트는 하는 말이 다름
+    const said = insider
+      ? good
+        ? pick(['숫자로 증명해 보이겠다', '앞으로도 좋은 소식을 계속 전하겠다', '이번 성과는 시작에 불과하다'])
+        : pick(['대응 방안을 마련 중이다', '빠르게 정상화하겠다', '주주 여러분께 송구하다'])
+      : good
+        ? pick(['이번 결과는 시장 기대를 웃도는 수준이라고 본다', '하반기까지 좋은 흐름이 이어질 것으로 예상한다', '목표 주가를 올릴 만한 내용이다'])
+        : pick(['당분간 부담이 이어질 수밖에 없다', '시장 기대에는 못 미치는 결과로 판단한다', '보수적으로 볼 필요가 있다']);
     quote = { who, text: said };
-    body.splice(1, 0, `${who}는 "${said}"고 말했다.`);
+    body.splice(1, 0, `${jo(who, '은', '는')} "${said}"고 말했다.`);
   }
   return { press: pick(PRESS), reporter: `${person()} 기자`, time, lead, body, quote, cite };
 }
