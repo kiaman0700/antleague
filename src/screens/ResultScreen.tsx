@@ -710,7 +710,7 @@ function ResultSlides({ slides }: { slides: { key: string; label: string; body: 
       </div>
       <div className="rs-track" ref={track} onScroll={onScroll}>
         {slides.map((s, i) => (
-          <section key={s.key} id={'rs-' + s.key} role="tabpanel" aria-label={s.label} className="rs-slide" aria-hidden={at !== i}>
+          <section key={s.key} id={'rs-' + s.key} role="tabpanel" aria-label={s.label} className={"rs-slide" + (at === i ? " on" : "")}>
             {s.body}
           </section>
         ))}

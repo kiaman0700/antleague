@@ -1472,7 +1472,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .rs-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; align-items: flex-start; }
 .rs-track::-webkit-scrollbar { display: none; }
 .rs-slide { flex: 0 0 100%; min-width: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; gap: 12px; padding: 0 1px 12px; }
-.rs-slide[aria-hidden='true'] { max-height: 70vh; overflow: hidden; }
+.rs-slide:not(.on) { max-height: 70vh; overflow: hidden; }
 .rs-slide .replay, .rs-slide .stock-rank { overscroll-behavior-x: contain; }
 .result.slides .center-actions { position: sticky; bottom: 0; z-index: 20; margin: 0 -16px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--bg, #111); border-top: 1px solid var(--line, #242424); }
 /* 공유 카드 */
