@@ -1665,3 +1665,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html:has(.m-game), html:has(.game.desk) { overscroll-behavior-y: none; }
 /* 길게 누르면 뜨는 사파리 메뉴·글자 선택이 버튼·탭을 가로막지 않게 (글 읽는 곳은 그대로 선택 가능) */
 button, .bottom-nav, .lobby-bottom, .srow, .gc-face { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.inapp-hint > svg { color: #b9adff; flex: none; }
+.inapp-hint .btn { flex: none; text-decoration: none; }
+/* 버튼을 빠르게 두 번 눌러도 화면이 확대되지 않게 (두 손가락 확대는 그대로) */
+button, a.btn, .srow, .chip, [role='button'] { touch-action: manipulation; }

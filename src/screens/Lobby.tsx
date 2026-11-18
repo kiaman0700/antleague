@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
 import { NoticeCenter, NoticeTicker } from '../components/NoticeBar';
+import { InAppBanner } from '../components/InAppBanner';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
@@ -1937,6 +1938,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             </span>
           </div>
           <div className="lobby-body">
+            <InAppBanner />
             {resolved !== 'league' && <LeagueResultNote member={account.status === 'member'} onOpen={() => go('league')} />}
             {body}
           </div>
