@@ -723,7 +723,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="crown" size={18} /> 내 랭킹
               </h3>
               <div className="rk-big">
-                <TierBadge rating={account.profile!.rating} rankedGames={account.profile!.ranked_games} size={56} />
+                <TierBadge rating={account.profile!.rating} rankedGames={account.profile!.ranked_games} size={56} chal={account.profile!.chal} />
               </div>
               <p className="muted small">
                 {isPlaced(account.profile!.ranked_games)
@@ -925,7 +925,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Avatar id={account.profile?.avatar} name={account.profile?.nickname ?? ''} size={44} />
                 <span className="mr-t">
                   <b>{account.profile?.nickname}</b>
-                  <small>{tierText(account.profile?.rating ?? 1000, account.profile?.ranked_games)} · 마이프로필 · 사진 · 칭호 · 계정</small>
+                  <small>{tierText(account.profile?.rating ?? 1000, account.profile?.ranked_games, account.profile?.chal)} · 마이프로필 · 사진 · 칭호 · 계정</small>
                 </span>
                 <Icon name="right" size={14} />
               </button>

@@ -6,6 +6,7 @@
  * - 랭킹: 회원끼리 붙은 멀티 대결만 점수(Elo, 시작 1000) 반영 — 게스트와의 판은 전적만
  * 모든 읽기·쓰기는 서버만 (profiles·match_players 는 브라우저 권한 없음)
  */
+import { challengerMap } from './challenger.js';
 import { dropGuestCode } from './guestCodes.js';
 import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -224,7 +225,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const recent = (rq.data ?? []) as unknown[];
       const badges = await earnedBadges(sb, uid);
       const { user_id: _u, ...pub } = p;
-      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null }, recent, badges };
+      const chal = unlisted ? undefined : (await challengerMap(sb)).get(uid);
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}) }, recent, badges };
     }
 
     case 'updateProfile': {
@@ -290,13 +292,14 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       // 랭킹에는 배치(랭킹전 2판)를 마친 회원만
       // 자동 시험 회원(is_test)은 공개 랭킹에서 뺌 (031 전이면 그 조건 없이)
       const topQ = (withTest: boolean) => {
-        let q = sb.from('profiles').select('nickname, title, rating, games, wins, avatar').gte('ranked_games', PLACEMENT_GAMES);
+        let q = sb.from('profiles').select('user_id, nickname, title, rating, games, wins, avatar').gte('ranked_games', PLACEMENT_GAMES);
         if (!withTest) q = q.eq('is_test', false);
         return q.order('rating', { ascending: false }).order('wins', { ascending: false }).limit(100);
       };
       let topR = await topQ(false);
       if (topR.error && /is_test/.test(topR.error.message)) topR = await topQ(true);
       const top = (topR.data ?? []) as {
+        user_id?: string;
         nickname: string;
         title: string | null;
         rating: number;
@@ -314,7 +317,13 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         const isTest = !t.error && !!(t.data as { is_test?: boolean } | null)?.is_test;
         mine = { rank: isPlaced(me.ranked_games) && !isTest ? (above.count ?? 0) + 1 : null, rating: me.rating, nickname: me.nickname, games: me.games, ranked_games: me.ranked_games ?? 0, ...(isTest ? { unlisted: true } : {}) };
       }
-      return { top: top.map((t, i) => ({ rank: i + 1, ...t })), me: mine };
+      // 챌린저 #순위 (계정 id 는 화면에 안 보냄)
+      const chal = await challengerMap(sb);
+      const myChal = uid ? chal.get(uid) : undefined;
+      return {
+        top: top.map(({ user_id, ...t }, i) => ({ rank: i + 1, ...t, ...(user_id && chal.has(user_id) ? { chal: chal.get(user_id) } : {}) })),
+        me: mine ? { ...mine, ...(myChal ? { chal: myChal } : {}) } : null,
+      };
     }
 
     case 'guestSummary':

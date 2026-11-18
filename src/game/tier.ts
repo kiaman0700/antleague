@@ -5,6 +5,8 @@
 export const PLACEMENT_GAMES = 2;
 /** 배치 중에는 점수가 이만큼 크게 움직임 (빨리 제 실력 자리로) */
 export const PLACEMENT_MULT = 2.5;
+/** 챌린저가 될 수 있는 최소 점수 (마스터 1600 + 150) — 그 위에 정원·최근 활동 조건 (api/_lib/challenger.ts) */
+export const CHALLENGER_MIN = 1750;
 
 export const TIERS = [
   { id: 'bronze', name: '브론즈', min: -Infinity, color: '#c58a5c' },

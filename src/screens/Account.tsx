@@ -510,7 +510,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         </div>
         {/* 랭크 칸: 엠블럼 위 · 티어 이름(티어 색) · 점수 · '랭킹 보기 ›' — 모두 가운데 */}
         <button className={'me-rank' + (isPlaced(p.ranked_games) ? '' : ' unplaced')} onClick={onRanking} aria-label="랭킹 보기">
-          <TierEmblem rating={p.rating} placed={isPlaced(p.ranked_games)} size={46} />
+          <TierEmblem rating={p.rating} placed={isPlaced(p.ranked_games)} size={46} challenger={p.chal} />
           <b style={isPlaced(p.ranked_games) ? { color: tierOf(p.rating).color } : undefined}>{isPlaced(p.ranked_games) ? tierOf(p.rating).label : '언랭크'}</b>
           <small>{isPlaced(p.ranked_games) ? `${tierOf(p.rating).points}점${p.rankPos ? ` · ${p.rankPos}위` : ''}` : `배치 ${p.ranked_games ?? 0}/${PLACEMENT_GAMES}판`}</small>
           <span className="me-rank-go">
@@ -678,6 +678,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
 
 /* ================= 랭킹 ================= */
 interface RankRowT {
+  chal?: number;
   rank: number;
   nickname: string;
   title: string | null;
@@ -688,7 +689,7 @@ interface RankRowT {
 }
 export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; onLogin: () => void; onPlay?: () => void }) {
   const acc = useAccount();
-  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number; unlisted?: boolean } | null } | null>(null);
+  const [data, setData] = useState<{ top: RankRowT[]; me: { rank: number | null; rating: number; nickname: string; games: number; ranked_games?: number; unlisted?: boolean; chal?: number } | null } | null>(null);
   const [err, setErr] = useState(false);
   const [tryN, setTryN] = useState(0);
   useEffect(() => {
@@ -713,7 +714,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
         <section className="panel pad my-rank">
           <b>{data.me.nickname}</b>
           <span>{data.me.unlisted ? '시험용 계정이라 공개 랭킹에 안 나와요' : data.me.rank ? `${data.me.rank}위` : `아직 순위 없음 · 랭킹전 ${Math.max(1, PLACEMENT_GAMES - (data.me.ranked_games ?? 0))}판 더 하면 올라가요`}</span>
-          <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} />
+          <TierBadge rating={data.me.rating} rankedGames={data.me.ranked_games} size={26} chal={data.me.chal} />
           {onPlay && (
             <button className="btn sm primary" onClick={onPlay}>
               랭킹전 하러 가기
@@ -744,14 +745,14 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
                 <span className="rb-stat muted">
                   {r.games}판 · {r.wins}승
                 </span>
-                <TierBadge rating={r.rating} rankedGames={PLACEMENT_GAMES} size={24} />
+                <TierBadge rating={r.rating} rankedGames={PLACEMENT_GAMES} size={24} chal={r.chal} />
               </li>
             );
           })}
         </ol>
       )}
       <DailyRankPanel />
-      <TierLadder mine={data?.me ? { rating: data.me.rating, rankedGames: data.me.ranked_games } : undefined} />
+      <TierLadder mine={data?.me ? { rating: data.me.rating, rankedGames: data.me.ranked_games, chal: data.me.chal } : undefined} />
     </div>
   );
 }

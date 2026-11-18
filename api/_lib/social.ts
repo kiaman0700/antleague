@@ -3,6 +3,7 @@
  * 화면에 보내는 값: 닉네임·칭호·점수·상태, 그리고 행동용 id(친구 관계/차단 줄의 id — user id 아님)
  * 절대 안 보냄: user id, 아이디, 로그인 주소, 차단당했는지, 거절당했는지
  */
+import { challengerMap } from './challenger.js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { getProfile } from './accounts.js';
@@ -87,6 +88,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
         ? (((await sb.from('profiles').select('user_id, nickname, title, rating, last_seen, ranked_games, avatar').in('user_id', ids)).data ?? []) as { user_id: string; nickname: string; title: string | null; rating: number; last_seen: string | null; ranked_games?: number; avatar?: string }[])
         : [];
       const P = new Map(profs.map((p) => [p.user_id, p]));
+      const chal = await challengerMap(sb);
       // 친구의 '게임 중' 여부 (친구에게만)
       const friendIds = rows.filter((r) => r.status === 'accepted').map(otherOf);
       const playing = new Set<string>();
@@ -102,7 +104,8 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       };
       const card = (r: FRow) => {
         const p = P.get(otherOf(r));
-        return { id: r.id, nickname: p?.nickname ?? '알 수 없음', title: p?.title ?? null, rating: p?.rating ?? 1000, ranked: p?.ranked_games ?? 0, avatar: p?.avatar ?? 'default' };
+        const ch = p ? chal.get(p.user_id) : undefined;
+        return { id: r.id, nickname: p?.nickname ?? '알 수 없음', title: p?.title ?? null, rating: p?.rating ?? 1000, ranked: p?.ranked_games ?? 0, avatar: p?.avatar ?? 'default', ...(ch ? { chal: ch } : {}) };
       };
       const friends = rows
         .filter((r) => r.status === 'accepted' && P.has(otherOf(r)))

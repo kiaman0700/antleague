@@ -43,7 +43,95 @@ function shard(ox: number, oy: number, a: number, len: number, w: number): [stri
  * 티어가 오를수록 방패 밖 장식이 늘어남 — 브론즈 방패만 · 실버 옆 날·어깨 못 · 골드 날개 · 플래티넘 위 첨탑 · 다이아몬드 수정 조각·은은한 빛 · 마스터 왕관과 큰 날개.
  * 같은 티어 안 단계(1 → 2 → 3, 3이 가장 높음)는 아래 띠의 보석 수(1~3)와 장식 길이로 보여 줌
  */
-export function TierEmblem({ rating, placed = true, size = 28 }: { rating: number; placed?: boolean; size?: number }) {
+/**
+ * 챌린저 (2026-11-18, 설계서 design/v24-big-update.md A): 맨 위 티어는 색만이 아니라 모양부터 다르게 (조사: 롤·발로란트 등).
+ * 방패 대신 위로 치솟는 '오름 화살' + 무지갯빛 후광 고리, 진주색 몸통, 가운데 빨간 핵(한국 증시의 '오름').
+ * 작은 크기(40px 아래)에선 후광 무늬·글자를 빼고 윤곽만 또렷하게
+ */
+function ChallengerEmblem({ size, rank }: { size: number; rank?: number }) {
+  const id = 'te-chal';
+  const small = size < 40;
+  return (
+    <svg className="tier-emblem te-chal" width={Math.round(size * 1.3)} height={Math.round(size * 1.3)} viewBox="-7 -8 54 54" aria-hidden>
+      <defs>
+        <linearGradient id={`${id}-halo`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ff4d6d" />
+          <stop offset="0.5" stopColor="#7c4dff" />
+          <stop offset="1" stopColor="#36c5f0" />
+        </linearGradient>
+        <linearGradient id={`${id}-pearl`} x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.45" stopColor="#efeaf8" />
+          <stop offset="1" stopColor="#b9b1d3" />
+        </linearGradient>
+        <radialGradient id={`${id}-glow`} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#ff8fa8" stopOpacity="0.45" />
+          <stop offset="0.6" stopColor="#7c4dff" stopOpacity="0.18" />
+          <stop offset="1" stopColor="#36c5f0" stopOpacity="0" />
+        </radialGradient>
+        <filter id={`${id}-sh`} x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="1.4" stdDeviation="1.2" floodColor="#000" floodOpacity="0.6" />
+        </filter>
+        <radialGradient id={`${id}-disc`} cx="0.5" cy="0.35" r="0.75">
+          <stop offset="0" stopColor="#3a2a7a" />
+          <stop offset="1" stopColor="#120a2c" />
+        </radialGradient>
+      </defs>
+      {!small && <circle cx="20" cy="19" r="26" fill={`url(#${id}-glow)`} />}
+      {/* 안쪽 원판 (깊은 남보라) */}
+      <circle cx="20" cy="19" r="18.4" fill={`url(#${id}-disc)`} />
+      {!small && (
+        <g stroke="#ffffff" strokeOpacity="0.08" strokeWidth="0.5">
+          <path d="M3.5 13 H36.5 M2.5 19 H37.5 M3.5 25 H36.5" />
+        </g>
+      )}
+      {/* 후광 고리 + 네 곳 보석 */}
+      <circle cx="20" cy="19" r="19.5" fill="none" stroke={`url(#${id}-halo)`} strokeWidth={small ? 3 : 2.6} />
+      {!small && (
+        <g stroke="#1b1036" strokeWidth="0.4">
+          <path d="M0.5 19 l1.6 -2 l1.6 2 l-1.6 2 Z" fill="#ff4d6d" />
+          <path d="M36.3 19 l1.6 -2 l1.6 2 l-1.6 2 Z" fill="#36c5f0" />
+        </g>
+      )}
+      {/* 양옆 오르는 차트 꺾은선 */}
+      <g fill="none" stroke="#dde6f5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.9">
+        <path d="M4 30 L8 25 L10.8 27.2 L14.6 22" />
+        <path d="M36 30 L32 25 L29.2 27.2 L25.4 22" />
+      </g>
+      {/* 오름 화살: 진주 금속, 밝은 왼쪽 면 · 어두운 오른쪽 면 */}
+      <g filter={`url(#${id}-sh)`} strokeLinejoin="round">
+        <path d="M20 -6 L32.5 9.5 L25 9.5 L25 35.5 L15 35.5 L15 9.5 L7.5 9.5 Z" fill={`url(#${id}-pearl)`} stroke="#6f6596" strokeWidth="0.8" />
+        <path d="M20 -6 L20 35.5 L25 35.5 L25 9.5 L32.5 9.5 Z" fill="#b9b1d3" opacity="0.55" />
+        <path d="M20 -2.6 L9.6 8.6" stroke="#ffffff" strokeOpacity="0.9" strokeWidth="0.8" fill="none" />
+        <path d="M16.4 11 V33.6" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="0.7" fill="none" />
+      </g>
+      {/* 빨간 핵 보석 */}
+      <g strokeLinejoin="round">
+        <path d="M20 12.5 L24.4 19.5 L20 26.5 L15.6 19.5 Z" fill="#d9364b" stroke="#6e0d1e" strokeWidth="0.6" />
+        <path d="M20 12.5 L15.6 19.5 L18 19.5 L20 15.6 Z" fill="#ffb3bd" />
+        <path d="M20 26.5 L24.4 19.5 L22 19.5 L20 23.4 Z" fill="#8f1428" />
+        <path d="M18.6 17.2 L19.6 15.8" stroke="#ffffff" strokeWidth="0.7" strokeLinecap="round" />
+      </g>
+      {!small && (
+        <g fill="#ffffff">
+          <path d="M31.5 1.5 l0.55 1.45 l1.45 0.55 l-1.45 0.55 l-0.55 1.45 l-0.55 -1.45 l-1.45 -0.55 l1.45 -0.55 z" />
+          <path d="M8.2 3.4 l0.4 1 l1 0.4 l-1 0.4 l-0.4 1 l-0.4 -1 l-1 -0.4 l1 -0.4 z" opacity="0.8" />
+        </g>
+      )}
+      {!small && (
+        <g>
+          <path d="M5 38 Q20 43 35 38 L36.8 44 Q20 49.6 3.2 44 Z" fill="#f4f1fa" stroke="#8f86b3" strokeWidth="0.6" />
+          <text x="20" y="44.6" textAnchor="middle" fontSize="5.4" fontWeight="900" fill="#d9364b">
+            {rank && rank > 0 ? `#${rank}` : '상한가'}
+          </text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+export function TierEmblem({ rating, placed = true, size = 28, challenger }: { rating: number; placed?: boolean; size?: number; /** 챌린저면 #순위 (서버가 정함) */ challenger?: number }) {
+  if (placed && challenger) return <ChallengerEmblem size={size} rank={challenger} />;
   const t = tierOf(rating);
   const base = placed ? t.color : '#7a7a7a';
   const light = mix(base, '#ffffff', 0.62);
@@ -265,20 +353,23 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
 }
 
 /** "골드 II · 23점" 또는 "언랭크 · 배치 1/2" */
-export function tierText(rating: number, rankedGames: number | null | undefined) {
+export const CHALLENGER_COLOR = '#ff6b85';
+export function tierText(rating: number, rankedGames: number | null | undefined, chal?: number) {
   if (!isPlaced(rankedGames)) return `언랭크 · 배치 ${rankedGames ?? 0}/${PLACEMENT_GAMES}`;
+  if (chal) return `챌린저 #${chal} · ${Math.max(0, Math.round(rating - 1600))}점`;
   const t = tierOf(rating);
   return `${t.label} · ${t.points}점`;
 }
 
-export function TierBadge({ rating, rankedGames, size = 28, showPoints = true }: { rating: number; rankedGames: number | null | undefined; size?: number; showPoints?: boolean }) {
+export function TierBadge({ rating, rankedGames, size = 28, showPoints = true, chal }: { rating: number; rankedGames: number | null | undefined; size?: number; showPoints?: boolean; /** 챌린저 #순위 */ chal?: number }) {
   const placed = isPlaced(rankedGames);
   const t = tierOf(rating);
+  const isChal = placed && !!chal;
   return (
-    <span className={'tier-badge' + (placed ? ' t-' + t.id : ' t-unplaced')}>
-      <TierEmblem rating={rating} placed={placed} size={size} />
+    <span className={'tier-badge' + (isChal ? ' t-challenger' : placed ? ' t-' + t.id : ' t-unplaced')}>
+      <TierEmblem rating={rating} placed={placed} size={size} challenger={isChal ? chal : undefined} />
       <span className="tb-txt">
-        <b style={placed ? { color: t.color } : undefined}>{placed ? t.label : '언랭크'}</b>
+        <b style={isChal ? { color: CHALLENGER_COLOR } : placed ? { color: t.color } : undefined}>{isChal ? `챌린저 #${chal}` : placed ? t.label : '언랭크'}</b>
         {showPoints && <small>{placed ? `${t.points}점` : `${rankedGames ?? 0}/${PLACEMENT_GAMES}판`}</small>}
       </span>
     </span>
@@ -286,22 +377,22 @@ export function TierBadge({ rating, rankedGames, size = 28, showPoints = true }:
 }
 
 /** 짧게: "골드 2" 또는 "언랭크" (친구·파티 목록용) */
-export function tierShort(rating: number, rankedGames: number | null | undefined) {
-  return isPlaced(rankedGames) ? tierOf(rating).label : '언랭크';
+export function tierShort(rating: number, rankedGames: number | null | undefined, chal?: number) {
+  return isPlaced(rankedGames) ? (chal ? `챌린저 #${chal}` : tierOf(rating).label) : '언랭크';
 }
 
 /**
  * 티어표: 브론즈 → 마스터로 오르는 계단. 계단이 높아질수록 그림도 커지고, 계단 안에 단계 1 · 2 · 3 (3이 가장 높음).
  * mine 을 주면 내 티어에 '나' 표시
  */
-export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: number | null | undefined } }) {
+export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: number | null | undefined; chal?: number } }) {
   const my = mine && isPlaced(mine.rankedGames) ? tierOf(mine.rating) : null;
   return (
     <section className="panel pad tier-ladder" aria-label="랭킹 티어">
       <h3>
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
-      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(50점씩, 3이 가장 높아요)가 있어요.</p>
+      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(50점씩, 3이 가장 높아요)가 있어요. 마스터·챌린저는 단계 없이 점수 순위예요. 챌린저는 1,750점 이상이면서 상위 1%(최근 7일 안에 랭킹전을 한 사람) 안에 들어야 해요.</p>
       <ol className="tl-stairs">
         {TIERS.map((t, i) => {
           const base = t.id === 'bronze' ? 850 : t.min;
@@ -333,12 +424,24 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
                     ))}
                   </span>
                 ) : (
-                  <span className="tl-top">최고 티어</span>
+                  <span className="tl-top">점수 순위</span>
                 )}
               </div>
             </li>
           );
         })}
+        {/* 챌린저: 마스터 중 1750점 이상 · 상위 1%(3~50자리) · 최근 7일 랭킹전 — 자리가 정해져 있음 */}
+        <li className={'tl-step tl-chal' + (mine?.chal ? ' me' : '')} style={{ ['--tc' as string]: CHALLENGER_COLOR, ['--h' as string]: `${86 + TIERS.length * 18}px` }}>
+          <div className="tl-emb">
+            <TierEmblem rating={1800} size={40 + TIERS.length * 5} challenger={mine?.chal || -1} />
+          </div>
+          <div className="tl-block">
+            {mine?.chal ? <span className="tl-me">나</span> : null}
+            <b>챌린저</b>
+            <small>1,750점 이상</small>
+            <span className="tl-top">상위 1% · 최고 티어</span>
+          </div>
+        </li>
       </ol>
     </section>
   );

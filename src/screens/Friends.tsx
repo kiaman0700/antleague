@@ -16,6 +16,7 @@ import { SPEED_PRESET } from '../engine/matching';
 import { Avatar } from '../components/Avatar';
 
 export interface FriendItem {
+  chal?: number;
   id: string;
   nickname: string;
   title: string | null;
@@ -209,7 +210,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <b>{f.nickname}</b>
                   <small className="muted">
                     {titleName(f.title) ? `${titleName(f.title)} · ` : ''}
-                    {tierShort(f.rating, f.ranked)}
+                    {tierShort(f.rating, f.ranked, f.chal)}
                   </small>
                 </span>
                 <span className="fr-act">
@@ -245,7 +246,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   <span className="fr-txt">
                     <b>{f.nickname}</b>
                     <small className="muted">
-                      <span className={'fr-dot ' + cls} aria-hidden /> {label} · {tierShort(f.rating, f.ranked)}{titleName(f.title) ? ` · ${titleName(f.title)}` : ''}
+                      <span className={'fr-dot ' + cls} aria-hidden /> {label} · {tierShort(f.rating, f.ranked, f.chal)}{titleName(f.title) ? ` · ${titleName(f.title)}` : ''}
                     </small>
                   </span>
                   <span className="fr-act">

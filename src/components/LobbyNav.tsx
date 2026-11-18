@@ -105,7 +105,7 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
         <Avatar id={account.profile.avatar} name={account.profile.nickname} size={30} className="acc-av" />
         <span className="acc-txt">
           <b>{account.profile.nickname}</b>
-          <small>{tierText(account.profile.rating, account.profile.ranked_games)}</small>
+          <small>{tierText(account.profile.rating, account.profile.ranked_games, account.profile.chal)}</small>
         </span>
       </button>
     );
@@ -174,7 +174,7 @@ function ProfileCard({ p, badges, onProfile }: { p: MyProfile; badges?: Record<s
         </span>
       </div>
       <div className="pfc-row">
-        <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} />
+        <TierBadge rating={p.rating} rankedGames={p.ranked_games} size={34} chal={p.chal} />
         {p.rankPos ? <small className="muted">랭킹 {p.rankPos}위</small> : null}
       </div>
       <LevelMeter xp={p.xp ?? 0} className="pfc-level" title="미션·대결로 경험치를 모아 레벨을 올려요 (최대 Lv.100)" />

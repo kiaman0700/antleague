@@ -12,6 +12,8 @@ import { setFlash } from '../lib/flash';
 export const USER_DOMAIN = 'u.stockduel.invalid';
 
 export interface MyProfile {
+  /** 챌린저 #순위 (서버가 정함) */
+  chal?: number;
   username: string;
   nickname: string;
   title: string | null;
