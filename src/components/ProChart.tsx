@@ -914,7 +914,7 @@ export function ProChart({
               // 화면 밖이면 선 대신 위/아래 끝에 화살표 글자로
               if (ry < padT)
                 return (
-                  <text x={padL + 4} y={padT + 12} className="ref-label">
+                  <text x={padL + 4} y={padT + 4} dominantBaseline="hanging" className="ref-label">
                     ▲ {refLine.label}
                   </text>
                 );

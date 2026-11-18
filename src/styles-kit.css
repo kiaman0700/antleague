@@ -1345,3 +1345,12 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 카드 설명 줄 수가 달라 같은 줄 카드끼리 이름 높이가 어긋나던 것 — 설명 칸을 늘 최대 줄 수만큼 */
 .gc-desc { min-height: calc(1.4em * 3); }
 @media (max-width: 380px) { .gc-desc { min-height: calc(1.4em * 4); } }
+/* 휴대폰 종목 화면: 아래 알림이 사기/팔기 막대를 가리던 것 — 막대가 있으면 그 위로 */
+.m-game:has(.m-tradebar) .toast.at-bottom,
+.m-game:has(.m-tradebar) ~ .toast.at-bottom { bottom: calc(62px + 69px + 8px + env(safe-area-inset-bottom)); }
+.m-game:has(.m-tradebar .mt-why) .toast.at-bottom,
+.m-game:has(.m-tradebar .mt-why) ~ .toast.at-bottom { bottom: calc(62px + 92px + 8px + env(safe-area-inset-bottom)); }
+@media (max-height: 500px) and (orientation: landscape) {
+  .m-game:has(.m-tradebar) .toast.at-bottom,
+  .m-game:has(.m-tradebar) ~ .toast.at-bottom { bottom: calc(49px + 54px + 6px + env(safe-area-inset-bottom)); }
+}
