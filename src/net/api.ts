@@ -22,6 +22,7 @@ export class ApiError extends Error {
  * 계정은 대결 찾기·방 만들기·입장처럼 실제 온라인 기능을 쓸 때 만들어짐
  */
 const PEEK_EMPTY: Record<string, () => unknown> = {
+  league: () => ({ ready: true, member: false }),
   profile: () => ({ profile: null }),
   resume: () => null,
   queueCounts: () => ({ counts: {}, eta: {} }),

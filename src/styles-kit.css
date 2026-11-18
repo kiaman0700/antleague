@@ -1501,3 +1501,78 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 오늘의 도전 연속 기록 */
 .streak-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: #3a2410; color: #f5b83d; font-size: 12px; font-weight: 800; vertical-align: 2px; }
 .streak-note { color: #f2e2b8; margin: 2px 0 8px; }
+
+/* 주간 리그 (League.tsx) */
+.lg-badge { display: inline-flex; align-items: center; gap: 10px; }
+.lg-badge b { color: var(--lc); font-weight: 800; }
+.lg-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.lg-head .lg-badge b { font-size: 20px; }
+.lg-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.lg-meta b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.lg-last { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; border-left: 3px solid var(--line, #2e2e2e); }
+.lg-last.lg-up { border-left-color: #2fb36b; }
+.lg-last.lg-down { border-left-color: #e0566b; }
+.lg-last span { flex: 1; min-width: 180px; color: var(--text-2, #c8c8c8); }
+.lg-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.lg-list li { position: relative; display: grid; grid-template-columns: 28px 28px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; }
+.lg-list li + li { margin-top: 2px; }
+.lg-list li.me { background: rgba(107, 88, 238, 0.16); }
+.lg-list li.lg-up .lg-rank { color: #2fb36b; }
+.lg-list li .lg-name, .lg-list li .lg-score, .lg-last b { color: var(--text, #f2f2f2); }
+.lg-list li.lg-down .lg-rank { color: #e0566b; }
+.lg-rank { font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-3, #9a9a9a); }
+.lg-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-name em { font-style: normal; color: #a99bff; font-size: 12px; }
+.lg-score { font-variant-numeric: tabular-nums; }
+.lg-line { position: absolute; left: 8px; right: 8px; bottom: -2px; height: 0; border-top: 1px dashed #4a4a4a; }
+.lg-list li.lg-up .lg-line { border-top-color: #2fb36b; }
+.lg-list li:not(.lg-up) .lg-line { border-top-color: #e0566b; }
+.lg-legend { margin-top: 12px; }
+.lg-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
+.lg-dot.lg-up { background: #2fb36b; }
+.lg-dot.lg-down { background: #e0566b; }
+.lg-tiers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.lg-tiers > span { padding: 6px 10px 6px 6px; border-radius: 12px; border: 1px solid transparent; opacity: 0.55; }
+.lg-tiers > span.on { opacity: 1; border-color: var(--line, #2e2e2e); background: var(--surface-2, #242424); }
+.lg-tiers .lg-badge b { font-size: 13px; }
+.lobby.page.league .lg-guest .row { gap: 8px; justify-content: center; margin-top: 4px; }
+@media (max-width: 860px) { .lg-head .lg-badge b { font-size: 17px; } .lg-list li { padding: 8px 6px; gap: 8px; } }
+.me-rank .me-decay { color: var(--text-3, #9a9a9a); font-size: 12px; text-align: center; line-height: 1.4; }
+.me-rank .me-decay.warn { color: #f5b83d; }
+.lg-reward { font-style: normal; font-weight: 800; color: #f5b83d; }
+.lg-rewards { list-style: none; margin: 10px 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lg-rewards li { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, #242424); }
+.lg-rewards li b { font-size: 14px; }
+.lg-rewards li span { font-size: 13px; color: var(--text-2, #c8c8c8); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .lg-rewards { grid-template-columns: repeat(2, 1fr); } }
+
+/* 앱처럼 쓰기 (InstallGuide.tsx) */
+.install-guide { display: flex; flex-direction: column; gap: 14px; }
+.ig-why ul { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.ig-why li { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2, #c8c8c8); font-size: 14px; }
+.ig-why li svg { color: #2fb36b; }
+.ig-one { width: 100%; max-width: 320px; justify-content: center; margin-top: 4px; }
+.ig-ok { display: flex; align-items: center; gap: 6px; color: #2fb36b; font-weight: 700; margin: 4px 0 0; }
+.ig-steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+.ig-steps li { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface-2, #242424); }
+.ig-art { display: block; width: 100%; max-width: 150px; height: auto; margin: 0 auto; }
+.ig-art.wide { max-width: 240px; }
+.ig-text { display: flex; gap: 8px; align-items: flex-start; }
+.ig-text p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text, #f2f2f2); }
+.ig-text b { color: #b9adff; }
+.ig-n { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #6b58ee; color: #fff; font-size: 12px; font-weight: 800; }
+.ig-note { margin-top: 10px; }
+.ig-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ig-chips .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line, #2e2e2e); background: var(--surface-2, #242424); color: var(--text-2, #c8c8c8); font-size: 13px; font-weight: 700; cursor: pointer; }
+.ig-chips .chip.on { background: #6b58ee; border-color: #6b58ee; color: #fff; }
+.ig-chips .chip em { font-style: normal; font-weight: 500; opacity: 0.85; }
+.ig-pulse { transform-box: fill-box; transform-origin: center; animation: igPulse 1.6s ease-out infinite; }
+@keyframes igPulse { from { transform: scale(0.8); opacity: 0.7; } to { transform: scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ig-pulse { animation: none; } }
+@media (max-width: 520px) { .ig-steps { grid-template-columns: 1fr 1fr; gap: 10px; } .ig-steps li { padding: 10px; } .ig-text p { font-size: 13px; } }
+.ig-hint { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 8px 10px 12px; border-radius: 12px; background: #1f1c33; border: 1px solid rgba(139, 123, 255, 0.35); }
+.ig-hint img { border-radius: 7px; flex: none; }
+.ig-hint-go { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: none; border: 0; padding: 0; color: inherit; text-align: left; cursor: pointer; }
+.ig-hint-go b { font-size: 14px; }
+.ig-hint-go small { font-size: 12px; color: var(--text-3, #9a9a9a); }
+.ig-hint-x { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; background: none; border: 0; color: var(--text-3, #9a9a9a); cursor: pointer; }

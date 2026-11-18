@@ -23,7 +23,10 @@ export const BADGES: Badge[] = [
   { id: 'comeback', emoji: '🔥', name: '대역전극', desc: '중반까지 1위가 아니다가 역전 우승', rarity: 3 },
   { id: 'limit_up', emoji: '🚀', name: '상한가 사냥꾼', desc: '가진 종목이 하루에 +29% 넘게(상한가) 오름', rarity: 3 },
   { id: 'zen', emoji: '🐢', name: '존버의 미학', desc: '거래 5회 이하로 승리 (연습: 플러스 수익)', rarity: 3 },
+  { id: 'league_gold', emoji: '👑', name: '황금개미', desc: '주간 리그 가장 높은 단계(황금개미)에 오름', rarity: 3 },
   { id: 'lv20', emoji: '🌟', name: '개미 전설', desc: '미션으로 레벨 20 달성', rarity: 3 },
+  { id: 'league_win', emoji: '🏅', name: '리그 우승', desc: '주간 리그에서 5명 이상인 조 1위로 한 주를 마침', rarity: 2 },
+  { id: 'league_queen', emoji: '🐜', name: '여왕개미', desc: '주간 리그 여왕개미 단계에 오름', rarity: 2 },
   { id: 'lv15', emoji: '⭐', name: '베테랑 개미', desc: '미션으로 레벨 15 달성', rarity: 2 },
   { id: 'lv10', emoji: '✨', name: '성실한 개미', desc: '미션으로 레벨 10 달성', rarity: 2 },
   { id: 'ret15', emoji: '💹', name: '수익왕', desc: '수익률 +15% 넘게 마감', rarity: 2 },
@@ -72,7 +75,7 @@ export const BADGES: Badge[] = [
 ];
 
 /** 사진만 주는 업적 (칭호로는 못 고름). 그 밖은 모두 칭호를 줌. 사진은 avatars.ts 에 그 업적 사진이 있을 때만 */
-export const AVATAR_ONLY = new Set(['lv5', 'lv10', 'lv15', 'dividend', 'global', 'limit_order']);
+export const AVATAR_ONLY = new Set(['lv5', 'lv10', 'lv15', 'dividend', 'global', 'limit_order', 'league_queen']);
 export const givesTitle = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !AVATAR_ONLY.has(id);
 export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
 
@@ -80,7 +83,7 @@ export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b
 /** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 · 100번 (100번은 사용자 요청 2026-11-18) */
 export const BADGE_TIER_AT = [1, 5, 20, 100] as const;
 /** 한 번만 의미 있는 업적(처음 해 봄·레벨·튜토리얼)은 단계 없음 */
-const NO_TIER = new Set(['first_trade', 'first_card', 'etf_fan', 'lv5', 'lv10', 'lv15', 'lv20', 'tut_first', 'tut_grad']);
+const NO_TIER = new Set(['first_trade', 'first_card', 'etf_fan', 'lv5', 'lv10', 'lv15', 'lv20', 'tut_first', 'tut_grad', 'league_queen', 'league_gold']);
 export const badgeTiered = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !NO_TIER.has(id);
 /** 딴 횟수 → 단계 (0 = 아직 못 땀) */
 export function badgeTier(id: string, count: number): 0 | 1 | 2 | 3 | 4 {

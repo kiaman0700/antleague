@@ -32,6 +32,7 @@ export interface MissionInfo {
   gameCap?: number;
   /** 결과 화면: 이 판에서 받은 판 경험치 */
   thisGame?: { xp: number; detail: string; firstWin: number } | null;
+  league?: { rank: number; size: number; tier: number; name: string } | null;
   /** 남은 바꾸기 횟수 (회원만, 없으면 바꾸기 버튼 없음) */
   rerolls?: { day: number; week: number } | null;
   /** (051) 튜토리얼 완료하기 — 일일·주간과 따로, 계정마다 한 번 */
@@ -240,6 +241,11 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
             {info.thisGame.firstWin > 0 ? ` · 오늘 첫 승 ${info.thisGame.firstWin}` : ''}
             {info.thisGame.xp === 0 && !info.thisGame.firstWin ? ' (오늘 대결 경험치를 다 받았어요)' : ''}
           </small>
+        </p>
+      )}
+      {info.league && (
+        <p className="ms-gain ms-league">
+          <Icon name="trophy" size={14} /> 이번 주 리그({info.league.name}) <b>{info.league.size}명 중 {info.league.rank}위</b>
         </p>
       )}
       <ul className="ms-list">

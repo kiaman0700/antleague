@@ -1,5 +1,5 @@
 /** 랭킹 티어 표시: 금속 테두리 방패 + 가운데 깎은 보석(이 게임만의 그림) + 티어 이름 + 단계 점수. 배치 중이면 '배치 n/2' */
-import { isPlaced, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
+import { CHALLENGER_MIN, isPlaced, MASTER_MIN, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
 import { Icon } from './Icon';
 
 const TIER_LEVEL: Record<string, number> = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4, master: 5 };
@@ -62,14 +62,24 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
   const grow = dv * 0.9;
   const gold = `url(#${id}-au)`;
 
+  // 날개: 티어가 오를수록 깃이 많아지고 길어지며 화려해짐 (사용자 요청) — 실버 2 · 골드 3 · 플래티넘 3+안쪽 깃 · 다이아 4+안쪽 깃+끝 보석 · 마스터 5 · 챌린저 6
   const blades: [string, string][] = [];
-  if (lv === 1) blades.push(blade(6.2, 12, 202, 10 + grow, 2.6), blade(6, 17.5, 192, 7 + grow, 2));
-  if (lv >= 2) {
-    const n = lv >= 6 ? 5 : lv >= 5 ? 4 : 3;
-    const len = lv >= 6 ? 16.5 : lv >= 5 ? 15.5 : lv >= 4 ? 14.5 : lv >= 3 ? 14 : 13;
-    for (let i = 0; i < n; i++) blades.push(blade(6.2, 10 + i * 4.4, 200 + i * 14, len + grow - i * 2.2, 2.9));
+  const inner: [string, string][] = [];
+  const NB = [0, 2, 3, 3, 4, 5, 6][lv] ?? 0;
+  const LEN = [0, 9.5, 13, 14, 15, 16, 17][lv] ?? 0;
+  for (let i = 0; i < NB; i++) {
+    const step = NB > 4 ? 3.6 : 4.4;
+    blades.push(blade(6.2, 10 + i * step, 198 + i * (NB > 4 ? 11 : 14), LEN + grow - i * (NB > 4 ? 1.6 : 2.2), lv >= 4 ? 3.1 : 2.8));
   }
-  const shards = lv === 4 ? [-118, -90, -62].map((a, i) => shard(20, 9, a, (i === 1 ? 12 : 9.5) + grow * 0.5, 2.8)) : [];
+  if (lv >= 3) for (let i = 0; i < NB - 1; i++) inner.push(blade(6.6, 12 + i * (NB > 4 ? 3.6 : 4.4), 204 + i * (NB > 4 ? 11 : 14), (LEN + grow) * 0.62 - i * 1.2, 1.9));
+  // 날개 끝 보석 (다이아몬드부터): 맨 위 깃 끝
+  const tips = lv >= 4 ? blades.slice(0, lv >= 6 ? 3 : lv >= 5 ? 2 : 1).map((_, i) => {
+    const a = ((198 + i * (NB > 4 ? 11 : 14)) * Math.PI) / 180;
+    const L = LEN + grow - i * (NB > 4 ? 1.6 : 2.2);
+    return [6.2 + Math.cos(a) * L, 10 + i * (NB > 4 ? 3.6 : 4.4) + Math.sin(a) * L] as [number, number];
+  }) : [];
+  // 다이아몬드 수정: 플래티넘 첨탑보다 크게, 마스터 왕관보다는 작게
+  const shards = lv === 4 ? [-122, -100, -80, -58].map((a, i) => shard(20, 8.5, a, (i === 1 || i === 2 ? 12.5 : 9.5) + grow * 0.5, 2.6)) : [];
   const bladeEl = (d: string, v: string) => (
     <>
       <path d={d} fill={lv >= 5 ? gold : metal} stroke={lv >= 5 ? (lv === 6 ? '#3b3466' : '#24124f') : deep} strokeWidth="0.6" />
@@ -174,13 +184,26 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
               <g transform="matrix(-1 0 0 1 40 0)">{bladeEl(d, v)}</g>
             </g>
           ))}
+          {/* 안쪽 깃: 밝은 색 한 겹 더 (플래티넘부터) */}
+          {inner.map(([d], i) => (
+            <g key={'i' + i} fill={lv >= 5 ? '#f3ecff' : shine} fillOpacity="0.55" stroke="none">
+              <path d={d} />
+              <path d={d} transform="matrix(-1 0 0 1 40 0)" />
+            </g>
+          ))}
+          {tips.map(([x, y], i) =>
+            [x, 40 - x].map((xx, k) => (
+              <path key={i + '-' + k} d={`M${f2(xx)} ${f2(y - 1.9)} L${f2(xx + 1.4)} ${f2(y)} L${f2(xx)} ${f2(y + 1.9)} L${f2(xx - 1.4)} ${f2(y)} Z`} fill={lv === 6 ? '#d9364b' : gem} stroke={deep} strokeWidth="0.35" />
+            )),
+          )}
         </g>
       )}
       {lv === 3 && (
         <g fill={metal} stroke={deep} strokeWidth="0.6" strokeLinejoin="round">
-          <path d={`M20 ${-4.5 - grow} L23 3.5 L20 6 L17 3.5 Z`} />
-          <path d={`M8.4 9 L${5.5 - grow * 0.4} ${-0.5 - grow * 0.6} L12 6.2 Z`} />
-          <path d={`M31.6 9 L${34.5 + grow * 0.4} ${-0.5 - grow * 0.6} L28 6.2 Z`} />
+          {/* 플래티넘 첨탑: 다이아 수정보다 작게 (사용자 의견) */}
+          <path d={`M20 ${-1.2 - grow * 0.6} L22.2 3.6 L20 5.6 L17.8 3.6 Z`} />
+          <path d={`M8.6 8.6 L${7.2 - grow * 0.3} ${2.6 - grow * 0.4} L11.6 6.4 Z`} />
+          <path d={`M31.4 8.6 L${32.8 + grow * 0.3} ${2.6 - grow * 0.4} L28.4 6.4 Z`} />
         </g>
       )}
       {lv >= 5 && (
@@ -260,16 +283,25 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
           <path d="M2.5 42.6 L-1.5 46 L5 45.4 Z M37.5 42.6 L41.5 46 L35 45.4 Z" fill={lv === 6 ? '#8d84b3' : '#5a3aa8'} stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.5" />
           <path d="M4.5 37 Q20 43.5 35.5 37 L37.5 42.6 Q20 49.6 2.5 42.6 Z" fill={gold} stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.6" />
           <path d="M6 39.4 Q20 45 34 39.4" fill="none" stroke="#f3ecff" strokeOpacity="0.6" strokeWidth="0.5" />
-          {lv === 6 && size >= 40 ? (
-            <text x="20" y="45.2" textAnchor="middle" fontSize="5.6" fontWeight="900" fill="#d9364b">
-              {challenger && challenger > 0 ? `#${challenger}` : '상한가'}
-            </text>
-          ) : (
-            <>
-              <path d="M20 40.2 L22.6 43.2 L20 46.2 L17.4 43.2 Z" fill={lv === 6 ? '#d9364b' : gem} stroke={deep} strokeWidth="0.45" />
-              <path d="M20 40.2 L17.4 43.2 L20 43.2 Z" fill="#ffffff" opacity="0.6" />
-            </>
-          )}
+          {/* 띠 보석: 마스터 4개 · 챌린저 좌우 2개씩 + 가운데 순위 (사용자 제안) */}
+          {(lv === 6 ? [7.6, 12.9, 27.1, 32.4] : [8.8, 16.2, 23.8, 31.2]).map((x, k) => {
+            const y = 43.3 - 2.9 * ((x - 20) / 15) ** 2;
+            const r = 2.3;
+            return (
+              <g key={k}>
+                <path d={`M${x} ${f2(y - r * 1.2)} L${x + r} ${f2(y)} L${x} ${f2(y + r * 1.2)} L${x - r} ${f2(y)} Z`} fill={lv === 6 ? '#d9364b' : `url(#${id}-pg)`} stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.4" />
+                <path d={`M${x} ${f2(y - r * 1.2)} L${x - r} ${f2(y)} L${x - 0.7} ${f2(y)} L${x} ${f2(y - 0.6)} Z`} fill="#ffffff" opacity="0.7" />
+              </g>
+            );
+          })}
+          {lv === 6 &&
+            (size >= 40 ? (
+              <text x="20" y="45.4" textAnchor="middle" fontSize="5.4" fontWeight="900" fill="#d9364b">
+                {challenger && challenger > 0 ? `#${challenger}` : '1'}
+              </text>
+            ) : (
+              <circle cx="20" cy="43.3" r="1.6" fill="#ffffff" stroke="#d9364b" strokeWidth="0.6" />
+            ))}
         </g>
       )}
       {/* 아래 띠 + 단계 보석 (1단계 1개 · 2단계 2개 · 3단계 3개) */}
@@ -299,7 +331,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
 export const CHALLENGER_COLOR = '#ff6b85';
 export function tierText(rating: number, rankedGames: number | null | undefined, chal?: number) {
   if (!isPlaced(rankedGames)) return `언랭크 · 배치 ${rankedGames ?? 0}/${PLACEMENT_GAMES}`;
-  if (chal) return `챌린저 #${chal} · ${Math.max(0, Math.round(rating - 1600))}점`;
+  if (chal) return `챌린저 #${chal} · ${Math.max(0, Math.round(rating - MASTER_MIN))}점`;
   const t = tierOf(rating);
   return `${t.label} · ${t.points}점`;
 }
@@ -335,15 +367,15 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
       <h3>
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
-      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(50점씩, 3이 가장 높아요)가 있어요. 마스터·챌린저는 단계 없이 점수 순위예요. 챌린저는 1,750점 이상이면서 상위 1%(최근 7일 안에 랭킹전을 한 사람) 안에 들어야 해요.</p>
+      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(100점씩, 3이 가장 높아요)가 있어요. 마스터·챌린저는 단계 없이 점수 순위예요. 챌린저는 2,500점 이상이면서 상위 1%(최근 7일 안에 랭킹전을 한 사람) 안에 들어야 해요.</p>
       <ol className="tl-stairs">
         {TIERS.map((t, i) => {
-          const base = t.id === 'bronze' ? 850 : t.min;
+          const base = t.id === 'bronze' ? 700 : t.min;
           const here = my?.id === t.id;
           return (
             <li key={t.id} className={'tl-step' + (here ? ' me' : '')} style={{ ['--tc' as string]: t.color, ['--h' as string]: `${86 + i * 18}px` }}>
               <div className="tl-emb">
-                <TierEmblem rating={t.id === 'master' ? 1600 : base + 100} size={40 + i * 5} />
+                <TierEmblem rating={t.id === 'master' ? MASTER_MIN : base + 200} size={40 + i * 5} />
               </div>
               <div className="tl-block">
                 {here && <span className="tl-me">나</span>}
@@ -373,15 +405,15 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
             </li>
           );
         })}
-        {/* 챌린저: 마스터 중 1750점 이상 · 상위 1%(3~50자리) · 최근 7일 랭킹전 — 자리가 정해져 있음 */}
+        {/* 챌린저: 마스터 중 2500점 이상 · 상위 1%(3~50자리) · 최근 7일 랭킹전 — 자리가 정해져 있음 */}
         <li className={'tl-step tl-chal' + (mine?.chal ? ' me' : '')} style={{ ['--tc' as string]: CHALLENGER_COLOR, ['--h' as string]: `${86 + TIERS.length * 18}px` }}>
           <div className="tl-emb">
-            <TierEmblem rating={1800} size={40 + TIERS.length * 5} challenger={mine?.chal || -1} />
+            <TierEmblem rating={CHALLENGER_MIN} size={40 + TIERS.length * 5} challenger={mine?.chal || -1} />
           </div>
           <div className="tl-block">
             {mine?.chal ? <span className="tl-me">나</span> : null}
             <b>챌린저</b>
-            <small>1,750점 이상</small>
+            <small>2,500점 이상</small>
             <span className="tl-top">상위 1% · 최고 티어</span>
           </div>
         </li>

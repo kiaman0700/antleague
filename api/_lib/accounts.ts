@@ -12,7 +12,7 @@ import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeE
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { badgeTier, givesTitle, parseTiered } from '../../src/game/achievements.js';
-import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
+import { DIAMOND_MIN, ELO_K, ELO_SCALE, isPlaced, MASTER_MIN, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
 import { levelBadges } from '../../src/game/missions.js';
 
@@ -104,6 +104,14 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
   const tdone = (!tut.error && (tut.data as { done?: string[] } | null)?.done) || [];
   if (tdone.includes('game')) for (const id of ['first_trade', 'first_card', 'shield']) out[id] = (out[id] ?? 0) + 1;
   if (['home', 'game', 'result', 'growth'].every((c) => tdone.includes(c))) out.tut_grad = 1;
+  // (055) 주간 리그: 올라가 본 가장 높은 단계 · 조 1위 횟수 (서버가 정산한 값만)
+  const lg = await sb.from('league_tiers').select('best_tier, firsts').eq('user_id', uid).maybeSingle();
+  if (!lg.error && lg.data) {
+    const { best_tier, firsts } = lg.data as { best_tier: number; firsts: number };
+    if (best_tier >= 4) out.league_queen = 1;
+    if (best_tier >= 5) out.league_gold = 1;
+    if (firsts > 0) out.league_win = firsts;
+  }
   const mine = ((await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(300)).data ?? []) as { room_id: string; nickname: string }[];
   if (!mine.length) return out;
   const nick = new Map(mine.map((m) => [m.room_id, m.nickname]));
@@ -226,7 +234,14 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const badges = await earnedBadges(sb, uid);
       const { user_id: _u, ...pub } = p;
       const chal = unlisted ? undefined : (await challengerMap(sb)).get(uid);
-      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}) }, recent, badges };
+      // 랭크 점수 감소(054): 다이아몬드 이상만 — 쉴 수 있는 남은 날과 하루 감소 점수 (내 프로필에만)
+      let decay: { days: number; perDay: number } | undefined;
+      if (placed && p.rating >= DIAMOND_MIN) {
+        const db = await sb.from('profiles').select('decay_bank').eq('user_id', uid).maybeSingle();
+        const bank = !db.error ? (db.data as { decay_bank: number | null } | null)?.decay_bank : undefined;
+        if (bank !== undefined) decay = { days: bank ?? (p.rating >= MASTER_MIN ? 14 : 28), perDay: p.rating >= MASTER_MIN ? 75 : 50 };
+      }
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}), ...(decay ? { decay } : {}) }, recent, badges };
     }
 
     case 'updateProfile': {
@@ -427,10 +442,10 @@ export function eloDeltas(
       const ra = rankOf.get(a.user_id)!;
       const ro = rankOf.get(o.user_id)!;
       const s = ra < ro ? 1 : ra > ro ? 0 : 0.5;
-      const e = 1 / (1 + Math.pow(10, (o.rating - a.rating) / 400));
+      const e = 1 / (1 + Math.pow(10, (o.rating - a.rating) / ELO_SCALE));
       d += w * (s - e);
     }
-    delta.set(a.user_id, Math.round((32 / Math.max(1, members.length - 1)) * d));
+    delta.set(a.user_id, Math.round((ELO_K / Math.max(1, members.length - 1)) * d));
   }
   return delta;
 }

@@ -4,6 +4,7 @@
  * - 판정: 판이 끝날 때(maybeAdvance) 서버가 그 판의 거래·카드·주문·결과로만. 화면이 '했어요'라고 보내는 요청은 없음
  * - (계정, 판) 기록(mission_rooms)으로 같은 판은 한 번만, 하루 경험치 상한
  */
+import { leagueAdd, leagueRank } from './league.js';
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { finalResults, GameError, marketFor, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
@@ -98,7 +99,7 @@ async function gameXpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
   const since = new Date(dayEndsAt - 86_400_000).toISOString();
   const r = await sb.from('xp_log').select('key, xp').eq('user_id', uid).gte('created_at', since);
   if (r.error) return null;
-  return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:') && x.key !== 'tutorial').reduce((s, x) => s + (x.xp ?? 0), 0);
+  return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:') && !x.key.startsWith('league:') && x.key !== 'tutorial').reduce((s, x) => s + (x.xp ?? 0), 0);
 }
 /** 기록 한 줄을 먼저 넣고(이미 있으면 안 줌) 그만큼 경험치를 더함 */
 async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, detail: string) {
@@ -110,6 +111,7 @@ async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, d
   if (xp > 0) {
     const add = await sb.rpc('add_xp', { p_user: uid, p_xp: xp });
     if (add.error) console.error('[api] add_xp', add.error.message);
+    else await leagueAdd(sb, uid, xp);
   }
   return true;
 }
@@ -248,6 +250,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
         if (def.scope === 'day') budget -= xp;
         const add = await sb.rpc('add_xp', { p_user: uid, p_xp: xp });
         if (add.error) console.error('[api] add_xp', add.error.message);
+        else await leagueAdd(sb, uid, xp);
       }
     }
   }
@@ -284,6 +287,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   const gameToday = member ? ((await gameXpToday(sb, uid, ms.dayEndsAt)) ?? 0) : 0;
   // 결과 화면: 이 판에서 받은 판 경험치 (내 것만)
   let thisGame: { xp: number; detail: string; firstWin: number } | null = null;
+  let league: Awaited<ReturnType<typeof leagueRank>> = null;
   if (member && roomId) {
     const g = await sb.from('xp_log').select('xp, detail').eq('user_id', uid).eq('key', 'game:' + roomId).maybeSingle();
     if (!g.error && g.data) {
@@ -291,6 +295,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
       const row = g.data as { xp: number; detail: string | null };
       thisGame = { xp: row.xp, detail: row.detail ?? '', firstWin: !fw.error && fw.data ? (fw.data as { xp: number }).xp : 0 };
     }
+    league = await leagueRank(sb, uid);
   }
   return {
     member,
@@ -303,6 +308,8 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     gameToday,
     gameCap: GAME_XP_CAP,
     thisGame,
+    // 결과 화면: 이번 주 리그 내 순위
+    league,
     // 튜토리얼 완료하기 (한 번) — 회원은 받았는지, 게스트는 끝냈는지
     tutorial: { done: member ? tutGot : tutDone, xp: TUTORIAL_XP },
     // 남은 바꾸기 횟수 (회원·041 적용 뒤에만)

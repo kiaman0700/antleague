@@ -3,6 +3,7 @@
  * 브라우저는 Supabase 테이블에 직접 쓸 수 없고(RLS), 이 함수가 비밀 키로 대신 쓴다.
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
+import { leagueInfo } from './league.js';
 import { streakOf } from '../../src/game/streak.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -1961,7 +1962,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     const b = body as Body;
     const action = typeof b.action === 'string' ? b.action : '';
     // 화면 갱신과 행동(거래·마감 등)은 따로 셈 → 붐비는 방에서도 갱신 때문에 거래가 막히지 않게
-    if (['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'friends', 'resume', 'profile', 'missions'].includes(action)) rateLimit(uid + ':state', 90, 20_000);
+    if (['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'friends', 'resume', 'profile', 'missions', 'league'].includes(action)) rateLimit(uid + ':state', 90, 20_000);
     else rateLimit(uid + ':act', 40, 20_000);
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)
@@ -1979,6 +1980,8 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     // (051) 내 게스트 이어하기 코드 보기·새로 받기 (게스트만)
     if (action === 'guestCode') return { status: 200, body: await guestCode(db(), uid, b.renew === true) };
     // (051) 튜토리얼 진행 기록 — 보기·적기 (보상 없음, 표시·자동 권하기에만 씀)
+    // 주간 개미리그 (읽기만, 화면 갱신 한도)
+    if (action === 'league') return { status: 200, body: await leagueInfo(db(), uid) };
     if (action === 'tutorialState') return { status: 200, body: await tutorialState(uid) };
     if (action === 'tutorialMark') return { status: 200, body: await tutorialMark(uid, b) };
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };

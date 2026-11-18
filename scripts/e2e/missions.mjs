@@ -143,6 +143,17 @@ ok('내 프로필에 경험치', typeof prof?.profile?.xp === 'number' && prof.p
 const st = JSON.stringify((await A({ action: 'state', roomId: g2.roomId })).b);
 ok('게임 화면 데이터에 경험치·미션 없음', !/"xp"|mission/.test(st));
 
+// 6-1) 주간 리그: 게스트는 안내만, 회원(시험 회원은 조에 안 들어감)은 단계·남은 시간, 응답에 계정 id 없음
+const lgAnon = await post({ action: 'league' });
+ok('로그인 없이 리그 못 봄 (401)', lgAnon.s === 401, String(lgAnon.s));
+const lgG = (await G({ action: 'league' })).b;
+ok('게스트 리그: 회원 아님 안내만 (조 없음)', lgG?.ready === true && lgG.member === false && !lgG.group, JSON.stringify(lgG)?.slice(0, 160));
+const lgA = (await A({ action: 'league' })).b;
+ok('회원 리그: 단계·끝나는 시각·이름 6개', lgA?.member === true && Number.isInteger(lgA.tier) && lgA.endsAt > Date.now() && lgA.names?.length === 6, JSON.stringify(lgA)?.slice(0, 200));
+ok('시험 회원은 조에 안 들어감 (경험치를 얻었어도)', Array.isArray(lgA?.group) && lgA.group.length === 0, String(lgA?.group?.length));
+ok('리그 응답에 계정 id·비밀값 없음', !/[0-9a-f]{16,}/.test(JSON.stringify(lgA)) && !/user_id|group_id/.test(JSON.stringify(lgA)));
+ok('결과 화면 리그 줄: 조에 없으면 없음', (await A({ action: 'missions', room: g2.roomId })).b.league === null);
+
 // 7) 미션 바꾸기: 미완료만, 일일 하루 3번 · 주간 한 주 1번, 같은 등급으로
 // (앞에서 봇전을 빠르게 진행해 행동 요청 한도(20초)를 다 썼을 수 있어 잠깐 쉼)
 await new Promise((r) => setTimeout(r, 21_000));

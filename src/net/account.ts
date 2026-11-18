@@ -28,6 +28,8 @@ export interface MyProfile {
   wins: number;
   best_ret: number | null;
   rankPos: number | null;
+  /** 랭크 점수 감소(다이아몬드 이상): 랭킹전을 쉬어도 되는 남은 날 · 다 쓰면 하루에 깎이는 점수 */
+  decay?: { days: number; perDay: number };
 }
 export interface MatchRow {
   room_id: string;

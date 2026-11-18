@@ -17,7 +17,7 @@ import { loadNick } from '../session';
 import type { AccountState } from '../net/account';
 import { Welcome, type WelcomeStep } from './Welcome';
 
-export type NavTab = 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'ranking' | 'records' | 'companies' | 'more';
+export type NavTab = 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'ranking' | 'records' | 'league' | 'companies' | 'more';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string, IconName][] = [

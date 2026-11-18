@@ -66,6 +66,8 @@ export const AVATARS: AvatarDef[] = [
   { id: 'sprout', name: '새싹 개미', look: ant({ hat: 'sprout' }), bg: '#4a9a3a', need: 'lv5' },
   { id: 'star', name: '꽃핀 개미', look: ant({ hat: 'flower', back: 'sparkles' }), bg: '#c9a020', need: 'lv10' },
   { id: 'medal2', name: '베테랑 개미', look: ant({ face: 'cool', hat: 'silverCrown', outfit: 'medal' }), bg: '#5a6f8f', need: 'lv15' },
+  { id: 'queenant', name: '여왕개미', look: ant({ face: 'wink', hat: 'silverCrown', outfit: 'robe', back: 'sparkles' }), bg: '#7a4bc9', need: 'league_queen' },
+  { id: 'goldant', name: '황금개미', look: ant({ face: 'star', hat: 'crown', outfit: 'cape', prop: 'trophy', back: 'coins' }), bg: '#b8860b', need: 'league_gold' },
   { id: 'legend', name: '개미 전설', look: ant({ face: 'star', hat: 'bigCrown', outfit: 'cape', back: 'rays' }), bg: '#8a2f6b', need: 'lv20' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));

@@ -513,6 +513,11 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <TierEmblem rating={p.rating} placed={isPlaced(p.ranked_games)} size={46} challenger={p.chal} />
           <b style={isPlaced(p.ranked_games) ? { color: tierOf(p.rating).color } : undefined}>{isPlaced(p.ranked_games) ? tierOf(p.rating).label : '언랭크'}</b>
           <small>{isPlaced(p.ranked_games) ? `${tierOf(p.rating).points}점${p.rankPos ? ` · ${p.rankPos}위` : ''}` : `배치 ${p.ranked_games ?? 0}/${PLACEMENT_GAMES}판`}</small>
+          {p.decay && (
+            <small className={'me-decay' + (p.decay.days <= 3 ? ' warn' : '')}>
+              {p.decay.days > 0 ? `랭킹전을 ${p.decay.days}일 쉬면 점수가 줄기 시작해요` : `쉬는 동안 매일 ${p.decay.perDay}점씩 줄고 있어요 — 랭킹전 한 판이면 멈춰요`}
+            </small>
+          )}
           <span className="me-rank-go">
             랭킹 보기 <Icon name="right" size={12} />
           </span>

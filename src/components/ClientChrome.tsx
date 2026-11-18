@@ -25,6 +25,7 @@ const MAIN: [NavTab, string][] = [
 ];
 const SUB: [NavTab, string, IconName][] = [
   ['ranking', '랭킹', 'crown'],
+  ['league', '리그', 'trophy'],
   ['records', '업적', 'medal'],
   ['companies', '공부', 'book'],
   ['more', '설정', 'settings'],
@@ -127,7 +128,7 @@ export function TopBar({
         <span className="cl-sep" aria-hidden />
         {/* 보조 메뉴는 한 묶음으로 (대결 메뉴와 구분) */}
         <span className="cl-subs">
-          {SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records')).map(([k, label, icon]) => (
+          {SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records' && k !== 'league')).map(([k, label, icon]) => (
             <button key={k} className={'cl-sub' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)} title={label}>
               <Icon name={icon} size={16} />
               <span>{label}</span>

@@ -169,6 +169,7 @@ const ICONS = {
   copy: Copy,
   edit: Pencil,
   share: Share2,
+  phone: Smartphone,
   door: DoorOpen,
   play: Play,
   ff: FastForward,
@@ -275,6 +276,9 @@ const BADGE_ICONS: Record<string, LucideIcon> = {
   lv10: Star,
   lv15: Medal,
   lv20: Gem,
+  league_gold: Crown,
+  league_queen: Award,
+  league_win: Trophy,
   // 웃픈 업적
   big_loss: Wallet,
   buy_high: Mountain,

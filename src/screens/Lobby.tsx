@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { League } from './League';
+import { InstallGuide, InstallHint } from '../components/InstallGuide';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
@@ -10,7 +12,7 @@ import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPick
 import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
-import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
+import { DIV_POINTS, isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountSection } from '../components/AccountSection';
 import { setFlash } from '../lib/flash';
 import { CoachTour } from '../components/CoachTour';
@@ -80,10 +82,10 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking' | 'notices';
+export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking' | 'notices' | 'league' | 'install';
 const PAGE_TITLE: Partial<Record<LobbyPage, string>> = {
   ranked: '랭킹전', casual: '일반전', custom: '커스텀', friends: '친구', practice: '연습', more: '설정·더보기', rooms: '방 찾기', create: '방 만들기',
-  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '운영자', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹', notices: '공지사항',
+  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '운영자', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹', notices: '공지사항', league: '주간 리그', install: '앱처럼 쓰기',
 };
 
 interface Props {
@@ -737,6 +739,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                   <li>이기면 오르고 지면 내려가요. 높은 티어를 이기면 더 많이, 낮은 티어에게 지면 더 많이 잃어요</li>
                   <li>점수가 비슷한 사람끼리 만나요. 사람이 적으면 2분 뒤부터 더 넓게 찾아요</li>
                   <li>중간에 기권하거나, 끝까지 거래를 한 번도 안 하면 꼴찌로 계산돼요</li>
+                  <li>다이아몬드부터는 쉬면 점수가 줄어요: 랭킹전 한 판마다 쉴 수 있는 날이 다이아 7일(최대 28일)·마스터 1일(최대 14일) 쌓이고, 다 쓰면 매일 다이아 50점·마스터 75점씩 줄어요. 다이아몬드 1 아래로는 안 떨어져요</li>
+                  <li>챌린저는 2500점 넘는 마스터 중 점수 순 상위 1%(최소 3자리, 최근 7일 안에 랭킹전을 한 사람)예요. 7일 쉬면 마스터로 보여요</li>
                 </ul>
               </details>
               <button className="btn sm ghost" onClick={() => go('ranking')}>
@@ -948,6 +952,11 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 </button>
               )}
               {online && (
+                <button className="more-row" onClick={() => go('league')}>
+                  <Icon name="trophy" /> <span className="mr-t"><b>주간 리그</b><small>매주 30명과 경험치로 겨루기</small></span> <Icon name="right" size={14} />
+                </button>
+              )}
+              {online && (
                 <button className="more-row" onClick={() => go('records')}>
                   <Icon name="medal" /> <span className="mr-t"><b>업적</b><small>모은 업적·칭호·프로필 사진</small></span> <Icon name="right" size={14} />
                 </button>
@@ -970,6 +979,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </section>
             <section className="panel pad more-links">
               <h3 className="more-h">문의·안내</h3>
+              <button className="more-row" onClick={() => go('install')}>
+                <Icon name="phone" /> <span className="mr-t"><b>앱처럼 쓰기</b><small>홈 화면에 추가하는 방법 (기기별 그림 안내)</small></span> <Icon name="right" size={14} />
+              </button>
               <button className="more-row" onClick={() => go('notices')}>
                 <Icon name="megaphone" /> <span className="mr-t"><b>공지사항{newNotice && <i className="more-new" aria-label="새 공지" />}</b><small>운영자가 알리는 소식</small></span> <Icon name="right" size={14} />
               </button>
@@ -1665,6 +1677,7 @@ const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
   create: 'custom',
   ranking: 'ranking',
   records: 'records',
+  league: 'league',
   companies: 'companies',
 };
 
@@ -1746,6 +1759,14 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     case 'records':
       body = <Records go={go} />;
       break;
+    case 'league':
+      body = (
+        <div className="lobby page league">
+          <PageHead title="주간 리그" onBack={() => go('home')} top desc="매주 월요일 0시에 30명이 한 조 — 그 주 경험치 순으로 위는 승급, 아래는 강등" />
+          <League go={go} />
+        </div>
+      );
+      break;
     case 'companies':
       body = (
         <Suspense fallback={<Loading />}>
@@ -1777,6 +1798,14 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       break;
     case 'notices':
       body = <NoticesPage onBack={back} />;
+      break;
+    case 'install':
+      body = (
+        <div className="lobby page install">
+          <PageHead title="앱처럼 쓰기" onBack={back} top desc="홈 화면에 추가하면 주소창 없이 앱처럼 열려요" />
+          <InstallGuide />
+        </div>
+      );
       break;
     case 'ranking':
       body = (
@@ -1882,7 +1911,10 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
               <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} onSignup={() => go('signup')} compact />
             </span>
           </div>
-          <div className="lobby-body">{body}</div>
+          <div className="lobby-body">
+            {resolved !== 'install' && resolved !== 'login' && resolved !== 'signup' && <InstallHint onOpen={() => go('install')} />}
+            {body}
+          </div>
           {matching && !onMatchPage && (
             <div className="mm-pill" role="status">
               <span className="mf-spin sm" aria-hidden />
@@ -1959,13 +1991,13 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
 /** 다음 단계까지 막대 (예: 골드 2 32/50) */
 function TierProgress({ rating }: { rating: number }) {
   const t = tierOf(rating);
-  const pct = t.division ? Math.round((t.points / 50) * 100) : 100;
+  const pct = t.division ? Math.round((t.points / DIV_POINTS) * 100) : 100;
   return (
     <div className="rk-prog" aria-label={`${t.label} ${t.points}점`}>
       <div className="rk-prog-bar">
         <i style={{ width: pct + '%', background: t.color }} />
       </div>
-      <small className="muted">{t.division ? `다음 단계까지 ${50 - t.points}점` : `마스터 +${t.points}점`}</small>
+      <small className="muted">{t.division ? `다음 단계까지 ${DIV_POINTS - t.points}점` : `마스터 +${t.points}점`}</small>
     </div>
   );
 }

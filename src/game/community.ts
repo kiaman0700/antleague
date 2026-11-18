@@ -9,7 +9,7 @@
  * 난수는 가격과 다른 전용 흐름(방 비밀값 + ':sns20:' + 날짜) → 일별 가격은 그대로. 진위·들썩임 크기는 서버에만
  */
 import { seeded } from '../lib/rng.js';
-import type { Market, NewsEvent } from './market.js';
+import type { MacroType, Market, NewsEvent } from './market.js';
 import { SECTOR_NEWS_MULT } from './stories.js';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS } from './stocks.js';
 
@@ -48,6 +48,8 @@ export interface Post {
   target: { day: number; at: number };
   likes: number;
   replies: number;
+  /** 이미 나온 소식에 대한 반응 글 */
+  re?: true;
   /** 서버만 */
   real: boolean;
   /** 서버만: 들썩임 크기(로그 수익률, 부호 포함) */
@@ -67,6 +69,8 @@ export interface PublicPost {
   likes: number;
   replies: number;
   verdict?: 'true' | 'false';
+  /** 이미 나온 소식에 대한 반응 글 (단서가 아님 — 공개된 소식 얘기) */
+  re?: true;
 }
 
 /** 하루(0~1)를 장 시간 9:00~15:30 으로 */
@@ -76,6 +80,8 @@ export function clockOf(at: number) {
 }
 /** (v22) 게임 안의 시간: 하루가 몇 초인지(daySec)에 맞춰 장이 열린 뒤 몇 초째인지 — '42초', '2분 31초' (사용자 요청 2026-11-18) */
 export const GAME_TIME_VERSION = 22;
+/** (v25) 모든 공개 소식에 커뮤니티가 반응 (사용자 요청 2026-11-18 '모든 소식에 커뮤니티도 난리나고 서로 영향') */
+export const REACT_VERSION = 25;
 export function gameTime(at: number, daySec: number): string {
   const t = Math.round(Math.max(0, Math.min(1, at)) * daySec);
   if (t <= 0) return '장 시작';
@@ -175,7 +181,7 @@ const cache = new Map<string, Post[]>();
 export function communityPosts(m: Market, day: number, key: string, daySec?: number): Post[] {
   // (v22) 글 속 때를 게임 시간으로 — 하루 길이를 알 때만 (가격·진위·시각은 하루 길이와 상관없음)
   const ds = (m.version ?? 1) >= GAME_TIME_VERSION && daySec && daySec > 0 ? daySec : undefined;
-  const ck = `${key}:${m.totalDays}:${day}:${ds ?? ''}`;
+  const ck = `${key}:${m.version ?? 1}:${m.totalDays}:${day}:${ds ?? ''}`;
   const hit = cache.get(ck);
   if (hit) return hit;
   const rng = seeded(`${key}:sns20:${day}`);
@@ -264,7 +270,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
     });
   }
   // (v21) 속보 직후 반응 글 — 이미 공개된 속보 얘기라 단서가 아님(분위기). 진짜·들썩임 없음. 전용 난수라 v20 글은 그대로
-  if ((m.version ?? 1) >= 21) {
+  if ((m.version ?? 1) >= 21 && (m.version ?? 1) < REACT_VERSION) {
     const r2 = seeded(`${key}:sns21:${day}`);
     for (const n of m.news.filter((x) => x.day === day && x.at != null && !x.rumor && !x.fake && x.symbol)) {
       if (r2() > 0.7) continue;
@@ -274,7 +280,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
       const lines = good
         ? [`방금 속보 봤음? ${name} 바로 튀어 오름 ㄷㄷ`, `${name} 속보 떴다!! 늦은 건가…`, `와 ${name} 실화냐 속보 보자마자 들어갈걸`]
         : [`방금 속보 봤음? ${name} 바로 고꾸라짐 ㅠㅠ`, `${name} 속보 떴다… 물린 사람 손`, `${name} 악재 속보 실화냐 손절각`];
-      out.push({ id: `${day}-r${out.length}`, day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0 });
+      out.push({ id: `${day}-r${out.length}`, day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0, re: true });
     }
   }
   // (v24) 그날 나온 큰 사건 뉴스에 반응하는 글 — 사건의 원인·결과를 짚음(전쟁 → 유가·정유·항공, 테마 과열, 상장 폐지, 유상증자, 공매도 보고서).
@@ -284,7 +290,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
     const nick = () => NICKS[Math.floor(r4() * NICKS.length)];
     const plat = (): Platform => PLATFORM_IDS[Math.floor(r4() * PLATFORM_IDS.length)];
     const add = (afterAt: number, text: string, sector: string, tone: 'good' | 'bad', symbol?: string) =>
-      out.push({ id: `${day}-e${out.length}`, day, at: Math.min(0.97, afterAt + 0.01 + r4() * 0.12), platform: plat(), author: nick(), verified: null, text, symbol, sector, tone, target: { day, at: afterAt }, likes: Math.floor(80 + r4() * 900), replies: Math.floor(10 + r4() * 200), real: true, hype: 0 });
+      out.push({ id: `${day}-e${out.length}`, day, at: Math.min(0.97, afterAt + 0.01 + r4() * 0.12), platform: plat(), author: nick(), verified: null, text, symbol, sector, tone, target: { day, at: afterAt }, likes: Math.floor(80 + r4() * 900), replies: Math.floor(10 + r4() * 200), real: true, hype: 0, re: true });
     for (const n of m.news.filter((x) => x.day === day && !x.rumor)) {
       const at0 = n.at ?? 0.02;
       const h = n.headline;
@@ -318,6 +324,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
       }
     }
   }
+  if ((m.version ?? 1) >= REACT_VERSION) reactAll(m, day, key, out);
   out.sort((a, b) => a.at - b.at);
   if (cache.size > 2000) cache.clear();
   cache.set(ck, out);
@@ -346,9 +353,123 @@ export function publicPosts(posts: Post[], today: number, nowAt: number, pick?: 
   return posts
     .filter((p) => p.day < today || (p.day === today && p.at <= nowAt))
     .map((p) => {
-      const out: PublicPost = { id: p.id, day: p.day, at: p.at, platform: p.platform, author: p.author, verified: p.verified, text: p.text, symbol: p.symbol, sector: p.sector, tone: p.tone, likes: p.likes, replies: p.replies };
+      const out: PublicPost = { id: p.id, day: p.day, at: p.at, platform: p.platform, author: p.author, verified: p.verified, text: p.text, symbol: p.symbol, sector: p.sector, tone: p.tone, likes: p.likes, replies: p.replies, ...(p.re ? { re: true as const } : {}) };
       const revealed = today > Math.max(p.day, p.target.day);
       if (revealed || (pick !== undefined && pick === p.text && p.day === today)) out.verdict = p.real ? 'true' : 'false';
       return out;
     });
+}
+
+/** v24 사건 뉴스는 위에서 사건에 맞는 반응을 따로 붙임 */
+const EVENT_RE = /무력 충돌|긴장 고조|투자경고|일째 급등|무관.*공시|사실무근|감사보고서 제출 지연|횡령|거래정지|정리매매|유상증자|공매도 업체|승인 통과|승인 거절/;
+const fill = (t: string, v: Record<string, string>) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
+/** 거시 소식 반응: 무엇이 무엇에 영향을 주는지 (원인 → 결과) */
+const MACRO_REACT: Record<MacroType, { good: string[]; bad: string[] }> = {
+  rate: {
+    good: ['금리 내려가면 대출 이자 줄고 성장주 숨통 트이겠다', '금리 뉴스 떴다! 이자 부담 줄면 소비도 살아나겠지?', '은행은 좀 아쉽겠지만 나머지는 웃는 날'],
+    bad: ['금리 오르면 은행만 웃고 나머지는 다 울상…', '이자 부담 커지면 소비 줄 텐데 유통·여행주 괜찮을까', '빚내서 산 사람들 오늘 잠 못 잘 듯'],
+  },
+  fed: {
+    good: ['미국 금리 소식 좋다! 밤사이 미국 오르면 우리도 따라가겠지', '연준 발표 나왔다. 달러 약해지면 외국인 돈 들어온다', '미국 쪽 숨통 트이면 반도체부터 간다'],
+    bad: ['미국 금리 소식에 다들 쫄았다… 외국인 빠질 듯', '연준 매파 발언 나오면 성장주부터 맞는다', '미국 기침하면 우리는 감기… 오늘 조심'],
+  },
+  oil: {
+    good: ['기름값 내려간다! 항공·운송주 숨 좀 쉬겠다', '유가 떨어지면 정유주는 아쉽고 항공주는 웃음', '기름값 내리면 물가도 좀 잡히겠네'],
+    bad: ['유가 또 오른다… 정유주는 웃고 항공주는 울고', '기름값 오르면 비행기 연료비 감당 안 됨, 항공주 손', '유가 뛰면 물가 오르고 금리도 못 내림… 연쇄 반응 무섭다'],
+  },
+  fx: {
+    good: ['환율 소식 떴다. 수출 많이 하는 회사들 영향 크겠네', '원화 움직임 좋다는데 외국인 돌아올까', '환율 안정되면 수입하는 회사들 원가 부담 줄어듦'],
+    bad: ['환율 크게 움직인다… 수입 많은 회사 원가 부담 커짐', '원화 약하면 외국인 돈 빠져나간다던데', '환율 뉴스에 여행 가려던 거 접음 ㅠ 항공주도 아프겠다'],
+  },
+  kr: {
+    good: ['오늘 장 분위기 좋다는 뉴스! 다 같이 빨간불 가자', '국내 증시 소식 좋네. 지수 따라가는 ETF도 같이 가겠다', '이런 날은 대형주부터 움직임'],
+    bad: ['국내 증시 분위기 안 좋다는 뉴스… 오늘은 쉬어 갈까', '지수 빠지는 날은 다 같이 빠짐. 버티자', '인버스 들고 있는 사람만 웃는 날'],
+  },
+  us: {
+    good: ['미국 증시 올랐다! 미국 주식 들고 있는 사람 부럽', '밤사이 미국 좋았으니 오늘 우리 장도 기대', '미국 기술주 오르면 우리 반도체도 따라감'],
+    bad: ['밤사이 미국 빠졌네… 오늘 우리 장도 영향 받을 듯', '미국 주식 들고 있는 사람 손… 환율까지 보면 더 아픔', '미국 기술주 빠지면 우리 반도체도 같이 맞는다'],
+  },
+};
+const COMPANY_REACT = {
+  good: ['{n} 뉴스 봤음? 오늘 {n} 토론방 난리남 ㅋㅋ', '{n} 호재 떴다!! 근데 이미 오른 거 아님?', '{n} 들고 있던 사람 축하합니다 🎉', '{n} 이 정도면 {sec} 업종 전체 분위기도 좋아지겠다'],
+  bad: ['{n} 악재… 물린 사람 손 ✋', '{n} 뉴스 보고 바로 던졌다 ㅠㅠ', '{n} 토론방 분위기 초상집…', '{n} 이러면 {sec} 업종 다른 회사들도 같이 눈치 보겠다'],
+};
+const REL_REACT = {
+  link: { good: '{n} 잘되면 거래처 {r}도 같이 웃겠네', bad: '{n} 흔들리면 거래처 {r}도 걱정된다' },
+  peer: { good: '{n} 소식에 같은 업종 {r}도 같이 들썩', bad: '{n} 악재에 같은 업종 {r}까지 같이 빠지는 거 아님?' },
+  rival: { good: '{n} 잘나가면 경쟁사 {r}는 오늘 좀 아프겠다', bad: '{n} 삐끗하면 경쟁사 {r}가 반사이익 보겠네' },
+  chain: { good: '{n} 소식이면 연관된 {r}도 같이 볼 만함', bad: '{n} 소식에 연관된 {r}도 영향 있을 듯' },
+  etf: { good: '{n} 담긴 ETF {r}도 덩달아 오르겠다', bad: '{n} 담긴 ETF {r}도 같이 끌려 내려가겠네' },
+} as const;
+const SECTOR_REACT = {
+  good: ['{s} 업종 다 같이 가는 날인가? 대장주부터 보자', '{s} 뉴스 나왔다 관련주 전부 들썩', '{s} 업종 ETF 하나 사 두면 편하겠다'],
+  bad: ['{s} 업종 분위기 안 좋다… 다 같이 빠질 듯', '{s} 쪽 들고 있는 사람 오늘 힘내라', '{s} 업종 한동안 쉬어 가겠네'],
+};
+const RUMOR_REACT = ['{w} 소문 기사 떴는데 이거 진짜임? 출처가 커뮤니티라던데', '{w} 기사 봤는데 확인된 건 아니래. 믿어도 됨?', '{w} 얘기 돌던 게 기사로 나왔네… 감별기 써 볼까'];
+const DOUBT = ['뉴스 나왔을 땐 이미 늦었다. 다 반영된 가격임', '다들 흥분하지 마요. 내일 되면 반대로 갈 수도', '이런 날 따라 사는 사람이 꼭지 잡더라'];
+
+/**
+ * (v25) 그날 공개된 모든 소식(아침 뉴스·장중 속보·소문 기사)에 커뮤니티 반응 — 원인 → 결과를 짚고, 관련 회사(거래처·경쟁사·ETF)까지 번짐.
+ * 이미 공개된 소식을 두고 하는 말이라 진짜(real)·들썩임 0 — 가격과 무관. 글 수·반응 수는 기사의 진위와 상관없이 공개된 것(머리말·종류·관계)만으로 정함.
+ * 전용 난수 sns25 라 v24 이하 글은 그대로
+ */
+function reactAll(m: Market, day: number, key: string, out: Post[]) {
+  const r = seeded(`${key}:sns25:${day}`);
+  const pick = <T,>(a: readonly T[]) => a[Math.floor(r() * a.length)];
+  const plats: Platform[] = PLATFORM_IDS;
+  const used = new Set<string>();
+  for (const n of m.news.filter((x) => x.day === day && !EVENT_RE.test(x.headline))) {
+    const at0 = n.at ?? 0;
+    const big = n.label === '속보' || n.label === '단독' || n.kind === 'macro' || n.at != null;
+    const count = 1 + (big ? 1 : 0) + (r() < 0.55 ? 1 : 0);
+    const tone = n.tone;
+    const sym = n.symbol ?? undefined;
+    const sec = n.sector ?? (sym ? STOCK_MAP[sym]?.sector : undefined) ?? 'energy';
+    const nm = sym ? STOCK_MAP[sym]?.name ?? '' : '';
+    const secName = SECTOR_MAP[sec]?.name ?? '';
+    const rels = Object.entries(n.rel ?? {}).filter(([s]) => STOCK_MAP[s]);
+    for (let k = 0; k < count; k++) {
+      let text: string;
+      let tTone: 'good' | 'bad' = tone;
+      let tSym = sym;
+      let tSec = sec;
+      const roll = r();
+      if (n.rumor) text = fill(pick(RUMOR_REACT), { w: nm || secName + ' 업종' });
+      else if (k > 0 && roll < 0.2) text = pick(DOUBT);
+      else if (n.kind === 'macro' && n.macro) text = pick(MACRO_REACT[n.macro][tone]);
+      else if (sym && rels.length && k > 0 && roll < 0.75) {
+        const [rs, rel] = rels[Math.floor(r() * rels.length)];
+        text = fill(REL_REACT[rel][tone], { n: nm, r: STOCK_MAP[rs].name });
+        tSym = rs;
+        tSec = STOCK_MAP[rs].sector;
+        if (rel === 'rival') tTone = tone === 'good' ? 'bad' : 'good';
+      } else if (sym) text = fill(pick(COMPANY_REACT[tone]), { n: nm, sec: secName });
+      else text = fill(pick(SECTOR_REACT[tone]), { s: secName });
+      // 같은 날 같은 글은 한 번만 (난수는 그대로 써서 뒤 글이 바뀌지 않게 — 건너뛰기만)
+      const dup = used.has(text);
+      used.add(text);
+      // 아침 뉴스는 장 초반에, 속보는 뜬 바로 뒤에 (뉴스가 먼저 — 앞서 새지 않게)
+      const at = Math.min(0.97, n.at != null ? at0 + 0.004 + r() * 0.07 : 0.01 + r() * 0.18);
+      const hot = big ? 2 : 1;
+      const post: Post = {
+        id: `${day}-n${out.length}`,
+        day,
+        at,
+        platform: pick(plats),
+        author: NICKS[Math.floor(r() * NICKS.length)] + (r() < 0.4 ? String(Math.floor(r() * 90) + 10) : ''),
+        verified: null,
+        text,
+        symbol: tSym,
+        sector: tSec,
+        tone: tTone,
+        target: { day, at: n.at ?? 0 },
+        likes: Math.floor((40 + r() * 500) * hot),
+        replies: Math.floor((5 + r() * 90) * hot),
+        real: true,
+        hype: 0,
+        re: true,
+      };
+      if (!dup) out.push(post);
+    }
+  }
 }
