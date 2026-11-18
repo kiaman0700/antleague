@@ -209,7 +209,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                   <div className="avatar empty">
                     <Icon name="userPlus" size={18} />
                   </div>
-                  <b>빈 자리</b>
+                  <b>{canAddBot && botSlot === i ? '어떤 봇을 넣을까요?' : '빈 자리'}</b>
                   {canAddBot && botSlot === i ? (
                     <div className="slot-bot-pick" role="group" aria-label="봇 난이도">
                       {BOT_LEVELS.map((lv) => (
