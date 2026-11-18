@@ -102,6 +102,29 @@ export function IosStep1() {
     </Frame>
   );
 }
+/** 아이폰 '아래 막대' 모양(설정 → Safari → 탭 '아래'): 주소 줄 + 그 아래 버튼 줄, 공유는 가운데 */
+export function IosClassicStep1() {
+  return (
+    <Frame kind="ios">
+      {page(28, 172)}
+      <rect x="4" y="178" width={W - 8} height="54" rx="14" fill={SURF} />
+      <rect x="10" y="183" width={W - 20} height="16" rx="8" fill={SURF2} />
+      {lines3(18, 191, INK)}
+      <text x="60" y="194" fontSize="6.5" fill={INK} textAnchor="middle">
+        antleague.vercel.app
+      </text>
+      <path d="M104 187 a4 4 0 1 0 2 4" fill="none" stroke={INK} strokeWidth="1.2" />
+      {/* 아래 버튼 줄: ‹ › 공유 책 탭 */}
+      <path d="M20 211 l-4 4 l4 4" stroke={INK} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <path d="M40 211 l4 4 l-4 4" stroke={INK} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      {shareIcon(60, 216, HL)}
+      {ring(60, 214, 9)}
+      <path d="M76 210 q5 -2 5 1 v9 q-5 -3 -5 -1 Z M86 210 q-5 -2 -5 1 v9 q5 -3 5 -1 Z" fill="none" stroke={INK} strokeWidth="1.1" />
+      <rect x="98" y="210" width="9" height="9" rx="2" fill="none" stroke={INK} strokeWidth="1.2" />
+      <rect x="100.5" y="207.5" width="9" height="9" rx="2" fill="none" stroke={INK} strokeWidth="1.2" />
+    </Frame>
+  );
+}
 export function IosStep2() {
   const items = ['북마크 추가', '새로운 탭', '탭 모두 보기'];
   return (

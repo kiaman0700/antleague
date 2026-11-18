@@ -5,7 +5,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { canPromptInstall, detectInstallEnv, kakaoExternalUrl, onInstallChange, promptInstall, type InstallEnv } from '../lib/install';
 import { Icon } from './Icon';
-import { ChromeStep1, ChromeStep2, ChromeStep3, HomeStep, InAppStep1, InAppStep2, IosOtherStep1, IosStep1, IosStep2, IosStep3, IosStep4, IpadStep1, MacStep1, MacStep2, PcMenuStep, PcStep1, PcStep2, SamsungStep1, SamsungStep2, SamsungStep3 } from './InstallArt';
+import { IosClassicStep1, ChromeStep1, ChromeStep2, ChromeStep3, HomeStep, InAppStep1, InAppStep2, IosOtherStep1, IosStep3, IosStep4, IpadStep1, MacStep1, MacStep2, PcMenuStep, PcStep1, PcStep2, SamsungStep1, SamsungStep2, SamsungStep3 } from './InstallArt';
 
 type GuideId = 'ios' | 'ios-other' | 'ipad' | 'android' | 'samsung' | 'inapp' | 'pc' | 'mac-safari' | 'none';
 
@@ -18,13 +18,12 @@ const GUIDES: Record<Exclude<GuideId, 'none'>, { label: string; steps: Step[]; n
   ios: {
     label: '아이폰 (Safari)',
     steps: [
-      { text: <>아래 주소창 오른쪽 <b>•••</b>을 눌러요</>, art: <IosStep1 /> },
-      { text: <><b>공유</b>를 눌러요</>, art: <IosStep2 /> },
-      { text: <>목록을 내려 <b>홈 화면에 추가</b></>, art: <IosStep3 /> },
-      { text: <>오른쪽 위 <b>추가</b> — 끝!</>, art: <IosStep4 /> },
+      { text: <>아래 가운데 <b>공유</b> 버튼 (위 <b>공유 창 열기</b>로도 돼요)</>, art: <IosClassicStep1 /> },
+      { text: <><b>홈 화면에 추가</b> — 안 보이면 아래 <b>더 보기</b></>, art: <IosStep3 /> },
+      { text: <>오른쪽 위 <b>추가</b></>, art: <IosStep4 /> },
       { text: <>홈 화면 <b>개미리그</b> 아이콘으로 열어요</>, art: <HomeStep kind="ios" /> },
     ],
-    note: '주소창이 위나 아래 막대에 붙은 모양이면 가운데 공유 버튼(네모에 위 화살표)을 바로 눌러요.',
+    note: '주소창 하나만 아래에 떠 있는 모양이면 오른쪽 ••• → 공유예요.',
   },
   'ios-other': {
     label: '아이폰 (Chrome 등)',
@@ -95,39 +94,6 @@ export function guideFor(env: InstallEnv): GuideId {
   if (env.browser === 'firefox') return 'none';
   return 'pc';
 }
-/**
- * 브라우저 버튼 자체는 사이트가 깜빡이게 할 수 없어서(브라우저가 막음), 그 버튼이 있는 화면 가장자리를 화살표로 가리킴.
- * 아이폰 iOS 26 기본은 아래 오른쪽 •••, 크롬은 위 오른쪽 ⋮, 삼성 인터넷은 아래 오른쪽 ≡
- */
-const POINT: Partial<Record<GuideId, { at: 'top' | 'bottom'; text: string }>> = {
-  ios: { at: 'bottom', text: '아래 주소창 오른쪽 ••• 을 눌러요' },
-  'ios-other': { at: 'top', text: '위 주소창 오른쪽 공유 버튼을 눌러요' },
-  ipad: { at: 'top', text: '위 오른쪽 공유 버튼을 눌러요' },
-  android: { at: 'top', text: '위 오른쪽 ⋮ 을 눌러요' },
-  samsung: { at: 'bottom', text: '아래 오른쪽 ≡ 을 눌러요' },
-  inapp: { at: 'top', text: '⋮ → 다른 브라우저로 열기' },
-  pc: { at: 'top', text: '주소창 오른쪽 설치 아이콘을 눌러요' },
-};
-function Pointer({ id, onClose }: { id: GuideId; onClose: () => void }) {
-  const p = POINT[id];
-  useEffect(() => {
-    const t = setTimeout(onClose, 9000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  if (!p) return null;
-  return (
-    <div className={'ig-point at-' + p.at} role="status" onClick={onClose}>
-      <div className="ig-point-bubble">
-        {p.text}
-        <small>화면을 누르면 닫혀요</small>
-      </div>
-      <svg className="ig-point-arrow" width="44" height="56" viewBox="0 0 44 56" aria-hidden>
-        <path d="M22 4 V44 M8 32 L22 48 L36 32" fill="none" stroke="#8b7bff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
-  );
-}
-
 const ORDER: Exclude<GuideId, 'none'>[] = ['ios', 'samsung', 'android', 'ipad', 'ios-other', 'pc', 'mac-safari', 'inapp'];
 
 export function InstallGuide() {
@@ -136,8 +102,19 @@ export function InstallGuide() {
   const [sel, setSel] = useState<Exclude<GuideId, 'none'>>(mine === 'none' ? 'pc' : mine);
   const [can, setCan] = useState(canPromptInstall);
   const [done, setDone] = useState(false);
-  const [point, setPoint] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
   useEffect(() => onInstallChange(() => setCan(canPromptInstall())), []);
+  // 공유 창은 아이폰·아이패드(Safari 등)에서만 — 안드로이드·PC 는 설치 창이 있거나 메뉴로
+  const canShare = (env.os === 'ios' || env.os === 'ipados') && typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const openShare = async () => {
+    setShareMsg('');
+    try {
+      await navigator.share({ title: '개미리그', url: location.origin + '/' });
+    } catch (e) {
+      // 닫기(AbortError)는 그대로, 그 밖은 안내
+      if (!(e instanceof DOMException && e.name === 'AbortError')) setShareMsg('공유 창을 열지 못했어요. 아래 그림처럼 사파리의 공유 버튼을 눌러 주세요.');
+    }
+  };
   const g = GUIDES[sel];
   return (
     <div className="install-guide">
@@ -166,12 +143,18 @@ export function InstallGuide() {
             앱으로 설치하기
           </button>
         ) : null}
-        {!env.standalone && !done && !can && POINT[mine] && (
-          <button className="btn primary ig-one ig-glow" onClick={() => setPoint(true)}>
-            <Icon name="target" size={16} /> 누를 곳 가리켜 주기
-          </button>
+        {/* 아이폰·아이패드: 설치 창을 띄울 방법이 없어서, 공유 창을 바로 열어 줌 → '홈 화면에 추가'(안 보이면 '더 보기') */}
+        {!env.standalone && !done && !can && canShare && (
+          <>
+            <button className="btn primary ig-one ig-glow" onClick={openShare}>
+              <Icon name="shareUp" size={16} /> 공유 창 열기
+            </button>
+            <p className="ig-share-tip">
+              열린 창에서 <b>홈 화면에 추가</b>를 눌러요. 안 보이면 목록 아래 <b>더 보기</b>에 있어요.
+            </p>
+          </>
         )}
-        {point && <Pointer id={mine} onClose={() => setPoint(false)} />}
+        {shareMsg && <p className="muted small">{shareMsg}</p>}
         {env.browser === 'kakao' && !env.standalone && (
           <a className="btn ig-one" href={kakaoExternalUrl(location.origin + '/install')}>
             기본 브라우저로 열기
