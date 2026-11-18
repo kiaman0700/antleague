@@ -1312,7 +1312,7 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
   .lobby-shell.client .page-head.top .ph-desc { grid-area: desc; display: block; margin: 4px 0 0; }
   .lobby-shell.client .page-head.top .ph-right { grid-area: right; align-self: center; }
   /* 랭킹·업적·공부 화면도 다른 탭과 같은 왼쪽 시작점·폭 */
-  .lobby-shell.client .lobby.page:has(> .page-head.top) { max-width: 1150px; margin: 0; padding: 40px 40px 0; }
+  .lobby-shell.client .lobby.page:has(> .page-head.top) { max-width: 1040px; width: 100%; margin: 0 auto; padding: 28px 28px 0; box-sizing: border-box; }
 
 }
 /* 로비 창(모달·시트)이 휴대폰 아래 메뉴 밑에 깔리던 것: 창이 든 본문 칸(cl-body, 자체 쌓임 z1)을 창이 열린 동안만 메뉴(40)보다 위로
@@ -1323,3 +1323,7 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .mh-cmp.btnlike > span:not(.muted) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 아이폰 사파리는 16px 보다 작은 입력 칸을 누르면 화면을 확대해 버림 → 휴대폰·태블릿의 종목 검색 칸은 16px */
 html[data-device='phone'] .search input, html[data-device='tablet'] .search input { font-size: 16px; }
+
+/* 위 메뉴 화면(랭킹·업적·공부 등)도 다른 탭(.hub)과 같은 폭·여백 단계: 861~1179px 여백 20 · 1440px 이상 1180px·여백 40 */
+@media (min-width: 861px) and (max-width: 1179px) { .lobby-shell.client .lobby.page:has(> .page-head.top) { padding: 24px 20px 0; } }
+@media (min-width: 1440px) { .lobby-shell.client .lobby.page:has(> .page-head.top) { max-width: 1180px; padding: 40px 40px 0; } }
