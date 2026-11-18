@@ -1464,7 +1464,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 
 /* ---------- (v24 B) 휴대폰 결과: 위 칩 + 좌우로 넘기는 칸 ---------- */
 .result.slides { padding-bottom: 0; }
-.rs-chips { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 6px; padding: 10px 2px; margin: 0 -2px 6px; background: var(--bg, #111); overflow-x: auto; scrollbar-width: none; }
+.rs-chips { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; align-items: center; gap: 6px; padding: 10px 2px; margin: 0 -2px 6px; background: var(--bg, #111); overflow-x: auto; scrollbar-width: none; }
 .rs-chips::-webkit-scrollbar { display: none; }
 .rs-chip { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line-2, #2e2e2e); background: var(--surface, #1c1c1c); color: var(--text-2, #c8c8c8); font-weight: 700; font-size: 14px; }
 .rs-chip.on { background: #6b58ee; border-color: #6b58ee; color: #fff; }
@@ -1576,3 +1576,13 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .ig-hint-go b { font-size: 14px; }
 .ig-hint-go small { font-size: 12px; color: var(--text-3, #9a9a9a); }
 .ig-hint-x { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; background: none; border: 0; color: var(--text-3, #9a9a9a); cursor: pointer; }
+
+/* viewport-fit=cover(홈 화면 앱) — 가로로 눕힌 아이폰에서 노치·둥근 모서리 쪽 내용이 가리지 않게 (세로·PC 는 0) */
+body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.m-top, .m-tradebar { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.m-game .bottom-nav { padding-left: max(2px, env(safe-area-inset-left, 0px)); padding-right: max(2px, env(safe-area-inset-right, 0px)); }
+.lobby-shell .lobby-bottom { padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
+.lg-note { background: #1c2a22; border-color: rgba(47, 179, 107, 0.4); }
+.lg-note.lg-down { background: #2a1c20; border-color: rgba(224, 86, 107, 0.4); }
+.lg-note > svg { color: #f5b83d; flex: none; }
+.lg-note .lg-reward { margin-left: 4px; }

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { League } from './League';
+import { League, LeagueResultNote } from './League';
 import { InstallGuide, InstallHint } from '../components/InstallGuide';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
@@ -1913,6 +1913,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
           </div>
           <div className="lobby-body">
             {resolved !== 'install' && resolved !== 'login' && resolved !== 'signup' && <InstallHint onOpen={() => go('install')} />}
+            {resolved !== 'league' && <LeagueResultNote member={account.status === 'member'} onOpen={() => go('league')} />}
             {body}
           </div>
           {matching && !onMatchPage && (
