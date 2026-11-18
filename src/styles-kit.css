@@ -1756,3 +1756,6 @@ p { text-wrap: pretty; }
 /* PC 일정 띠: 칸이 좁아져도 날짜 숫자(10~20)가 세로로 쪼개지지 않게 (1366px 노트북에서 '1/0' 으로 보였음) */
 .desk .tl-cell { min-width: 20px; }
 .desk .tl-cell small { white-space: nowrap; letter-spacing: -0.03em; }
+/* 대결 찾기 옆: 찾는 사람이 없을 때 봇전 바로가기 (텍스트 버튼) */
+.st-status .st-bots { padding: 0; border: 0; background: none; color: #b9adff; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.st-status .st-bots:hover { color: #d4ccff; }

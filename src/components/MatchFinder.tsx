@@ -300,7 +300,17 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
                     <i className={'st-dot' + (nWait > 0 ? ' live' : '')} aria-hidden />
                     {nWait > 0 ? `지금 ${nWait}명이 찾는 중` : '지금 찾는 사람이 없어요'}
                   </span>
-                  <small>예상 대기 {waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}</small>
+                  <small>
+                    예상 대기 {waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}
+                    {nWait === 0 && onBots && !party && (
+                      <>
+                        {' · '}
+                        <button type="button" className="st-bots" onClick={onBots}>
+                          봇전은 바로 시작
+                        </button>
+                      </>
+                    )}
+                  </small>
                 </div>
               )}
             </>
