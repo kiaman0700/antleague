@@ -1360,3 +1360,12 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .result .banner p { word-break: keep-all; text-wrap: balance; }
 /* 화면 편집의 '알림 자리' 견본도 실제 알림과 같은 자리 (사기/팔기 막대 위) */
 .game.desk:has(.trade-jump.show) > .toast.alert-sample.at-bottom:not(.free) { bottom: 112px; }
+
+/* 처음 온 사람 안내 (design/onboarding.md) */
+.guest-start .gs-alt, .acc-switch { display: block; margin: 12px auto 0; text-align: center; color: var(--text-2, #c8c8c8); text-decoration: underline; text-underline-offset: 3px; }
+.gc-box { display: grid; gap: 6px; margin-top: 14px; padding: 12px; border: 1px solid var(--line, #2e2e2e); border-radius: 10px; background: var(--surface-2, #242424); }
+.gc-box-t { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.gc-box-code { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gc-box-code code { font-size: 18px; font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; padding: 4px 10px; border-radius: 8px; background: var(--bg-2, #161616); user-select: all; }
+.gc-box-warn { color: var(--gold, #f5b83d); font-size: 12px; line-height: 1.5; }
+.danger-text { color: var(--danger-text, #ff9aa5) !important; }

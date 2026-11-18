@@ -354,6 +354,17 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
             {busy ? '바꾸는 중…' : '새 비밀번호로 바꾸기'}
           </button>
         )}
+        {/* 탭을 못 본 사람도 바로 옮겨 가게 (design/onboarding.md) */}
+        {tab === 'login' && (
+          <button type="button" className="linkish-soft acc-switch" onClick={() => (setTab('signup'), setErr(''))}>
+            아직 회원이 아니에요? 회원가입
+          </button>
+        )}
+        {tab === 'signup' && (
+          <button type="button" className="linkish-soft acc-switch" onClick={() => (setTab('login'), setErr(''))}>
+            이미 회원이세요? 로그인
+          </button>
+        )}
       </section>
       {legal && <LegalSheet kind={legal} onClose={() => setLegal(null)} />}
     </div>

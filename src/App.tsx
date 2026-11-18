@@ -58,6 +58,13 @@ export default function App() {
   }, []);
   // 매칭이 잡히면 어느 화면(로비·튜토리얼·화면 편집·연습)에 있든 바로 그 게임으로
   const match = useMatch();
+  // (051) 다른 곳에서 이 계정으로 접속해 이 기기가 로그아웃되면 어느 화면이든 로비로 (안내는 로비가 띄움)
+  useEffect(() => {
+    const on = () => navigate({ kind: 'lobby' }, { replace: true });
+    window.addEventListener('session-replaced', on);
+    return () => window.removeEventListener('session-replaced', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!match.matched) return;
     const m = consumeMatched();

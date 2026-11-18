@@ -11,6 +11,8 @@ import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, u
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
+import { AccountSection } from '../components/AccountSection';
+import { markWelcomeSeen, welcomeSeen } from '../session';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, useNickCheck, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 // 가끔 여는 화면(공부·운영자·계정)은 열 때 받음 — 첫 화면을 가볍게
@@ -536,8 +538,20 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);
   const member = account.status === 'member' && !!account.profile;
 
+  // 처음 온 사람: 계정 상태를 알고 나서 한 번 — 초대 링크면 코드 입장(고르기 전이면 환영 창 먼저), 아니면 환영 창 (이 기기에서 한 번)
+  const firstCheck = useRef(false);
   useEffect(() => {
-    if (invite.length === 6) gate.guard(() => setModal('code'));
+    if (account.status === 'loading' || firstCheck.current) return;
+    firstCheck.current = true;
+    if (invite.length === 6) return gate.guard(() => setModal('code'));
+    if (online && account.status === 'visitor' && !welcomeSeen()) {
+      markWelcomeSeen();
+      gate.open('intro');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account.status]);
+
+  useEffect(() => {
     if (!online) return;
     const loadRooms = () =>
       api<RoomInfo[]>('rooms')
@@ -591,14 +605,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       ui={profile.ui}
       onNeedNick={() => gate.guard(() => {})}
       onLogin={() => go('login')}
-      onBots={() => setModal('bots')}
+      onBots={() => gate.guard(() => setModal('bots'))}
       party={party ? { isLeader: party.isLeader, searching: party.searching, size: party.members.length, queue: party.queue, waiting: party.members.some((m) => !m.me && m.back === false) } : null}
     />
   );
 
   const quickRow = (
     <section className="st-quick" aria-label="기다리지 않고 하기">
-      <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
+      <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
         <i className="q-bot"><Icon name="bot" size={22} /></i>
         <span>
           <b>봇전</b>
@@ -612,7 +626,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
         </span>
       </button>
-      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
         <i className="q-tut"><Icon name="play" size={22} /></i>
         <span>
           <b>튜토리얼</b>
@@ -639,7 +653,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <b>처음이세요? 3분 튜토리얼부터 해 보세요</b>
             <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 진짜 대결이 훨씬 쉬워져요.</p>
           </div>
-          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
             튜토리얼 하기
           </button>
           <button
@@ -831,17 +845,17 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <small>{!member ? '회원만 · 모두 같은 시장, 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
-          <button className="tile" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
+          <button className="tile" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
             <i><Icon name="bot" size={24} /></i>
             <b>봇전</b>
             <small>기다림 없이 봇과 한 판</small>
           </button>
-          <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && setModal('practice')}>
+          <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && gate.guard(() => setModal('practice'))}>
             <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
             <small>원하는 속도로 혼자 한 판</small>
           </button>
-          <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+          <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
             <i><Icon name="play" size={24} /></i>
             <b>튜토리얼</b>
             <small>연습봇과 한 단계씩</small>
@@ -863,7 +877,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <div className="more-page">
           <section className="panel pad">
             <h3>내 계정</h3>
-            {member ? (
+            <AccountSection
+              account={account}
+              online={online}
+              member={member}
+              go={go}
+              openWelcome={(step) => gate.open(step)}
+              nickField={<GuestNickField nick={profile.nick} setNick={profile.setNick} />}
+              memberRow={
               <button className="more-row more-me" onClick={() => go('me')}>
                 <Avatar id={account.profile?.avatar} name={account.profile?.nickname ?? ''} size={44} />
                 <span className="mr-t">
@@ -872,28 +893,13 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 </span>
                 <Icon name="right" size={14} />
               </button>
-            ) : account.status === 'loading' ? (
-              <Loading inline label="내 계정을 확인하는 중…" />
-            ) : (
-              <>
-                <GuestNickField nick={profile.nick} setNick={profile.setNick} />
-                {online && (
-                  <div className="rg-actions">
-                    <button className="btn sm primary" onClick={() => go('signup')}>
-                      <Icon name="userPlus" /> 회원가입
-                    </button>
-                    <button className="btn sm" onClick={() => go('login')}>
-                      로그인
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+              }
+            />
           </section>
           <section className="panel pad">
             <h3>화면 모드</h3>
             <p className="muted small more-sub">게임 중에도 바꿀 수 있어요</p>
-            <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => go('customize')} />
+            <ModePicker value={profile.ui} onChange={profile.setUi} onEdit={() => gate.guard(() => go('customize'))} />
           </section>
           <SoundSetting />
           <div className="more-menus">
@@ -919,7 +925,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </section>
             <section className="panel pad more-links">
               <h3 className="more-h">처음이라면</h3>
-              <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
+              <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
                 <Icon name="play" /> <span className="mr-t"><b>튜토리얼</b><small>연습봇과 한 판 따라 하기</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('howto')}>
@@ -1264,6 +1270,11 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 /** 게임 화면에서 넘어온 짧은 확인 한 줄 (예: 기권한 뒤 '기권했어요') — 한 번만 보여 줌 */
 function FlashNote() {
   const [text, setText] = useState(() => peekFlash());
+  useEffect(() => {
+    const on = () => setText(peekFlash());
+    window.addEventListener('flash', on);
+    return () => window.removeEventListener('flash', on);
+  }, []);
   useEffect(() => {
     if (!text) return;
     const t = setTimeout(() => setText(peekFlash()), flashLeft() + 50);

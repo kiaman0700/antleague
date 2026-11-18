@@ -151,6 +151,7 @@ import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
 import { evaluateMissions, missionState, rerollMission } from './missions.js';
 import { adminNotice, listNotices } from './notices.js';
 import { adminOverview } from './adminStats.js';
+import { guestCode, guestResume } from './guestCodes.js';
 import { recordGameStats } from './stats.js';
 import { EMOJIS, PHRASES } from '../../src/game/reactions.js';
 
@@ -1815,12 +1816,45 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
 
 /** 시험 계정으로 적어 둔 계정 (서버 메모리 — 같은 계정은 한 번만 DB 에 씀) */
 const testMarked = new Set<string>();
+/** 토큰 속 세션 id (서명은 getUser 가 이미 확인함) */
+function sessionIdOf(token: string): string | null {
+  try {
+    const p = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')) as { session_id?: unknown };
+    return typeof p.session_id === 'string' && /^[0-9a-f-]{36}$/i.test(p.session_id) ? p.session_id : null;
+  } catch {
+    return null;
+  }
+}
+/** 확인한 '지금 세션'은 10초 동안 기억 (요청마다 DB 를 부르지 않게) — 다른 곳에서 로그인하면 늦어도 10초 뒤 끊김 */
+const sessionCache = new Map<string, number>();
+async function sessionOk(uid: string, token: string): Promise<boolean> {
+  const sid = sessionIdOf(token);
+  if (!sid) return true; // 세션 id 가 없는 토큰(예전 형식) — 막지 않음
+  const key = uid + ':' + sid;
+  const now = Date.now();
+  if ((sessionCache.get(key) ?? 0) > now) return true;
+  const r = await db().rpc('session_check', { p_user: uid, p_sid: sid });
+  // 051 적용 전이거나 DB 가 잠깐 막히면 막지 않음 (멀쩡한 사람을 로그아웃시키지 않게)
+  if (r.error) return true;
+  if (r.data === true) {
+    if (sessionCache.size > 5000) sessionCache.clear();
+    sessionCache.set(key, now + 10_000);
+    return true;
+  }
+  return false;
+}
+
 export async function handle(body: unknown, token: string | null, ip = 'unknown', testRun = false): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'loginEmail') {
       rateLimit('loginEmail:' + ip, 30, 600_000);
       return { status: 200, body: await loginEmail(db(), body as Body) };
+    }
+    // (051) 게스트 이어하기 코드로 불러오기 — 로그인 없이 (새 기기). 실패는 늘 같은 문구, IP 당 시도 제한
+    if (body && typeof body === 'object' && (body as Body).action === 'guestResume') {
+      rateLimit('guestResume:' + ip, 30, 600_000);
+      return { status: 200, body: await guestResume(db(), ip, (body as Body).code) };
     }
     if (body && typeof body === 'object' && (body as Body).action === 'resetPassword') {
       rateLimit('reset:' + ip, 8, 600_000);
@@ -1851,9 +1885,13 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
         console.error('[api] auth check failed', st, error.message);
         return { status: 503, body: { error: '잠시 연결이 불안정해요. 다시 시도해 주세요.' } };
       }
+      // (051) 세션이 끊겼음 = 다른 곳에서 더 나중에 로그인했거나 로그아웃·비밀번호 변경 → 화면은 새 손님을 만들지 않고 안내
+      if ((error as { code?: string } | null)?.code === 'session_not_found' || /session missing/i.test(error?.message ?? '')) return { status: 401, body: { error: '다른 곳에서 접속했거나 로그아웃돼서 이 기기는 로그아웃됐어요.', code: 'replaced' } };
       return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
     }
     const uid = data.user.id;
+    // (051) 동시 접속 막기: 이 계정의 '지금 세션'이 아니면(다른 곳에서 더 나중에 로그인) 거절 — 화면은 새 손님을 만들지 않고 안내
+    if (!(await sessionOk(uid, token))) return { status: 401, body: { error: '다른 곳에서 접속해서 이 기기는 로그아웃됐어요.', code: 'replaced' } };
     // 자동 시험 도구가 보낸 요청이면 이 계정을 시험 계정으로 적어 둠 (밸런스용 판 기록에서 뺌, 046)
     if (testRun && !testMarked.has(uid)) {
       testMarked.add(uid);
@@ -1869,6 +1907,8 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)
     touchSeen(db(), uid).catch(() => {});
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
+    // (051) 내 게스트 이어하기 코드 보기·새로 받기 (게스트만)
+    if (action === 'guestCode') return { status: 200, body: await guestCode(db(), uid, b.renew === true) };
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };
     if (INVITE_ACTIONS.includes(action)) return { status: 200, body: await inviteAct(action, b, uid) };
     if (PARTY_ACTIONS.includes(action)) return { status: 200, body: await partyAct(action, b, uid) };

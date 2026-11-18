@@ -8,6 +8,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** 서버가 붙여 보낸 구분 값 (예: 'replaced' = 다른 곳에서 접속해 이 기기는 로그아웃) */
+    public code?: string,
   ) {
     super(message);
   }
@@ -53,6 +55,16 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
     }
     // 서버가 이 로그인을 모른다고 함(계정이 지워졌거나 서버를 옮김) → 이 기기의 로그인을 지우고
     //   손님이면 새 손님으로 한 번만 다시 시도. 회원이면 다시 로그인하라고 안내
+    // (051) 다른 곳에서 더 나중에 로그인함 → 이 기기는 로그아웃하고 둘러보기로 (새 손님을 만들지 않음)
+    if (e instanceof ApiError && e.status === 401 && e.code === 'replaced' && supabase) {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      try {
+        window.dispatchEvent(new CustomEvent('session-replaced'));
+      } catch {
+        /* 무시 */
+      }
+      throw e;
+    }
     if (!retried && e instanceof ApiError && e.status === 401 && supabase) {
       const anon = (await supabase.auth.getSession()).data.session?.user?.is_anonymous ?? true;
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
@@ -87,7 +99,7 @@ async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAu
   } catch {
     /* 빈 응답 */
   }
-  if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status);
+  if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status, (body as { code?: string } | null)?.code);
   return body as T;
 }
 

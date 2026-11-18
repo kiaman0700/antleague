@@ -97,5 +97,8 @@ export const loadWatch = () => json<string[]>(WATCH, []);
 export const saveWatch = (w: string[]) => set(WATCH, JSON.stringify(w));
 export const loadMute = () => get(MUTE) === '1';
 export const saveMute = (m: boolean) => set(MUTE, m ? '1' : '0');
+/** 처음 온 사람 환영 창을 이 기기에서 본 적 있는지 (design/onboarding.md) */
+export const welcomeSeen = () => get('stockduel.welcomed') === '1';
+export const markWelcomeSeen = () => set('stockduel.welcomed', '1');
 export const tutorialSeen = () => get(TUTORIAL) === '1';
 export const markTutorialSeen = () => set(TUTORIAL, '1');

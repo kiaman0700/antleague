@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { saveNick } from '../session';
 import { api } from './api';
 import { resetMatch } from './matchStore';
+import { setFlash } from '../lib/flash';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 
@@ -49,7 +50,8 @@ export function matchKindName(kind: string | null | undefined, ranked: boolean |
   return players === 2 ? '1대1' : players + '명 대결';
 }
 export interface AccountState {
-  status: 'loading' | 'guest' | 'member';
+  /** visitor = 아직 게스트·로그인·회원가입을 고르지 않음(세션 없음) — 둘러보기만 (design/onboarding.md) */
+  status: 'loading' | 'visitor' | 'guest' | 'member';
   profile: MyProfile | null;
   recent: MatchRow[];
   badges: Record<string, number>;
@@ -70,16 +72,42 @@ export function refreshAccount(): Promise<void> {
     return Promise.resolve();
   }
   if (inflight) return inflight;
-  inflight = api<{ profile: MyProfile | null; recent?: MatchRow[]; badges?: Record<string, number> }>('profile')
+  inflight = supabase.auth
+    .getSession()
+    .then((r) => !!r.data.session)
+    .catch(() => true)
+    .then((has) => {
+      if (!has) {
+        set({ status: 'visitor', profile: null, recent: [], badges: {} });
+        return;
+      }
+      return loadProfile();
+    })
+    .finally(() => (inflight = null));
+  return inflight;
+}
+
+function loadProfile(): Promise<void> {
+  return api<{ profile: MyProfile | null; recent?: MatchRow[]; badges?: Record<string, number> }>('profile')
     .then((r) => {
       set({ status: r.profile ? 'member' : 'guest', profile: r.profile, recent: r.recent ?? [], badges: r.badges ?? {} });
       // 회원이면 게임에서 쓰는 닉네임도 프로필 닉네임으로
       if (r.profile) saveNick(r.profile.nickname);
     })
-    .catch(() => set({ ...state, status: state.status === 'loading' ? 'guest' : state.status }))
-    .finally(() => (inflight = null));
-  return inflight;
+    .catch(() => set({ ...state, status: state.status === 'loading' ? 'guest' : state.status }));
 }
+
+/** 로그인·로그아웃·다른 곳 접속으로 세션이 바뀌면 계정 상태를 다시 */
+if (supabase) {
+  supabase.auth.onAuthStateChange((ev) => {
+    if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') setTimeout(() => void refreshAccount(), 0);
+  });
+}
+if (typeof window !== 'undefined')
+  window.addEventListener('session-replaced', () => {
+    setFlash('다른 곳에서 이 계정으로 접속해서 이 기기는 로그아웃됐어요.');
+    void refreshAccount();
+  });
 
 export function useAccount(): AccountState {
   const s = useSyncExternalStore(
@@ -152,5 +180,31 @@ export async function logout() {
   await supabase?.auth.signOut();
   // 회원 닉네임이 게스트 닉네임으로 남지 않게 (손님은 회원 닉네임을 못 써서 막힘) → 다음에 온라인 기능을 누르면 손님 닉네임을 새로 정함
   saveNick('');
-  set({ status: 'guest', profile: null, recent: [], badges: {} });
+  set({ status: 'visitor', profile: null, recent: [], badges: {} });
+}
+
+/** 게스트로 시작: 이 브라우저에 게스트 계정(세션)을 만듦 → 둘러보기에서 벗어남 */
+export async function startGuest() {
+  const { accessToken } = await import('../lib/supabase');
+  await accessToken();
+  await refreshAccount();
+}
+
+/** (051) 게스트 이어하기 코드로 그 게스트 불러오기 — 지금 이 브라우저의 로그인은 바뀜(예전 기기는 끊김) */
+export async function resumeGuestWithCode(code: string) {
+  if (!supabase) throw new Error('온라인 설정이 없어요.');
+  let r: Response;
+  try {
+    r = await fetch('/api/game', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'guestResume', code }) });
+  } catch {
+    throw new Error('인터넷 연결을 확인해 주세요.');
+  }
+  const b = (await r.json().catch(() => null)) as { email?: string; password?: string; error?: string } | null;
+  if (!r.ok || !b?.email || !b.password) throw new Error(b?.error ?? '코드가 맞지 않아요. 다시 확인해 주세요.');
+  await resetMatch();
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  const { error } = await supabase.auth.signInWithPassword({ email: b.email, password: b.password });
+  if (error) throw new Error('불러오지 못했어요. 잠시 뒤에 다시 해 주세요.');
+  saveNick('');
+  await refreshAccount();
 }

@@ -6,7 +6,6 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
-import { useDialogFocus, useEscape } from './ui';
 import { TierBadge, tierText } from './TierBadge';
 import { HoverPop } from './HoverPop';
 import { LevelMeter } from './Missions';
@@ -14,8 +13,9 @@ import { BADGE_MAP, titleOf } from '../game/achievements';
 import type { MyProfile } from '../net/account';
 import { Avatar } from './Avatar';
 import { api } from '../net/api';
-import { loadNick, saveNick } from '../session';
+import { loadNick } from '../session';
 import type { AccountState } from '../net/account';
+import { Welcome, type WelcomeStep } from './Welcome';
 
 export type NavTab = 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'ranking' | 'records' | 'companies' | 'more';
 
@@ -150,7 +150,7 @@ export function AccountChip({ account, online, onProfile, onLogin, onSignup, com
       </HoverPop>
     );
   }
-  if (account.status === 'guest')
+  if (account.status === 'guest' || account.status === 'visitor')
     return (
       <button className={'btn sm primary ln-login' + (compact ? ' compact' : '')} onClick={onLogin}>
         <Icon name="userPlus" size={14} /> 로그인
@@ -227,28 +227,37 @@ export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'acti
 const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10;
 
 /**
- * 온라인 기능 앞에 끼우는 확인. 회원이거나 이미 게스트 닉네임이 있으면 바로 실행,
- * 아니면 안내 창 → (게스트로 시작) 닉네임 → 실행
+ * '하는' 버튼 앞에 끼우는 확인 (design/onboarding.md).
+ * - 둘러보기 중(세션 없음) → 환영 창(게스트로 시작 / 로그인 / 회원가입) → 고르면 실행
+ * - 게스트인데 닉네임이 없음 → 닉네임 → 실행
+ * - 회원·닉네임 있는 게스트·인터넷 설정 없음 → 바로 실행
+ * open(step) 으로 직접 띄울 수도 있음 (처음 온 사람·설정의 '시작하기')
  */
 export function useGuestGate(account: AccountState, online: boolean, onSignup: () => void, onLogin: () => void) {
-  const [pending, setPending] = useState<null | (() => void)>(null);
+  const [pending, setPending] = useState<null | { fn: () => void; step: WelcomeStep }>(null);
+  const visitor = online && (account.status === 'visitor' || account.status === 'loading');
   const guard = (fn: () => void) => {
-    if (!online || account.status === 'member' || nickValid(loadNick())) return fn();
-    setPending(() => fn);
+    if (!online || account.status === 'member') return fn();
+    if (account.status === 'guest' && nickValid(loadNick())) return fn();
+    setPending({ fn, step: account.status === 'guest' ? 'nick' : 'intro' });
   };
+  const open = (step: WelcomeStep = 'intro', fn: () => void = () => {}) => setPending({ fn, step });
   const el = pending ? (
-    <GuestStart
+    <Welcome
+      key={pending.step}
+      initial={pending.step}
+      visitor={visitor}
       onClose={() => setPending(null)}
       onSignup={() => (setPending(null), onSignup())}
       onLogin={() => (setPending(null), onLogin())}
       onStart={() => {
-        const fn = pending;
+        const fn = pending.fn;
         setPending(null);
         fn();
       }}
     />
   ) : null;
-  return { guard, el };
+  return { guard, open, el, visitor };
 }
 
 export type NickCheck = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid';
@@ -269,105 +278,4 @@ export function useNickCheck(nick: string, on: boolean): NickCheck {
     return () => clearTimeout(t);
   }, [nick, on]);
   return check;
-}
-
-function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => void; onSignup: () => void; onLogin: () => void; onStart: () => void }) {
-  const [step, setStep] = useState<'intro' | 'nick'>('intro');
-  const [nick, setNick] = useState(loadNick());
-  const check = useNickCheck(nick, step === 'nick');
-  useEscape(onClose);
-  const ready = nickValid(nick) && (check === 'ok' || check === 'checking');
-  const go = () => {
-    if (!nickValid(nick) || check === 'taken' || check === 'invalid') return;
-    saveNick(nick.trim());
-    onStart();
-  };
-  const boxRef = useDialogFocus<HTMLDivElement>();
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div ref={boxRef} tabIndex={-1} className="modal guest-start has-x" role="dialog" aria-modal aria-label="게스트로 시작하기" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="icon-btn sm modal-x" aria-label="닫기" onClick={onClose}>
-          <Icon name="x" size={16} />
-        </button>
-        {step === 'intro' ? (
-          <>
-            <h3>
-              <Icon name="userPlus" size={18} /> 어떻게 시작할까요?
-            </h3>
-            <p className="muted small">회원가입은 무료예요. 아이디·비밀번호·닉네임만 받고 이메일·전화번호는 받지 않아요.</p>
-            <table className="gs-compare">
-              <thead>
-                <tr>
-                  <th />
-                  <th>게스트</th>
-                  <th className="gs-member">회원</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>일반전 · 커스텀 방</td>
-                  <td className="y">가능</td>
-                  <td className="y">가능</td>
-                </tr>
-                <tr>
-                  <td>랭킹전 · 랭킹 등록</td>
-                  <td className="n">안 돼요</td>
-                  <td className="y">가능</td>
-                </tr>
-                <tr>
-                  <td>기록 보관</td>
-                  <td className="n">이 기기에만 (브라우저 기록을 지우면 사라져요)</td>
-                  <td className="y">어느 기기든 로그인하면 그대로</td>
-                </tr>
-                <tr>
-                  <td>닉네임</td>
-                  <td className="n">다른 게스트와 겹칠 수 있어요</td>
-                  <td className="y">나만 쓰는 닉네임 · 회원 표시</td>
-                </tr>
-              </tbody>
-            </table>
-            <div className="gs-actions">
-              <button className="btn primary full" onClick={onSignup}>
-                <Icon name="userPlus" size={16} /> 회원가입하고 시작
-              </button>
-              <button className="btn full" onClick={onLogin}>
-                이미 회원이에요 · 로그인
-              </button>
-              <button className="btn ghost full" onClick={() => setStep('nick')}>
-                게스트로 시작
-              </button>
-            </div>
-            <small className="muted">게스트로 하다가 나중에 가입해도 지금 기록이 그대로 이어져요.</small>
-          </>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              go();
-            }}
-          >
-            <h3>
-              <Icon name="users" size={18} /> 게스트 닉네임
-            </h3>
-            <label className={'field' + (check === 'ok' ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
-              <span>대결에서 보일 이름 (1~10자)</span>
-              <input autoFocus value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} />
-              {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
-              {check === 'invalid' && nick && <small className="error">1~10자, 글자·숫자로 정해 주세요.</small>}
-              {check === 'ok' && <small className="good-msg">쓸 수 있어요</small>}
-            </label>
-            <small className="muted">나중에 '설정·더보기'에서 바꿀 수 있어요.</small>
-            <div className="modal-actions">
-              <button type="button" className="btn ghost" onClick={() => setStep('intro')}>
-                뒤로
-              </button>
-              <button type="submit" className="btn primary" disabled={!ready}>
-                게스트로 시작
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
 }

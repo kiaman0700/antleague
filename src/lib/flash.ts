@@ -8,6 +8,12 @@ let clearAt = 0;
 export function setFlash(t: string) {
   text = t;
   clearAt = 0;
+  // 이미 그려진 로비도 바로 보여 주게
+  try {
+    window.dispatchEvent(new Event('flash'));
+  } catch {
+    /* 무시 */
+  }
 }
 
 /** 지금 보여 줄 글 (처음 읽은 때부터 3.5초 동안 같은 글) */

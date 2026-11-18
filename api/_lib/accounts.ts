@@ -6,6 +6,7 @@
  * - 랭킹: 회원끼리 붙은 멀티 대결만 점수(Elo, 시작 1000) 반영 — 게스트와의 판은 전적만
  * 모든 읽기·쓰기는 서버만 (profiles·match_players 는 브라우저 권한 없음)
  */
+import { dropGuestCode } from './guestCodes.js';
 import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
@@ -176,6 +177,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         await sb.from('profiles').delete().eq('user_id', uid); // 실패하면 예약 취소
         throw new GameError('가입하지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
       }
+      // 게스트 이어하기 코드는 지움 — 회원 계정을 코드로 열 수 없게 (051)
+      await dropGuestCode(sb, uid).catch(() => {});
       return { ok: true, recoveryCode: code, nickname };
     }
 
