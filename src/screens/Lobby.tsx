@@ -1414,8 +1414,8 @@ function Records({ go }: Pick<Props, 'go'>) {
           <BadgeShelf mine={myBadges} />
         </section>
       )}
-      {/* 되돌릴 수 없는 '모두 지우기'는 맨 아래 (실수로 누르기 쉬운 가운데 자리에서 옮김) */}
-      <ForgetMe />
+      {/* 되돌릴 수 없는 '모두 지우기'는 맨 아래. 회원은 마이프로필에 같은 칸이 있으니 업적 화면엔 손님일 때만 */}
+      {!(acc.status === 'member' && acc.profile) && <ForgetMe />}
     </div>
   );
 }
