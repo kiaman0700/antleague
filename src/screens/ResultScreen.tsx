@@ -20,6 +20,8 @@ import type { Session } from '../session';
 import { DailyResult } from '../components/Daily';
 import { useIsMobile } from '../components/Extras';
 import { MissionsPanel } from '../components/Missions';
+import { useAccount } from '../net/account';
+import type React from 'react';
 
 interface Props {
   session: Session;
@@ -230,8 +232,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
     };
   }, []);
 
-  return (
-    <div className="result">
+  // 화면 조각 (PC 는 한 줄로, 휴대폰은 칩 + 좌우로 넘기는 5칸 — 설계서 design/v24-big-update.md B)
+  const bannerEl = <>
       <div className={'banner ' + (solo ? (soloWin ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
         {solo ? (
           <>
@@ -283,7 +285,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           </>
         )}
       </div>
-
+    </>;
+  const cardsEl = <>
       <div className="score-cards">
         {ranked.map((r) => {
           const i = results.indexOf(r);
@@ -347,7 +350,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           );
         })}
       </div>
-
+    </>;
+  const badgesEl = <>
       <div className="panel pad">
         <h3><Icon name="medal" /> 이번 판 업적</h3>
         {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적이 길게 나와 내 업적이 묻히던 것) */}
@@ -372,7 +376,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           ))}
         </div>
       </div>
-
+    </>;
+  const highlightsEl = <>
       {highlights.length > 0 && (
       <div className="panel pad">
         <h3><Icon name="star" /> 하이라이트</h3>
@@ -388,7 +393,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         </div>
       </div>
       )}
-
+    </>;
+  const replayEl = <>
       <div className="panel pad">
         <h3><Icon name="play" /> 하루별 리플레이</h3>
         <div className="replay">
@@ -431,7 +437,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           </div>
         )}
       </div>
-
+    </>;
+  const chartEl = <>
       <div className="panel pad">
         <h3>자산 추이</h3>
         {/* 혼자 한 판이면 '나' 하나뿐이라 범례를 숨김 */}
@@ -454,7 +461,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           fill={false}
         />
       </div>
-
+    </>;
+  const marketEl = <>
       <div className="panel pad">
         <h3>
           이번 시장 성적 <span className="muted small">종합지수 {pct(indexRet)}</span>
@@ -475,7 +483,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           </button>
         )}
       </div>
-
+    </>;
+  const ratingEl = <>
       {rankedGame && (
         <div className="rating-change">
           {rating?.rated && rating.rating_before !== null && rating.rating_after !== null ? (
@@ -510,10 +519,14 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           )}
         </div>
       )}
+    </>;
+  const restEl = <>
       {matchKind === 'daily' && <DailyResult />}
       {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
       {session.mode === 'multi' && <MissionsPanel retry={2} room={session.roomId ?? undefined} />}
       {session.mode === 'multi' && <IdleExit onExit={onExit} />}
+    </>;
+  const actionsEl = <>
       <div className="center-actions">
         {matchKind === 'match' && party && onBackToParty ? (
           // 파티로 한 판: 롤처럼 파티로 돌아가서, 모두 돌아오면 파티장이 다시 찾기
@@ -562,6 +575,51 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
           </>
         )}
       </div>
+    </>;
+  const myRank = rankOf(session.playerId);
+
+  if (wide)
+    return (
+      <div className="result">
+        {bannerEl}
+        {cardsEl}
+        {badgesEl}
+        {highlightsEl}
+        {replayEl}
+        {chartEl}
+        {marketEl}
+        {ratingEl}
+        <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />
+        {restEl}
+        {actionsEl}
+      </div>
+    );
+
+  return (
+    <div className="result slides">
+      <ResultSlides
+        slides={[
+          { key: 'sum', label: '요약', body: <>{bannerEl}{ratingEl}{cardsEl}</> },
+          { key: 'review', label: '복기', body: <>{highlightsEl}{replayEl}{marketEl}</> },
+          { key: 'rank', label: '순위', body: <>{chartEl}</> },
+          { key: 'reward', label: '보상', body: <>{badgesEl}<GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />{restEl}</> },
+          {
+            key: 'share',
+            label: '공유',
+            body: (
+              <ShareCard
+                kind={matchKind === 'daily' ? '오늘의 도전' : matchKind === 'bot' ? '봇전' : solo ? '연습' : rankedGame ? '랭킹전' : '대결'}
+                rank={solo ? null : myRank + 1}
+                players={results.length}
+                ret={me.ret}
+                days={market.totalDays}
+                daily={me.hist.slice(1).map((v, d) => v - me.hist[d])}
+              />
+            ),
+          },
+        ]}
+      />
+      {actionsEl}
     </div>
   );
 }
@@ -603,6 +661,145 @@ function IdleExit({ onExit }: { onExit: () => void }) {
       <button className="btn sm" onClick={() => ((last.current = Date.now()), setLeft(IDLE_MS))}>
         더 보기
       </button>
+    </div>
+  );
+}
+
+/**
+ * (휴대폰) 결과를 칸으로 나눠 위 칩으로 바로 가거나 좌우로 넘김 (설계서 v24 B — 조사: 넘기기만으로 이동하면 잘 못 찾음 → 칩이 기본).
+ * 브라우저의 가로 스크롤 맞춤(scroll-snap)을 써서 손가락으로 넘기기·키보드 모두 됨. 칸 안 가로 목록은 끝에서 칸이 넘어가지 않게(overscroll contain)
+ */
+function ResultSlides({ slides }: { slides: { key: string; label: string; body: React.ReactNode }[] }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const go = (i: number) => {
+    const t = track.current;
+    if (!t) return;
+    t.scrollTo({ left: i * t.clientWidth, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    setAt(i);
+    window.scrollTo({ top: 0 });
+  };
+  const onScroll = () => {
+    const t = track.current;
+    if (!t) return;
+    const i = Math.round(t.scrollLeft / Math.max(1, t.clientWidth));
+    if (i !== at) setAt(i);
+  };
+  return (
+    <>
+      <div className="rs-chips" role="tablist" aria-label="결과 보기">
+        {slides.map((s, i) => (
+          <button
+            key={s.key}
+            role="tab"
+            aria-selected={at === i}
+            aria-controls={'rs-' + s.key}
+            className={'rs-chip' + (at === i ? ' on' : '')}
+            onClick={() => go(i)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') go(Math.min(slides.length - 1, i + 1));
+              if (e.key === 'ArrowLeft') go(Math.max(0, i - 1));
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+        <span className="rs-pos" aria-hidden>
+          {at + 1}/{slides.length}
+        </span>
+      </div>
+      <div className="rs-track" ref={track} onScroll={onScroll}>
+        {slides.map((s, i) => (
+          <section key={s.key} id={'rs-' + s.key} role="tabpanel" aria-label={s.label} className="rs-slide" aria-hidden={at !== i}>
+            {s.body}
+          </section>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** 공유 카드: 결과만 (종목·보유는 안 나옴 — 다른 사람에게 판 내용이 새지 않게). 날마다 오르면 🟥 내리면 🟦 */
+function ShareCard({ kind, rank, players, ret, days, daily }: { kind: string; rank: number | null; players: number; ret: number; days: number; daily: number[] }) {
+  const bar = daily.map((v) => (v > 0 ? '🟥' : v < 0 ? '🟦' : '⬜')).join('');
+  const slang = ret >= 0.2 ? '떡상' : ret >= 0.05 ? '익절' : ret > -0.05 ? '존버' : ret > -0.2 ? '물림' : '손절각';
+  const text = `개미리그 ${kind}${rank ? ` ${rank}위/${players}명` : ''} · ${days}일 · 수익률 ${pct(ret)} (${slang})\n${bar}\n${location.origin}`;
+  const [done, setDone] = useState('');
+  const share = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setDone('결과를 복사했어요');
+    } catch {
+      /* 취소 */
+    }
+  };
+  return (
+    <div className="panel pad share-card">
+      <h3><Icon name="share" /> 결과 공유</h3>
+      <div className="sc-card">
+        <b className="sc-kind">개미리그 · {kind}</b>
+        {rank ? <strong className="sc-rank">{rank}위<small> / {players}명</small></strong> : null}
+        <span className={'sc-ret ' + tone(ret)}>{pct(ret)}</span>
+        <span className="sc-slang">{slang}</span>
+        <span className="sc-bar" aria-label="날마다 재산이 오르면 빨강, 내리면 파랑">{bar}</span>
+        <small className="muted">어떤 종목을 샀는지는 나오지 않아요</small>
+      </div>
+      <button className="btn primary" onClick={share}>
+        공유하기
+      </button>
+      {done && <p className="muted small" role="status">{done}</p>}
+    </div>
+  );
+}
+
+/**
+ * 게스트에게 좋은 순간(이겼거나 업적을 땄을 때)에만 가입 권유 (조사: 막지 않기, 한 번에 한 번, 두 번 닫으면 그만).
+ * 게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 지우면 사라짐 — 사실 그대로 알림
+ */
+function GuestSave({ won, badges }: { won: boolean; badges: number }) {
+  const acc = useAccount();
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return Number(localStorage.getItem('stockduel.saveNudge') ?? 0) >= 2 || sessionStorage.getItem('stockduel.saveNudgeSeen') === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (acc.status !== 'guest' || hidden || (!won && badges === 0)) return null;
+  const close = () => {
+    try {
+      localStorage.setItem('stockduel.saveNudge', String(Number(localStorage.getItem('stockduel.saveNudge') ?? 0) + 1));
+      sessionStorage.setItem('stockduel.saveNudgeSeen', '1');
+    } catch {
+      /* */
+    }
+    setHidden(true);
+  };
+  const signup = () => {
+    try {
+      sessionStorage.setItem('stockduel.saveNudgeSeen', '1');
+    } catch {
+      /* */
+    }
+    history.pushState({ kind: 'lobby', page: 'signup' }, '', '/signup');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: { kind: 'lobby', page: 'signup' } }));
+  };
+  return (
+    <div className="panel pad guest-save">
+      <b>{won ? '이번 승리' : '이번 업적'}, 계속 남기고 싶다면</b>
+      <p className="muted small">게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 기록을 지우면 사라져요. 회원가입하면 지금 기록 그대로 옮겨지고 랭킹전·친구·칭호도 쓸 수 있어요.</p>
+      <div className="row">
+        <button className="btn primary sm" onClick={signup}>
+          회원가입하고 지키기
+        </button>
+        <button className="btn ghost sm" onClick={close}>
+          나중에
+        </button>
+      </div>
     </div>
   );
 }
