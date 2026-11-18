@@ -29,6 +29,8 @@ export interface TutorialStep {
   text: (c: TutorialCtx) => string;
   /** 비출 곳 (여러 개면 화면에 있는 첫 번째) */
   target?: string;
+  /** 비춘 곳 안에서 눌러야 할 것 하나를 깜빡여 알려 줌 (선택자) */
+  pulse?: (c: TutorialCtx) => string;
   /** 모바일에서 먼저 열 탭 */
   tab?: 'list' | 'detail' | 'news' | 'assets' | 'cards';
   /** 직접 해야 넘어가는 단계 */
@@ -64,6 +66,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: '뉴스에서 종목 찾기',
     text: (c) => `‘${c.headline.replace(/"/g, '')}’ — 좋은 소식이네요. 뉴스 아래 관련 종목에서 ${josa(c.symbolName, '을', '를')} 눌러 보세요.`,
     target: '.news-panel',
+    pulse: (c) => `.news-panel .rel-chip[data-sym="${c.symbol}"]`,
     tab: 'news',
     wait: (c) => c.selected === c.symbol,
     waitHint: '관련 종목 칩을 눌러 보세요',
@@ -103,6 +106,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         ? '방금 다른 정보 카드를 써서 오늘은 루머 감별기를 쓸 수 없어요 — 정보 카드는 하루 한 장만 쓸 수 있어요. 감별기는 오늘 소식(뉴스·커뮤니티 글) 중 하나를 골라 그것만 진짜인지 알려 줘요. 내일 써 보세요.'
         : '루머 감별기를 써 보세요. 오늘 소식(뉴스·커뮤니티 글) 중 하나를 골라 그것만 진짜인지 알려 줘요. 정보 카드는 하루 한 장만 쓸 수 있으니 큰돈이 걸린 소식에 쓰세요.',
     target: '.p-cards, .m-page .cards',
+    pulse: (c) => (c.detectorUsed || c.otherInfoUsed ? '' : '.gcard[data-kind="detector"]'),
     tab: 'cards',
     wait: (c) => c.detectorUsed || c.otherInfoUsed,
     waitHint: '루머 감별기 카드를 누르고 "사용하기" → 확인할 소식을 골라 보세요',
@@ -184,6 +188,22 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
     const id = setInterval(find, 300);
     return () => clearInterval(id);
   }, [s?.target, step]);
+
+  // 눌러야 할 것 깜빡이기 (그 단계 동안만, 화면이 다시 그려져도 다시 붙임)
+  const pulseSel = s?.pulse?.(ctx);
+  useEffect(() => {
+    if (!pulseSel) return;
+    const mark = () => {
+      const el = document.querySelector<HTMLElement>(pulseSel);
+      if (el && !el.classList.contains('tut-pulse')) el.classList.add('tut-pulse');
+    };
+    mark();
+    const id = setInterval(mark, 400);
+    return () => {
+      clearInterval(id);
+      document.querySelectorAll('.tut-pulse').forEach((e) => e.classList.remove('tut-pulse'));
+    };
+  }, [pulseSel]);
 
   // 해 보기 단계: 조건이 맞으면 저절로 다음
   // (onNext 는 렌더마다 새로 만들어지므로 ref 로 — 의존성에 넣으면 타이머가 계속 취소됨)

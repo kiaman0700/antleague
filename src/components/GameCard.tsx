@@ -101,7 +101,7 @@ export function GameCard({
     setOpen(true);
   };
   return (
-    <div className={`gcard gc-${size} t-${d.type}${dim ? ' dim' : ''}`}>
+    <div className={`gcard gc-${size} t-${d.type}${dim ? ' dim' : ''}`} data-kind={kind}>
       {open &&
         createPortal(
           <div className="modal-bg gc-detail-bg" onClick={() => setOpen(false)}>

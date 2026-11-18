@@ -1784,3 +1784,7 @@ p { text-wrap: pretty; }
 .desk .rank-strip:has(> .rank-chip:nth-child(5)) .rank-chip .rk-av { display: none; }
 .desk .rank-strip:has(> .rank-chip:nth-child(5)) .rank-chip { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; padding: 6px 8px; }
 .desk .rank-strip .rank-chip .rn small { overflow: hidden; text-overflow: ellipsis; }
+/* 튜토리얼: 눌러야 할 것 하나를 보라 고리로 깜빡임 */
+.tut-pulse { position: relative; z-index: 2; outline: 2px solid #8b7bff; outline-offset: 2px; animation: tutPulse 1.2s ease-in-out infinite; }
+@keyframes tutPulse { 0%, 100% { outline-color: rgba(139, 123, 255, 1); box-shadow: 0 0 0 0 rgba(139, 123, 255, 0.5); } 50% { outline-color: rgba(139, 123, 255, 0.5); box-shadow: 0 0 0 6px rgba(139, 123, 255, 0); } }
+@media (prefers-reduced-motion: reduce) { .tut-pulse { animation: none; } }
