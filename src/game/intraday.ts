@@ -12,6 +12,7 @@
 import { gaussian, mulberry32, seeded, type Rng } from '../lib/rng.js';
 import { KR_INDEX_BASE, roundPrice, roundUsd, US_INDEX_BASE, type Bar, type Market } from './market.js';
 import { CAP_WEIGHT, COMPANIES, etfMembers, SECTOR_MAP, STOCK_MAP } from './stocks.js';
+import { COMMUNITY_VERSION, communityPosts, hypeAt } from './community.js';
 
 /** 한 칸 = 5초 */
 export const TICK_MS = 5000;
@@ -128,7 +129,16 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
             beta: sec.beta * def.sectorBeta,
             sb: def.sectorBeta,
           };
-    return fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0, (m.version ?? 1) >= 13);
+    const base = fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0, (m.version ?? 1) >= 13);
+    // (v20) 커뮤니티·SNS 글로 잠깐 들썩였다 되돌아감 — 시가·종가는 그대로, 그날 고가·저가 안에서만
+    if ((m.version ?? 1) < COMMUNITY_VERSION || !m.salt || def.etf) return base;
+    const posts = communityPosts(m, day, m.salt);
+    if (!posts.some((p) => p.symbol === symbol || (!p.symbol && p.sector === def.sector))) return base;
+    return base.map((v, j) => {
+      if (j === 0 || j === n) return v;
+      const h = hypeAt(posts, symbol, def.sector, j / n);
+      return h ? round(Math.min(bar.high, Math.max(bar.low, v * Math.exp(h)))) : v;
+    });
   });
 }
 

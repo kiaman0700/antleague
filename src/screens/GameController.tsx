@@ -1,5 +1,6 @@
 import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
 import { CoachTour } from '../components/CoachTour';
+import { PLATFORMS } from '../game/community';
 import { RESULT_STEPS } from '../components/Tours';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markActiveGame } from '../lib/activeTab';
@@ -667,7 +668,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       return;
     }
     // 버튼 이름과 같게: 혼자 하는 판(시간 제한 없음)은 '장 시작', 대결은 '준비 완료'
-    showToast(`장 전 시간이에요. 찌라시(소문)를 보고 예약 주문을 걸어 두세요. 다 했으면 '${freePre ? '장 시작' : '준비 완료'}'!`, 'warn');
+    showToast(`장 전 시간이에요. 커뮤니티 글을 보고 예약 주문을 걸어 두세요. 다 했으면 '${freePre ? '장 시작' : '준비 완료'}'!`, 'warn');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 한 번만 (freePre 가 바뀌어도 다시 띄우지 않음)
   }, [inPre, showToast]);
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
@@ -968,6 +969,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   );
   const newsPanel = (
     <NewsPanel
+      posts={view.community}
+      pastPosts={market?.community}
+      marketOpen={!!view.live}
       rumors={view.rumors}
       pre={inPre}
       fresh={freshSet}
@@ -1156,10 +1160,19 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <Sheet title={<><CardIcon kind="detector" size={18} /> 어떤 소식을 확인할까요?</>} onClose={() => setDetectorPick(false)}>
           <p className="muted small">하나만 골라요. 고른 소식이 진짜인지 가짜인지 알려줘요.</p>
           <ul className="det-pick">
+            {/* (v20) 오늘 올라온 커뮤니티·SNS 글 (새 글이 위) */}
+            {[...(view.community ?? [])].sort((a, b) => b.at - a.at).map((p) => (
+              <li key={'p' + p.id}>
+                <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: p.text }))}>
+                  <span className="det-kind">{PLATFORMS[p.platform].name}{p.verified ? ' ✔' : ''}</span>
+                  <span>{p.text}</span>
+                </button>
+              </li>
+            ))}
             {(view.rumors ?? []).map((r) => (
               <li key={'r' + r.text}>
                 <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: r.text }))}>
-                  <span className="det-kind">찌라시</span>
+                  <span className="det-kind">장 전 커뮤니티</span>
                   <span>{r.text}</span>
                 </button>
               </li>
@@ -1178,7 +1191,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 </li>
               ))}
           </ul>
-          {!(view.rumors ?? []).length && !(market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
+          {!(view.rumors ?? []).length && !(view.community ?? []).length && !(market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
         </Sheet>
       )}
       {fakeModal && (

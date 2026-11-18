@@ -94,6 +94,15 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
           <stop offset="0.55" stopColor={light} />
           <stop offset="1" stopColor={base} />
         </linearGradient>
+        <filter id={`${id}-sh`} x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="1.6" stdDeviation="1.4" floodColor="#000" floodOpacity="0.55" />
+        </filter>
+        <linearGradient id={`${id}-bv`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.75" />
+          <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.08" />
+          <stop offset="0.55" stopColor="#000000" stopOpacity="0.05" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.55" />
+        </linearGradient>
         <clipPath id={`${id}-c`}>
           <path d={SHIELD} />
         </clipPath>
@@ -160,10 +169,21 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
       )}
 
       {lv === 5 && <path d={SHIELD} transform={at(1.1)} fill="none" stroke={metal} strokeWidth="1.6" strokeLinejoin="round" />}
-      {/* 방패: 바깥 금속 테두리 → 어두운 홈 → 안쪽 면 */}
-      <path d={SHIELD} fill={metal} stroke={deep} strokeWidth="0.8" strokeLinejoin="round" />
+      {/* 방패: 바깥 금속 테두리 → 어두운 홈 → 안쪽 면 (그림자로 띄우고, 테두리에 빛·그늘을 넣어 입체로) */}
+      <path d={SHIELD} fill={metal} stroke={deep} strokeWidth="0.8" strokeLinejoin="round" filter={`url(#${id}-sh)`} />
+      <path d={SHIELD} transform={at(0.93)} fill="none" stroke={`url(#${id}-bv)`} strokeWidth="1.1" strokeLinejoin="round" />
       <path d={SHIELD} transform={at(0.86)} fill={deep} />
       <path d={SHIELD} transform={at(0.8)} fill={`url(#${id}-f)`} stroke={mix(base, '#000000', 0.25)} strokeWidth="0.5" />
+      {lv >= 2 && (
+        <g fill={light} fillOpacity="0.32">
+          {[0, 1, 2, 3].map((k) => (
+            <g key={k}>
+              <ellipse cx={10.6 + k * 0.5} cy={28 - k * 3.6} rx="1.1" ry="2.1" transform={`rotate(${-30 + k * 8} ${10.6 + k * 0.5} ${28 - k * 3.6})`} />
+              <ellipse cx={29.4 - k * 0.5} cy={28 - k * 3.6} rx="1.1" ry="2.1" transform={`rotate(${30 - k * 8} ${29.4 - k * 0.5} ${28 - k * 3.6})`} />
+            </g>
+          ))}
+        </g>
+      )}
       {/* 안쪽 면에 새긴 오르는 차트 선 (이 게임 표시) */}
       <path d="M9.5 27.5 L14 23.5 L17 25.5 L23 18.5 L26 20.5 L30.5 14.5" fill="none" stroke={light} strokeOpacity="0.16" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       {/* 테두리 반사광 */}
@@ -187,6 +207,7 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
           <path d="M20 14.6 L24 20 L20 25.6 L16 20 Z" fill={gem} />
           <path d="M20 10 L27.6 20 L20 30.5 L12.4 20 Z" fill="none" stroke={shine} strokeWidth="0.6" />
           <path d="M17.6 18.2 L20 15.6" stroke="#ffffff" strokeOpacity="0.9" strokeWidth="0.9" strokeLinecap="round" />
+          {lv >= 2 && <path d="M16 13.2 l0.55 1.45 l1.45 0.55 l-1.45 0.55 l-0.55 1.45 l-0.55 -1.45 l-1.45 -0.55 l1.45 -0.55 z" fill="#ffffff" opacity="0.95" />}
         </g>
       ) : (
         <text x="20" y="25.5" textAnchor="middle" fontSize="13" fontWeight="800" fill={light}>
@@ -276,7 +297,15 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
                   <span className="tl-divs" aria-label={`${t.name} 1, 2, 3단계`}>
                     {(['1', '2', '3'] as const).map((dv, k) => (
                       <span key={dv} className={'tl-div' + (here && my?.division === dv ? ' me' : '')} title={`${t.name} ${dv}`}>
-                        <TierEmblem rating={base + k * 50} size={14} />
+                        {/* 단계가 높을수록 보석이 늘어남 (1개 → 3개) — 3이 가장 높음 */}
+                        <span className="tl-pips" aria-hidden>
+                          {Array.from({ length: k + 1 }, (_, g) => (
+                            <svg key={g} width="9" height="11" viewBox="0 0 9 11">
+                              <path d="M4.5 0.6 L8.4 5.5 L4.5 10.4 L0.6 5.5 Z" fill={t.color} stroke="#0008" strokeWidth="0.8" />
+                              <path d="M4.5 0.6 L6.3 4.2 L4.5 5.5 L2.7 4.2 Z" fill="#fff" fillOpacity="0.55" />
+                            </svg>
+                          ))}
+                        </span>
                         <i>{dv}</i>
                       </span>
                     ))}

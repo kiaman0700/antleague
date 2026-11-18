@@ -12,10 +12,16 @@ import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
 import { EmptyState, useDialogFocus, useEscape } from './ui';
+import { CommunityFeed } from './CommunityFeed';
+import type { PublicPost } from '../game/community';
 
 /* ------------------------------ 뉴스 ------------------------------ */
 
 interface NewsProps {
+  /** (v20) 오늘 장중에 올라온 커뮤니티·SNS 글 / 지난 날 글 / 장이 열려 있는지 */
+  posts?: PublicPost[];
+  pastPosts?: PublicPost[];
+  marketOpen?: boolean;
   /** (v7) 오늘 장 전 찌라시 */
   rumors?: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
   /** 지금 장 전인지 (찌라시 칸을 강조) */
@@ -108,6 +114,28 @@ function RelatedChips({ symbols, change, onSelect, rel, tone: newsTone }: { symb
   );
 }
 
+/** (v20) 기사 모양: 언론사·기자·입력 시각·첫 문단, 펼치면 본문·인터뷰·인용 */
+function ArticleBody({ a }: { a: NonNullable<NewsEvent['article']> }) {
+  return (
+    <div className="art">
+      <div className="art-by">
+        <b>{a.press}</b> · {a.reporter} · 입력 {a.time}
+        {a.quote && <span className="art-q-badge" title="검증된 사람의 말이 들어간 기사 — 더 믿을 만하지만 100%는 아니에요">인터뷰</span>}
+        {a.cite && <span className="art-c-badge" title="커뮤니티·SNS 글을 옮긴 기사">{a.cite.name} 인용</span>}
+      </div>
+      <p className="art-lead">{a.lead}</p>
+      <details className="art-more">
+        <summary>본문 펼치기</summary>
+        {a.body.map((t, i) => (
+          <p key={i} className={a.quote && t.includes(a.quote.text) ? 'art-quote' : undefined}>
+            {t}
+          </p>
+        ))}
+      </details>
+    </div>
+  );
+}
+
 /** 찌라시 글 꾸밈 (화면 전용): 글 내용으로만 정하는 익명 아이디·출처·시간·숫자 — 진짜/가짜와 아무 관련 없음 */
 const SNS_WHERE = ['주식 단톡방', '종목 토론방', '찌라시 채널', '개미 카페', '익명 게시판'];
 const SNS_AV = ['default', 'antred', 'antblue'];
@@ -129,7 +157,7 @@ function snsFace(seed: string) {
   };
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
   // 뉴스와 찌라시는 따로 (사용자 요청 2026-11-17): 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
@@ -206,6 +234,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     if (showToday) keys.push(...today.map(newsKey));
     if (showRumors) {
       if (rumors) keys.push(...rumors.map((r) => rumorKey(day, r.text)));
+      if (posts) keys.push(...posts.map((p) => 'p:' + p.id));
       keys.push(...rumorToday.map(newsKey));
     }
     if (pastDay !== null) keys.push(...official.filter((n) => n.day === pastDay).map(newsKey));
@@ -213,19 +242,19 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     if (markSeen(keys)) bump((x) => x + 1);
   });
   const unreadOf = (d: number) => official.filter((n) => n.day === d && !seenNews.has(newsKey(n))).length;
-  const unreadRumors = (rumors ? rumors.filter((r) => !seenNews.has(rumorKey(day, r.text))).length : 0) + rumorToday.filter((n) => !seenNews.has(newsKey(n))).length;
-  const rumorCount = (rumors?.length ?? 0) + rumorToday.length;
+  const unreadRumors = (rumors ? rumors.filter((r) => !seenNews.has(rumorKey(day, r.text))).length : 0) + rumorToday.filter((n) => !seenNews.has(newsKey(n))).length + (posts ? posts.filter((p) => !seenNews.has('p:' + p.id)).length : 0);
+  const rumorCount = (rumors?.length ?? 0) + rumorToday.length + (posts?.length ?? 0);
   const dot = (k: number) => (k > 0 ? <span className="nc-unread" aria-label={`안 읽은 것 ${k}개`}>{k > 9 ? '9+' : k}</span> : null);
 
   return (
     <div className="news-panel">
       {/* 맨 위: 뉴스 / 찌라시 (정식 기사와 소문을 따로) */}
-      <div className="news-mode" role="tablist" aria-label="뉴스와 찌라시">
+      <div className="news-mode" role="tablist" aria-label="뉴스와 커뮤니티">
         <button role="tab" aria-selected={mode === 'news'} className={mode === 'news' ? 'on' : ''} onClick={() => setMode('news')}>
           뉴스{dot(mode === 'news' ? 0 : unreadOf(day))}
         </button>
         <button role="tab" aria-selected={mode === 'rumor'} className={mode === 'rumor' ? 'on' : ''} onClick={() => setMode('rumor')}>
-          찌라시{rumorCount > 0 && mode !== 'rumor' && unreadRumors === 0 ? <span className="nm-count">{rumorCount}</span> : dot(mode === 'rumor' ? 0 : unreadRumors)}
+          커뮤니티{rumorCount > 0 && mode !== 'rumor' && unreadRumors === 0 ? <span className="nm-count">{rumorCount}</span> : dot(mode === 'rumor' ? 0 : unreadRumors)}
         </button>
       </div>
       {/* 뉴스: 전체(맨 앞 고정) · 1~마지막 날 (아직 안 온 날은 꺼짐) */}
@@ -279,17 +308,20 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                   {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
                   {n.headline.replace('[루머] ', '')}
                 </div>
+                {n.article && <ArticleBody a={n.article} />}
                 <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
               </div>
             ))}
         </>
       )}
 
-      {showRumors && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 찌라시가 없어요" desc="장이 열리기 전과 장중에 소문이 돌면 여기에 모여요." />}
+      {/* (v20) 장중 실시간 커뮤니티·SNS 글 */}
+      {showRumors && posts && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
+      {showRumors && !posts && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 도는 소문이 없어요" desc="장이 열리기 전과 장중에 커뮤니티·SNS 글이 돌면 여기에 모여요." />}
       {showRumors && rumors && rumors.length > 0 && (
-        <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 찌라시">
+        <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 커뮤니티 글">
           <header className="rb-head">
-            <b>개미 커뮤니티</b>
+            <b>장 전 커뮤니티</b>
             {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
             <small className="muted">{rumorCheck ? '루머 감별기를 쓴 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
@@ -371,6 +403,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                 <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
                 {n.headline.replace('[루머] ', '')}
               </div>
+              {n.article && <ArticleBody a={n.article} />}
               <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related} change={change} onSelect={onSelect} />
             </div>
           ))}
@@ -455,7 +488,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {today.length === 0 && !blackout && <p className="muted small news-empty">오늘 아침엔 새 뉴스가 없어요. 장중 속보가 뜨면 여기 맨 위에 나와요.</p>}
       {rumorCheck && !blackout && today.length > 0 && (
         <div className="detector-sum">
-          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '루머 감별기로 고른 기사를 확인했어요 (아래 표시)' : '루머 감별기로 고른 소식은 다른 칸(찌라시)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
+          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '루머 감별기로 고른 기사를 확인했어요 (아래 표시)' : '루머 감별기로 고른 소식은 다른 칸(커뮤니티)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
         </div>
       )}
       {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}
@@ -482,6 +515,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
             {n.headline.replace('[루머] ', '')}
           </div>
+          {n.article && <ArticleBody a={n.article} />}
           <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related} change={change} onSelect={onSelect} />
           {ui === 'easy' && i === 0 && <div className="news-go">관련 종목을 누르면 바로 차트로 이동해요</div>}
         </div>
@@ -852,7 +886,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
         </button>
         {autoSec ? (
           <div className="muted close-auto-note">
-            {last ? `${left}초 뒤 최종 결과로 넘어가요` : pre ? `장 전 시간이에요. 찌라시를 보고 예약 주문을 걸어 두세요 (${left}초 뒤 자동으로 넘어가요)` : `다음 날 장이 이미 열렸어요. ${left}초 뒤 자동으로 넘어가요`}
+            {last ? `${left}초 뒤 최종 결과로 넘어가요` : pre ? `장 전 시간이에요. 커뮤니티 글을 보고 예약 주문을 걸어 두세요 (${left}초 뒤 자동으로 넘어가요)` : `다음 날 장이 이미 열렸어요. ${left}초 뒤 자동으로 넘어가요`}
           </div>
         ) : null}
       </div>
@@ -868,7 +902,7 @@ const STEPS = [
   { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 사기·팔기를 누르고 금액 버튼으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 1초마다 움직여요.' },
   { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 모두 누르면(또는 시간이 다 되면) 하루가 끝나요.' },
   { t: '④ 찬스 카드로 승부를 뒤집어요', d: '카드를 누르면 크게 보이고 \'사용하기\'가 나와요. 내일 뉴스를 미리 보거나 상대를 방해할 수 있고, 최대 5장까지 가질 수 있어요. 점선 밑줄 단어를 누르면 뜻이 나와요.' },
-  { t: '⑤ 장 전 시간', d: '날마다(첫날 포함) 장이 열리기 전에 찌라시(소문)를 보고 예약 주문을 걸어 둘 수 있어요. 다 했으면 \'준비 완료\' — 모두 누르면 장이 바로 열려요.' },
+  { t: '⑤ 장 전 시간', d: '날마다(첫날 포함) 장이 열리기 전에 커뮤니티·SNS 소문을 보고 예약 주문을 걸어 둘 수 있어요. 다 했으면 \'준비 완료\' — 모두 누르면 장이 바로 열려요.' },
   { t: '⑥ 며칠 걸친 사건', d: '[단독] 기사에 "○일차 발표 예정"이 붙으면 일정에도 떠요. 발표 날까지 기대감에 오르다가 그날 장중 속보로 크게 움직여요. 이미 많이 올랐으면 좋은 결과에도 떨어질 수 있어요.' },
 ];
 

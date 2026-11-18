@@ -3,6 +3,8 @@
  * 이름으로 골라 쓰고, 업종·카드는 전용 매핑을 쓴다
  */
 import {
+  Heart,
+  MessageCircle,
   Activity,
   Mountain,
   Bandage,
@@ -175,6 +177,8 @@ const ICONS = {
   bank: Landmark,
   cart: ShoppingCart,
   eye: Eye,
+  heart: Heart,
+  chat: MessageCircle,
   eyeOff: EyeOff,
   grip: GripVertical,
   move: Move,

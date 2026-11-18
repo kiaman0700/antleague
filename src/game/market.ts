@@ -42,6 +42,8 @@ export interface NewsEvent {
    * 고정된 회사 정보라 공개해도 됨 (실제로 얼마나 움직이는지는 넣지 않음)
    */
   rel?: Record<string, NewsRel>;
+  /** (v20) 기사 모양 (언론사·기자·시각·본문·인터뷰·인용) — 서버가 진위를 알고 만들어 붙임, 화면에는 글만 */
+  article?: import('./articles.js').Article;
 }
 export type NewsRel = 'link' | 'peer' | 'rival' | 'chain' | 'etf';
 export type NewsLabel = '속보' | '단독' | '시황' | '특징주' | '해외';
@@ -90,6 +92,8 @@ export interface Market {
   dividends: Dividend[];
   /** 시장 규칙 버전: 1 = 처음 규칙, 2 = 지수 시총 가중·공급망·미국장→다음 날 한국·장세 */
   version?: number;
+  /** (v20) 화면 전용: 지난 날 커뮤니티·SNS 글 (sliceMarket 이 채움) */
+  community?: import('./community.js').PublicPost[];
   /** 화면 전용: 오늘 장중 가격이 합쳐져 있으면 그 날·칸 (오늘 막대의 close = 지금 가격) */
   live?: { day: number; tick: number; n: number; startAt: number; endAt: number; tickMs?: number };
 }

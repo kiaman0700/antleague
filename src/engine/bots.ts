@@ -15,7 +15,7 @@ export type BotLevel = 1 | 2 | 3;
 export const BOT_LEVELS: { level: BotLevel; name: string; label: string; desc: string }[] = [
   { level: 1, name: '새내기봇', label: '쉬움', desc: '뉴스를 거꾸로 읽고 자주 갈아타요. 처음 하는 사람도 이길 수 있어요' },
   { level: 2, name: '개미봇', label: '보통', desc: '아침 뉴스와 소문을 그대로 믿고 따라가요. 몇 판 해 보면 이길 수 있어요' },
-  { level: 3, name: '고수봇', label: '어려움', desc: '하루 종일 시장을 지켜보고 며칠 걸친 사건의 찌라시까지 읽어요. 고수용이에요' },
+  { level: 3, name: '고수봇', label: '어려움', desc: '하루 종일 시장을 지켜보고 며칠 걸친 사건의 소문까지 읽어요. 고수용이에요' },
 ];
 export const botInfo = (level: number | null | undefined) => BOT_LEVELS.find((b) => b.level === level) ?? null;
 export const isBot = (p: { bot_level?: number | null }) => !!p.bot_level;
@@ -140,6 +140,12 @@ export interface NewsBotOpts {
    * 나쁜 쪽이면 피함. 발표 속보(장중)가 뜨면 그날 장 마감에 정리 (다음 날 되돌림 피하기)
    */
   storyHold?: boolean;
+  /**
+   * (v20) 커뮤니티·SNS 글을 얼마나 믿는지 (화면에 보이는 글만 — 진위는 모름):
+   * 쉬움 = 다 믿음(헛소문에 자주 물림) · 보통 = 반쯤 + 검증 글 · 어려움 = 검증 글만
+   */
+  trustPosts?: number;
+  trustVerified?: number;
 }
 
 /** 아직 결과가 안 나온 사건 찌라시: 좋은 쪽(들고 갈 종목) · 나쁜 쪽(피할 종목) — 화면에 보이는 뉴스만 씀 */
@@ -204,6 +210,12 @@ export function newsBot(opt: NewsBotOpts): Strategy {
       if (best) for (const p of COMPANIES) if (p.sector === best) s[p.symbol] = (s[p.symbol] ?? 0) + 1.0;
       const sc = c.view.reveals.scout;
       if (sc && !sc.up) s[sc.symbol] = -1;
+      // (v20) 오늘 올라온 커뮤니티·SNS 글: 회사 이름 글만, 믿는 만큼 점수
+      for (const p of c.view.community ?? []) {
+        if (!p.symbol) continue;
+        const w = p.verified ? opt.trustVerified ?? 0 : opt.trustPosts ?? 0;
+        if (w) s[p.symbol] = (s[p.symbol] ?? 0) + (p.tone === 'good' ? w : -w);
+      }
       if (opt.storyHold) {
         const st = storyRumors(c);
         for (const sym of st.good) s[sym] = (s[sym] ?? 0) + 1.5;
@@ -291,10 +303,10 @@ export function newsBot(opt: NewsBotOpts): Strategy {
 /** 난이도별 전략 (시뮬레이터가 바꿔 끼워 실험할 수 있게 내보냄) */
 export const STRATEGY: Record<number, Strategy> = {
   1: easyBot,
-  2: newsBot({ news: { verdict: false, skipRecap: false, rumorW: 1 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: false, reserve: 0.2 }),
+  2: newsBot({ news: { verdict: false, skipRecap: false, rumorW: 1 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: false, reserve: 0.2, trustPosts: 0.4, trustVerified: 0.8 }),
   // 시뮬(sim/levels.ts, 2026-11-17): 카드를 사는 봇은 카드 값 때문에 오히려 약했음 → 판단으로 강하게:
   // 시황·특징주(지난 정리 기사) 빼기 + 하루 10번 보기 + 수수료 폭탄 조심 + 사건 찌라시 따라 들고 가기 — 평균 +14% (보통 +8%, 쉬움 -8%)
-  3: newsBot({ news: { verdict: false, skipRecap: true, rumorW: 1, rel: true }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: true, reserve: 0.2, storyHold: true }),
+  3: newsBot({ news: { verdict: false, skipRecap: true, rumorW: 1, rel: true }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: true, reserve: 0.2, storyHold: true, trustPosts: 0, trustVerified: 1 }),
 };
 
 /* ---------------- 봇 움직이기 ---------------- */

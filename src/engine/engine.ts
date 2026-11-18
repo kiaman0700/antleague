@@ -11,6 +11,8 @@ import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
 import { mulberry32, seeded } from '../lib/rng.js';
 import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
+import { COMMUNITY_VERSION, communityPosts, publicPosts, type PublicPost } from '../game/community.js';
+import { articleOf } from '../game/articles.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
@@ -140,6 +142,8 @@ export interface View {
   players: PublicPlayer[];
   /** (v7) 오늘 장 전 찌라시 — 진위는 감별기를 쓴 사람에게만 */
   rumors?: PublicRumor[];
+  /** (v20) 오늘 지금까지 올라온 커뮤니티·SNS 글 (지난 날 글은 market.community) */
+  community?: PublicPost[];
   /** 시장 정보가 바뀌었을 때만 채워짐 (marketKey 로 판단) */
   market: Market | null;
   /** 오늘 장중 가격 — 지금 칸까지만. 장이 열려 있을 때만 */
@@ -292,7 +296,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 19;
+export const CURRENT_RULES_VERSION = 20;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -399,6 +403,11 @@ function newsOrder(a: NewsEvent, b: NewsEvent) {
   return a.day - b.day || hashString(a.headline) - hashString(b.headline);
 }
 
+/** (v20) 기사 모양을 붙임 (서버가 진위를 알고 만듦 — 화면에는 만들어진 글만) */
+function withArticle(m: Market, n: NewsEvent, pub: NewsEvent): NewsEvent {
+  return (m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { ...pub, article: articleOf(n, m.salt, isFakeNews(n)) } : pub;
+}
+
 /** 오늘까지만 보이는 시장 — 오늘 종가·미래 가격·뉴스의 진실은 빠진다 */
 export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean; tick?: number; n?: number; /** (v14) 감별기로 고른 소식 */ pick?: string }): Market {
   const strip = (b: Bar): Bar => ({ open: b.open, close: b.close, high: b.high, low: b.low, path: [] });
@@ -411,7 +420,8 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
       usIndex: m.usIndex.map(strip),
       seed: 0,
       salt: undefined,
-      news: m.news.map((n) => publicNews(n, Infinity, false)).sort(newsOrder),
+      news: m.news.map((n) => withArticle(m, n, publicNews(n, Infinity, false))).sort(newsOrder),
+      ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: m.totalDays }, (_, d) => publicPosts(communityPosts(m, d, m.salt!), Infinity, 1)).flat() } : {}),
     };
   }
   // 배당금은 기준일 종가로 정해지므로, 기준일이 끝나기 전에는 숨김 (배당률·날짜는 공개)
@@ -425,7 +435,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
   const news = [...m.news.filter((n) => n.day <= day), ...opts.fakes]
     .filter(released)
     .filter((n) => !(opts.blackout && n.day === day))
-    .map((n) => publicNews(n, day, opts.rumorCheck, opts.pick))
+    .map((n) => withArticle(m, n, publicNews(n, day, opts.rumorCheck, opts.pick)))
     .sort(newsOrder);
   return {
     seed: 0,
@@ -442,6 +452,8 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
     news,
     events: m.events,
     dividends,
+    // (v20) 지난 날 커뮤니티 글 — 오늘 글은 매초 View.community 로 따로 (그날 올라온 것까지만)
+    ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: day }, (_, d) => publicPosts(communityPosts(m, d, m.salt!), day, 0)).flat() } : {}),
   };
 }
 
@@ -610,6 +622,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   // (v7) 장 전 찌라시 (둘째 날부터, 정보 차단을 맞은 날은 안 보임) · 장 전이면 장이 열리는 시각
   if ((r.version ?? 1) >= PREMARKET_VERSION && open && (r.day > 0 || (r.version ?? 1) >= FIRST_PRE_VERSION) && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck, detectorPick);
   base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
+  // (v20) 커뮤니티·SNS: 장이 열려 있는 동안 지금 칸까지 올라온 글만 (앞으로 올라올 글·시각은 절대 안 보냄). 정보 차단 맞은 날은 안 보임
+  if (!finished && (r.version ?? 1) >= COMMUNITY_VERSION && r.salt && !blackout) base.community = open ? publicPosts(communityPosts(m, day, r.salt), day, clock.tick / Math.max(1, clock.n), detectorPick).filter((p) => p.day === day) : [];
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
   const releasedNow = open && !blackout ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
@@ -774,7 +788,8 @@ function visibleToday(d: GameData, meId: string, now: number): string[] {
   const news = m.news.filter((n) => n.day === r.day && (n.at == null || clock.tick >= releaseTick(n.at, clock.n))).map((n) => n.headline);
   const fakes = items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews).filter((n) => n.day === r.day).map((n) => n.headline);
   const rumors = (r.version ?? 1) >= PREMARKET_VERSION ? preRumors(m, r.day, r.salt ?? String(r.seed)).map((x) => x.text) : [];
-  return [...news, ...fakes, ...rumors];
+  const posts = (r.version ?? 1) >= COMMUNITY_VERSION && r.salt ? communityPosts(m, r.day, r.salt).filter((p) => p.at <= clock.tick / Math.max(1, clock.n) && clock.tick > 0).map((p) => p.text) : [];
+  return [...news, ...fakes, ...rumors, ...posts];
 }
 
 /** 오늘 이 사람이 이미 방해를 받았는지 (적용·방패로 막힘·반사로 되돌림 모두 — 원래 대상 기준) */

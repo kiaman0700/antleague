@@ -1406,3 +1406,42 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .ms-tut > span { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .ms-tut small { font-size: 12px; }
 .ms-tut-xp { color: #b3a8ff; font-variant-numeric: tabular-nums; }
+
+/* (v20) 커뮤니티·SNS 피드 */
+.cf { margin-top: 10px; border: 1px solid var(--line, #2e2e2e); border-radius: 12px; padding: 12px; background: var(--surface, #1c1c1c); }
+.cf .rb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
+.cf .rb-head small { flex-basis: 100%; }
+.cf-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.cf-post { position: relative; display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line, #2a2a2a); animation: cf-in 0.35s ease-out; }
+.cf-list > .cf-post:first-child { border-top: 0; }
+@keyframes cf-in { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .cf-post { animation: none; } }
+.pf-icon { display: block; border-radius: 8px; flex: none; }
+.cf-main { min-width: 0; display: grid; gap: 4px; }
+.cf-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.cf-author { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; word-break: keep-all; }
+.cf-verified { display: inline-grid; place-items: center; }
+.cf-meta { color: var(--muted, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cf-text { margin: 0; font-size: 15px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+.cf-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cf-post .rb-stamp { position: absolute; top: 10px; right: 0; }
+.cf-post.v-true .cf-text, .cf-post.v-false .cf-text { padding-right: 64px; }
+.cf-empty { margin: 4px 0; }
+.cf-old { margin-top: 8px; }
+.cf-old > summary { cursor: pointer; color: var(--text-2, #c8c8c8); font-size: 13px; padding: 6px 0; }
+
+/* (v20) 기사 모양 */
+.art { display: grid; gap: 6px; margin: 4px 0 8px; }
+.art-by { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; color: var(--muted, #9a9a9a); }
+.art-by b { color: var(--text-2, #c8c8c8); font-weight: 800; }
+.art-q-badge, .art-c-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+.art-q-badge { background: rgba(79, 140, 255, 0.16); color: #8fb4ff; }
+.art-c-badge { background: rgba(245, 184, 61, 0.14); color: #f5c76a; }
+.art-lead { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-2, #c8c8c8); word-break: keep-all; }
+.art-more > summary { cursor: pointer; font-size: 12px; color: var(--muted, #9a9a9a); padding: 2px 0; width: max-content; }
+.art-more > p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--text-2, #c8c8c8); word-break: keep-all; }
+.art-more > p.art-quote { border-left: 3px solid #4f8cff; padding-left: 10px; color: var(--text, #f2f2f2); }
+
+/* 티어표 단계: 보석 1~3개 */
+.tier-ladder .tl-pips { display: inline-flex; gap: 1px; height: 12px; align-items: center; }
+.tier-ladder .tl-div { gap: 3px; min-width: 28px; }
