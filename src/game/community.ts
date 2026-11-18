@@ -22,7 +22,7 @@ export const PLATFORMS: Record<Platform, { name: string; kind: string; color: st
   board: { name: '종목토론방', kind: '커뮤니티', color: '#2fb380' },
   chirp: { name: '짹짹', kind: 'SNS', color: '#16a394' },
   feedgram: { name: '피드그램', kind: 'SNS', color: '#8b5cf6' },
-  talk: { name: '개미톡 오픈채팅', kind: '메신저', color: '#f5b83d' },
+  talk: { name: '개미톡 오픈채팅', kind: '메신저', color: '#db2777' },
   live: { name: '개미TV 라이브', kind: '방송', color: '#f97316' },
 };
 const PLATFORM_IDS = Object.keys(PLATFORMS) as Platform[];
