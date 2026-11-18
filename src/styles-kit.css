@@ -1746,4 +1746,5 @@ p { text-wrap: pretty; }
 .ui-tip { flex-basis: 100%; text-align: center; margin-top: 10px; color: var(--text-3, #9a9a9a); font-size: 13px; animation: ntFade 0.3s ease-out; }
 /* 결과 화면 '실제 시장에서는?' */
 .rw-card { border-left: 3px solid #3a8ef7; }
+.rw-card > span { font-size: 13px; color: var(--text-2, #c8c8c8); line-height: 1.5; }
 .rw-card small { font-size: 12px; margin-top: 2px; }
