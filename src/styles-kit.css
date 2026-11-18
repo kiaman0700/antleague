@@ -1469,7 +1469,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .rs-chip { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line-2, #2e2e2e); background: var(--surface, #1c1c1c); color: var(--text-2, #c8c8c8); font-weight: 700; font-size: 14px; }
 .rs-chip.on { background: #6b58ee; border-color: #6b58ee; color: #fff; }
 .rs-pos { margin-left: auto; padding-left: 8px; color: var(--muted, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
-.rs-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; align-items: flex-start; }
+.rs-track { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; align-items: flex-start; }
 .rs-track::-webkit-scrollbar { display: none; }
 .rs-slide { flex: 0 0 100%; min-width: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; gap: 12px; padding: 0 1px 12px; }
 .rs-slide:not(.on) { max-height: 70vh; overflow: hidden; }
@@ -1774,3 +1774,9 @@ p { text-wrap: pretty; }
   html:has(.modal-bg), html:has(.modal-bg) body { overflow: hidden; }
 }
 .modal, .sheet { overscroll-behavior: contain; }
+/* 결과 '자산 추이' 범례: 사람이 많으면 다음 줄로 (이름이 'DAf4io/g' 처럼 쪼개지던 것) */
+.legend { flex-wrap: wrap; gap: 6px 14px; }
+.legend > span { white-space: nowrap; }
+/* 휴대폰 결과 위 칩 줄: '1/5' 가 세로로 쪼개지지 않게, 좁으면 칩 여백 줄임 */
+.rs-pos { flex: none; white-space: nowrap; }
+@media (max-width: 380px) { .rs-chip { padding: 0 11px; } .rs-chips { gap: 5px; } }
