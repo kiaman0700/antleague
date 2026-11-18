@@ -46,7 +46,7 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
   const cls = (xy ? ' free' : pos === 'bottom' ? ' at-bottom' : '');
   if (toast?.kind === 'news')
     return (
-      <button type="button" className={'toast news ' + (toast.tone ?? 'good') + cls} style={toastStyle(xy)} role="status" onClick={() => toast.symbol && onPick?.(toast.symbol)}>
+      <button type="button" className={'toast news ' + (toast.tone ?? 'good') + cls} style={toastStyle(xy)} onClick={() => toast.symbol && onPick?.(toast.symbol)}>
         <span className="tn-badge">속보</span>
         <span className="tn-body">
           <b>{toast.text}</b>
@@ -56,7 +56,7 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
     );
   if (toast)
     return (
-      <div className={'toast ' + toast.kind + cls + (onDismiss ? ' dismiss' : '')} style={toastStyle(xy)} role="status" title={onDismiss ? '누르면 닫혀요' : undefined} onClick={onDismiss}>
+      <div className={'toast ' + toast.kind + cls + (onDismiss ? ' dismiss' : '')} style={toastStyle(xy)} title={onDismiss ? '누르면 닫혀요' : undefined} onClick={onDismiss}>
         <Icon name={toast.kind === 'err' ? 'warn' : toast.kind === 'warn' ? 'bell' : 'check'} size={16} />
         <span>{toast.text}</span>
       </div>
@@ -154,6 +154,23 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
       </div>
       <i ref={vRef} className="snap-guide v" aria-hidden />
       <i ref={hRef} className="snap-guide h" aria-hidden />
+    </>
+  );
+}
+
+/**
+ * 화면 읽기 도구용 알림 (늘 있는 숨은 칸 — 알림이 새로 생길 때 생긴 칸은 읽어 주지 않는 도구가 많아서).
+ * 속보는 '속보' 를 앞에 붙여 읽음. 보이는 알림 자리와 따로 둠 (편집기에서 옮겨도 그대로)
+ */
+export function ToastAnnouncer({ news, alert }: { news: ToastMsg | null; alert: ToastMsg | null }) {
+  return (
+    <>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {news ? `속보: ${news.text}${news.sub ? '. ' + news.sub : ''}` : ''}
+      </div>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {alert ? alert.text : ''}
+      </div>
     </>
   );
 }

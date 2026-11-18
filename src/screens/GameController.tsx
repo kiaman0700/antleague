@@ -25,7 +25,7 @@ import { TutorialGuide, TUTORIAL_STEPS } from '../components/TutorialGuide';
 import { CardGuide } from '../components/CardGuide';
 import { EditSlot } from '../components/EditSlot';
 import { DockBoard } from '../components/Dock';
-import { ToastSpot, type ToastMsg } from '../components/ToastSpot';
+import { ToastAnnouncer, ToastSpot, type ToastMsg } from '../components/ToastSpot';
 import { TradeJump } from '../components/TradeJump';
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN } from '../components/MatchFinder';
@@ -1080,6 +1080,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           </div>
         </Sheet>
       )}
+      {/* 화면 읽기 도구가 알림·속보를 읽어 주는 숨은 칸 (늘 있음) */}
+      <ToastAnnouncer news={newsToast} alert={toast} />
       {/* 장중 속보 자리 (편집기에서 따로 옮김) */}
       <ToastSpot
         slot="news"
