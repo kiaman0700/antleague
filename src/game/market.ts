@@ -155,7 +155,7 @@ export function relatedForCompany(s: StockDef): string[] {
 }
 
 /** (v17) 관련 칩의 회사마다 관계 이름표 */
-function relationsFor(s: StockDef, related: string[], rival?: string): Record<string, NewsRel> {
+function relationsFor(s: StockDef, related: string[], rival?: string, version = 17): Record<string, NewsRel> {
   const out: Record<string, NewsRel> = {};
   for (const x of related) {
     if (x === s.symbol) continue;
@@ -163,6 +163,8 @@ function relationsFor(s: StockDef, related: string[], rival?: string): Record<st
     if (!d) continue;
     if (x === rival) out[x] = 'rival';
     else if (d.etf) out[x] = 'etf';
+    // (v19) 같은 업종이면 연결이 있어도 '같은 업종' — '거래처'는 다른 업종의 공급망·고객사만 (코어반도체↔나노칩스가 거래처로 보이던 것)
+    else if (version >= 19 && d.sector === s.sector) out[x] = 'peer';
     else if (COMPANY_LINKS[s.symbol]?.[x] != null || COMPANY_LINKS[x]?.[s.symbol] != null) out[x] = 'link';
     else if (d.sector === s.sector) out[x] = 'peer';
     else out[x] = 'chain';
@@ -478,7 +480,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           tone: good ? 'good' : 'bad',
           realTone: realGood ? 'good' : 'bad',
           related,
-          ...(v17 ? { rel: relationsFor(s, related, rival?.symbol) } : {}),
+          ...(v17 ? { rel: relationsFor(s, related, rival?.symbol, version) } : {}),
         });
       }
     }
@@ -752,11 +754,11 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           const rival = peers[Math.floor(rngF() * peers.length)];
           n.headline = fill(pick(rngF, n.tone === 'good' ? SHARE_GOOD : SHARE_BAD), { name: def.name, rival: rival.name });
           n.related = uniq([def.symbol, rival.symbol, ...n.related.filter((x) => x !== def.symbol && x !== rival.symbol)]);
-          n.rel = relationsFor(def, n.related, rival.symbol);
+          n.rel = relationsFor(def, n.related, rival.symbol, version);
           continue;
         }
       }
-      n.rel = relationsFor(def, n.related);
+      n.rel = relationsFor(def, n.related, undefined, version);
     }
   }
   return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
