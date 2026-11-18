@@ -819,6 +819,31 @@ interface DayCloseProps {
   pre?: boolean;
 }
 
+/** 오늘 손익을 0 에서 그 값까지 0.7초 동안 올라가며 보여 줌 (움직임 줄이기 설정이면 바로) */
+function CountUp({ value }: { value: number }) {
+  const [v, setV] = useState(() => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? value : 0));
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return setV(value);
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 700);
+      setV(value * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return (
+    <span aria-label={(value >= 0 ? '+' : '') + wonShort(value)}>
+      <span aria-hidden>
+        {value >= 0 ? '+' : ''}
+        {wonShort(Math.round(v))}
+      </span>
+    </span>
+  );
+}
+
 export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec, pre }: DayCloseProps) {
   const [left, setLeft] = useState(autoSec ?? 0);
   const nextRef = useRef(onNext);
@@ -852,8 +877,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
       <div className="modal close-modal">
         <div className="close-day">{day + 1}일차 장 마감</div>
         <div className={'close-pnl ' + tone(myDelta)}>
-          {myDelta >= 0 ? '+' : ''}
-          {wonShort(myDelta)}
+          <CountUp value={myDelta} />
         </div>
         <div className="muted">오늘 내 손익 · 총자산 {wonShort(myEquity)}</div>
         {(dividendToday > 0 || filledToday > 0) && (
