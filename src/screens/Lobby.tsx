@@ -375,15 +375,20 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
       <div className="field">
         <span>게임 길이</span>
         <div className="seg">
+          {/* 번개전: 5일 × 하루 45초 (약 5분) — 짧은 틈에 한 판 */}
+          <button aria-pressed={days === 5} className={days === 5 ? 'on' : ''} onClick={() => (setDays(5), setDaySec(45))}>
+            <b>번개</b>
+            <small>5일 · 약 5분</small>
+          </button>
           {DAY_OPTIONS.filter((o) => o.days <= 20).map((o) => (
-            <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => setDays(o.days)}>
+            <button key={o.days} aria-pressed={days === o.days} className={days === o.days ? 'on' : ''} onClick={() => (setDays(o.days), daySec === 45 && setDaySec(60))}>
               <b>{o.label}</b>
-              <small>최대 {Math.round((o.days * (daySec + 8)) / 60)}분</small>
+              <small>최대 {Math.round((o.days * ((daySec === 45 ? 60 : daySec) + 8)) / 60)}분</small>
             </button>
           ))}
         </div>
       </div>
-      <div className="field">
+      {days !== 5 && <div className="field">
         <span>하루(장) 길이</span>
         <div className="seg">
           {[60, 180].map((sec) => (
@@ -393,7 +398,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
             </button>
           ))}
         </div>
-      </div>
+      </div>}
       <div className="modal-actions">
         <button className="btn ghost" onClick={onClose}>
           취소

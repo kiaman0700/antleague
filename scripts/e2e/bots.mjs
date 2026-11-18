@@ -128,4 +128,26 @@ ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin)
   ok('봇전 rematch 는 거절 (봇전 메뉴로)', rm.s === 409, rm.b?.error);
   await A({ action: 'leave', roomId: bm.b.roomId });
 }
+// (058) 번개 봇전: 5일 × 하루 45초 — 끝까지, 이상한 길이는 10일·1분으로
+{
+  const Q = await user();
+  const qb = (await Q({ action: 'botMatch', levels: [2], totalDays: 5, turnSeconds: 45, nickname: '번개', mode: 'easy' })).b;
+  let qs = (await Q({ action: 'state', roomId: qb.roomId })).b;
+  ok('번개 봇전: 5일 · 하루 45초', qs.room.totalDays === 5 && qs.room.turnSeconds === 45, `${qs.room.totalDays}/${qs.room.turnSeconds}`);
+  await Q({ action: 'preReady', roomId: qb.roomId });
+  await new Promise((r) => setTimeout(r, 3000));
+  await Q({ action: 'trade', roomId: qb.roomId, symbol: 'CORE', side: 'buy', qty: 1 });
+  for (let i = 0; i < 40 && qs?.room?.status !== 'finished'; i++) {
+    const e = await Q({ action: 'endTurn', roomId: qb.roomId });
+    if (e.s === 409 && /장이 열린 뒤/.test(e.b?.error ?? '')) await Q({ action: 'preReady', roomId: qb.roomId });
+    qs = (await Q({ action: 'state', roomId: qb.roomId })).b;
+  }
+  ok('번개 봇전 끝까지', qs?.room?.status === 'finished', `${qs?.room?.status} day ${qs?.room?.day}`);
+  const odd = (await Q({ action: 'botMatch', levels: [2], totalDays: 7, turnSeconds: 30, nickname: '이상', mode: 'easy' })).b;
+  if (odd?.roomId) {
+    const os = (await Q({ action: 'state', roomId: odd.roomId })).b;
+    ok('이상한 판 길이는 10일 · 하루 60초로', os.room.totalDays === 10 && os.room.turnSeconds === 60, `${os.room.totalDays}/${os.room.turnSeconds}`);
+    await Q({ action: 'leave', roomId: odd.roomId });
+  }
+}
 done();

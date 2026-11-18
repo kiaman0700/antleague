@@ -1160,8 +1160,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       rateLimit(uid + ':botMatch', 20, 3_600_000);
       const levels = Array.isArray(b.levels) ? (b.levels as unknown[]).filter((x): x is number => typeof x === 'number' && [1, 2, 3].includes(x)).slice(0, MAX_BOTS) : [];
       if (!levels.length) throw new GameError('봇을 1명 이상 골라 주세요.');
-      const totalDays = b.totalDays === 20 ? 20 : 10;
-      const turnSeconds = b.turnSeconds === 180 ? 180 : 60;
+      // (058) 번개전: 5일 × 하루 45초 (약 5분) — 그 밖은 10·20일, 하루 1·3분
+      const quick = b.totalDays === 5;
+      const totalDays = quick ? 5 : b.totalDays === 20 ? 20 : 10;
+      const turnSeconds = quick ? 45 : b.turnSeconds === 180 ? 180 : 60;
       const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
       await ensureFree(uid);
