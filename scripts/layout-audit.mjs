@@ -35,6 +35,8 @@ const audit = () => {
     const ps = getComputedStyle(p);
     if (ps.display.includes('flex') && !ps.flexDirection.startsWith('column')) continue;
     if (ps.display.includes('grid')) continue;
+    // 오른쪽·가운데로 맞춘 세로 줄(가격 칸 등)은 왼쪽 끝이 다른 게 정상
+    if (/end|right|center/.test(ps.alignItems) || /right|end|center/.test(ps.textAlign)) continue;
     const lefts = kids.map((k) => k.getBoundingClientRect().left);
     const base = Math.min(...lefts);
     kids.forEach((k, i) => {
