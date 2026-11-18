@@ -56,6 +56,8 @@ interface Props {
   party?: { isLeader: boolean; searching: boolean; size: number; queue?: string | null; waiting?: boolean } | null;
   /** 로비 '플레이 무대' 모양 (큰 제목·뒤 차트·큰 버튼) */
   stage?: boolean;
+  /** 혼자 오래 기다릴 때 '그만 찾고 봇전' (찾기를 멈춘 뒤 봇전 창을 엶) */
+  onBots?: () => void;
 }
 
 const parseQueueName = (q: string) => {
@@ -63,7 +65,7 @@ const parseQueueName = (q: string) => {
   return { kind, size, speed };
 };
 
-export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, party, stage = false }: Props) {
+export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickOk, ui, onNeedNick, onLogin, party, stage = false, onBots }: Props) {
   const [pref, setPref] = useState(loadPref);
   const m = useMatch();
   const searching = m.phase !== 'idle';
@@ -272,6 +274,12 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
                 {alt && (
                   <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>
                     <Icon name="refresh" size={14} /> {label(alt.size, alt.speed)}으로 바꿔 찾기{alt.n > 0 ? ` (${alt.n}명 대기 중)` : ''}
+                  </button>
+                )}
+                {/* 다른 대기열에도 사람이 없고 30초 넘게 혼자면: 기다리는 대신 봇전 (파티는 제외) */}
+                {!alt && !linking && !party && onBots && waited >= 30 && (info?.inQueue ?? 1) <= 1 && (
+                  <button className="btn sm mf-alt" onClick={() => void cancelMatch().then(() => onBots())}>
+                    <Icon name="bot" size={14} /> 그만 찾고 봇전 하기
                   </button>
                 )}
                 {!linking && (
