@@ -169,6 +169,31 @@ function relationsFor(s: StockDef, related: string[], rival?: string): Record<st
   }
   return out;
 }
+/**
+ * (v19) 진짜 경쟁 관계만 — 같은 업종이어도 부품사·고객사(거래처)는 경쟁사가 아님
+ * (v17·v18 은 같은 업종 아무 회사나 골라서 '한빛모터스, 대성부품(부품사) 제치고 계약' 같은 기사가 나왔음)
+ */
+export const RIVALS: Record<string, string[]> = {
+  NEOT: ['CLOD'],
+  CLOD: ['NEOT'],
+  HBIO: ['GENE', 'CARE'],
+  GENE: ['HBIO', 'CARE'],
+  CARE: ['HBIO', 'GENE'],
+  SUNE: ['OILK'],
+  OILK: ['SUNE'],
+  MLKY: ['RAMN'],
+  RAMN: ['MLKY'],
+  NXRA: ['QNTX', 'STRM'],
+  QNTX: ['NXRA', 'STRM'],
+  STRM: ['NXRA', 'QNTX'],
+  STAR: ['MOVI'],
+  MOVI: ['STAR'],
+};
+/** 경쟁사 후보 (v19+ 는 RIVALS, 그 전은 같은 업종 아무 회사) */
+function rivalPool(s: StockDef, version: number): StockDef[] {
+  if (version >= 19) return (RIVALS[s.symbol] ?? []).map((x) => STOCK_MAP[x]).filter(Boolean);
+  return COMPANIES.filter((p) => p.sector === s.sector && p.symbol !== s.symbol);
+}
 /** (v17) 경쟁사가 반대로 움직이는 '나눠 먹는' 소식 (수주·점유율·신제품·리콜) */
 const SHARE_GOOD = [
   '{name}, {rival} 제치고 대형 계약 따내',
@@ -431,7 +456,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         if (v2) for (const [l, w] of Object.entries(COMPANY_LINKS[s.symbol] ?? {})) addStock(l, mag * w);
         // (v17) 약 30%는 '나눠 먹는' 소식 — 같은 업종 경쟁사 하나는 반대로 움직임 (루머·실적 뉴스 제외)
         const peers = COMPANIES.filter((p) => p.sector === s.sector && p.symbol !== s.symbol);
-        const rival = v17 && !rumor && !earningsOnly && peers.length && rngN() < 0.3 ? peers[Math.floor(rngN() * peers.length)] : null;
+        const cands = v17 ? rivalPool(s, version) : [];
+        const rival = v17 && !rumor && !earningsOnly && cands.length && rngN() < 0.3 ? cands[Math.floor(rngN() * cands.length)] : null;
         for (const p of peers) addStock(p.symbol, p === rival ? -mag * range(rngN, 0.35, 0.6) : mag * 0.25);
         for (const [link, w] of Object.entries(sec.links)) addSec(link, mag * w * 0.3);
         const pool = rival
@@ -721,7 +747,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       const def = STOCK_MAP[n.symbol];
       // (v18) 머리말(단독)이 붙은 가짜 기사도 — v17 은 머리말 없는 것만 바꿔서 '단독 + 경쟁사 모양 = 진짜'가 보였음
       if (n.fake && (version >= 18 || !n.label) && rngF() < 0.3) {
-        const peers = COMPANIES.filter((p) => p.sector === def.sector && p.symbol !== def.symbol);
+        const peers = rivalPool(def, version);
         if (peers.length) {
           const rival = peers[Math.floor(rngF() * peers.length)];
           n.headline = fill(pick(rngF, n.tone === 'good' ? SHARE_GOOD : SHARE_BAD), { name: def.name, rival: rival.name });

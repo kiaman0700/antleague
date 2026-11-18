@@ -3,13 +3,14 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildView, marketFor, type GameData } from './engine.js';
 import { preRumors, publicRumors } from '../game/rumors.js';
-import { STOCK_MAP } from '../game/stocks.js';
+import { COMPANY_LINKS, STOCK_MAP } from '../game/stocks.js';
+import { RIVALS } from '../game/market.js';
 import * as T from '../game/news.js';
 
 const saltOf = (seed: number) => ((seed * 2654435761) >>> 0).toString(16).padStart(8, '0').repeat(4);
 const SEEDS = Array.from({ length: 40 }, (_, i) => 1000 + i * 37);
 
-describe('v17 이하 시장은 하나도 안 바뀜', () => {
+describe('v18 이하 시장은 하나도 안 바뀜', () => {
   // v17 을 만들기 전에 찍어 둔 지문 (시장 전체 + 장 전 찌라시 4일치)
   const SNAP: [number, number, string][] = [
     [12, 7, 'eff31e2ca94bbdf3'],
@@ -23,6 +24,8 @@ describe('v17 이하 시장은 하나도 안 바뀜', () => {
     // v17 (배포된 판) — v18 에서 가짜 기사 모양 규칙을 고쳐도 그대로여야 함
     [17, 7, '9032566296ff0255'],
     [17, 4242, '958232071e393b02'],
+    [18, 7, '9032566296ff0255'],
+    [18, 4242, '1ca26943c91c2792'],
   ];
   for (const [v, seed, want] of SNAP)
     it(`v${v} 시드 ${seed}`, () => {
@@ -172,7 +175,7 @@ describe('v18 기사 모양으로 가짜를 알아낼 수 없음 (v17 은 단독
     const isEarn = (h: string) => [...earn].some((t) => h.endsWith(t));
     const cnt: Record<string, [number, number]> = {};
     for (const seed of Array.from({ length: 150 }, (_, i) => 5000 + i * 13)) {
-      for (const n of marketFor(seed, 20, 18, saltOf(seed)).news) {
+      for (const n of marketFor(seed, 20, 19, saltOf(seed)).news) {
         if (n.kind !== 'company' || n.rumor || n.at != null || n.headline.includes('발표 예정') || isEarn(n.headline)) continue;
         if (n.label && n.label !== '단독') continue;
         const rival = !!n.rel && Object.values(n.rel).includes('rival');
@@ -188,5 +191,26 @@ describe('v18 기사 모양으로 가짜를 알아낼 수 없음 (v17 은 단독
       expect(a?.[0] ?? 0, lab).toBeGreaterThan(30);
       expect(Math.abs(a[1] / a[0] - b[1] / b[0]), `${lab}: 경쟁사 ${a[1]}/${a[0]} · 보통 ${b[1]}/${b[0]}`).toBeLessThan(0.08);
     }
+  });
+});
+
+describe('v19 경쟁사는 진짜 경쟁 관계만', () => {
+  it('경쟁사는 RIVALS 목록에서만, 부품사·고객사(거래처)는 경쟁사가 아님', () => {
+    let n = 0;
+    for (const seed of SEEDS) {
+      for (const ev of marketFor(seed, 20, 19, saltOf(seed)).news) {
+        if (!ev.rel || !ev.symbol) continue;
+        for (const [s, r] of Object.entries(ev.rel)) {
+          if (r !== 'rival') continue;
+          n++;
+          expect(RIVALS[ev.symbol] ?? [], ev.headline).toContain(s);
+          expect(COMPANY_LINKS[ev.symbol]?.[s] ?? COMPANY_LINKS[s]?.[ev.symbol], ev.headline).toBeUndefined();
+        }
+      }
+    }
+    expect(n).toBeGreaterThan(30);
+  });
+  it('경쟁 관계는 서로 (A의 경쟁사면 B의 경쟁사도 A)', () => {
+    for (const [a, list] of Object.entries(RIVALS)) for (const b of list) expect(RIVALS[b] ?? [], a + '-' + b).toContain(a);
   });
 });
