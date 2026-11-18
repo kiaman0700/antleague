@@ -1356,3 +1356,5 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 }
 /* PC: 아래 알림이 가운데 칸의 사기/팔기 막대(trade-jump)를 가리던 것 — 막대가 보이면 그 위로 */
 .game.desk:has(.trade-jump.show) > .toast.at-bottom:not(.free):not(.movable) { bottom: 112px; }
+/* 결과 화면 머리 문구: 낱말 중간에서 줄이 바뀌지 않게 */
+.result .banner p { word-break: keep-all; text-wrap: balance; }

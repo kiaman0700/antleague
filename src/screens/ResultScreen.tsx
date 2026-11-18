@@ -210,6 +210,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
   const preset = Object.values(SPEED_PRESET).find((x) => x.days === days && x.turnSeconds === sec);
   const speedText = preset ? `${preset.label} · ${preset.minutes}` : setText;
   const me = results.find((r) => r.id === session.playerId)!;
+  // 혼자 한 판: 한 번도 거래 안 했으면 시장이 내려도 '잘했어요'라고 하지 않음
+  const soloWin = me.trades > 0 && me.ret > indexRet;
   const iWon = winner?.id === session.playerId;
   // 이번 시장 성적: 처음엔 많이 오른 5개·많이 내린 5개만 (47종목을 다 펼치면 화면이 너무 길어짐)
   const [allStocks, setAllStocks] = useState(false);
@@ -227,15 +229,15 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
   return (
     <div className="result">
-      <div className={'banner ' + (solo ? (me.ret > indexRet ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
+      <div className={'banner ' + (solo ? (soloWin ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
         {solo ? (
           <>
-            <div className="crown"><Icon name={me.ret > indexRet ? 'trophy' : 'activity'} size={40} /></div>
+            <div className="crown"><Icon name={soloWin ? 'trophy' : 'activity'} size={40} /></div>
             <h1>{matchKind === 'daily' ? '오늘의 도전 끝!' : '연습 끝!'}</h1>
             <p>
               내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
             </p>
-            <p>{me.ret > indexRet ? '시장보다 잘했어요!' : '이번엔 시장이 이겼네요. 다시 도전!'}</p>
+            <p>{me.trades === 0 ? '한 번도 사고팔지 않았어요. 다음엔 종목을 사 보세요!' : soloWin ? '시장보다 잘했어요!' : '이번엔 시장이 이겼네요. 다시 도전!'}</p>
           </>
         ) : results.length < 2 ? (
           <h1>상대 기록을 불러오지 못했어요</h1>

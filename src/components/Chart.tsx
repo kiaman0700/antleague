@@ -53,6 +53,11 @@ function Axes({ f, count, fmt }: { f: Frame; count: number; fmt: (v: number) => 
   const step = count > 20 ? 10 : 5;
   const days: number[] = [];
   for (let d = 0; d < count; d += step) days.push(d);
+  // 마지막 날도 (10일 판이면 1·6일만 보여 끝이 언제인지 몰랐음) — 바로 앞 눈금과 너무 붙으면 그 눈금을 뺌
+  if (count > 1 && days[days.length - 1] !== count - 1) {
+    if (count - 1 - days[days.length - 1] < step / 2 && days.length > 1) days.pop();
+    days.push(count - 1);
+  }
   return (
     <g>
       {ticks.map((v, i) => (
