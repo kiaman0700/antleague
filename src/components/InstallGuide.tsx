@@ -114,13 +114,13 @@ export function InstallGuide() {
       <section className="panel pad ig-why">
         <ul>
           <li>
-            <Icon name="check" size={14} /> 주소창 없이 <b>전체 화면</b>으로
+            <Icon name="check" size={14} /> <span>주소창 없이 <b>전체 화면</b>으로</span>
           </li>
           <li>
-            <Icon name="check" size={14} /> {env.os === 'mac' ? 'Dock·Launchpad에서' : env.os === 'windows' || env.os === 'other' ? '바탕화면·작업 표시줄에서' : '홈 화면에서'} <b>한 번에</b> 열기
+            <Icon name="check" size={14} /> <span>{env.os === 'mac' ? 'Dock·Launchpad에서' : env.os === 'windows' || env.os === 'other' ? '바탕화면·작업 표시줄에서' : '홈 화면에서'} <b>한 번에</b> 열기</span>
           </li>
           <li>
-            <Icon name="check" size={14} /> 따로 내려받을 것 없음 (용량 거의 없음)
+            <Icon name="check" size={14} /> <span>따로 내려받을 것 없음 (용량 거의 없음)</span>
           </li>
         </ul>
         {env.standalone ? (
