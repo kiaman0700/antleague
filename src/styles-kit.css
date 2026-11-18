@@ -1278,3 +1278,5 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 /* 결과 '이번 시장 성적' 접힌 상태: 왼쪽 줄 = 많이 오른 5개, 오른쪽 줄 = 많이 내린 5개 (예전엔 3칸에 섞여 읽기 어려웠음) */
 .stock-rank.split { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(5, auto); grid-auto-flow: column; }
 @media (max-width: 520px) { .stock-rank.split { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }
+/* 상자 안 마지막 입력 칸은 아래 여백 없이 (친구 추가·대기실 화면 모드 상자 아래가 비어 보이던 것) */
+.panel .field:last-child, .panel form:last-child > .field:last-child { margin-bottom: 0; }
