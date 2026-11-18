@@ -316,9 +316,10 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
 
       {/* (v20) 장중 실시간 커뮤니티·SNS 글 */}
+      {showRumors && blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 커뮤니티 글이 보이지 않아요</div>}
       {/* 장 전 시간엔 아직 실시간 글이 없으니 장 전 글을 먼저, 장이 열리면 실시간 글을 먼저 */}
       {showRumors && posts && !pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
-      {showRumors && !posts && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 도는 소문이 없어요" desc="장이 열리기 전과 장중에 커뮤니티·SNS 글이 돌면 여기에 모여요." />}
+      {showRumors && !blackout && !posts && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 도는 소문이 없어요" desc="장이 열리기 전과 장중에 커뮤니티·SNS 글이 돌면 여기에 모여요." />}
       {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 커뮤니티 글">
           <header className="rb-head">
@@ -459,7 +460,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           <RelatedChips symbols={COMPANIES.filter((c) => c.sector === bestSector).map((c) => c.symbol)} change={change} onSelect={onSelect} />
         </div>
       )}
-      {blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 아침 뉴스가 보이지 않아요</div>}
+      {blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 뉴스·커뮤니티 글이 보이지 않아요</div>}
       {scout && (
         <div className="reveal scout">
           <div className="reveal-title"><CardIcon kind="scout" size={15} /> 차트 분석 (정확도 약 70%)</div>

@@ -889,7 +889,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const oppEnded = opponent ? opponent.endedDay >= day : false;
   const easy = ui === 'easy';
   const usedToday = new Set(myItemRows.filter((r) => r.action === 'use' && r.day === day).map((r) => r.kind));
-  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '누군가의 거래 정지 카드 때문에 오늘은 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '정보 차단 카드 때문에 오늘 아침 뉴스를 볼 수 없어요' : '')).filter(Boolean);
+  const effectsOnMe = effects.map((k) => (k === 'freeze' ? '누군가의 거래 정지 카드 때문에 오늘은 거래할 수 없어요' : k === 'fee' ? '수수료 폭탄! 오늘은 수수료가 1%예요' : k === 'blackout' ? '정보 차단 카드 때문에 오늘 뉴스·커뮤니티 글을 볼 수 없어요' : '')).filter(Boolean);
   const mmss2 = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   const timerText = inPre ? (freePre ? '장 전 · 시간 제한 없음' : `장 전 ${mmss2(preLeft)}`) : remaining !== null && closing === null ? mmss2(remaining) : null;
   const endLabel = inPre ? (freePre ? '장 시작' : preReadyMe ? '준비 완료함' : '준비 완료') : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감';
