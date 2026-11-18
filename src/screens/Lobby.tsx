@@ -571,7 +571,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <i className="q-bot"><Icon name="bot" size={22} /></i>
         <span>
           <b>봇전</b>
-          <small>기다림 없이 봇과 바로</small>
+          <small>기다림 없이 바로</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>

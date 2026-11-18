@@ -439,7 +439,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         <h3>
           이번 시장 성적 <span className="muted small">종합지수 {pct(indexRet)}</span>
         </h3>
-        <div className="stock-rank">
+        <div className={"stock-rank" + (shortRank ? " split" : "")}>
           {shownRank.map(({ s, r }) => (
             <div key={s.symbol}>
               <span>
