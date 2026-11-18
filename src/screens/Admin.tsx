@@ -72,7 +72,7 @@ const TIER_ROWS: [keyof Stats['tiers'], string][] = [
   ['gold', '골드'],
   ['silver', '실버'],
   ['bronze', '브론즈'],
-  ['unplaced', '배치 중'],
+  ['unplaced', '언랭크'],
 ];
 const FEEDBACK_NAME: Record<string, string> = { bug: '버그·오류', idea: '아이디어', privacy: '개인정보', etc: '무엇이든' };
 
@@ -231,7 +231,7 @@ function OverviewTab({ onInbox }: { onInbox: () => void }) {
 
         <section className="aov-card">
           <h3>티어 분포</h3>
-          <p className="muted small">회원 {s ? num(tierTotal) : '-'}명 · 랭킹전 2판 전은 배치 중</p>
+          <p className="muted small">회원 {s ? num(tierTotal) : '-'}명 · 랭킹전 2판 전은 언랭크</p>
           {s ? <BarList rows={TIER_ROWS.map(([k, label]) => ({ label, value: s.tiers[k] }))} /> : <p className="muted small">-</p>}
         </section>
       </div>

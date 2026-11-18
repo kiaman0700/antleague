@@ -185,9 +185,9 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
   );
 }
 
-/** "골드 II · 23점" 또는 "배치 1/2" */
+/** "골드 II · 23점" 또는 "언랭크 · 배치 1/2" */
 export function tierText(rating: number, rankedGames: number | null | undefined) {
-  if (!isPlaced(rankedGames)) return `배치 ${rankedGames ?? 0}/${PLACEMENT_GAMES}`;
+  if (!isPlaced(rankedGames)) return `언랭크 · 배치 ${rankedGames ?? 0}/${PLACEMENT_GAMES}`;
   const t = tierOf(rating);
   return `${t.label} · ${t.points}점`;
 }
@@ -199,16 +199,16 @@ export function TierBadge({ rating, rankedGames, size = 28, showPoints = true }:
     <span className={'tier-badge' + (placed ? ' t-' + t.id : ' t-unplaced')}>
       <TierEmblem rating={rating} placed={placed} size={size} />
       <span className="tb-txt">
-        <b style={placed ? { color: t.color } : undefined}>{placed ? t.label : '배치 중'}</b>
+        <b style={placed ? { color: t.color } : undefined}>{placed ? t.label : '언랭크'}</b>
         {showPoints && <small>{placed ? `${t.points}점` : `${rankedGames ?? 0}/${PLACEMENT_GAMES}판`}</small>}
       </span>
     </span>
   );
 }
 
-/** 짧게: "골드 II" 또는 "배치 중" (친구·파티 목록용) */
+/** 짧게: "골드 II" 또는 "언랭크" (친구·파티 목록용) */
 export function tierShort(rating: number, rankedGames: number | null | undefined) {
-  return isPlaced(rankedGames) ? tierOf(rating).label : '배치 중';
+  return isPlaced(rankedGames) ? tierOf(rating).label : '언랭크';
 }
 
 /**

@@ -491,7 +491,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         {/* 랭크 칸: 엠블럼 위 · 티어 이름(티어 색) · 점수 · '랭킹 보기 ›' — 모두 가운데 */}
         <button className={'me-rank' + (isPlaced(p.ranked_games) ? '' : ' unplaced')} onClick={onRanking} aria-label="랭킹 보기">
           <TierEmblem rating={p.rating} placed={isPlaced(p.ranked_games)} size={46} />
-          <b style={isPlaced(p.ranked_games) ? { color: tierOf(p.rating).color } : undefined}>{isPlaced(p.ranked_games) ? tierOf(p.rating).label : '배치 중'}</b>
+          <b style={isPlaced(p.ranked_games) ? { color: tierOf(p.rating).color } : undefined}>{isPlaced(p.ranked_games) ? tierOf(p.rating).label : '언랭크'}</b>
           <small>{isPlaced(p.ranked_games) ? `${tierOf(p.rating).points}점${p.rankPos ? ` · ${p.rankPos}위` : ''}` : `배치 ${p.ranked_games ?? 0}/${PLACEMENT_GAMES}판`}</small>
           <span className="me-rank-go">
             랭킹 보기 <Icon name="right" size={12} />
