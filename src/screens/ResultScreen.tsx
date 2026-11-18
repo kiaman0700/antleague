@@ -188,7 +188,9 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
               : `${josa(champ.nickname, '이', '가')} 끝까지 1위였어요`,
       });
     }
-    for (const r of results) {
+    // 3명 이상이면 사람마다 최고·최악의 날을 다 보이면 카드가 10장 가까이 됨 → 1위와 나만 (나머지는 하루별 리플레이에)
+    const who = results.length > 2 ? results.filter((r) => r.id === ranked[0]?.id || r.id === session.playerId) : results;
+    for (const r of who) {
       let best = 0;
       let bd = 0;
       let worst = 0;
@@ -207,7 +209,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
       if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd, note: why(wd, worst) });
     }
     return out;
-  }, [results, market]);
+  }, [results, ranked, market, session.playerId]);
 
   // 한 판 더 버튼 아래 작은 글: 판 설정 (예: 10일 · 하루 1분 / 신속 · 약 10~14분)
   const days = dayInfo?.days ?? market.totalDays;
