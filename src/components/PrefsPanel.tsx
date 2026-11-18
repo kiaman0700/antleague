@@ -15,7 +15,7 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   const soft = async () => (!guardRef.current || (await guardRef.current())) && closeRef.current();
   const boxRef = useDialogFocus<HTMLDivElement>();
   // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘 (ui.tsx 의 공용 순서)
-  useEscape(() => void soft());
+  useEscape(() => void soft(), true, true);
   return (
     <div className="modal-bg" onClick={soft}>
       <div ref={boxRef} tabIndex={-1} className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined} onClick={(e) => e.stopPropagation()}>

@@ -80,7 +80,7 @@ export function GameCard({
   ) : null;
   const [open, setOpen] = useState(false);
   // 카드 창은 다른 창처럼 Esc 로도 닫힘
-  useEscape(() => setOpen(false), open);
+  useEscape(() => setOpen(false), open, true);
   // PC: 마우스를 올리면 카드 위(자리가 없으면 아래)에 설명 — 화면 맨 위 층에 그려서 칸 가장자리에 잘리지 않게
   const [pop, setPop] = useState<{ x: number; y: number; below: boolean } | null>(null);
   useEffect(() => {

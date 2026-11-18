@@ -122,7 +122,7 @@ export function OrdersAndDividends({
 /* ---------------- 모바일 바텀시트 ---------------- */
 
 export function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
-  useEscape(onClose, open);
+  useEscape(onClose, open, true);
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;

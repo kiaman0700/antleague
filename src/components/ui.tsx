@@ -129,33 +129,78 @@ export const balancedCols = (n: number) => (n <= 3 ? Math.max(1, n) : n === 4 ? 
  * 열린 창(모달·바텀시트·서랍·팝업) 쌓임 순서. Esc 는 맨 위(가장 나중에 열린) 창 하나만 닫음
  * (예전엔 창마다 따로 Esc 를 들어서, 서랍 위에 카드 창이 떠 있으면 Esc 한 번에 둘 다 닫혔음)
  */
-const escStack: { current: () => void }[] = [];
+type Layer = { close: { current: () => void }; id?: number; popped?: boolean };
+const escStack: Layer[] = [];
 let escBound = false;
+let layerSeq = 0;
+/** 창을 닫으며 우리가 history.back() 한 횟수 — 그 popstate 는 화면 이동으로 치지 않고 삼킴 */
+let swallowPops = 0;
 function onEscKey(e: KeyboardEvent) {
   if (e.key !== 'Escape' || e.defaultPrevented) return;
   const top = escStack[escStack.length - 1];
   if (!top) return;
   e.preventDefault();
-  top.current();
+  top.close.current();
+}
+/**
+ * 뒤로 가기(휴대폰 뒤로 버튼·스와이프 포함): 맨 위 창이 '뒤로 가기로 닫힘' 창이면 화면은 그대로 두고 그 창만 닫음.
+ * 다른 popstate 처리(주소 = 화면, 휴대폰 탭)보다 먼저 받으려고 capture 로 등록하고 나머지는 멈춤
+ */
+function onPop(e: PopStateEvent) {
+  if (swallowPops > 0) {
+    swallowPops--;
+    e.stopImmediatePropagation();
+    return;
+  }
+  const top = escStack[escStack.length - 1];
+  if (top?.id && !top.popped) {
+    top.popped = true;
+    e.stopImmediatePropagation();
+    top.close.current();
+  }
 }
 
-/** 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만, 겹쳐 있으면 맨 위 창만 */
-export function useEscape(onClose: () => void, on = true) {
+/**
+ * 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만, 겹쳐 있으면 맨 위 창만.
+ * back: 뒤로 가기로도 닫힘 (열 때 같은 주소로 기록을 하나 넣고, 다른 방법으로 닫히면 그 기록을 되돌림)
+ */
+export function useEscape(onClose: () => void, on = true, back = false) {
   const ref = useRef(onClose);
   ref.current = onClose;
   useEffect(() => {
     if (!on) return;
     if (!escBound && typeof window !== 'undefined') {
       window.addEventListener('keydown', onEscKey);
+      window.addEventListener('popstate', onPop, true);
       escBound = true;
     }
-    const entry = ref;
+    const entry: Layer = { close: ref };
+    // 기록은 한 박자 뒤에 넣음 — 바로 열렸다 닫히는 경우(개발 모드의 두 번 실행 등)엔 아예 넣지 않게
+    let timer: number | undefined;
+    if (back && typeof history !== 'undefined') {
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        if (!escStack.includes(entry)) return;
+        try {
+          entry.id = ++layerSeq;
+          history.pushState({ ...((history.state as object | null) ?? {}), __layer: entry.id }, '', location.href);
+        } catch {
+          entry.id = undefined;
+        }
+      }, 0);
+    }
     escStack.push(entry);
     return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
       const i = escStack.lastIndexOf(entry);
       if (i >= 0) escStack.splice(i, 1);
+      // X·Esc·바깥 누르기로 닫혔으면 넣어 둔 기록을 되돌림 — 단, 그사이 다른 화면으로 옮겨 갔으면(기록이 바뀜) 건드리지 않음
+      if (entry.id && !entry.popped && (history.state as { __layer?: number } | null)?.__layer === entry.id) {
+        swallowPops++;
+        history.back();
+      }
     };
-  }, [on]);
+  }, [on, back]);
 }
 
 /** 지금 Esc 로 닫힐 창이 있는지 (창이 없을 때만 하는 Esc 동작 — 예: 화면 편집 끝내기 — 이 겹치지 않게) */

@@ -179,7 +179,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
 /** 방해·염탐 카드를 누구에게 쓸지 */
 export function TargetPicker({ kind, rows, onPick, onCancel }: { kind: ItemKind; rows: RankRow[]; onPick: (id: string) => void; onCancel: () => void }) {
   const d = ITEM_MAP[kind];
-  useEscape(onCancel);
+  useEscape(onCancel, true, true);
   const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onCancel}>

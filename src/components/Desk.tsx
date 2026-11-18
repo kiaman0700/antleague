@@ -210,7 +210,7 @@ export function CardTray({
 /* ---------------- 오른쪽 서랍 ---------------- */
 
 export function Drawer({ open, title, onClose, children }: { open: boolean; title: ReactNode; onClose: () => void; children: ReactNode }) {
-  useEscape(onClose, open);
+  useEscape(onClose, open, true);
   return (
     // 닫힌 서랍은 키보드(Tab)로도 들어가지 않게 inert
     <div className={'drawer-bg' + (open ? ' open' : '')} onClick={onClose} aria-hidden={!open} {...(!open ? { inert: '' } : {})}>

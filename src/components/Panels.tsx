@@ -676,7 +676,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
 export function FakeNewsModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (symbol: string, tone: 'good' | 'bad') => void }) {
   const [symbol, setSymbol] = useState(COMPANIES[0].symbol);
   const [t, setT] = useState<'good' | 'bad'>('good');
-  useEscape(onCancel);
+  useEscape(onCancel, true, true);
   const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onCancel}>
@@ -859,7 +859,7 @@ const STEPS = [
 export function Tutorial({ onDone }: { onDone: () => void }) {
   const [i, setI] = useState(0);
   const s = STEPS[i];
-  useEscape(onDone);
+  useEscape(onDone, true, true);
   const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg strong">

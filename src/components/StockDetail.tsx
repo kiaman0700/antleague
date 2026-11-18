@@ -69,7 +69,7 @@ interface Props {
 export function StockDetail(props: Props) {
   const [full, setFull] = useState(false);
   // 크게 보기 차트도 Esc 로 닫힘 (겹친 창 순서대로 — 그 위에 사기 창이 떠 있으면 사기 창이 먼저)
-  useEscape(() => setFull(false), full);
+  useEscape(() => setFull(false), full, true);
   // 봉 간격(초) — 5·10·20·30초, 0 = 일봉. 장중/일별을 나누지 않고 한 차트에서 (사용자 요청 2026-11-17). 이 기기에 기억
   const [iv, setIvRaw] = useState<number>(() => {
     try {

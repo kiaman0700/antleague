@@ -181,7 +181,7 @@ function useProfile() {
 
 function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
   const boxRef = useDialogFocus<HTMLDivElement>();
-  useEscape(onClose);
+  useEscape(onClose, true, true);
   return (
     <div className="modal-bg" onClick={onClose}>
       <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
