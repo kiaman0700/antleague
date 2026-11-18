@@ -377,6 +377,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
             </div>
           ))}
         </div>
+        {/* 혼자 연습(브라우저 판)은 기록·업적·경험치가 서버에 남지 않음 — 어디서 모이는지 알려 줌 */}
+        {session.mode === 'solo' && !session.tutorial && <p className="muted small rw-note">연습 판은 업적·경험치가 기록에 남지 않아요. 봇전이나 대결에서 모여요.</p>}
       </div>
     </>;
   // (밤샘 조사) 나의 결정적 순간 — 판이 끝나 공개된 뉴스 진위·내 거래만으로 (잡은·피한·속은·놓친)

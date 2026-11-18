@@ -1767,3 +1767,4 @@ p { text-wrap: pretty; }
 @media (max-width: 860px) { .lobby-shell:has(.create-bar) .rc-pill { display: none; } }
 /* 아주 좁은 휴대폰(360 미만): 전적 줄의 판 종류 이름은 잘리지 않고 두 줄로 */
 @media (max-width: 359px) { .mr-mode b { white-space: normal; overflow: visible; line-height: 1.25; } }
+.rw-note { margin: 10px 0 0; }
