@@ -98,12 +98,12 @@ export function Welcome({
               </thead>
               <tbody>
                 <tr>
-                  <td>일반전 · 커스텀 방</td>
+                  <td>일반전·커스텀</td>
                   <td className="y">가능</td>
                   <td className="y">가능</td>
                 </tr>
                 <tr>
-                  <td>랭킹전 · 랭킹 등록</td>
+                  <td>랭킹전·랭킹</td>
                   <td className="n">안 돼요</td>
                   <td className="y">가능</td>
                 </tr>
