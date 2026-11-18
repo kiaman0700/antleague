@@ -95,6 +95,11 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
     lead = `${title.replace(/^\d{2}:\d{2} 기준 /, '')} — ${time} 기준 거래소 집계다.`;
     body.push(`${subject}에는 장중 내내 매수·매도 주문이 몰렸다. 시장에서는 "${good ? '단기 과열을 조심해야 한다' : '저가 매수 기회를 노리는 움직임도 있다'}"는 말이 나온다.`);
     body.push(`장 마감까지 흐름이 바뀔 수 있어 끝까지 지켜봐야 한다는 분석이다.`);
+  } else if (n.label === '특징주' && n.revealDay != null) {
+    // (v15) 사건 반전 기사: 앞서 나온 기대와 반대되는 소식 — 진위는 발표 다음 날에야 밝혀짐
+    lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '을', '를') : jo(subject, '을', '를')} 둘러싼 기대에 물음표가 붙었다.`;
+    body.push(`앞서 나온 기대와 반대되는 내용이라 투자자들 사이에서 의견이 엇갈리고 있다. 회사 측은 아직 공식 입장을 내지 않았다.`);
+    body.push(`결과가 발표되기 전까지는 사실인지 확인하기 어렵다는 지적이 나온다.`);
   } else if (n.label === '시황' || n.label === '특징주') {
     // 지난 움직임을 정리한 기사 (아침에 나오는 전날 정리 등)
     lead = `${when}, '${title}' 소식이 전해졌다.`;
