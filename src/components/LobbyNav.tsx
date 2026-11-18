@@ -251,15 +251,13 @@ export function useGuestGate(account: AccountState, online: boolean, onSignup: (
   return { guard, el };
 }
 
-function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => void; onSignup: () => void; onLogin: () => void; onStart: () => void }) {
-  const [step, setStep] = useState<'intro' | 'nick'>('intro');
-  const [nick, setNick] = useState(loadNick());
-  const [check, setCheck] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
+export type NickCheck = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid';
+/** 게스트 닉네임: 입력할 때마다(잠깐 멈추면) 형식·회원 닉네임과 겹치는지 확인 (게스트 시작 창·설정 화면) */
+export function useNickCheck(nick: string, on: boolean): NickCheck {
+  const [check, setCheck] = useState<NickCheck>('idle');
   const seq = useRef(0);
-  useEscape(onClose);
-  // 입력할 때마다(잠깐 멈추면) 회원 닉네임과 겹치는지 확인
   useEffect(() => {
-    if (step !== 'nick') return;
+    if (!on) return;
     if (!nickValid(nick)) return setCheck(nick ? 'invalid' : 'idle');
     const my = ++seq.current;
     setCheck('checking');
@@ -269,7 +267,15 @@ function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => vo
         .catch(() => my === seq.current && setCheck('ok')); // 확인 못 해도 서버가 들어갈 때 다시 확인
     }, 400);
     return () => clearTimeout(t);
-  }, [nick, step]);
+  }, [nick, on]);
+  return check;
+}
+
+function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => void; onSignup: () => void; onLogin: () => void; onStart: () => void }) {
+  const [step, setStep] = useState<'intro' | 'nick'>('intro');
+  const [nick, setNick] = useState(loadNick());
+  const check = useNickCheck(nick, step === 'nick');
+  useEscape(onClose);
   const ready = nickValid(nick) && (check === 'ok' || check === 'checking');
   const go = () => {
     if (!nickValid(nick) || check === 'taken' || check === 'invalid') return;

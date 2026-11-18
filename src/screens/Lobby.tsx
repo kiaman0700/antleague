@@ -11,7 +11,7 @@ import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, u
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
-import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, type NavTab } from '../components/LobbyNav';
+import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, useNickCheck, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 // 가끔 여는 화면(공부·운영자·계정)은 열 때 받음 — 첫 화면을 가볍게
 const Companies = lazy(() => import('./Companies').then((m) => ({ default: m.Companies })));
@@ -206,6 +206,19 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
       {top && desc && <p className="ph-desc muted small">{desc}</p>}
       <div className="ph-right">{right}</div>
     </header>
+  );
+}
+
+/** 설정의 게스트 닉네임: 형식·회원 닉네임과 겹치는지 바로 알려 줌 (예전엔 방에 들어갈 때야 막혔음) */
+function GuestNickField({ nick, setNick }: { nick: string; setNick: (v: string) => void }) {
+  const check = useNickCheck(nick, online);
+  return (
+    <label className={'field' + (check === 'ok' && nick ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
+      <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
+      <input value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
+      {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
+      {check === 'invalid' && <small className="error">1~10자, 글자·숫자로 정해 주세요.</small>}
+    </label>
   );
 }
 
@@ -863,10 +876,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <Loading inline label="내 계정을 확인하는 중…" />
             ) : (
               <>
-                <label className={'field' + (profile.nick && !profile.ok ? ' invalid' : '')}>
-                  <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
-                  <input value={profile.nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => profile.setNick(e.target.value)} />
-                </label>
+                <GuestNickField nick={profile.nick} setNick={profile.setNick} />
                 {online && (
                   <div className="rg-actions">
                     <button className="btn sm primary" onClick={() => go('signup')}>
