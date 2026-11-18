@@ -1798,3 +1798,9 @@ p { text-wrap: pretty; }
 @media (max-width: 860px) { .nt-bar { max-width: 640px; padding: 0 16px; } }
 /* '봇전은 바로 시작' 글자 링크: 보이는 크기는 그대로, 누르는 자리만 위아래로 넓힘 (작은 휴대폰에서 15px 높이였음) */
 .st-status .st-bots { padding: 6px 2px; margin: -6px -2px; }
+/* 대비(4.5:1): 리그 단계 이름 글자는 단계 색에 흰색을 조금 섞어 밝게(그림 색은 그대로), 지금이 아닌 단계는 그림만 흐리게 하고 글자는 회색 · 칭호 꼬리표 글자도 조금 밝게 */
+.lg-badge b { color: color-mix(in srgb, var(--lc) 78%, #fff); }
+.lg-tiers > span { opacity: 1; }
+.lg-tiers > span:not(.on) svg { opacity: 0.5; }
+.lg-tiers > span:not(.on) .lg-badge b { color: var(--text-3, #9a9a9a); }
+.title-tag { color: color-mix(in srgb, var(--gold) 82%, #fff); }

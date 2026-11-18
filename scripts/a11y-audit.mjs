@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 // 접근성·배치 빠른 점검 (사람이 보는 도구, e2e 묶음에는 안 들어감)
 // 실행: BASE=http://localhost:5173 node scripts/a11y-audit.mjs [phone|pc|tablet]
 // 화면마다: 이름 없는 버튼·링크, 설명 없는 그림, 이름표 없는 입력칸, 글자 대비 4.5:1 미만(큰 글자 3:1), 휴대폰에서 너무 작은 누를 곳(< 32px), 가로 넘침
@@ -139,7 +140,18 @@ for (const [label, opts] of SIZES) {
   // 사파리처럼 '기기 종류' 정보 없음 (시험용 크롬이 데스크톱이라고 알려 주지 않게) — devices.mjs 와 같음
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'userAgentData', { get: () => undefined }));
   const p = await ctx.newPage();
-  await startGuest(ctx, p, BASE);
+  // 회원 화면 점검: A11Y_SESSION=세션 파일({key,val}) 이면 그 로그인으로 (비밀번호·토큰은 출력하지 않음)
+  if (process.env.A11Y_SESSION) {
+    const sess = JSON.parse(fs.readFileSync(process.env.A11Y_SESSION, 'utf8'));
+    await ctx.addInitScript((x) => {
+      try {
+        localStorage.setItem(x.key, x.val);
+        localStorage.setItem('stockduel.welcomed', '1');
+        localStorage.setItem('stockduel.tourSkipped', '1');
+        localStorage.setItem('stockduel.tutorial', '1');
+      } catch {}
+    }, sess);
+  } else await startGuest(ctx, p, BASE);
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   for (const r of ROUTES) {
