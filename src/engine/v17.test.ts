@@ -10,7 +10,7 @@ import * as T from '../game/news.js';
 const saltOf = (seed: number) => ((seed * 2654435761) >>> 0).toString(16).padStart(8, '0').repeat(4);
 const SEEDS = Array.from({ length: 40 }, (_, i) => 1000 + i * 37);
 
-describe('v18 이하 시장은 하나도 안 바뀜', () => {
+describe('v19 이하 시장은 하나도 안 바뀜', () => {
   // v17 을 만들기 전에 찍어 둔 지문 (시장 전체 + 장 전 찌라시 4일치)
   const SNAP: [number, number, string][] = [
     [12, 7, 'eff31e2ca94bbdf3'],
@@ -26,6 +26,8 @@ describe('v18 이하 시장은 하나도 안 바뀜', () => {
     [17, 4242, '958232071e393b02'],
     [18, 7, '9032566296ff0255'],
     [18, 4242, '1ca26943c91c2792'],
+    [19, 7, '729d5d32abee1aca'],
+    [19, 4242, 'e710c7a2e7c9515e'],
   ];
   for (const [v, seed, want] of SNAP)
     it(`v${v} 시드 ${seed}`, () => {
