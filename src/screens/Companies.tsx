@@ -185,11 +185,12 @@ export function Companies({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="lobby page companies">
-      <header className="page-head">
+      <header className="page-head top">
         <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
           <Icon name="back" size={18} />
         </button>
         <h2>공부</h2>
+        <p className="ph-desc muted small">투자 기초·기업·찬스 카드</p>
         <div className="ph-right" />
       </header>
       <div className="seg study-tabs" role="tablist" aria-label="공부">

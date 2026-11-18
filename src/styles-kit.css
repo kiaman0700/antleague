@@ -1303,3 +1303,15 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .rel-chip .rc-rel { display: inline-flex; align-items: center; gap: 2px; margin-right: 6px; padding-right: 6px; border-right: 1px solid var(--line-2, #3a3a3a); font-size: 11px; font-weight: 600; color: #a8a8a8; white-space: nowrap; }
 .rel-chip .rc-rel b { font-size: 10px; font-weight: 700; }
 .rel-chip.r-rival .rc-rel { color: #f0b35a; }
+/* PC 위 메뉴에서 여는 화면(랭킹·업적·공부·마이프로필·운영자): 다른 탭(일반전·설정 등)처럼 왼쪽 큰 제목 + 설명 + 아래 줄, 뒤로 화살표 없음 (2026-11-18 사용자 결정). 휴대폰은 그대로 */
+.page-head .ph-desc { display: none; }
+@media (min-width: 861px) {
+  .lobby-shell.client .page-head.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title right' 'desc right'; align-items: end; column-gap: 16px; padding: 6px 0 10px; margin: 0 0 18px; border-bottom: 1px solid var(--line); text-align: left; }
+  .lobby-shell.client .page-head.top > .icon-btn { display: none; }
+  .lobby-shell.client .page-head.top h2 { grid-area: title; justify-self: start; margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.01em; text-align: left; }
+  .lobby-shell.client .page-head.top .ph-desc { grid-area: desc; display: block; margin: 4px 0 0; }
+  .lobby-shell.client .page-head.top .ph-right { grid-area: right; align-self: center; }
+  /* 랭킹·업적·공부 화면도 다른 탭과 같은 왼쪽 시작점·폭 */
+  .lobby-shell.client .lobby.page:has(> .page-head.top) { max-width: 1150px; margin: 0; padding: 40px 40px 0; }
+
+}

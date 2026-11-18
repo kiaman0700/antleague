@@ -21,13 +21,15 @@ import { pct, tone } from '../lib/format';
 import { josa } from '../engine/engine';
 import { LegalSheet, type LegalKind } from '../components/Legal';
 
-function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: React.ReactNode }) {
+/** top: PC 위 메뉴에서 바로 여는 화면(랭킹·마이프로필) — PC 에선 다른 탭처럼 왼쪽 큰 제목 + 설명, 뒤로 화살표 없음 (휴대폰은 그대로) */
+function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: () => void; right?: React.ReactNode; top?: boolean; desc?: string }) {
   return (
-    <header className="page-head">
+    <header className={'page-head' + (top ? ' top' : '')}>
       <button className="icon-btn" aria-label="뒤로" onClick={onBack}>
         <Icon name="back" size={18} />
       </button>
       <h2>{title}</h2>
+      {top && desc && <p className="ph-desc muted small">{desc}</p>}
       <div className="ph-right">{right}</div>
     </header>
   );
@@ -387,7 +389,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   if (!p)
     return (
       <div className="lobby page">
-        <PageHead title="마이프로필" onBack={onBack} />
+        <PageHead title="마이프로필" onBack={onBack} top desc="내 기록·칭호·계정" />
         <section className="panel pad center">
           <p>로그인하면 마이프로필과 랭킹을 쓸 수 있어요.</p>
           <button className="btn primary" onClick={onLogin}>
@@ -422,6 +424,8 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       <PageHead
         title="마이프로필"
         onBack={onBack}
+        top
+        desc="내 기록·칭호·계정"
         right={
           <button className="btn sm ghost" onClick={() => logout().then(onBack)}>
             로그아웃
@@ -679,7 +683,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
   }, [tryN]);
   return (
     <div className="lobby page ranking">
-      <PageHead title="랭킹" onBack={onBack} />
+      <PageHead title="랭킹" onBack={onBack} top desc="랭킹전 점수 순위와 티어" />
       <p className="muted small">랭킹전(회원끼리, 1대1·다인전) 결과로 점수가 바뀌어요. 처음엔 1000점, 2판 배치 뒤 티어가 보여요. 이기면 오르고 지면 내려가요. 상대가 강할수록 더 많이 올라요.</p>
       {acc.status === 'guest' && (
         <section className="panel pad guest-cta">

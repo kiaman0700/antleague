@@ -405,11 +405,12 @@ export function Admin({ onBack, onLogin, onNotices }: { onBack: () => void; onLo
 
   return (
     <div className="lobby page admin">
-      <header className="page-head">
+      <header className="page-head top">
         <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
           <Icon name="back" size={18} />
         </button>
         <h2>운영자</h2>
+        <p className="ph-desc muted small">현황·의견함·공지사항</p>
         <div className="ph-right">
           {state === 'inbox' && (
             <button className="btn sm ghost" onClick={logout}>

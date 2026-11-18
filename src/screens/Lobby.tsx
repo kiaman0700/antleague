@@ -193,13 +193,14 @@ function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => 
 }
 
 /** 하위 페이지 머리: ← 뒤로 · 제목 · 오른쪽 버튼 */
-function PageHead({ title, onBack, right }: { title: string; onBack: () => void; right?: ReactNode }) {
+function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: () => void; right?: ReactNode; top?: boolean; desc?: string }) {
   return (
-    <header className="page-head">
+    <header className={'page-head' + (top ? ' top' : '')}>
       <button className="icon-btn" aria-label="홈으로" onClick={onBack}>
         <Icon name="back" size={18} />
       </button>
       <h2>{title}</h2>
+      {top && desc && <p className="ph-desc muted small">{desc}</p>}
       <div className="ph-right">{right}</div>
     </header>
   );
@@ -1307,7 +1308,7 @@ function Records({ go }: Pick<Props, 'go'>) {
 
   return (
     <div className="lobby page records">
-      <PageHead title="업적" onBack={() => go('home')} />
+      <PageHead title="업적" onBack={() => go('home')} top desc="모은 업적과 최근 전적" />
       {history === null && <Loading />}
       {history !== null && list.length === 0 &&
         (histErr ? (
