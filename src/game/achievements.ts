@@ -1,7 +1,7 @@
 import { deriveItems, type ItemRow } from './items.js';
-import { KR_INDEX_BASE, type Bar, type Market } from './market.js';
+import type { Bar, Market } from './market.js';
 import { computePortfolio, equityHistory, moneyScale, startCashFor, type Spend, type Trade } from './portfolio.js';
-import { STOCK_MAP } from './stocks.js';
+import { KR_INDEX_BASE, STOCK_MAP } from './stocks.js';
 
 export interface Badge {
   id: string;

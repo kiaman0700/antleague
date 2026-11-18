@@ -74,6 +74,23 @@ export function clockOf(at: number) {
   const min = 9 * 60 + Math.round(Math.max(0, Math.min(1, at)) * 390);
   return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 }
+/** (v22) 게임 안의 시간: 하루가 몇 초인지(daySec)에 맞춰 장이 열린 뒤 몇 초째인지 — '42초', '2분 31초' (사용자 요청 2026-11-18) */
+export const GAME_TIME_VERSION = 22;
+export function gameTime(at: number, daySec: number): string {
+  const t = Math.round(Math.max(0, Math.min(1, at)) * daySec);
+  if (t <= 0) return '장 시작';
+  if (daySec <= 60 || t < 60) return `${t}초`;
+  const m = Math.floor(t / 60);
+  const sec = t % 60;
+  return sec ? `${m}분 ${sec}초` : `${m}분`;
+}
+/** 남은 시간을 말로 ('20초 안에', '1분 30초 안에') — 5초·10초 단위로 둥글게 */
+function soonText(sec: number) {
+  if (sec < 60) return `${Math.max(5, Math.ceil(sec / 5) * 5)}초 안에`;
+  const t = Math.ceil(sec / 10) * 10;
+  const m = Math.floor(t / 60);
+  return t % 60 ? `${m}분 ${t % 60}초 안에` : `${m}분 안에`;
+}
 /** 말로 하는 때 ('오후 2시 반쯤') */
 function speakTime(at: number) {
   const min = 9 * 60 + Math.round((Math.max(0, Math.min(1, at)) * 390) / 30) * 30;
@@ -84,11 +101,28 @@ function speakTime(at: number) {
   return `${ampm} ${hh}시${half ? ' 반' : ''}쯤`;
 }
 
-const NICKS = ['존버장인', '물린개미', '불개미', '단타의신', '익절요정', '한강가즈아', '흑우탈출', '떡상기원', '차트도사', '야수의심장', '개미왕', '코스피지킴이', '월급루팡', '퇴근후주식', '눈팅만10년', '손절못함', '매수버튼', '갓수급', '불장러', '새벽시황'];
+/** 익명 닉네임 (개미 커뮤니티 말투 — 실제 사람·회사 이름 아님). 고르는 난수 횟수는 목록 길이와 상관없음 */
+export const NICKS = [
+  '존버는승리한다', '물린개미3년차', '손절못하는곰돌이', '익절요정', '상한가꿈나무', '하한가체험단', '떡상기원', '떡락방지위원회',
+  '단타의신(자칭)', '장기투자(강제)', '평단가수호자', '물타기장인', '불타기초보', '차트보는척', '뉴스만믿는개미', '소문수집가',
+  '배당먹는다람쥐', '레버리지후회중', '인버스외길', '반도체에진심', '바이오롤러코스터', '코인갔다온개미', '월급털이개미', '점심값투자',
+  '출근전호가창', '장마감3초전', '시초가추격자', '매수버튼중독', '수수료기부천사', '오늘도파란불', '빨간불만보고싶다', '개미중의개미',
+  '졸업못한개미', '본전만오면판다', '야수의심장', '새가슴개미', '눈팅만10년', '퇴근후주식', '한강뷰예약', '라면값벌기',
+  '익절은언제나옳다', '천원이라도벌자', '오르면산다', '사면내린다', '팔면오른다', '가즈아전문', '존버3회차', '개미핥기조심',
+];
 const ROLES: Record<Verified['role'], string> = { ceo: '대표', exec: '임원', ir: 'IR 담당', analyst: '애널리스트', fund: '펀드매니저', reporter: '경제부 기자' };
 
 type When = { kind: 'today' | 'soon' | 'close' | 'tomorrow' | 'tday' | 'day'; target: { day: number; at: number } };
-function whenText(w: When, now: number) {
+function whenText(w: When, now: number, daySec?: number) {
+  if (daySec) {
+    // (v22) 게임 시간으로: '오늘 장 42초쯤', '내일 2분 31초쯤', '3일차 40초쯤'
+    if (w.kind === 'soon') return soonText(Math.max(1, (w.target.at - now) * daySec));
+    if (w.kind === 'today') return `오늘 장 ${gameTime(w.target.at, daySec)}쯤`;
+    if (w.kind === 'close') return '오늘 장 마감 전에';
+    if (w.kind === 'tomorrow') return '내일 장 시작 전에';
+    if (w.kind === 'tday') return `내일 ${gameTime(w.target.at, daySec)}쯤`;
+    return w.target.at > 0 ? `${w.target.day + 1}일차 ${gameTime(w.target.at, daySec)}쯤` : `${w.target.day + 1}일차 장 시작 전에`;
+  }
   if (w.kind === 'soon') return `${Math.max(1, Math.round(((w.target.at - now) * 390) / 30) * 30) >= 60 ? `${Math.round(((w.target.at - now) * 390) / 60)}시간 안에` : '30분 안에'}`;
   if (w.kind === 'today') return `오늘 ${speakTime(w.target.at)}`;
   if (w.kind === 'close') return '오늘 장 마감 전에';
@@ -138,8 +172,10 @@ const TPL_INSIDER = {
 const cache = new Map<string, Post[]>();
 
 /** 그날의 커뮤니티 글 전부 (서버·혼자 연습만 — 화면에는 publicPosts 로 잘라서) */
-export function communityPosts(m: Market, day: number, key: string): Post[] {
-  const ck = `${key}:${m.totalDays}:${day}`;
+export function communityPosts(m: Market, day: number, key: string, daySec?: number): Post[] {
+  // (v22) 글 속 때를 게임 시간으로 — 하루 길이를 알 때만 (가격·진위·시각은 하루 길이와 상관없음)
+  const ds = (m.version ?? 1) >= GAME_TIME_VERSION && daySec && daySec > 0 ? daySec : undefined;
+  const ck = `${key}:${m.totalDays}:${day}:${ds ?? ''}`;
   const hit = cache.get(ck);
   if (hit) return hit;
   const rng = seeded(`${key}:sns20:${day}`);
@@ -205,7 +241,7 @@ export function communityPosts(m: Market, day: number, key: string): Post[] {
     const tpl = verified ? pick((insider ? TPL_INSIDER : TPL_VERIFIED)[tone]) : pick(TPL[platform][tone]);
     const text = tpl
       .replace(/\{w\}/g, w)
-      .replace(/\{t\}/g, whenText(when, at))
+      .replace(/\{t\}/g, whenText(when, at, ds))
       .replace(/\{h\}/g, name.replace(/[\s·]/g, ''));
     const mult = SECTOR_NEWS_MULT[sector] ?? 1;
     out.push({

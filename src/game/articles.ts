@@ -8,7 +8,7 @@
  */
 import { seeded } from '../lib/rng.js';
 import type { NewsEvent } from './market.js';
-import { clockOf, PLATFORMS, type Platform } from './community.js';
+import { clockOf, gameTime, PLATFORMS, type Platform } from './community.js';
 import { SECTOR_MAP, STOCK_MAP } from './stocks.js';
 
 export interface Article {
@@ -66,7 +66,7 @@ function macroWhy(t: string): { lead: string; body: string } | null {
   return null;
 }
 
-export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
+export function articleOf(n: NewsEvent, key: string, fake: boolean, daySec?: number): Article {
   const rng = seeded(`${key}:art20:${n.day}:${hash(n.headline)}`);
   const pick = <T,>(a: T[]) => a[Math.floor(rng() * a.length)];
   const person = () => pick(SUR) + pick(GIVEN);
@@ -76,7 +76,10 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   const sec = n.sector ? SECTOR_MAP[n.sector]?.name ?? null : co && n.symbol ? SECTOR_MAP[STOCK_MAP[n.symbol].sector]?.name ?? null : null;
   const subject = co ?? (sec ? `${sec} 업종` : '국내 증시');
   const dayTxt = `${n.day + 1}일차`;
-  const time = n.at != null ? clockOf(n.at) : `0${7 + Math.floor(rng() * 2)}:${String(Math.floor(rng() * 60)).padStart(2, '0')}`;
+  // (v22) 하루 길이를 알면 게임 시간으로 ('3일차 42초') — 아침 기사의 난수 두 번은 그대로 뽑음 (기사 내용이 안 바뀌게)
+  const oldTime = n.at != null ? clockOf(n.at) : `0${7 + Math.floor(rng() * 2)}:${String(Math.floor(rng() * 60)).padStart(2, '0')}`;
+  const gt = daySec;
+  const time = gt ? (n.at != null ? gameTime(n.at, gt) : '장 시작 전') : oldTime;
   const when = n.at != null ? `${dayTxt} ${time}` : `${dayTxt} 장 시작 전`;
   const others = n.related.filter((s) => s !== n.symbol && STOCK_MAP[s]).slice(0, 2).map((s) => STOCK_MAP[s].name);
 

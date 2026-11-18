@@ -7,7 +7,9 @@ import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP
 export const INTRADAY_POINTS = 8;
 export const LIMIT_UP = 1.3;
 export const LIMIT_DOWN = 0.7;
-export const KR_INDEX_BASE = 2500;
+// 지수 시작값은 stocks.ts 에 (로비가 시장 생성기를 불러오지 않게) — 예전 import 그대로 쓰게 다시 내보냄
+export { KR_INDEX_BASE } from './stocks.js';
+import { KR_INDEX_BASE } from './stocks.js';
 export const US_INDEX_BASE = 5000;
 
 export type NewsKind = 'macro' | 'sector' | 'company';

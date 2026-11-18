@@ -1420,7 +1420,9 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .cf-main { min-width: 0; display: grid; gap: 4px; }
 .cp-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .cf-author { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; word-break: keep-all; }
-.cf-verified { display: inline-grid; place-items: center; }
+.cf-verified { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px 1px 4px; border-radius: 99px; background: #6b58ee; color: #fff; font-size: 11px; font-weight: 800; line-height: 16px; letter-spacing: 0; white-space: nowrap; }
+/* 인증 계정 글: 왼쪽 보라 줄 + 아주 옅은 바탕 */
+.cf-post.is-verified { background: rgba(107, 88, 238, 0.07); box-shadow: inset 3px 0 0 #6b58ee; padding-left: 10px; border-radius: 0 10px 10px 0; }
 .cf-meta { color: var(--muted, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
 .cf-text { margin: 0; font-size: 15px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
 .cf-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }

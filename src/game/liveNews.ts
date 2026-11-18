@@ -6,7 +6,7 @@
  */
 import { seeded } from '../lib/rng.js';
 import type { Market, NewsEvent } from './market.js';
-import { clockOf, communityPosts, PLATFORMS } from './community.js';
+import { clockOf, communityPosts, GAME_TIME_VERSION, gameTime, PLATFORMS } from './community.js';
 import { dayTicks } from './intraday.js';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP } from './stocks.js';
 
@@ -15,8 +15,10 @@ const cache = new Map<string, NewsEvent[]>();
 const pct = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`;
 
 /** n = 그 방의 하루 칸 수 (화면이 본 장중 가격과 같은 칸으로) */
-export function liveNews(m: Market, day: number, key: string, n: number): NewsEvent[] {
-  const ck = `${key}:${m.totalDays}:${day}:${n}`;
+export function liveNews(m: Market, day: number, key: string, n: number, daySec?: number): NewsEvent[] {
+  // (v22) 시각을 게임 시간으로 ('2분 31초 기준') — 하루 길이를 알 때만
+  const ds = (m.version ?? 1) >= GAME_TIME_VERSION && daySec && daySec > 0 ? daySec : undefined;
+  const ck = `${key}:${m.totalDays}:${day}:${n}:${ds ?? ''}`;
   const hit = cache.get(ck);
   if (hit) return hit;
   const rng = seeded(`${key}:art21:${day}`);
@@ -45,7 +47,7 @@ export function liveNews(m: Market, day: number, key: string, n: number): NewsEv
       kind: 'company',
       symbol: best.sym,
       sector: def.sector,
-      headline: `${clockOf(j / N)} 기준 ${def.name} ${pct(best.ch)}… ${who} ${up ? '사자' : '팔자'}에 ${SECTOR_MAP[def.sector]?.name ?? ''} ${up ? '강세' : '약세'}`,
+      headline: `${ds ? gameTime(j / N, ds) : clockOf(j / N)} 기준 ${def.name} ${pct(best.ch)}… ${who} ${up ? '사자' : '팔자'}에 ${SECTOR_MAP[def.sector]?.name ?? ''} ${up ? '강세' : '약세'}`,
       rumor: false,
       tone: up ? 'good' : 'bad',
       realTone: up ? 'good' : 'bad',
@@ -55,7 +57,7 @@ export function liveNews(m: Market, day: number, key: string, n: number): NewsEv
     });
   }
   // 소문 기사: 반응이 큰 커뮤니티 글 (회사 이름 글만)
-  const posts = communityPosts(m, day, key)
+  const posts = communityPosts(m, day, key, ds)
     .filter((p) => p.symbol && !p.verified && p.at < 0.9)
     .sort((a, b) => b.likes - a.likes);
   const nRumor = Math.floor(rng() * 3);

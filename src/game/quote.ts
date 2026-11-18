@@ -16,4 +16,4 @@ export function quote(m: Market, symbol: string, day: number, closed: boolean): 
   return { krw, usd, ch: (usd ?? krw) / prev - 1 };
 }
 
-export const fmtUsd = (v: number) => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export { fmtUsd } from './fmtUsd';

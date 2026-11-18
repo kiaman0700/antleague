@@ -2,7 +2,7 @@ import { useAccount } from './net/account';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Loading } from './components/ui';
 import { consumeMatched, useMatch } from './net/matchStore';
-import { loadSolo, newSolo } from './engine/local';
+import { loadSolo } from './engine/soloStore';
 import { api } from './net/api';
 import { supabase } from './lib/supabase';
 import { useRouter, type Route } from './router';
@@ -127,8 +127,11 @@ export default function App() {
             route.session.mode === 'solo'
               ? (days, sec, bots) => {
                   // 연습·봇전: 같은 설정(같은 봇)으로 새 판 (새 시장)
-                  newSolo(route.session.nickname, days, sec, true, bots);
-                  setReplay((n) => n + 1);
+                  // 엔진은 게임 화면이 이미 불러 둠 — 로비 첫 파일에 엔진을 넣지 않으려고 필요할 때 불러옴
+                  void import('./engine/local').then((m) => {
+                    m.newSolo(route.session.nickname, days, sec, true, bots);
+                    setReplay((n) => n + 1);
+                  });
                 }
               : undefined
           }

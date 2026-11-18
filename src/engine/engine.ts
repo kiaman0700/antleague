@@ -11,7 +11,7 @@ import { computeAchievements } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
 import { mulberry32, seeded } from '../lib/rng.js';
 import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
-import { COMMUNITY_VERSION, communityPosts, publicPosts, type PublicPost } from '../game/community.js';
+import { COMMUNITY_VERSION, communityPosts, GAME_TIME_VERSION, publicPosts, type PublicPost } from '../game/community.js';
 import { articleOf } from '../game/articles.js';
 import { LIVE_NEWS_VERSION, liveNews } from '../game/liveNews.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
@@ -195,6 +195,11 @@ export interface LiveView {
  * 오늘 장 시계. 장 시작 = 원래 마감 시각(day_deadline) - 제한 시간.
  * 카운트다운으로 마감이 당겨져도 칸 속도는 그대로(남은 흐름은 마감 때 한꺼번에 확정)
  */
+/** 하루 길이(초) — 글·기사 속 때를 게임 시간으로 말할 때 (v22) */
+export function daySecOf(r: RoomRow) {
+  return r.turn_seconds > 0 ? r.turn_seconds : 180;
+}
+
 export function dayClock(r: RoomRow, now: number) {
   const turn = r.turn_seconds > 0 ? r.turn_seconds : 180;
   // 한 칸 길이: v11 부터 1초(긴 날은 2~4초), 그 전 방은 5초
@@ -258,9 +263,8 @@ export function graceRule(players: number, turnSeconds = 600): { need: number; s
   return players <= 2 ? { need: 1, seconds: graceSecondsFor(players, t) } : { need: Math.ceil((players * 2) / 3), seconds: graceSecondsFor(players, t) };
 }
 /** 카운트다운(초): 1대1 하루의 ⅓(20~90), 3인 이상 ⅙(10~30) */
-export function graceSecondsFor(players: number, turnSeconds: number) {
-  return players <= 2 ? Math.max(20, Math.min(90, Math.round(turnSeconds / 3))) : Math.max(10, Math.min(30, Math.round(turnSeconds / 6)));
-}
+export { graceSecondsFor } from './grace.js';
+import { graceSecondsFor } from './grace.js';
 export const MAX_QTY = 1_000_000;
 
 export function cleanNickname(v: unknown): string {
@@ -301,7 +305,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 21;
+export const CURRENT_RULES_VERSION = 22;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -409,12 +413,12 @@ function newsOrder(a: NewsEvent, b: NewsEvent) {
 }
 
 /** (v20) 기사 모양을 붙임 (서버가 진위를 알고 만듦 — 화면에는 만들어진 글만) */
-function withArticle(m: Market, n: NewsEvent, pub: NewsEvent): NewsEvent {
-  return (m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { ...pub, article: articleOf(n, m.salt, isFakeNews(n)) } : pub;
+function withArticle(m: Market, n: NewsEvent, pub: NewsEvent, daySec?: number): NewsEvent {
+  return (m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { ...pub, article: articleOf(n, m.salt, isFakeNews(n), (m.version ?? 1) >= GAME_TIME_VERSION ? daySec : undefined) } : pub;
 }
 
 /** 오늘까지만 보이는 시장 — 오늘 종가·미래 가격·뉴스의 진실은 빠진다 */
-export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean; tick?: number; n?: number; /** (v14) 감별기로 고른 소식 */ pick?: string }): Market {
+export function sliceMarket(m: Market, day: number, finished: boolean, opts: { rumorCheck: boolean; fakes: NewsEvent[]; blackout?: boolean; tick?: number; n?: number; /** (v14) 감별기로 고른 소식 */ pick?: string; /** (v22) 하루 길이(초) — 글·기사 속 때를 게임 시간으로 */ daySec?: number }): Market {
   const strip = (b: Bar): Bar => ({ open: b.open, close: b.close, high: b.high, low: b.low, path: [] });
   if (finished) {
     return {
@@ -425,8 +429,8 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
       usIndex: m.usIndex.map(strip),
       seed: 0,
       salt: undefined,
-      news: [...m.news, ...((m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: m.totalDays }, (_, d) => liveNews(m, d, m.salt!, opts.n!)).flat() : [])].map((n) => withArticle(m, n, publicNews(n, Infinity, false))).sort(newsOrder),
-      ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: m.totalDays }, (_, d) => publicPosts(communityPosts(m, d, m.salt!), Infinity, 1)).flat() } : {}),
+      news: [...m.news, ...((m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: m.totalDays }, (_, d) => liveNews(m, d, m.salt!, opts.n!, opts.daySec)).flat() : [])].map((n) => withArticle(m, n, publicNews(n, Infinity, false), opts.daySec)).sort(newsOrder),
+      ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: m.totalDays }, (_, d) => publicPosts(communityPosts(m, d, m.salt!, opts.daySec), Infinity, 1)).flat() } : {}),
     };
   }
   // 배당금은 기준일 종가로 정해지므로, 기준일이 끝나기 전에는 숨김 (배당률·날짜는 공개)
@@ -438,11 +442,11 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
   // 장중 속보는 공개 칸이 되기 전에는 내용·개수 모두 보내지 않음
   const released = (n: NewsEvent) => n.day < day || n.at == null || (opts.tick ?? 0) >= releaseTick(n.at, opts.n ?? 1);
   // (v21) 장중 시황·소문 기사 (공개 칸이 된 것만 — 아래 released)
-  const live = (m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: day + 1 }, (_, d) => liveNews(m, d, m.salt!, opts.n!)).flat() : [];
+  const live = (m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: day + 1 }, (_, d) => liveNews(m, d, m.salt!, opts.n!, opts.daySec)).flat() : [];
   const news = [...m.news.filter((n) => n.day <= day), ...live, ...opts.fakes]
     .filter(released)
     .filter((n) => !(opts.blackout && n.day === day))
-    .map((n) => withArticle(m, n, publicNews(n, day, opts.rumorCheck, opts.pick)))
+    .map((n) => withArticle(m, n, publicNews(n, day, opts.rumorCheck, opts.pick), opts.daySec))
     .sort(newsOrder);
   return {
     seed: 0,
@@ -460,7 +464,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
     events: m.events,
     dividends,
     // (v20) 지난 날 커뮤니티 글 — 오늘 글은 매초 View.community 로 따로 (그날 올라온 것까지만)
-    ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: day }, (_, d) => publicPosts(communityPosts(m, d, m.salt!), day, 0)).flat() } : {}),
+    ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: day }, (_, d) => publicPosts(communityPosts(m, d, m.salt!, opts.daySec), day, 0)).flat() } : {}),
   };
 }
 
@@ -630,7 +634,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   if ((r.version ?? 1) >= PREMARKET_VERSION && open && (r.day > 0 || (r.version ?? 1) >= FIRST_PRE_VERSION) && !blackout) base.rumors = publicRumors(preRumors(m, day, r.salt ?? String(r.seed)), rumorCheck, detectorPick);
   base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
   // (v20) 커뮤니티·SNS: 장이 열려 있는 동안 지금 칸까지 올라온 글만 (앞으로 올라올 글·시각은 절대 안 보냄). 정보 차단 맞은 날은 안 보임
-  if (!finished && (r.version ?? 1) >= COMMUNITY_VERSION && r.salt && !blackout) base.community = open ? publicPosts(communityPosts(m, day, r.salt), day, clock.tick / Math.max(1, clock.n), detectorPick).filter((p) => p.day === day) : [];
+  if (!finished && (r.version ?? 1) >= COMMUNITY_VERSION && r.salt && !blackout) base.community = open ? publicPosts(communityPosts(m, day, r.salt, daySecOf(r)), day, clock.tick / Math.max(1, clock.n), detectorPick).filter((p) => p.day === day) : [];
   if (base.community) {
     // 1초마다 같은 글을 다시 보내지 않게 (글이 늘거나 진위가 붙을 때만)
     base.communityKey = `${day}:${base.community.length}:${base.community.filter((p) => p.verdict).length}`;
@@ -641,12 +645,12 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   }
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
-  const liveToday = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, day, r.salt, clock.n) : [];
+  const liveToday = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, day, r.salt, clock.n, daySecOf(r)) : [];
   const releasedNow = open && !blackout ? [...m.news, ...liveToday].filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
   const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${detectorPick ?? ''}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
-  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n, pick: detectorPick });
+  if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n, pick: detectorPick, daySec: daySecOf(r) });
   if (open) {
     // 화면이 이미 가진 칸은 다시 보내지 않음 (1초 가격이면 매초 64KB → 1KB 안팎). 그래도 지금 칸까지만
     const from = liveFrom && liveFrom.day === day && Number.isInteger(liveFrom.from) && liveFrom.from > 0 && liveFrom.from <= clock.tick + 1 ? liveFrom.from : 0;
@@ -801,11 +805,11 @@ function visibleToday(d: GameData, meId: string, now: number): string[] {
   const blackout = activeEffects(items, meId, r.day).some((e) => e.kind === 'blackout');
   if (blackout) return [];
   const clock = dayClock(r, now);
-  const live = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, r.day, r.salt, clock.n) : [];
+  const live = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, r.day, r.salt, clock.n, daySecOf(r)) : [];
   const news = [...m.news, ...live].filter((n) => n.day === r.day && (n.at == null || clock.tick >= releaseTick(n.at, clock.n))).map((n) => n.headline);
   const fakes = items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews).filter((n) => n.day === r.day).map((n) => n.headline);
   const rumors = (r.version ?? 1) >= PREMARKET_VERSION ? preRumors(m, r.day, r.salt ?? String(r.seed)).map((x) => x.text) : [];
-  const posts = (r.version ?? 1) >= COMMUNITY_VERSION && r.salt ? communityPosts(m, r.day, r.salt).filter((p) => p.at <= clock.tick / Math.max(1, clock.n) && clock.tick > 0).map((p) => p.text) : [];
+  const posts = (r.version ?? 1) >= COMMUNITY_VERSION && r.salt ? communityPosts(m, r.day, r.salt, daySecOf(r)).filter((p) => p.at <= clock.tick / Math.max(1, clock.n) && clock.tick > 0).map((p) => p.text) : [];
   return [...news, ...fakes, ...rumors, ...posts];
 }
 

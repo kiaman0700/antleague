@@ -1,4 +1,4 @@
-import { graceSecondsFor } from './engine/engine';
+import { graceSecondsFor } from './engine/grace';
 export type UiMode = 'easy' | 'pro';
 
 export interface Session {

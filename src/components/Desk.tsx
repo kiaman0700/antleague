@@ -196,7 +196,7 @@ export function CardTray({
               version={version}
               why={d.passive ? null : why}
               dim={!d.passive && !!why}
-              action={d.passive ? undefined : { label: `${d.name} 사용하기`, disabled: !!why || busy, onClick: () => onUse(k) }}
+              action={d.passive ? undefined : { label: '사용하기', disabled: !!why || busy, onClick: () => onUse(k) }}
               footer={d.passive ? <span className="tc-auto">자동</span> : undefined}
             />
             </div>

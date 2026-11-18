@@ -3,7 +3,7 @@
  * 브라우저는 Supabase 테이블에 직접 쓸 수 없고(RLS), 이 함수가 비밀 키로 대신 쓴다.
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
 /* ---------------- 비밀방 비밀번호: 소금 + scrypt 해시로만 저장 ---------------- */
@@ -703,8 +703,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     }
 
     case 'state': {
-      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
-      let d = await loadGame(roomId);
+      // (최적화) 내 자리 확인과 게임 불러오기를 동시에 — 자리가 없으면 불러온 것은 버리고 403 (남의 방 내용은 절대 안 나감)
+      const [mine, loaded] = await Promise.allSettled([myPlayerId(b.roomId, uid), loadGame(b.roomId as string)]);
+      if (mine.status === 'rejected') throw mine.reason;
+      const { roomId, playerId } = mine.value;
+      let d = loaded.status === 'fulfilled' ? loaded.value : await loadGame(roomId);
       await seen(d, playerId);
       if (await ensureDeadline(d)) d = await loadGame(roomId);
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
@@ -1853,6 +1856,19 @@ function sessionIdOf(token: string): string | null {
 }
 /** 확인한 '지금 세션'은 10초 동안 기억 (요청마다 DB 를 부르지 않게) — 다른 곳에서 로그인하면 늦어도 10초 뒤 끊김 */
 const sessionCache = new Map<string, number>();
+/** 읽기만 하는 화면 갱신 요청 — 확인한 토큰을 잠깐 기억해도 되는 것 */
+const READ_ONLY_ACTIONS = new Set(['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'missions']);
+const tokenCache = new Map<string, { user: User; until: number }>();
+/** 토큰에 적힌 만료 시각(ms) — 못 읽으면 지금(=기억 안 함) */
+function tokenExpMs(token: string) {
+  try {
+    const exp = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')).exp;
+    return typeof exp === 'number' ? exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function sessionOk(uid: string, token: string): Promise<boolean> {
   const sid = sessionIdOf(token);
   if (!sid) return true; // 세션 id 가 없는 토큰(예전 형식) — 막지 않음
@@ -1902,7 +1918,17 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       return { status: 200, body: await accountAct(db(), 'ranking', body as Body, { id: '' }, rateLimit) };
     }
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
-    const { data, error } = await db().auth.getUser(token);
+    // (최적화 2026-11-18) 1초마다 오는 '읽기만 하는 화면 갱신'은 방금(10초 안) 확인한 토큰이면 인증 서버를 다시 부르지 않음.
+    // 거래·카드·계정 같은 행동은 늘 다시 확인. 세션 끊김(다른 곳 접속·비밀번호 변경)도 길어야 10초 안에 반영 — sessionOk 기억 시간과 같음
+    const peekAction = body && typeof body === 'object' && typeof (body as Body).action === 'string' ? ((body as Body).action as string) : '';
+    const readOnly = READ_ONLY_ACTIONS.has(peekAction);
+    const tk = createHmac('sha256', 'tok').update(token).digest('base64url');
+    const cached = readOnly ? tokenCache.get(tk) : undefined;
+    const { data, error } = cached && cached.until > Date.now() ? { data: { user: cached.user }, error: null } : await db().auth.getUser(token);
+    if (!error && data.user && readOnly && !cached) {
+      if (tokenCache.size > 5000) tokenCache.clear();
+      tokenCache.set(tk, { user: data.user, until: Math.min(Date.now() + 10_000, tokenExpMs(token)) });
+    }
     if (error || !data.user) {
       // 토큰이 정말 틀렸거나 만료된 경우(401·403·400)만 '만료'. Supabase 가 잠깐 막히거나 느린 경우(429·5xx·연결 실패)는
       // 다시 시도하라고 알려 줌 — 멀쩡한 사람이 로그인 화면으로 밀려나지 않게

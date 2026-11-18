@@ -231,9 +231,17 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 티어 단계 표시 III·II·I → **1·2·3(3이 가장 높음)**. 마스터 엠블럼은 빛줄기·이중 테두리·보석 왕관·리본·반짝임
 - 튜토리얼 완료하기 미션(일일·주간과 따로, 한 번): 게임 기초를 끝내면 회원에게 경험치 `levelNeed(1)`=100 (`grantTutorialXp`, xp_log key 'tutorial', 하루 상한 밖, 게스트 때 끝내도 가입 뒤 미션을 볼 때 받음). 튜토리얼 업적: 게임 기초 → 첫 거래·첫 카드·철벽 방어(진짜 기록), 4단계 모두 → '개미 학교 졸업'(졸업모 사진 'graduate'). e2e `tutorial.mjs`
 
-## 규칙 v21 실제 시장 같은 사례 (2026-11-18, design/realism-v21.md) — **지금 최신**
+## 규칙 v21 실제 시장 같은 사례 (2026-11-18, design/realism-v21.md)
 - 배당락: 배당 기준일 다음 날 시가가 배당률만큼 낮게(market.ts 종목 rOpen, 바스켓·지수 아닌 ETF 는 시가에 곱함) — 배당만 받고 팔기 빈틈 막음. 일정 '배당락' + 아침 기사 '[시황] OO 배당락…'
 - 장중 기사(`src/game/liveNews.ts`, `:art21:`, 방의 칸 수 n 으로 계산): 시황 1~3개(그 시각까지 이미 움직인 값만, 미래 정보 없음) + 소문 기사 0~2개(반응 큰 커뮤니티 글 인용, 진위 = 글). `at` 이 있어 공개 칸 전엔 화면 데이터에 없음(sliceMarket released). 큰 속보 알림은 진짜 속보만(시황·소문은 소식 칸에만, 표시 '장중 시황'·'장중 소문')
 - 속보 직후 커뮤니티 반응 글(`:sns21:`, 진짜·들썩임 0, 이미 공개된 내용). 테스트 `v21.test.ts`. 봇 시뮬 그대로(쉬움 −10%·보통 +8%·어려움 +11%)
 - 상대가 모두 기권해 끝난 판: 업적뿐 아니라 **재산·수익률·그래프도 기권한 날 가격으로**(finalResults `priceMap(endDay)`, View.final.endDay → ResultScreen `cutMarket`)
 - 업적 단계 4번째: 100번 → '신화의'·'영원한', 무지개 보석 테두리·보석 왕관
+
+## 규칙 v22 게임 시간으로 말하기 · 최적화 (2026-11-18) — **지금 최신**
+- v22 = v21 + 커뮤니티 글·장중 시황·기사 시각을 게임 시간으로(사용자 요청): 하루 길이(`daySecOf(room)` = turn_seconds, 0 이면 180)에 맞춰 '오늘 장 42초쯤'·'내일 2분 31초쯤'·'3일차 40초쯤'·'20초 안에', 글 시각 '31초'·'2분 5초', 시황 '1분 14초 기준'(`gameTime`, `GAME_TIME_VERSION`). 가격·글 시각·진위·들썩임은 v21 과 같음(난수 그대로, `v22.test.ts`). v21 이하 판은 예전 시계(09:00~15:30) 그대로
+- `communityPosts(m, day, key, daySec?)`·`liveNews(…, daySec?)`·`articleOf(…, daySec?)`·`sliceMarket opts.daySec` — 글을 보여 주거나 감별기 판정에 쓰는 곳은 모두 같은 daySec 를 넘겨야 글이 같음(visibleToday 포함). 화면 `NewsPanel daySec`
+- 커뮤니티 닉네임은 `NICKS`(개미 말투 48개, community.ts — 화면 장 전 글도 같은 목록), 인증 계정은 이름 옆 보라 '인증' 배지 + 글 왼쪽 보라 줄(`is-verified`). ETF 는 '운용역'
+- 카드 버튼은 '사용하기'·'사기'만 (값은 카드에 보임)
+- 티어 그림: 단계 보석은 띠에 단계 수만큼(1~3) 티어 색으로 박힘, 마스터는 같은 방패 계열 + 금 테두리·금 날개·보석 박힌 금 왕관·금 리본(무지갯빛 점·빛줄기 없음)
+- 최적화: 서버 `READ_ONLY_ACTIONS`(state·queueStatus 등)는 확인한 토큰을 10초 기억(인증 서버 호출 생략, 행동 요청은 늘 다시 확인), state 는 자리 확인과 게임 불러오기를 동시에 → 같은 컴퓨터에서 state 0.12초 → 0.06초. 첫 화면 파일 446KB → 353KB: 로비는 `soloStore`(연습 저장)·`botInfo`·`grace`·`fmtUsd`·stocks 의 `KR_INDEX_BASE` 만 불러오고 엔진은 게임·연습 시작 때. 새 화면 코드가 로비에서 engine/market 을 값으로 import 하지 않게 주의 (확인: 빌드 후 index 파일에 '산유국 증산 발표' 가 없어야 함). 응답 시간 재기 `node scripts/perf-state.mjs` (BASE=운영 주소 가능)

@@ -5,7 +5,7 @@ import { EmptyState, useEscape } from './ui';
 import type { OrderRow } from '../engine/engine';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
-import { fmtUsd } from '../game/quote';
+import { fmtUsd } from '../game/fmtUsd';
 import { STOCK_MAP } from '../game/stocks';
 import { num, wonShort } from '../lib/format';
 

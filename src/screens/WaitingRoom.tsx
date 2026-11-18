@@ -1,4 +1,4 @@
-import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/bots';
+import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/botInfo';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
 import { EmptyState, IconList, Loading, OfflineBanner, SectionTitle } from '../components/ui';

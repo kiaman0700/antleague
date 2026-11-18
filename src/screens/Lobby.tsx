@@ -30,8 +30,8 @@ import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
 import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
 import { matchKindName, useAccount } from '../net/account';
-import { DEFAULT_SOLO_DAY, loadSolo, newSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/local';
-import { BOT_LEVELS, MAX_BOTS } from '../engine/bots';
+import { DEFAULT_SOLO_DAY, loadSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/soloStore';
+import { BOT_LEVELS, MAX_BOTS } from '../engine/botInfo';
 import { waitLabel } from '../engine/matching';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
@@ -494,7 +494,7 @@ function HowTo({ onClose }: { onClose: () => void }) {
         items={[
           { icon: 'wallet', title: '100만원으로 시작', body: '아침 뉴스를 보고 오를 것 같은 회사를 골라 사요. 좋은 소식은 시작 가격에 이미 많이 들어가 있을 수 있어요. 기사 아래 관련 종목(거래처·같은 업종은 같이, 경쟁사는 반대로)도 함께 움직여요.' },
           { icon: 'flame', title: '장중 속보', body: '장이 열려 있는 동안 가격은 1초마다 움직이고, 속보가 뜨면 그 순간 크게 뛰어요. 빨리 알아채면 유리해요.' },
-          { icon: 'chat', title: '커뮤니티·SNS', body: '장중에도 소문 글이 수시로 올라와요. 진짜 단서도 헛소문도 있고, ✔ 검증 계정 글이 더 잘 맞아요. 글이 올라오면 그 종목이 잠깐 들썩이니 늦게 따라 사지 마세요.' },
+          { icon: 'chat', title: '커뮤니티·SNS', body: '장중에도 소문 글이 수시로 올라와요. 진짜 단서도 헛소문도 있고, 인증 배지가 붙은 계정의 글이 더 잘 맞아요. 글이 올라오면 그 종목이 잠깐 들썩이니 늦게 따라 사지 마세요.' },
           { icon: 'percent', title: '금리·환율·유가', body: '업종마다 다르게 영향을 줘요. 레버리지·인버스 ETF는 총재산의 30%까지만 살 수 있어요.' },
           { icon: 'timer', title: '장 마감', body: '다 정했으면 장 마감. 모두 누르거나 제한 시간이 끝나면 다음 날로 가요.' },
           { icon: 'hourglass', title: '장 전 시간', body: '날마다(첫날 포함) 장이 열리기 전 잠깐(하루 길이에 따라 20~45초) 커뮤니티 글을 보고 예약 주문을 걸 수 있어요. 모두 준비 완료를 누르면 바로 열려요.' },
@@ -617,7 +617,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       void ask(e instanceof Error ? e.message : String(e), { ok: '확인' });
     }
   };
-  const startPractice = (days: number, daySec: number, bots: number[] = []) => {
+  const startPractice = async (days: number, daySec: number, bots: number[] = []) => {
+    // 연습 엔진은 시작할 때 불러옴 (로비 첫 로딩을 가볍게)
+    const { newSolo } = await import('../engine/local');
     const s = newSolo(nick() || '나', days, daySec, true, bots);
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };

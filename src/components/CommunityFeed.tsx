@@ -2,7 +2,7 @@
  * (v20) 커뮤니티·SNS 피드 (design/community-news-v20.md)
  * 플랫폼 아이콘은 이 게임에서 직접 그린 단색 그림 (실제 서비스 로고 아님)
  */
-import { clockOf, PLATFORMS, type Platform, type PublicPost } from '../game/community';
+import { clockOf, gameTime, NICKS, PLATFORMS, type Platform, type PublicPost } from '../game/community';
 import { SECTOR_MAP, STOCK_MAP } from '../game/stocks';
 import { Icon, SectorIcon } from './Icon';
 
@@ -69,28 +69,30 @@ export function PlatformIcon({ id, size = 30 }: { id: Platform; size?: number })
   );
 }
 
-export function Post({ p, onSelect, onSelectSector, past, time }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean; /** 시각 대신 보일 글 ('장 전') */ time?: string }) {
+export function Post({ p, onSelect, onSelectSector, past, time, daySec }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean; /** 시각 대신 보일 글 ('장 전') */ time?: string; daySec?: number }) {
   const pf = PLATFORMS[p.platform];
   const target = p.symbol && STOCK_MAP[p.symbol] ? STOCK_MAP[p.symbol].name : (SECTOR_MAP[p.sector]?.name ?? p.sector);
   return (
-    <li className={'cf-post pf-' + p.platform + (p.verdict ? ' v-' + p.verdict : '')}>
+    <li className={'cf-post pf-' + p.platform + (p.verified ? ' is-verified' : '') + (p.verdict ? ' v-' + p.verdict : '')}>
       <PlatformIcon id={p.platform} size={34} />
       <div className="cf-main">
         <div className="cp-head">
           <b className="cf-author">
             {p.author}
             {p.verified && (
-              <span className="cf-verified" title="검증된 계정 — 더 잘 맞지만 틀릴 수도 있어요" aria-label="검증된 계정">
-                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-                  <path d="M8 .8 l1.9 1.4 2.3 -.1 .7 2.2 1.9 1.4 -.7 2.2 .7 2.2 -1.9 1.4 -.7 2.2 -2.3 -.1 L8 15.2 6.1 13.8 3.8 13.9 3.1 11.7 1.2 10.3 1.9 8.1 1.2 5.9 3.1 4.5 3.8 2.3 6.1 2.4 Z" fill="#4f8cff" />
-                  <path d="M5 8.2 l2 2 l4 -4.2" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              // 인증 배지: 이 게임만의 톱니 도장 + '인증' 글자 (진짜라는 보증이 아니라 '본인 맞음' 표시)
+              <span className="cf-verified" title="인증된 계정이에요 — 본인이 맞다는 표시예요. 글이 더 잘 맞지만 틀릴 때도 있어요" aria-label="인증된 계정">
+                <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
+                  <path d="M8 .8 l1.9 1.4 2.3 -.1 .7 2.2 1.9 1.4 -.7 2.2 .7 2.2 -1.9 1.4 -.7 2.2 -2.3 -.1 L8 15.2 6.1 13.8 3.8 13.9 3.1 11.7 1.2 10.3 1.9 8.1 1.2 5.9 3.1 4.5 3.8 2.3 6.1 2.4 Z" fill="#fff" />
+                  <path d="M5 8.2 l2 2 l4 -4.2" fill="none" stroke="#6b58ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
+                인증
               </span>
             )}
           </b>
           <span className="cf-meta">
             {pf.name} · {past ? `${p.day + 1}일차 ` : ''}
-            {time ?? clockOf(p.at)}
+            {time ?? (daySec ? gameTime(p.at, daySec) : clockOf(p.at))}
           </span>
         </div>
         <p className="cf-text">{p.text}</p>
@@ -112,7 +114,7 @@ export function Post({ p, onSelect, onSelectSector, past, time }: { p: PublicPos
 }
 
 /** 오늘 장중 피드(새 글이 위) + 지난 글(진위가 밝혀진 것) */
-export function CommunityFeed({ today, past, day, live, onSelect, onSelectSector }: { today: PublicPost[]; past: PublicPost[]; day: number; live: boolean; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
+export function CommunityFeed({ today, past, day, live, daySec, onSelect, onSelectSector }: { today: PublicPost[]; past: PublicPost[]; day: number; live: boolean; daySec?: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
   const now = [...today].sort((a, b) => b.at - a.at);
   const old = past.filter((p) => p.day === day - 1).sort((a, b) => b.at - a.at);
   return (
@@ -125,14 +127,14 @@ export function CommunityFeed({ today, past, day, live, onSelect, onSelectSector
             지금 올라오는 글
           </span>
         )}
-        <small className="muted">검증 표시(✔)는 더 잘 맞지만 틀릴 수도 있어요. 헛소문도 잠깐은 가격을 흔들어요.</small>
+        <small className="muted">보라색 '인증' 배지가 붙은 사람(대표·애널리스트 등)의 글은 더 잘 맞지만 틀릴 수도 있어요. 헛소문도 잠깐은 가격을 흔들어요.</small>
       </header>
       {now.length === 0 ? (
         <p className="muted small cf-empty">{live ? '아직 오늘 올라온 글이 없어요. 장중에 수시로 올라와요.' : '장이 열리면 글이 올라오기 시작해요.'}</p>
       ) : (
         <ul className="cf-list">
           {now.map((p) => (
-            <Post key={p.id} p={p} onSelect={onSelect} onSelectSector={onSelectSector} />
+            <Post key={p.id} p={p} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />
           ))}
         </ul>
       )}
@@ -141,7 +143,7 @@ export function CommunityFeed({ today, past, day, live, onSelect, onSelectSector
           <summary>어제 올라온 글 {old.length}개 (맞았는지 보기)</summary>
           <ul className="cf-list">
             {old.map((p) => (
-              <Post key={p.id} p={p} past onSelect={onSelect} onSelectSector={onSelectSector} />
+              <Post key={p.id} p={p} past daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />
             ))}
           </ul>
         </details>
@@ -151,9 +153,9 @@ export function CommunityFeed({ today, past, day, live, onSelect, onSelectSector
 }
 
 /** (v20+) 장 전 커뮤니티 글을 실시간 피드와 같은 모양으로 — 플랫폼·글쓴이는 글 내용으로만 정한 꾸밈(진위와 상관없음) */
-export function PrePosts({ rumors, day, onSelect, onSelectSector }: { rumors: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[]; day: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
+export function PrePosts({ rumors, day, daySec, onSelect, onSelectSector }: { daySec?: number; rumors: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[]; day: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
   const ids: Platform[] = ['square', 'board', 'chirp', 'feedgram', 'talk', 'live'];
-  const nicks = ['새벽시황', '눈팅만10년', '존버장인', '차트도사', '야수의심장', '퇴근후주식', '떡상기원', '익절요정'];
+  const nicks = NICKS;
   const h = (t: string) => {
     let x = 2166136261;
     for (let i = 0; i < t.length; i++) x = Math.imul(x ^ t.charCodeAt(i), 16777619);
@@ -166,7 +168,7 @@ export function PrePosts({ rumors, day, onSelect, onSelectSector }: { rumors: { 
         .sort((a, b) => ((b.k >>> 21) % 49) - ((a.k >>> 21) % 49))
         .map(({ r, i, k }) => {
         const p: PublicPost = { id: 'pre-' + i, day, at: 0, platform: ids[k % ids.length], author: nicks[(k >>> 4) % nicks.length] + ((k >>> 9) % 2 ? String(10 + ((k >>> 11) % 90)) : ''), verified: null, text: r.text, symbol: r.symbol, sector: r.sector, tone: r.tone, likes: 20 + ((k >>> 13) % 600), replies: (k >>> 17) % 90, verdict: r.verdict };
-        return <Post key={i} p={p} time={`장 전 08:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
+        return <Post key={i} p={p} time={daySec ? '장 전' : `장 전 08:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
       })}
     </ul>
   );

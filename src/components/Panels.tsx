@@ -26,6 +26,8 @@ interface NewsProps {
   rumors?: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
   /** 지금 장 전인지 (찌라시 칸을 강조) */
   pre?: boolean;
+  /** (v22) 하루 길이(초) — 글 시각을 게임 시간으로 ('42초', '2분 31초') */
+  daySec?: number;
   ui: UiMode;
   day: number;
   news: NewsEvent[];
@@ -157,7 +159,7 @@ function snsFace(seed: string) {
   };
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen }: NewsProps) {
+export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen, daySec }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
   // 뉴스와 찌라시는 따로 (사용자 요청 2026-11-17): 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
@@ -318,7 +320,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {/* (v20) 장중 실시간 커뮤니티·SNS 글 */}
       {showRumors && blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 커뮤니티 글이 보이지 않아요</div>}
       {/* 장 전 시간엔 아직 실시간 글이 없으니 장 전 글을 먼저, 장이 열리면 실시간 글을 먼저 */}
-      {showRumors && posts && !pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
+      {showRumors && posts && !pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />}
       {showRumors && !blackout && !posts && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 도는 소문이 없어요" desc="장이 열리기 전과 장중에 커뮤니티·SNS 글이 돌면 여기에 모여요." />}
       {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 커뮤니티 글">
@@ -328,7 +330,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             <small className="muted">{rumorCheck ? '루머 감별기를 쓴 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
           {posts ? (
-            <PrePosts rumors={rumors} day={day} onSelect={onSelect} onSelectSector={onSelectSector} />
+            <PrePosts rumors={rumors} day={day} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />
           ) : (
           <ul className="rb-list">
             {rumors
@@ -368,7 +370,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           )}
         </section>
       )}
-      {showRumors && posts && pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
+      {showRumors && posts && pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />}
       {showRumors && rumorToday.length > 0 && (
         <>
           <h4 className="sec-title">
@@ -692,7 +694,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
                 count={n}
                 why={d.passive ? null : why}
                 dim={!d.passive && !!why}
-                action={d.passive ? undefined : { label: `${d.name} 사용하기`, disabled: !!why || busy, onClick: () => onUse(k) }}
+                action={d.passive ? undefined : { label: '사용하기', disabled: !!why || busy, onClick: () => onUse(k) }}
                 footer={d.passive ? <span className="gc-tag">자동</span> : undefined}
               />
             );
@@ -713,7 +715,7 @@ export function CardsPanel({ blockReason, version = 1, solo, players = 3, day, t
                 corner={<span className="gc-price">{wonShort(cost)}</span>}
                 why={why}
                 dim={!!why}
-                action={{ label: `${wonShort(cost)}에 사기`, disabled: !!why || busy, onClick: () => onBuy(d.kind) }}
+                action={{ label: '사기', disabled: !!why || busy, onClick: () => onBuy(d.kind) }}
               />
             );
           })}

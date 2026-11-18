@@ -1,6 +1,6 @@
 import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
 import { CoachTour } from '../components/CoachTour';
-import { PLATFORMS } from '../game/community';
+import { GAME_TIME_VERSION, PLATFORMS } from '../game/community';
 import { RESULT_STEPS } from '../components/Tours';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markActiveGame } from '../lib/activeTab';
@@ -970,6 +970,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   );
   const newsPanel = (
     <NewsPanel
+      daySec={(view.room.rulesVersion ?? 1) >= GAME_TIME_VERSION ? (view.room.turnSeconds > 0 ? view.room.turnSeconds : 180) : undefined}
       posts={view.community}
       pastPosts={market?.community}
       marketOpen={!!view.live}
@@ -1165,7 +1166,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             {[...(view.community ?? [])].sort((a, b) => b.at - a.at).map((p) => (
               <li key={'p' + p.id}>
                 <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: p.text }))}>
-                  <span className="det-kind">{PLATFORMS[p.platform].name}{p.verified ? ' ✔' : ''}</span>
+                  <span className="det-kind">{PLATFORMS[p.platform].name}{p.verified ? ' · 인증' : ''}</span>
                   <span>{p.text}</span>
                 </button>
               </li>

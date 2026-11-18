@@ -1,3 +1,5 @@
+/** 국내 지수 시작값 */
+export const KR_INDEX_BASE = 2500;
 export type Region = 'KR' | 'US' | 'ETF';
 
 /** 업종: 거시 변수 민감도 + 연관 업종 */
