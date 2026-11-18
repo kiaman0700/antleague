@@ -1586,3 +1586,6 @@ body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-are
 .lg-note.lg-down { background: #2a1c20; border-color: rgba(224, 86, 107, 0.4); }
 .lg-note > svg { color: #f5b83d; flex: none; }
 .lg-note .lg-reward { margin-left: 4px; }
+/* 티어 계단이 옆으로 넘칠 때(휴대폰): 오른쪽을 흐리게 + 안내 */
+.tier-ladder.tl-more .tl-stairs { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+.tl-hint { margin: 6px 0 0; text-align: right; }

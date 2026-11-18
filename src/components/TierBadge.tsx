@@ -1,5 +1,6 @@
 /** 랭킹 티어 표시: 금속 테두리 방패 + 가운데 깎은 보석(이 게임만의 그림) + 티어 이름 + 단계 점수. 배치 중이면 '배치 n/2' */
 import { CHALLENGER_MIN, isPlaced, MASTER_MIN, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
 const TIER_LEVEL: Record<string, number> = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4, master: 5 };
@@ -362,13 +363,30 @@ export function tierShort(rating: number, rankedGames: number | null | undefined
  */
 export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: number | null | undefined; chal?: number } }) {
   const my = mine && isPlaced(mine.rankedGames) ? tierOf(mine.rating) : null;
+  // 휴대폰처럼 좁아 옆으로 밀어야 할 때: 내 티어가 보이게 옮겨 두고, 끝까지 안 밀었으면 오른쪽을 흐리게 + 안내
+  const ref = useRef<HTMLOListElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const me = el.querySelector<HTMLElement>('.tl-step.me');
+    if (me && el.scrollWidth > el.clientWidth) el.scrollLeft = Math.max(0, me.offsetLeft - el.offsetLeft - 8);
+    const upd = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    upd();
+    el.addEventListener('scroll', upd, { passive: true });
+    window.addEventListener('resize', upd);
+    return () => {
+      el.removeEventListener('scroll', upd);
+      window.removeEventListener('resize', upd);
+    };
+  }, [my?.id, mine?.chal]);
   return (
-    <section className="panel pad tier-ladder" aria-label="랭킹 티어">
+    <section className={'panel pad tier-ladder' + (more ? ' tl-more' : '')} aria-label="랭킹 티어">
       <h3>
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
       <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(100점씩, 3이 가장 높아요)가 있어요. 마스터·챌린저는 단계 없이 점수 순위예요. 챌린저는 2,500점 이상이면서 상위 1%(최근 7일 안에 랭킹전을 한 사람) 안에 들어야 해요.</p>
-      <ol className="tl-stairs">
+      <ol className="tl-stairs" ref={ref}>
         {TIERS.map((t, i) => {
           const base = t.id === 'bronze' ? 700 : t.min;
           const here = my?.id === t.id;
@@ -418,6 +436,7 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
           </div>
         </li>
       </ol>
+      {more && <p className="muted small tl-hint">옆으로 밀면 위 티어도 보여요 →</p>}
     </section>
   );
 }
