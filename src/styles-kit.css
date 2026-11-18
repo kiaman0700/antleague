@@ -1498,3 +1498,6 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .halt-note.h-delisted { background: #222; color: #c8c8c8; border: 1px solid #3a3a3a; }
 .halt-note b { margin-right: 4px; }
 .title-line .halt-tag { margin-left: 6px; }
+/* 오늘의 도전 연속 기록 */
+.streak-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: #3a2410; color: #f5b83d; font-size: 12px; font-weight: 800; vertical-align: 2px; }
+.streak-note { color: #f2e2b8; margin: 2px 0 8px; }

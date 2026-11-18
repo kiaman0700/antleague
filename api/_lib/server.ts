@@ -3,6 +3,7 @@
  * 브라우저는 Supabase 테이블에 직접 쓸 수 없고(RLS), 이 함수가 비밀 키로 대신 쓴다.
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
+import { streakOf } from '../../src/game/streak.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -1082,9 +1083,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const st = seat.data as { id: string; left_game: boolean | null; rooms: { code: string; status: string } } | null;
         if (st && !st.left_game && st.rooms.status === 'playing') resume = { roomId: my.room_id, playerId: st.id, code: st.rooms.code };
       }
+      // 연속 기록 (최근 120일 기록 날짜로 서버가 계산)
+      const since = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
+      const hist = await sb.from('daily_runs').select('day').eq('user_id', uid).gte('day', since);
+      const streak = hist.error ? null : streakOf(((hist.data ?? []) as { day: string }[]).map((r) => String(r.day).slice(0, 10)), day);
       return {
         day,
         ready: true,
+        ...(streak ? { streak } : {}),
         played: !!my,
         finished: !!my?.finished,
         myRet: my?.finished ? my.ret : null,

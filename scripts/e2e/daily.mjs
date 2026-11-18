@@ -67,6 +67,7 @@ if (sa.s === 200 && sb.s === 200) {
   // B: 중간에 나가면 그때 재산으로 기록되고 그날은 끝
   const lv = await B({ action: 'leave', roomId: sb.b.roomId });
   const ib = (await B({ action: 'dailyInfo' })).b;
+  ok('연속 기록: 오늘 도전하면 1일 이상, 오늘 한 것으로 표시', (ib.streak?.streak ?? 0) >= 1 && ib.streak?.playedToday === true, JSON.stringify(ib.streak));
   ok('중간에 나가도 기록됨 (오늘 끝)', lv.s === 200 && ib.finished === true && typeof ib.myRet === 'number', JSON.stringify({ f: ib.finished, r: ib.myRet }));
   const bAgain = await B({ action: 'dailyStart', nickname: '도전B', mode: 'easy' });
   ok('나간 뒤 다시 시작 불가 (409)', bAgain.s === 409);

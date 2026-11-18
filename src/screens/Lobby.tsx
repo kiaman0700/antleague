@@ -878,7 +878,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
-              <small>{!member ? '회원만 · 모두 같은 시장, 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : '모두 같은 시장, 하루 한 번'}</small>
+              <small>{!member ? '회원만 · 모두 같은 시장, 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중 — 오늘도 이어 가요` : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
