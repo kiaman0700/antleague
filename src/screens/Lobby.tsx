@@ -748,7 +748,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 {isPlaced(account.profile!.ranked_games) && <TierProgress rating={account.profile!.rating} />}
               {/* 판 전에 걸린 점수 미리 보기 (비슷한 점수 상대 기준 — 실제는 상대 점수에 따라 조금 달라요) */}
               <p className="rk-stake small">
-                비슷한 상대에게 1위면 <b className="up">+{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}</b> · 꼴찌면 <b className="down">−{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}</b>점쯤
+                비슷한 상대에게 1위면 <b className="up">+{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}점</b> · 꼴찌면 <b className="down">−{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}점</b>쯤
                 {!isPlaced(account.profile!.ranked_games) && <span className="muted"> (배치라 크게)</span>}
               </p>
               <details className="rk-help">
