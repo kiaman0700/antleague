@@ -371,6 +371,13 @@ interface RowProps {
 const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, news, watched, heldQty, grouped, onSelect, onToggleWatch, halt }: RowProps) {
   const s = STOCK_MAP[symbol];
   const r = riskOf(s);
+  // 가격이 바뀌면 잠깐 반짝임 (오르면 빨강 · 내리면 파랑, 증권 앱처럼) — key 를 바꿔 매번 다시 시작
+  const price = usd ?? krw;
+  const prev = useRef(price);
+  const dir = price > prev.current ? ' tick-up' : price < prev.current ? ' tick-down' : '';
+  useEffect(() => {
+    prev.current = price;
+  }, [price]);
   return (
     <div
       className={'srow' + (sel ? ' sel' : '') + (news ? ' has-news' : '')}
@@ -405,7 +412,7 @@ const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, new
       </div>
       <Sparkline values={series} up={(usd ?? krw) >= series[0]} width={44} />
       <div className="sprice">
-        <b>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
+        <b key={price} className={dir.trim() || undefined}>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
         <small className={tone(ch)}>{pct(ch)}</small>
       </div>
     </div>

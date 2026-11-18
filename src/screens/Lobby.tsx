@@ -1322,7 +1322,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
               </button>
             ))}
           </div>
-          <small className="hint">모두 마감하면 바로 다음 날로 가요. {graceSentence(maxPlayers, turnSec)} 마감은 넘어가기 전까지 취소할 수 있어요.</small>
+          <small className="hint">모두 마감하면 바로 다음 날. {graceSentence(maxPlayers, turnSec)}</small>
         </div>
         <div className="estimate">
           <span>⌛ 예상 게임 시간</span>
@@ -1766,7 +1766,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     case 'league':
       body = (
         <div className="lobby page league">
-          <PageHead title="주간 리그" onBack={() => go('home')} top desc="매주 월요일 0시에 30명이 한 조 — 그 주 경험치 순으로 위는 승급, 아래는 강등" />
+          <PageHead title="주간 리그" onBack={() => go('home')} top desc="매주 30명이 경험치로 겨뤄요 · 위는 승급, 아래는 강등" />
           <Suspense fallback={<Loading />}>
             <League go={go} />
           </Suspense>

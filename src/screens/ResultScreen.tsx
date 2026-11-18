@@ -361,10 +361,10 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
               {results.length - botIds.size > 1 && <small style={{ color: COLORS[i] }}>{r.nickname}</small>}
               <div className="badges">
                 {(final.badges[r.id] ?? []).length === 0 && <span className="muted small">이번엔 없어요</span>}
-                {(final.badges[r.id] ?? []).map((id) => {
+                {(final.badges[r.id] ?? []).map((id, k) => {
                   const b = BADGE_MAP[id];
                   return (
-                    <span key={id} className={'badge r' + b.rarity} title={b.desc}>
+                    <span key={id} className={'badge r' + b.rarity} title={b.desc} style={{ ['--k' as string]: k }}>
                       <i><BadgeIcon id={b.id} /></i>
                       <b>{b.name}</b>
                       <small>{b.desc}</small>

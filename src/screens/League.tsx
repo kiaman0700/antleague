@@ -82,7 +82,7 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
         <EmptyState icon="trophy" title="리그를 준비하고 있어요" desc="조금 뒤에 다시 와 주세요." />
       ) : !info.member ? (
         <section className="lg-guest">
-          <EmptyState icon="trophy" title="주간 리그는 회원만 들어가요" desc="회원가입하면 매주 30명과 경험치로 겨뤄요. 순위에 따라 경험치·칭호·프로필 사진을 받고, 위로 올라갈수록 여왕개미·황금개미가 돼요." />
+          <EmptyState icon="trophy" title="주간 리그는 회원만 들어가요" desc="회원은 매주 30명과 경험치로 겨루고, 순위대로 보상을 받아요." />
           <div className="row center">
             <button className="btn primary" onClick={() => go('signup')}>
               회원가입
@@ -139,14 +139,14 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
               </ol>
             )}
             {!!info.group?.length && <p className="muted small lg-legend">
-              <span className="lg-dot lg-up" /> 승급 자리 · <span className="lg-dot lg-down" /> 강등 자리 · 경험치는 하루 한도가 있어서 꾸준히 하는 사람이 유리해요
+              <span className="lg-dot lg-up" /> 승급 · <span className="lg-dot lg-down" /> 강등
             </p>}
           </section>
           <section className="panel pad">
             <h3>
               <Icon name="medal" /> 주간 보상
             </h3>
-            <p className="muted small">한 주가 끝나면 다음 주에 처음 들어올 때 받아요. 높은 단계일수록 경험치가 많아요(단계마다 +20%).</p>
+            <p className="muted small">한 주가 끝나면 받아요. 높은 단계일수록 많아요.</p>
             <ul className="lg-rewards">
               <li>
                 <b>1위</b>
@@ -165,7 +165,7 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
                 <span>경험치 +{Math.round(30 * (1 + 0.2 * (info.tier ?? 0)))}</span>
               </li>
             </ul>
-            <p className="muted small">순위 경험치는 5명 이상인 조만 · 업적: 조 1위 '리그 우승'(칭호) · 여왕개미 도달(프로필 사진) · 황금개미 도달(칭호 + 프로필 사진)</p>
+            <p className="muted small">순위 보상은 5명 이상인 조만 · 업적: 리그 우승 · 여왕개미 · 황금개미</p>
           </section>
           <section className="panel pad">
             <h3>단계</h3>
