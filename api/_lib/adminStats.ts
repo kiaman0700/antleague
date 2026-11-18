@@ -12,6 +12,9 @@ async function count(q: PromiseLike<{ count: number | null; error: unknown }>) {
   return r.error ? 0 : (r.count ?? 0);
 }
 
+/** 카드 표는 이 규칙 버전부터 (카드 값이 마지막으로 바뀐 버전) */
+export const CARDS_SINCE = 16;
+
 interface StatRow {
   room_id: string;
   kind: string | null;
@@ -25,6 +28,7 @@ interface StatRow {
   trades: number;
   cards: Record<string, number> | null;
   created_at: string;
+  version: number | null;
 }
 
 export async function adminOverview(sb: SupabaseClient) {
@@ -49,7 +53,7 @@ export async function adminOverview(sb: SupabaseClient) {
   // 최근 14일 실제 유저 판 (시험 판 제외). 많아도 5000줄까지만
   const st = await sb
     .from('game_stats')
-    .select('room_id, kind, ranked, players, won, left_game, idle, bot_level, ret, trades, cards, created_at')
+    .select('room_id, kind, ranked, players, won, left_game, idle, bot_level, ret, trades, cards, created_at, version')
     .eq('is_test', false)
     .gt('created_at', ago(14 * DAY))
     .order('created_at', { ascending: false })
@@ -82,7 +86,8 @@ export async function adminOverview(sb: SupabaseClient) {
   });
 
   // 카드별 (대결: match·custom·friend) — 쓴 자리 1위 비율 vs 안 쓴 자리
-  const vs = people.filter((r) => ['match', 'custom', 'friend'].includes(r.kind ?? ''));
+  // 카드 값이 바뀐 규칙(v16 루머 감별기 10만 → 5만)부터만 — 예전 값으로 한 판이 섞이면 지금 값의 효과를 잘못 읽음
+  const vs = people.filter((r) => ['match', 'custom', 'friend'].includes(r.kind ?? '') && (r.version ?? 0) >= CARDS_SINCE);
   const cardKinds = [...new Set(vs.flatMap((r) => Object.keys(r.cards ?? {})))].sort();
   const cards = cardKinds.map((k) => {
     const used = vs.filter((r) => (r.cards?.[k] ?? 0) > 0);
@@ -104,6 +109,6 @@ export async function adminOverview(sb: SupabaseClient) {
     unread,
     errors: { day: errors24, recent: errs.error ? [] : errs.data },
     stats: agg.error ? null : agg.data,
-    games: { total: new Set(people.map((r) => r.room_id)).size, days, kinds, cards, bots },
+    games: { total: new Set(people.map((r) => r.room_id)).size, days, kinds, cards, cardsSince: CARDS_SINCE, bots },
   };
 }

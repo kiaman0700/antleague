@@ -51,6 +51,8 @@ interface Overview {
     days: { date: string; games: number }[];
     kinds: { kind: string; games: number; seats: number; avgRet: number; quit: number; idle: number }[];
     cards: { kind: string; seats: number; win: number; winNot: number }[];
+    /** 1위 차이는 이 규칙 버전부터의 판만 */
+    cardsSince?: number;
     bots: { level: number; games: number; win: number }[];
   };
 }
@@ -239,7 +241,7 @@ function OverviewTab({ onInbox }: { onInbox: () => void }) {
       <section className="aov-card">
         <h3>찬스 카드 · 14일</h3>
         <p className="muted small">
-          1위 차이 = 카드를 쓴 자리의 1위 비율 − 안 쓴 자리 (대결, 쓴 자리 5개 이상). 크게 +면 너무 센 카드, −면 값만큼 이득이 없는 카드.
+          1위 차이 = 카드를 쓴 자리의 1위 비율 − 안 쓴 자리 (대결, 쓴 자리 5개 이상{o.games.cardsSince ? `, 지금 카드 값이 된 규칙 v${o.games.cardsSince}부터` : ''}). 크게 +면 너무 센 카드, −면 값만큼 이득이 없는 카드.
           {s ? ` 카드에 쓴 돈 ${money(s.cards.spent)}` : ''}
         </p>
         {cardRows.length === 0 ? (
