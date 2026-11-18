@@ -105,6 +105,15 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  // 탭을 바꾸면 비밀번호 칸은 비움 (로그인에 친 비밀번호가 '새 비밀번호'에 그대로 들어가 있던 것) — 아이디는 그대로
+  const switchTab = (k: 'login' | 'signup' | 'reset') => {
+    if (k !== tab) {
+      setPassword('');
+      setPassword2('');
+    }
+    setTab(k);
+    setErr('');
+  };
   const [nickname, setNickname] = useState(loadNick());
   const [code, setCode] = useState('');
   const [agree14, setAgree14] = useState(false);
@@ -209,7 +218,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
             ['reset', '비밀번호 찾기'],
           ] as const
         ).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => (setTab(k), setErr(''))}>
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => switchTab(k)}>
             {l}
           </button>
         ))}
@@ -360,12 +369,12 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
         )}
         {/* 탭을 못 본 사람도 바로 옮겨 가게 (design/onboarding.md) */}
         {tab === 'login' && (
-          <button type="button" className="linkish-soft acc-switch" onClick={() => (setTab('signup'), setErr(''))}>
+          <button type="button" className="linkish-soft acc-switch" onClick={() => switchTab('signup')}>
             아직 회원이 아니에요? 회원가입
           </button>
         )}
         {tab === 'signup' && (
-          <button type="button" className="linkish-soft acc-switch" onClick={() => (setTab('login'), setErr(''))}>
+          <button type="button" className="linkish-soft acc-switch" onClick={() => switchTab('login')}>
             이미 회원이세요? 로그인
           </button>
         )}
