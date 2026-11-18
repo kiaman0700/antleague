@@ -28,7 +28,7 @@ export const ITEMS: ItemDef[] = [
   { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 600_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보예요)' },
   { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 300_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
   { kind: 'scout', name: '차트 분석', emoji: '📊', type: 'info', cost: 200_000, desc: '지금 보고 있는 종목이 오늘 오를지 내릴지 알려줘요. (정확도 약 70%)' },
-  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 소식(뉴스·찌라시·소문 기사) 중 하나를 골라 진짜인지 가짜인지 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요. 비싸니 중요한 순간에 쓰세요.' },
+  { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 소식(뉴스·커뮤니티 글·소문 기사) 중 하나를 골라 진짜인지 가짜인지 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요. 비싸니 중요한 순간에 쓰세요.' },
   { kind: 'spy', name: '염탐', emoji: '👀', type: 'info', cost: 150_000, desc: '고른 상대가 지금 어떤 종목을 얼마나 갖고 있는지 몰래 봐요.', multiOnly: true },
   { kind: 'freeze', name: '거래 정지', emoji: '🧊', type: 'attack', cost: 200_000, desc: '고른 상대가 내일 하루 동안 사고팔 수 없어요.', multiOnly: true },
   { kind: 'blackout', name: '정보 차단', emoji: '📵', type: 'attack', cost: 150_000, desc: '고른 상대는 내일 아침 뉴스를 볼 수 없어요.', multiOnly: true },

@@ -155,3 +155,26 @@ describe('v20 커뮤니티 글 다시 보내지 않기', () => {
     if ((v3.communityKey ?? '') !== v1.communityKey) expect(v3.community?.length).toBeGreaterThan(v1.community!.length);
   });
 });
+
+describe('v20 감별기로 커뮤니티 글 고르기', () => {
+  it('지금까지 올라온 글은 고를 수 있고, 그 글에만 판정이 붙음 · 아직 안 올라온 글은 거절', async () => {
+    const { validateUseItem } = await import('./engine.js');
+    const start = 1_800_000_000_000;
+    const g = game(3, start);
+    const at = g.room.deadline! - 90_000;
+    g.items.push({ id: 'i1', player_id: 'a', day: 3, kind: 'detector', action: 'buy', cost: 0, created_at: new Date(at).toISOString() });
+    const shown = buildView(g, 'a', at).community!;
+    const all = communityPosts(marketFor(5, 10, 20, SALT), 3, SALT);
+    const future = all.find((p) => !shown.some((x) => x.id === p.id))!;
+    expect(() => validateUseItem(g, 'a', at, { kind: 'detector', payload: { pick: future.text } })).toThrow();
+    const target = shown[0];
+    const row = validateUseItem(g, 'a', at, { kind: 'detector', payload: { pick: target.text } });
+    g.items.push({ ...(row as object), id: 'i2', created_at: new Date(at).toISOString() } as never);
+    const v = buildView(g, 'a', at);
+    const src = all.find((p) => p.id === target.id)!;
+    expect(v.community!.find((p) => p.id === target.id)?.verdict).toBe(src.real ? 'true' : 'false');
+    expect(v.community!.filter((p) => p.verdict).length).toBe(1);
+    // 상대 화면에는 판정이 없음
+    expect(buildView(g, 'b', at).community!.some((p) => p.verdict)).toBe(false);
+  });
+});
