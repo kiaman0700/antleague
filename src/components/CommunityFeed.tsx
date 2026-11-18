@@ -166,7 +166,7 @@ export function PrePosts({ rumors, day, onSelect, onSelectSector }: { rumors: { 
         .sort((a, b) => ((b.k >>> 21) % 49) - ((a.k >>> 21) % 49))
         .map(({ r, i, k }) => {
         const p: PublicPost = { id: 'pre-' + i, day, at: 0, platform: ids[k % ids.length], author: nicks[(k >>> 4) % nicks.length] + ((k >>> 9) % 2 ? String(10 + ((k >>> 11) % 90)) : ''), verified: null, text: r.text, symbol: r.symbol, sector: r.sector, tone: r.tone, likes: 20 + ((k >>> 13) % 600), replies: (k >>> 17) % 90, verdict: r.verdict };
-        return <Post key={i} p={p} time={`장 전 ${8}:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
+        return <Post key={i} p={p} time={`장 전 08:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
       })}
     </ul>
   );
