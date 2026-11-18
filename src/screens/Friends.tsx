@@ -185,15 +185,15 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
           <label className="field">
             <span>닉네임으로 친구 추가 (정확히 입력)</span>
             <div className="fr-add-row">
-              <input value={nick} maxLength={10} placeholder="친구 닉네임" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
+              <input value={nick} maxLength={10} placeholder="친구 닉네임" onChange={(e) => (setNick(e.target.value), setErr(""))} autoComplete="off" />
               <button className="btn primary" disabled={busy || !nick.trim()}>
                 <Icon name="userPlus" size={16} /> 신청
               </button>
             </div>
           </label>
         </form>
-        {msg && <p className="good-msg small">{msg}</p>}
-        {err && <p className="error small">{err}</p>}
+        {msg && <p className="good-msg small" role="status">{msg}</p>}
+        {err && <p className="error small" role="alert">{err}</p>}
       </section>
 
       {d && d.incoming.length > 0 && (

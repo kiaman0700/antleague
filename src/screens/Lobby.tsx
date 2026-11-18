@@ -252,7 +252,7 @@ function CodeJoin({
           placeholder="6자리 방 코드"
           inputMode="text"
           autoCapitalize="characters"
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+          onChange={(e) => (setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)), setErr(''))}
         />
         <button className="btn primary" disabled={busy || !online}>
           입장
