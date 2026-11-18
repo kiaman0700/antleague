@@ -1925,29 +1925,22 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         socialOpen={wideSocial ? !socialFold : socialOpen}
         // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
         onSocial={() => (wideSocial ? fold(!socialFold) : setSocialOpen((v) => !v))}
-        missions={
-          online ? (
-            <>
-              <NoticeTicker />
-              <MissionsButton onSignup={account.status === 'member' ? undefined : () => go('signup')} />
-            </>
-          ) : undefined
-        }
+        missions={online ? <MissionsButton onSignup={account.status === 'member' ? undefined : () => go('signup')} /> : undefined}
         adminUnread={adminUnread}
         onAdmin={() => go('admin')}
       />
       <div className="cl-body">
         <main className="lobby-main">
           <div className="lobby-topbar">
-            {/* 공지 띠 자리를 넓히려고 휴대폰 위 줄 로고는 마크만 */}
-            <Brand compact={online} />
-            {online && <NoticeTicker compact />}
+            <Brand />
             <span className="lt-right">
               {online && <MissionsButton compact onSignup={account.status === 'member' ? undefined : () => go('signup')} />}
               {adminUnread !== undefined && <AdminInboxButton unread={adminUnread} onClick={() => go('admin')} compact />}
               <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} onSignup={() => go('signup')} compact />
             </span>
           </div>
+          {/* 공지 줄: 위 메뉴 줄 바로 아래 따로 (사용자 2026-11-19 — 공지 때문에 '개미리그' 이름이 가려지지 않게) */}
+          {online && <NoticeTicker />}
           <div className="lobby-body">
             <InAppBanner />
             {resolved !== 'league' && <LeagueResultNote member={account.status === 'member'} onOpen={() => go('league')} />}

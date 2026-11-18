@@ -138,8 +138,8 @@ export function NoticeText({ text, onGo }: { text: string; onGo: (p: LobbyPage) 
   );
 }
 
-/* ---------- 위 메뉴 줄 띠 ---------- */
-export function NoticeTicker({ compact = false }: { compact?: boolean }) {
+/* ---------- 위 메뉴 줄 아래 공지 줄 ---------- */
+export function NoticeTicker() {
   const list = tickerList(useNoticeList());
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -152,29 +152,25 @@ export function NoticeTicker({ compact = false }: { compact?: boolean }) {
   const n = list[i % list.length];
   const unread = new Date(n.created_at).getTime() > seenAt();
   return (
-    <button
-      type="button"
-      className={'nt-bar' + (compact ? ' compact' : '')}
-      onClick={() => openNotice(n.id)}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
-      aria-label={`공지: ${n.title}${list.length > 1 ? ` (${(i % list.length) + 1}/${list.length})` : ''}`}
-    >
-      <Icon name="megaphone" size={15} />
-      {unread && <i className="nt-dot" aria-hidden />}
-      <span className="nt-win" aria-hidden>
-        <span key={n.id} className="nt-title">
-          {n.title}
+    <div className="nt-strip" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <button type="button" className="nt-bar" onClick={() => openNotice(n.id)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} aria-label={`공지: ${n.title}${list.length > 1 ? ` (${(i % list.length) + 1}/${list.length})` : ''}`}>
+        <span className="nt-tag">
+          <Icon name="megaphone" size={14} /> 공지
+          {unread && <i className="nt-dot" aria-hidden />}
         </span>
-      </span>
-      {!compact && list.length > 1 && (
-        <small className="nt-count" aria-hidden>
-          {(i % list.length) + 1}/{list.length}
-        </small>
-      )}
-    </button>
+        <span className="nt-win" aria-hidden>
+          <span key={n.id} className="nt-title">
+            {n.title}
+          </span>
+        </span>
+        {list.length > 1 && (
+          <small className="nt-count" aria-hidden>
+            {(i % list.length) + 1}/{list.length}
+          </small>
+        )}
+        <Icon name="right" size={14} />
+      </button>
+    </div>
   );
 }
 

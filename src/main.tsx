@@ -19,6 +19,8 @@ import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';
 
 startInstallWatch();
+// 아이폰 사파리는 문서에 touchstart 가 있어야 버튼의 :active(누름 효과)가 보임
+document.addEventListener('touchstart', () => {}, { passive: true });
 
 // 새로 배포된 뒤 열려 있던 창에서 나중에 받는 화면(게임·공부·계정 등)의 옛 파일이 없어 못 받으면 한 번만 새로 고침
 // (같은 창에서 1분 안에 또 실패하면 다시 고치지 않고 오류 화면 — 무한 새로 고침 방지)
