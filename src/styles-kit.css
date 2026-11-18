@@ -1589,3 +1589,33 @@ body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-are
 /* 티어 계단이 옆으로 넘칠 때(휴대폰): 오른쪽을 흐리게 + 안내 */
 .tier-ladder.tl-more .tl-stairs { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
 .tl-hint { margin: 6px 0 0; text-align: right; }
+
+/* ---------- 공지 띠·창 (NoticeBar.tsx) ---------- */
+.nt-bar { position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 320px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line, #2e2e2e); background: var(--surface, #1c1c1c); color: var(--text-2, #c8c8c8); font-size: 13px; font-weight: 600; cursor: pointer; }
+.nt-bar:hover { border-color: #6b58ee; color: var(--text, #f2f2f2); }
+.nt-bar > svg { flex: none; color: #b9adff; }
+.nt-dot { position: absolute; top: 6px; left: 24px; width: 7px; height: 7px; border-radius: 50%; background: #d9364b; box-shadow: 0 0 0 2px var(--surface, #1c1c1c); }
+.nt-win { position: relative; flex: 1; min-width: 0; height: 18px; overflow: hidden; }
+.nt-title { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 18px; animation: ntIn 0.35s ease-out; }
+.nt-count { flex: none; color: var(--text-3, #9a9a9a); font-size: 11px; font-variant-numeric: tabular-nums; }
+@keyframes ntIn { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.cl-right .nt-bar { margin-right: 4px; }
+@media (max-width: 1279px) { .cl-right .nt-bar { max-width: 200px; } }
+@media (max-width: 1100px) { .cl-right .nt-bar .nt-win, .cl-right .nt-bar .nt-count { display: none; } .cl-right .nt-bar { padding: 0 10px; } }
+/* 휴대폰 위 머리줄: 로고와 미션 사이를 채움 */
+.lobby-topbar .nt-bar.compact { flex: 1; max-width: none; margin: 0 8px; height: 34px; padding: 0 10px; }
+.lobby-topbar { gap: 0; }
+.lobby-topbar .lt-right { flex: none; }
+.nt-modal { max-width: 460px; }
+.nt-head { display: flex; align-items: center; justify-content: space-between; margin: -4px 0 6px; }
+.nt-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #b9adff; }
+.nt-article { animation: ntFade 0.22s ease-out; }
+.nt-article h3 { margin: 4px 0 2px; font-size: 18px; line-height: 1.35; }
+.notice-text { white-space: pre-wrap; line-height: 1.65; margin: 12px 0 4px; color: var(--text, #f2f2f2); }
+.notice-link { display: inline-flex; align-items: center; gap: 2px; padding: 0 2px; border: 0; background: none; color: #b9adff; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.nt-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line, #2e2e2e); }
+.nt-dots { display: flex; gap: 6px; }
+.nt-dots i { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; transition: background 0.2s, transform 0.2s; }
+.nt-dots i.on { background: #8b7bff; transform: scale(1.3); }
+@keyframes ntFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .nt-title, .nt-article { animation: none; } }

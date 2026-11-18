@@ -32,6 +32,10 @@ const TITLES: Record<Route['kind'], string> = {
 };
 
 const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/league': 'league', '/install': 'install', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking', '/notices': 'notices' };
+/** 사이트 안 주소 → 로비 페이지 (공지 글 속 링크처럼 우리 화면으로만 가게 확인할 때) */
+export function lobbyPageOf(path: string): LobbyPage | null {
+  return LOBBY_PAGES[path.replace(/\/+$/, '') || '/'] ?? null;
+}
 /** 주소만으로 열 수 있는 화면(로비 페이지)인지 */
 function routeFromPath(path: string): Route {
   const page = LOBBY_PAGES[path.replace(/\/+$/, '') || '/'];

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
-import { InstallHint } from '../components/InstallHint';
+import { NoticeCenter, NoticeTicker } from '../components/NoticeBar';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
@@ -1803,7 +1803,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       );
       break;
     case 'notices':
-      body = <NoticesPage onBack={back} />;
+      body = <NoticesPage onBack={back} onGo={go} />;
       break;
     case 'install':
       body = (
@@ -1905,14 +1905,23 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         socialOpen={wideSocial ? !socialFold : socialOpen}
         // 넓은 화면에서 접어 둔 상태면 위 친구 아이콘으로 다시 펼침, 그 밖엔 덮개 여닫기
         onSocial={() => (wideSocial ? fold(!socialFold) : setSocialOpen((v) => !v))}
-        missions={online ? <MissionsButton onSignup={account.status === 'member' ? undefined : () => go('signup')} /> : undefined}
+        missions={
+          online ? (
+            <>
+              <NoticeTicker />
+              <MissionsButton onSignup={account.status === 'member' ? undefined : () => go('signup')} />
+            </>
+          ) : undefined
+        }
         adminUnread={adminUnread}
         onAdmin={() => go('admin')}
       />
       <div className="cl-body">
         <main className="lobby-main">
           <div className="lobby-topbar">
-            <Brand />
+            {/* 공지 띠 자리를 넓히려고 휴대폰 위 줄 로고는 마크만 */}
+            <Brand compact={online} />
+            {online && <NoticeTicker compact />}
             <span className="lt-right">
               {online && <MissionsButton compact onSignup={account.status === 'member' ? undefined : () => go('signup')} />}
               {adminUnread !== undefined && <AdminInboxButton unread={adminUnread} onClick={() => go('admin')} compact />}
@@ -1920,7 +1929,6 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
             </span>
           </div>
           <div className="lobby-body">
-            {resolved !== 'install' && resolved !== 'login' && resolved !== 'signup' && <InstallHint onOpen={() => go('install')} />}
             {resolved !== 'league' && <LeagueResultNote member={account.status === 'member'} onOpen={() => go('league')} />}
             {body}
           </div>
@@ -1988,6 +1996,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} quiet={resolved === 'login' || resolved === 'signup'} />
       <FlashNote />
+      {online && <NoticeCenter onGo={go} quiet={resolved === 'login' || resolved === 'signup' || resolved === 'notices'} />}
       <OfflineBanner />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}

@@ -7,6 +7,8 @@ import { api } from '../net/api';
 import { Icon } from '../components/Icon';
 import { ask } from '../components/ConfirmHost';
 import { EmptyState, ErrorState, Loading, Toast } from '../components/ui';
+import { NoticeText, refreshNotices } from '../components/NoticeBar';
+import type { LobbyPage } from './Lobby';
 
 export interface Notice {
   id: string;
@@ -49,7 +51,7 @@ function PageHead({ title, onBack }: { title: string; onBack: () => void }) {
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
-export function NoticesPage({ onBack }: { onBack: () => void }) {
+export function NoticesPage({ onBack, onGo }: { onBack: () => void; onGo: (p: LobbyPage) => void }) {
   const [list, setList] = useState<Notice[] | null>(null);
   const [err, setErr] = useState(false);
   const [n, setN] = useState(0);
@@ -90,6 +92,7 @@ export function NoticesPage({ onBack }: { onBack: () => void }) {
     try {
       const r = await api<Notice[]>('adminNotice', { op: draft.id ? 'update' : 'create', id: draft.id, title: draft.title, body: draft.body, pinned: draft.pinned });
       setList(r);
+      refreshNotices();
       setDraft(null);
       setDone(draft.id ? '공지를 고쳤어요' : '공지를 올렸어요');
     } catch (e) {
@@ -102,6 +105,7 @@ export function NoticesPage({ onBack }: { onBack: () => void }) {
     if (!(await ask(`'${x.title}' 공지를 지울까요? 되돌릴 수 없어요.`, { ok: '지우기', danger: true }))) return;
     try {
       setList(await api<Notice[]>('adminNotice', { op: 'delete', id: x.id }));
+      refreshNotices();
       setMsg('');
       setDone('공지를 지웠어요');
     } catch (e) {
@@ -125,7 +129,7 @@ export function NoticesPage({ onBack }: { onBack: () => void }) {
             <input value={draft.title} maxLength={80} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
           </label>
           <label className="field">
-            <span>내용 (4000자까지)</span>
+            <span>내용 (4000자까지) · 링크: [보일 글자](/install) 처럼 우리 사이트 주소만</span>
             <textarea value={draft.body} maxLength={4000} rows={8} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
           </label>
           <label className="check-row">
@@ -164,7 +168,7 @@ export function NoticesPage({ onBack }: { onBack: () => void }) {
                 {on && (
                   <div className="notice-body">
                     {/* 일반 글자로만 (줄바꿈 유지) */}
-                    <p>{x.body}</p>
+                    <NoticeText text={x.body} onGo={onGo} />
                     {x.updated_at !== x.created_at && new Date(x.updated_at).getTime() - new Date(x.created_at).getTime() > 60_000 && <small className="muted">{fmt(x.updated_at)} 고침</small>}
                     {admin && (
                       <div className="notice-admin">

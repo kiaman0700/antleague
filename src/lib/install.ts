@@ -81,24 +81,5 @@ export async function promptInstall(): Promise<boolean> {
   return r.outcome === 'accepted';
 }
 
-/** 안내 띠를 보여도 되는지: 휴대폰·태블릿, 아직 앱으로 안 씀, 닫은 적 없음 */
-const HINT_KEY = 'stockduel.installHint';
-export function installHintVisible(env: InstallEnv, device: string) {
-  if (env.standalone || device === 'pc') return false;
-  try {
-    if (localStorage.getItem(HINT_KEY) || localStorage.getItem('stockduel.installed')) return false;
-  } catch {
-    return false;
-  }
-  return true;
-}
-export function dismissInstallHint() {
-  try {
-    localStorage.setItem(HINT_KEY, String(Date.now()));
-  } catch {
-    /* 무시 */
-  }
-}
-
 /** 카카오톡 안 브라우저 → 기기 기본 브라우저로 열기 (카카오톡이 제공하는 주소) */
 export const kakaoExternalUrl = (url: string) => 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);

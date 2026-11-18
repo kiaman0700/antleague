@@ -385,7 +385,7 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
       <h3>
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
-      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(100점씩, 3이 가장 높아요)가 있어요. 마스터·챌린저는 단계 없이 점수 순위예요. 챌린저는 2,500점 이상이면서 상위 1%(최근 7일 안에 랭킹전을 한 사람) 안에 들어야 해요.</p>
+      <p className="muted small">배치 2판 뒤 점수로 정해져요. 단계는 100점씩, 3이 가장 높아요. 챌린저는 2,500점 넘는 상위 1%예요.</p>
       <ol className="tl-stairs" ref={ref}>
         {TIERS.map((t, i) => {
           const base = t.id === 'bronze' ? 700 : t.min;
@@ -398,7 +398,7 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
               <div className="tl-block">
                 {here && <span className="tl-me">나</span>}
                 <b>{t.name}</b>
-                <small>{t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점'}</small>
+                <small>{t.id === 'bronze' ? '1,000점 아래' : t.min.toLocaleString() + '점'}</small>
                 {t.id !== 'master' ? (
                   <span className="tl-divs" aria-label={`${t.name} 1, 2, 3단계`}>
                     {(['1', '2', '3'] as const).map((dv, k) => (
