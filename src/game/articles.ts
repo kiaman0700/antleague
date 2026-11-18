@@ -131,7 +131,10 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   const qRoll = rng();
   if (!n.rumor && n.kind !== 'macro' && n.label !== '시황' && qRoll < (fake ? 0.12 : 0.45)) {
     const insider = co && rng() < 0.5;
-    const who = insider ? `${co} ${pick(['대표', '전무', 'IR 담당 상무'])} ${person()}` : `${pick(FIRMS)} 애널리스트 ${person()}`;
+    // ETF 는 회사가 아니라 대표·임원이 없음 → 운용역 (난수 쓰는 횟수는 그대로)
+    const isEtf = !!(n.symbol && STOCK_MAP[n.symbol]?.etf);
+    const rank = insider ? pick(['대표', '전무', 'IR 담당 상무']) : '';
+    const who = insider ? `${co} ${isEtf ? '운용역' : rank} ${person()}` : `${pick(FIRMS)} 애널리스트 ${person()}`;
     // 회사 사람과 애널리스트는 하는 말이 다름
     const said = insider
       ? good
@@ -140,8 +143,10 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
       : good
         ? pick(['이번 결과는 시장 기대를 웃도는 수준이라고 본다', '하반기까지 좋은 흐름이 이어질 것으로 예상한다', '목표 주가를 올릴 만한 내용이다'])
         : pick(['당분간 부담이 이어질 수밖에 없다', '시장 기대에는 못 미치는 결과로 판단한다', '보수적으로 볼 필요가 있다']);
-    quote = { who, text: said };
-    body.splice(1, 0, `${jo(who, '은', '는')} "${said}"고 말했다.`);
+    // ETF 운용역은 회사 사람 말투 대신 담은 종목 얘기 (뽑기는 위에서 이미 했으니 횟수 그대로)
+    const text = insider && isEtf ? (good ? '담고 있는 종목들의 흐름이 좋아 기대가 크다' : '담고 있는 종목들이 약해 당분간 조심스럽다') : said;
+    quote = { who, text };
+    body.splice(1, 0, `${jo(who, '은', '는')} "${text}"고 말했다.`);
   }
   return { press: pick(PRESS), reporter: `${person()} 기자`, time, lead, body, quote, cite };
 }

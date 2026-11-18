@@ -196,7 +196,8 @@ export function communityPosts(m: Market, day: number, key: string): Post[] {
     if (isVerified) {
       const role = symbol ? pick<Verified['role']>(['ceo', 'exec', 'ir', 'analyst', 'fund', 'reporter']) : pick<Verified['role']>(['analyst', 'fund', 'reporter']);
       const org = role === 'ceo' || role === 'exec' || role === 'ir' ? name : role === 'analyst' ? pick(['개미증권', '한빛투자증권', '마켓리서치', '여의도증권']) : role === 'fund' ? pick(['개미자산운용', '한강운용']) : pick(['개미경제', '증권일보']);
-      verified = { role, label: `${org} ${ROLES[role]}` };
+      // ETF 는 회사가 아니라 대표·임원·IR 이 없음 → 그 ETF 를 굴리는 운용역 (난수를 더 쓰지 않음)
+      verified = symbol && STOCK_MAP[symbol].etf && org === name ? { role: 'fund', label: `${name} 운용역` } : { role, label: `${org} ${ROLES[role]}` };
     }
     const platform = verified ? pick<Platform>(['chirp', 'feedgram', 'live']) : pick(PLATFORM_IDS);
     const w = symbol ? name : `${name} 업종`;
