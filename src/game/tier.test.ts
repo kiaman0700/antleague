@@ -3,13 +3,13 @@ import { isPlaced, tierOf } from './tier.js';
 
 describe('랭킹 티어', () => {
   it('점수 → 티어·단계', () => {
-    expect(tierOf(1000).label).toBe('실버 III');
-    expect(tierOf(1060).label).toBe('실버 II');
-    expect(tierOf(1149).label).toBe('실버 I');
-    expect(tierOf(1150).label).toBe('골드 III');
-    expect(tierOf(1460).label).toBe('다이아몬드 III');
-    expect(tierOf(900).label).toBe('브론즈 II');
-    expect(tierOf(600).label).toBe('브론즈 III');
+    expect(tierOf(1000).label).toBe('실버 1');
+    expect(tierOf(1060).label).toBe('실버 2');
+    expect(tierOf(1149).label).toBe('실버 3');
+    expect(tierOf(1150).label).toBe('골드 1');
+    expect(tierOf(1460).label).toBe('다이아몬드 1');
+    expect(tierOf(900).label).toBe('브론즈 2');
+    expect(tierOf(600).label).toBe('브론즈 1');
     expect(tierOf(1700)).toMatchObject({ label: '마스터', points: 100 });
   });
   it('단계 안 점수는 0~49', () => {

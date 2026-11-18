@@ -1953,7 +1953,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   );
 }
 
-/** 다음 단계까지 막대 (예: 골드 II 32/50) */
+/** 다음 단계까지 막대 (예: 골드 2 32/50) */
 function TierProgress({ rating }: { rating: number }) {
   const t = tierOf(rating);
   const pct = t.division ? Math.round((t.points / 50) * 100) : 100;

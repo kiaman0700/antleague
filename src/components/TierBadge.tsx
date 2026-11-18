@@ -41,7 +41,7 @@ function shard(ox: number, oy: number, a: number, len: number, w: number): [stri
 /**
  * 티어 엠블럼 3판 (2026-11-17 사용자 요청 '더 퀄리티 있게'): 금속 질감 테두리 + 깊은 안쪽 면(오르는 차트 선을 새김) + 여러 면으로 깎은 보석 + 아래 띠.
  * 티어가 오를수록 방패 밖 장식이 늘어남 — 브론즈 방패만 · 실버 옆 날·어깨 못 · 골드 날개 · 플래티넘 위 첨탑 · 다이아몬드 수정 조각·은은한 빛 · 마스터 왕관과 큰 날개.
- * 같은 티어 안 단계(III → II → I)는 아래 띠의 보석 수(1~3)와 장식 길이로 보여 줌
+ * 같은 티어 안 단계(1 → 2 → 3, 3이 가장 높음)는 아래 띠의 보석 수(1~3)와 장식 길이로 보여 줌
  */
 export function TierEmblem({ rating, placed = true, size = 28 }: { rating: number; placed?: boolean; size?: number }) {
   const t = tierOf(rating);
@@ -52,7 +52,7 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
   const dark = mix(base, '#000000', 0.5);
   const deep = mix(base, '#000000', 0.78);
   const lv = placed ? (TIER_LEVEL[t.id] ?? 0) : -1;
-  const dv = !placed ? 0 : t.id === 'master' ? 3 : t.division === 'I' ? 2 : t.division === 'II' ? 1 : 0;
+  const dv = !placed ? 0 : t.id === 'master' ? 3 : t.division === '3' ? 2 : t.division === '2' ? 1 : 0;
   const pips = !placed || t.id === 'master' ? 0 : dv + 1;
   const id = `te-${placed ? t.id : 'none'}`;
   const metal = `url(#${id}-m)`;
@@ -94,12 +94,31 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
           <stop offset="0.55" stopColor={light} />
           <stop offset="1" stopColor={base} />
         </linearGradient>
+        <clipPath id={`${id}-c`}>
+          <path d={SHIELD} />
+        </clipPath>
+        <linearGradient id={`${id}-s`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#ffffff" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
         <radialGradient id={`${id}-o`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor={base} stopOpacity="0.5" />
           <stop offset="1" stopColor={base} stopOpacity="0" />
         </radialGradient>
       </defs>
 
+      {/* 마스터: 단계가 없는 대신 가장 화려하게 (사용자 요청 2026-11-18) — 뒤에서 천천히 도는 빛줄기 */}
+      {lv === 5 && (
+        <g className="te-rays">
+          {Array.from({ length: 16 }, (_, i) => {
+            const a = (i * 22.5 * Math.PI) / 180;
+            const w = (i % 2 ? 2.2 : 3.4) * (Math.PI / 180);
+            const r = i % 2 ? 25 : 30;
+            return <path key={i} d={`M20 18 L${20 + r * Math.cos(a - w)} ${18 + r * Math.sin(a - w)} L${20 + r * Math.cos(a + w)} ${18 + r * Math.sin(a + w)} Z`} fill={shine} opacity={i % 2 ? 0.16 : 0.3} />;
+          })}
+        </g>
+      )}
       {/* 다이아몬드·마스터: 뒤 은은한 빛 */}
       {lv >= 4 && <circle cx="20" cy="18" r={lv >= 5 ? 26 : 23} fill={`url(#${id}-o)`} />}
 
@@ -131,13 +150,16 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
         <g stroke={deep} strokeWidth="0.7" strokeLinejoin="round">
           <path d="M9.5 6.5 L8.5 -4 L14 0.5 L20 -7 L26 0.5 L31.5 -4 L30.5 6.5 Q20 3.6 9.5 6.5 Z" fill={metal} />
           <path d="M11 4.6 Q20 2.4 29 4.6" fill="none" stroke={shine} strokeOpacity="0.6" strokeWidth="0.6" />
-          <circle cx="20" cy="-7" r="1.9" fill={gem} />
-          <circle cx="8.5" cy="-4" r="1.4" fill={gem} />
-          <circle cx="31.5" cy="-4" r="1.4" fill={gem} />
+          <circle cx="20" cy="-7" r="2.1" fill="#ff5d73" stroke={shine} strokeWidth="0.5" />
+          <circle cx="8.5" cy="-4" r="1.5" fill="#5aa9ff" stroke={shine} strokeWidth="0.4" />
+          <circle cx="31.5" cy="-4" r="1.5" fill="#5aa9ff" stroke={shine} strokeWidth="0.4" />
+          <circle cx="14" cy="0.4" r="1" fill="#3ddc97" />
+          <circle cx="26" cy="0.4" r="1" fill="#3ddc97" />
           <path d="M18 1.8 L20 -0.6 L22 1.8 L20 4.2 Z" fill={gem} />
         </g>
       )}
 
+      {lv === 5 && <path d={SHIELD} transform={at(1.1)} fill="none" stroke={metal} strokeWidth="1.6" strokeLinejoin="round" />}
       {/* 방패: 바깥 금속 테두리 → 어두운 홈 → 안쪽 면 */}
       <path d={SHIELD} fill={metal} stroke={deep} strokeWidth="0.8" strokeLinejoin="round" />
       <path d={SHIELD} transform={at(0.86)} fill={deep} />
@@ -172,7 +194,21 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
         </text>
       )}
 
-      {/* 아래 띠 + 단계 보석 (III 1개 · II 2개 · I 3개) */}
+      {lv === 5 && (
+        <g clipPath={`url(#${id}-c)`}>
+          <rect className="te-sweep" x="-12" y="0" width="10" height="44" fill={`url(#${id}-s)`} transform="skewX(-18)" />
+        </g>
+      )}
+      {lv === 5 && (
+        <g strokeLinejoin="round">
+          <path d="M4.5 37 Q20 43.5 35.5 37 L37.5 42.6 Q20 49.6 2.5 42.6 Z" fill={metal} stroke={deep} strokeWidth="0.6" />
+          <path d="M2.5 42.6 L-1 45.6 L4.6 45 Z M37.5 42.6 L41 45.6 L35.4 45 Z" fill={mid} stroke={deep} strokeWidth="0.5" />
+          <circle cx="13" cy="41.6" r="1.3" fill="#5aa9ff" stroke={shine} strokeWidth="0.4" />
+          <circle cx="20" cy="42.9" r="1.7" fill="#ff5d73" stroke={shine} strokeWidth="0.45" />
+          <circle cx="27" cy="41.6" r="1.3" fill="#3ddc97" stroke={shine} strokeWidth="0.4" />
+        </g>
+      )}
+      {/* 아래 띠 + 단계 보석 (1단계 1개 · 2단계 2개 · 3단계 3개) */}
       {pips > 0 && (
         <g>
           <path d="M8 37.6 Q20 42.6 32 37.6 L33.5 42 Q20 47.2 6.5 42 Z" fill={metal} stroke={deep} strokeWidth="0.6" strokeLinejoin="round" />
@@ -206,13 +242,13 @@ export function TierBadge({ rating, rankedGames, size = 28, showPoints = true }:
   );
 }
 
-/** 짧게: "골드 II" 또는 "언랭크" (친구·파티 목록용) */
+/** 짧게: "골드 2" 또는 "언랭크" (친구·파티 목록용) */
 export function tierShort(rating: number, rankedGames: number | null | undefined) {
   return isPlaced(rankedGames) ? tierOf(rating).label : '언랭크';
 }
 
 /**
- * 티어표: 브론즈 → 마스터로 오르는 계단. 계단이 높아질수록 그림도 커지고, 계단 안에 단계 III · II · I.
+ * 티어표: 브론즈 → 마스터로 오르는 계단. 계단이 높아질수록 그림도 커지고, 계단 안에 단계 1 · 2 · 3 (3이 가장 높음).
  * mine 을 주면 내 티어에 '나' 표시
  */
 export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: number | null | undefined } }) {
@@ -222,7 +258,7 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
       <h3>
         <Icon name="crown" size={18} /> 랭킹 티어
       </h3>
-      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 III → II → I 단계(50점씩)가 있어요.</p>
+      <p className="muted small">처음 2판은 배치 경기예요. 그 뒤 점수에 따라 티어가 정해지고, 티어마다 1 → 2 → 3 단계(50점씩, 3이 가장 높아요)가 있어요.</p>
       <ol className="tl-stairs">
         {TIERS.map((t, i) => {
           const base = t.id === 'bronze' ? 850 : t.min;
@@ -237,8 +273,8 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
                 <b>{t.name}</b>
                 <small>{t.id === 'bronze' ? '시작' : t.min.toLocaleString() + '점'}</small>
                 {t.id !== 'master' ? (
-                  <span className="tl-divs" aria-label={`${t.name} III, II, I`}>
-                    {(['III', 'II', 'I'] as const).map((dv, k) => (
+                  <span className="tl-divs" aria-label={`${t.name} 1, 2, 3단계`}>
+                    {(['1', '2', '3'] as const).map((dv, k) => (
                       <span key={dv} className={'tl-div' + (here && my?.division === dv ? ' me' : '')} title={`${t.name} ${dv}`}>
                         <TierEmblem rating={base + k * 50} size={14} />
                         <i>{dv}</i>

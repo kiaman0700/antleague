@@ -1379,3 +1379,10 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .tut-ch-n.done { background: #1f3b2b; color: #4ade80; }
 .tut-ch-t { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .tut-ch-t small { color: var(--muted, #9a9a9a); font-size: 12px; line-height: 1.4; }
+
+/* 마스터 엠블럼: 빛줄기는 천천히 돌고 방패 위로 반짝임이 지나감 (움직임 줄이기면 멈춤) */
+.tier-emblem .te-rays { transform-box: view-box; transform-origin: 20px 18px; animation: te-spin 28s linear infinite; }
+.tier-emblem .te-sweep { animation: te-sweep 4.2s ease-in-out infinite; }
+@keyframes te-spin { to { transform: rotate(360deg); } }
+@keyframes te-sweep { 0%, 55% { transform: skewX(-18deg) translateX(0); } 100% { transform: skewX(-18deg) translateX(70px); } }
+@media (prefers-reduced-motion: reduce) { .tier-emblem .te-rays, .tier-emblem .te-sweep { animation: none; } }
