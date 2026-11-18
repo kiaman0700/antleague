@@ -18,6 +18,7 @@ import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
 import { DailyResult } from '../components/Daily';
+import { useIsMobile } from '../components/Extras';
 import { MissionsPanel } from '../components/Missions';
 
 interface Props {
@@ -45,6 +46,7 @@ const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
 export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
+  const wide = useIsMobile('(min-width: 900px)');
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);
@@ -425,6 +427,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         <LineChart
           series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
           totalDays={market.totalDays}
+          // 넓은 화면에선 납작하게 (가로 비율 그대로 커지면 PC 에서 세로 800px 가까이 됐음)
+          height={wide ? 170 : 240}
           refLine={{ value: START_CASH, label: `시작 ${START_CASH >= 10_000_000 ? '1,000만원' : '100만원'}` }}
           fmt={(v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : v >= 1e7 ? `${Math.round(v / 1e4).toLocaleString('ko-KR')}만` : `${(Math.round(v / 1e3) / 10).toLocaleString('ko-KR')}만`)}
           fill={false}
