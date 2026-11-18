@@ -1768,3 +1768,9 @@ p { text-wrap: pretty; }
 /* 아주 좁은 휴대폰(360 미만): 전적 줄의 판 종류 이름은 잘리지 않고 두 줄로 */
 @media (max-width: 359px) { .mr-mode b { white-space: normal; overflow: visible; line-height: 1.25; } }
 .rw-note { margin: 10px 0 0; }
+/* 창(모달)이 떠 있는 동안 휴대폰·태블릿에서 뒤 화면이 같이 스크롤되지 않게 (닫았을 때 다른 자리에 가 있던 문제).
+   PC 는 스크롤 막대가 사라지며 화면이 옆으로 밀려서 터치 기기만. 창 안 스크롤이 끝나도 뒤로 넘어가지 않게 */
+@media (pointer: coarse) {
+  html:has(.modal-bg), html:has(.modal-bg) body { overflow: hidden; }
+}
+.modal, .sheet { overscroll-behavior: contain; }
