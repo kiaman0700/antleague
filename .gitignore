@@ -21,3 +21,4 @@ scripts/e2e/.bot-tmp.mjs
 scripts/e2e/.*-tmp.mjs
 .playwright-mcp/
 scripts/e2e/.shots/
+public/__tmp*
