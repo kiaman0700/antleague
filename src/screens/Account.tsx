@@ -228,10 +228,14 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
       >
         {tab === 'signup' && (
           <p className="muted small">
-            가입하면 <b>랭킹</b>에 올라가고, 다른 기기에서도 아이디로 이어서 할 수 있어요. 지금 이 기기에서 하던 게임·기록은 그대로 새 계정으로 옮겨져요. 이메일은 받지 않아요.
+            가입하면 <b>랭킹</b>에 올라가고, 다른 기기에서도 아이디로 이어서 할 수 있어요. {acc.status === 'visitor' ? '' : '지금 이 기기에서 하던 게임·기록은 그대로 새 계정으로 옮겨져요. '}이메일은 받지 않아요.
           </p>
         )}
-        {tab === 'login' && <p className="muted small">로그인하면 이 기기는 그 계정으로 바뀌어요. 게스트로 하던 이 기기의 기록은 따로 남아요(로그아웃하면 다시 게스트).</p>}
+        {tab === 'login' && (
+          <p className="muted small">
+            {acc.status === 'visitor' ? '가입할 때 정한 아이디와 비밀번호로 로그인해요. 다른 기기에서 하던 기록이 그대로 이어져요.' : '로그인하면 이 기기는 그 계정으로 바뀌어요. 게스트로 하던 이 기기의 기록은 따로 남아요(로그아웃하면 다시 게스트).'}
+          </p>
+        )}
         {tab === 'reset' && <p className="muted small">가입할 때 받은 복구 코드로 새 비밀번호를 정해요.</p>}
 
         <label className={tab === 'signup' ? fieldCls(uAvail) : 'field'}>
