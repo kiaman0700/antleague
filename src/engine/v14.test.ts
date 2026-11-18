@@ -34,6 +34,23 @@ describe('v14 카드 값', () => {
     expect(itemCost('detector', 2, 13)).toBe(10_000);
     expect(itemCost('paper', 4, 13)).toBe(45_000);
   });
+  it('(v16) 감별기만 5만원, 다른 카드 값은 v14 그대로 · 진행 중인 v15 판은 10만원 그대로', () => {
+    expect(itemCost('detector', 2, 16)).toBe(50_000);
+    expect(itemCost('detector', 4, 16)).toBe(50_000);
+    expect(itemCost('detector', 4, 15)).toBe(100_000);
+    for (const k of ['paper', 'analyst', 'scout', 'freeze', 'blackout', 'fake', 'fee', 'shield', 'mirror'] as const)
+      for (const n of [2, 4]) expect(itemCost(k, n, 16)).toBe(itemCost(k, n, 15));
+  });
+  it('(v16) 시장(가격·뉴스)은 v15 와 똑같다 — 바뀐 건 감별기 값뿐', () => {
+    const a = marketFor(77, 10, 15, SALT);
+    const b = marketFor(77, 10, 16, SALT);
+    expect(JSON.stringify({ ...b, version: 0 })).toBe(JSON.stringify({ ...a, version: 0 }));
+  });
+  it('(v16) 감별기는 여전히 고른 소식 1개가 있어야 쓸 수 있다', () => {
+    const d = game(16);
+    own(d, 'detector');
+    expect(err(() => validateUseItem(d, 'a', T0, { kind: 'detector' }))).toMatch(/확인할 소식/);
+  });
 });
 
 describe('v14 루머 감별기 = 고른 소식 1개만', () => {

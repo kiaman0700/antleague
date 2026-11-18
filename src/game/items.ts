@@ -252,11 +252,16 @@ export const PRICE_V9: Partial<Record<ItemKind, number>> = { ...PRICE_V8, paper:
  * 시뮬에서 값보다 이득이 작던 내일 신문·애널리스트 콜 값을 내림
  */
 export const PRICE_V14: Partial<Record<ItemKind, number>> = { ...PRICE_V9, detector: 100_000, paper: 35_000, analyst: 25_000 };
+/**
+ * (v16) 루머 감별기 10만 → 5만 (사용자 결정 2026-11-18, design/detector-price-check.md — 시뮬에서 10만은 사면 손해가 뚜렷).
+ * 판정은 그대로 고른 소식(뉴스 또는 찌라시) 1개
+ */
+export const PRICE_V16: Partial<Record<ItemKind, number>> = { ...PRICE_V14, detector: 50_000 };
 /** v14: 같은 날 정보 카드는 1장만 */
 export const INFO_ONE_PER_DAY_VERSION = 14;
 export function itemCost(kind: ItemKind, players: number, version = 1): number {
   const d = ITEM_MAP[kind];
-  const table = version >= 14 ? PRICE_V14 : version >= 9 ? PRICE_V9 : PRICE_V8;
+  const table = version >= 16 ? PRICE_V16 : version >= 14 ? PRICE_V14 : version >= 9 ? PRICE_V9 : PRICE_V8;
   if (version >= 8 && table[kind] != null) {
     const base = table[kind]!;
     return d.type === 'attack' && players === 2 ? Math.round((base * DUEL_ATTACK_MULT) / 5_000) * 5_000 : base;
