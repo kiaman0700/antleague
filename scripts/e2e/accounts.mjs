@@ -79,6 +79,8 @@ const c2 = client();
 const li = await c2.auth.signInWithPassword({ email: await loginEmail(ua), password: pw });
 ok('아이디·비밀번호로 로그인', !li.error, li.error?.message ?? '');
 const A2 = (body) => post(body, li.data.session.access_token);
+// (051) 한 계정은 한 곳에서만 — 다시 로그인했으니 예전 로그인(A)은 끊김. 이제부터 A 는 새 로그인으로
+A = A2;
 const prof = await A2({ action: 'profile' });
 ok('프로필 (아이디·닉네임·점수 1000)', prof.b?.profile?.username === ua && prof.b.profile.nickname === 'A' + rnd && prof.b.profile.rating === 1000, JSON.stringify(prof.b?.profile));
 ok('프로필에 내부 id 없음', !JSON.stringify(prof.b).includes('user_id') && !JSON.stringify(prof.b).includes('recovery'));
