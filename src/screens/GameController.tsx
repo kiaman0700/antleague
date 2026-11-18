@@ -1029,7 +1029,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         }}
       />
       {/* 보통 알림 자리 (샀어요·오류 등) — 처음엔 아래쪽 */}
-      <ToastSpot slot="alert" toast={toast} editing={editing} pos="bottom" xy={mobile ? layout.mAlertXY : layout.alertXY} onMove={(xy) => setLayout(mobile ? { mAlertXY: xy } : { alertXY: xy })} />
+      <ToastSpot slot="alert" toast={toast} editing={editing} pos="bottom" xy={mobile ? layout.mAlertXY : layout.alertXY} onMove={(xy) => setLayout(mobile ? { mAlertXY: xy } : { alertXY: xy })} onDismiss={() => setToast(null)} />
       {(
         <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
           {sheet && (

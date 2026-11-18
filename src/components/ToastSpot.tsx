@@ -35,9 +35,11 @@ interface Props {
   pos: 'top' | 'bottom';
   xy: XY | null;
   onMove: (xy: XY) => void;
+  /** 보통 알림을 누르면 바로 닫기 (가리는 걸 기다리지 않게) */
+  onDismiss?: () => void;
 }
 
-export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick }: Props) {
+export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDismiss }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const vRef = useRef<HTMLElement>(null);
   const hRef = useRef<HTMLElement>(null);
@@ -54,7 +56,7 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick }: Pro
     );
   if (toast)
     return (
-      <div className={'toast ' + toast.kind + cls} style={toastStyle(xy)} role="status">
+      <div className={'toast ' + toast.kind + cls + (onDismiss ? ' dismiss' : '')} style={toastStyle(xy)} role="status" title={onDismiss ? '누르면 닫혀요' : undefined} onClick={onDismiss}>
         <Icon name={toast.kind === 'err' ? 'warn' : toast.kind === 'warn' ? 'bell' : 'check'} size={16} />
         <span>{toast.text}</span>
       </div>

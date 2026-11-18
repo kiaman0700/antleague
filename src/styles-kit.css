@@ -1285,3 +1285,11 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
   .tray-cards.fan.many:focus-within .fan-slot { transform: translateX(calc(var(--i) * var(--gap, 62px))) translateY(calc(var(--i) * var(--i) * 3px)) rotate(calc(var(--i) * 7deg)); }
   .tray-cards.fan .fan-slot:focus-within { z-index: 5; transform: translateX(calc(var(--i) * var(--gap, 62px))) translateY(-18px) rotate(0deg) scale(1.06); }
 }
+/* 보통 알림은 누르면 닫힘 */
+.toast.dismiss { cursor: pointer; }
+/* 휴대폰 아래쪽 겹침 정리: 매칭 알약·진행 중 알약이 떠 있으면 알림(ui-toast)·초대 안내는 그 위로 올라가 '취소' 버튼을 가리지 않게 */
+@media (max-width: 860px) {
+  body:has(.mm-pill) .ui-toast, body:has(.rc-pill) .ui-toast,
+  body:has(.mm-pill) .invite-note, body:has(.rc-pill) .invite-note { bottom: calc(132px + env(safe-area-inset-bottom)); }
+  body:has(.mm-pill):has(.rc-pill) .ui-toast, body:has(.mm-pill):has(.rc-pill) .invite-note { bottom: calc(188px + env(safe-area-inset-bottom)); }
+}
