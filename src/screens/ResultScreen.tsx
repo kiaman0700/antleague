@@ -165,13 +165,16 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
       const tieEnd = gapOn(days - 1) === 0;
       // 기권으로 끝난 판: 남은 사람이 한 명이면 재산이 같아도 비긴 게 아님
       const stayers = results.filter((r) => !r.left);
-      const byForfeit = stayers.length === 1;
+      const byForfeit = stayers.length === 1 && !stayers[0].idle;
+      const noContest = stayers.length > 0 && stayers.every((r) => r.idle);
       out.push({
         icon: 'refresh',
         title: '1위 다툼',
         text: byForfeit
           ? `${josa(stayers[0].nickname, '이', '가')} 끝까지 남아 이겼어요 (${results.length > 2 ? '다른 사람들' : '상대'} 기권)`
-          : tieEnd
+          : noContest
+            ? '거래한 사람이 없어서 승부가 나지 않았어요'
+            : tieEnd
             ? '마지막 날까지 똑같아서 비겼어요'
             : changes
               ? `1위가 ${changes}번 바뀌었어요`
@@ -254,6 +257,17 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
                       : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
                     · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
                   </>}
+            </p>
+          </>
+        ) : stay.length === 0 ? (
+          // 남은 사람이 모두 기권했거나 거래가 없음(매칭) — '재산이 같아서 무승부'가 아니라 승부가 없는 판
+          <>
+            <div className="crown"><Icon name="users" size={40} /></div>
+            <h1>승부가 나지 않았어요</h1>
+            <p>
+              {ranked.find((r) => r.id === session.playerId)?.idle && ranked.some((r) => r.left && r.id !== session.playerId)
+                ? `${results.length > 2 ? '다른 사람들이' : '상대가'} 기권했지만 나도 거래를 한 번도 안 해서 승리로 치지 않아요`
+                : '거래한 사람이 없어서 이번 판은 승부가 없어요'}
             </p>
           </>
         ) : (
