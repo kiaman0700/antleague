@@ -1,3 +1,4 @@
+import { useAccount } from './net/account';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Loading } from './components/ui';
 import { consumeMatched, useMatch } from './net/matchStore';
@@ -58,6 +59,19 @@ export default function App() {
   }, []);
   // 매칭이 잡히면 어느 화면(로비·튜토리얼·화면 편집·연습)에 있든 바로 그 게임으로
   const match = useMatch();
+  // 둘러보기 중(게스트·로그인 고르기 전)에는 튜토리얼·화면 편집 주소로 바로 들어가도 홈으로 + 환영 창 (design/onboarding.md)
+  const acct = useAccount();
+  useEffect(() => {
+    if (supabase && acct.status === 'visitor' && lobbyGame) {
+      try {
+        sessionStorage.setItem('stockduel.askWelcome', '1');
+      } catch {
+        /* 무시 */
+      }
+      navigate({ kind: 'lobby', page: 'home' }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acct.status, lobbyGame]);
   // (051) 다른 곳에서 이 계정으로 접속해 이 기기가 로그아웃되면 어느 화면이든 로비로 (안내는 로비가 띄움)
   useEffect(() => {
     const on = () => navigate({ kind: 'lobby' }, { replace: true });

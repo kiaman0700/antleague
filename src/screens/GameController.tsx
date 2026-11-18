@@ -1,3 +1,6 @@
+import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
+import { CoachTour } from '../components/CoachTour';
+import { RESULT_STEPS } from '../components/Tours';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markActiveGame } from '../lib/activeTab';
 import { hasOpenLayer, Loading, onLayerEntry } from '../components/ui';
@@ -96,8 +99,16 @@ function useGameSource(session: Session) {
     [multi, session.roomId, session.demo, live, solo],
   );
 
-  if (multi) return { view: live.view, market: live.market, offset: live.offset, error: live.error, act, busy, tutorialInfo: null };
-  return { view: soloV, market: soloV?.market ?? null, offset: 0, error: solo ? null : '연습 게임을 찾을 수 없어요.', act, busy, tutorialInfo: solo?.tutorial ?? null };
+  // 튜토리얼: 남은 날을 한 번에 넘겨 결과 화면으로 (③ 결과 보기 단계)
+  const finishTutorial = useCallback(() => {
+    setSolo((cur) => {
+      let x = cur;
+      for (let i = 0; x && x.tutorial && x.data.room.status === 'playing' && i < 20; i++) x = soloAct(x, 'endTurn', {});
+      return x;
+    });
+  }, []);
+  if (multi) return { view: live.view, market: live.market, offset: live.offset, error: live.error, act, busy, tutorialInfo: null, finishTutorial };
+  return { view: soloV, market: soloV?.market ?? null, offset: 0, error: solo ? null : '연습 게임을 찾을 수 없어요.', act, busy, tutorialInfo: solo?.tutorial ?? null, finishTutorial };
 }
 
 /** 모바일: 탭 = 페이지. 주소(#news 등)와 연결해서 뒤로 가기로 이전 탭으로 */
@@ -140,7 +151,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 가로로 눕힌 휴대폰(높이가 낮음)은 제외
   const wide = useIsMobile('(min-width: 700px) and (min-height: 600px)');
   const tablet = mobile && wide;
-  const { view, market: rawMarket, offset, error, act, busy, tutorialInfo } = useGameSource(session);
+  const { view, market: rawMarket, offset, error, act, busy, tutorialInfo, finishTutorial } = useGameSource(session);
+  // 단계별 튜토리얼 (design/onboarding.md): ② 게임 기초 → ③ 결과 보기
+  const chapter = useChapter();
+  const toResult = useRef(false);
+  const showTutorialResult = useCallback(() => {
+    toResult.current = true;
+    finishTutorial();
+  }, [finishTutorial]);
   // 다른 창의 로비가 '연결이 끊겼어요' 팝업을 띄우지 않게 (이 창에서 하는 중이라고 적어 둠)
   const activeRoom = session.mode === 'multi' ? session.roomId : null;
   useEffect(() => (activeRoom ? markActiveGame(activeRoom) : undefined), [activeRoom]);
@@ -305,6 +323,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const serverDay = room ? room.day : null;
   const finished = room?.status === 'finished';
 
+  useEffect(() => {
+    if (session.tutorial && chapter === 'result' && view && !showResult && !toResult.current) showTutorialResult();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.tutorial, chapter, !!view]);
+
   // ---------- 날짜 진행 / 하루 결산 ----------
   useEffect(() => {
     if (serverDay === null || !market) return;
@@ -313,6 +336,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         setViewDay(total - 1);
         setShowResult(true);
       } else setViewDay(serverDay);
+      return;
+    }
+    if (toResult.current && finished) {
+      toResult.current = false;
+      setClosing(null);
+      setViewDay(total - 1);
+      setShowResult(true);
       return;
     }
     if (closing === null && !showResult && serverDay > viewDay) {
@@ -777,6 +807,25 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         </div>
       );
     return (
+      <>
+      {/* ③ 결과 보기 안내 (튜토리얼 판의 결과 화면) */}
+      {session.tutorial && chapter === 'result' && (
+        <CoachTour
+          steps={RESULT_STEPS}
+          chapterTitle="결과 보기"
+          mobile={mobile}
+          doneLabel={nextChapter() ? '홈에서 이어 보기' : '끝내기'}
+          onDone={() => {
+            finishChapter('result', 'done');
+            onExit();
+          }}
+          onSkip={() => {
+            finishChapter('result', 'skip');
+            if (currentChapter()) onExit();
+          }}
+          onStopAll={() => stopTour()}
+        />
+      )}
       <ResultScreen
         session={session}
         market={market}
@@ -820,6 +869,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             : undefined
         }
       />
+      </>
     );
   }
 
@@ -1161,7 +1211,32 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         </>
       )}
     {session.tutorial && tutStep < TUTORIAL_STEPS.length && (
-        <TutorialGuide step={tutStep} ctx={tutCtx} onNext={() => setTutStep((x) => x + 1)} onExit={onExit} onOpenCards={() => setCardGuide(true)} />
+        <TutorialGuide
+          step={tutStep}
+          ctx={tutCtx}
+          onNext={() => setTutStep((x) => x + 1)}
+          // X(그만하기) = 남은 튜토리얼 단계도 그만
+          onExit={() => {
+            if (currentChapter()) stopTour();
+            onExit();
+          }}
+          onFinish={
+            chapter === 'game' && nextChapter() === 'result'
+              ? () => {
+                  markTutorialSeen();
+                  finishChapter('game', 'done');
+                  showTutorialResult();
+                }
+              : chapter === 'game'
+                ? () => {
+                    markTutorialSeen();
+                    finishChapter('game', 'done');
+                    onExit();
+                  }
+                : undefined
+          }
+          onOpenCards={() => setCardGuide(true)}
+        />
       )}
       {cardGuide && <CardGuide onClose={() => setCardGuide(false)} />}
       {feedbackOpen && (

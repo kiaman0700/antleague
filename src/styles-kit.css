@@ -1369,3 +1369,13 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .gc-box-code code { font-size: 18px; font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; padding: 4px 10px; border-radius: 8px; background: var(--bg-2, #161616); user-select: all; }
 .gc-box-warn { color: var(--gold, #f5b83d); font-size: 12px; line-height: 1.5; }
 .danger-text { color: var(--danger-text, #ff9aa5) !important; }
+/* 단계별 튜토리얼 (CoachTour·단계 목록) */
+.coach-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.coach-nav { display: inline-flex; gap: 6px; margin-left: auto; }
+.tut-chapters { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.tut-ch { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--line-2, #2e2e2e); background: var(--surface-2, #242424); color: inherit; text-align: left; cursor: pointer; }
+.tut-ch:hover, .tut-ch:focus-visible { border-color: #6b58ee; }
+.tut-ch-n { flex: none; width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-weight: 800; background: #2e2e2e; }
+.tut-ch-n.done { background: #1f3b2b; color: #4ade80; }
+.tut-ch-t { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.tut-ch-t small { color: var(--muted, #9a9a9a); font-size: 12px; line-height: 1.4; }

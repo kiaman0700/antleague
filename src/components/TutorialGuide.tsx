@@ -149,10 +149,12 @@ interface Props {
   ctx: TutorialCtx;
   onNext: () => void;
   onExit: () => void;
+  /** 마지막 단계 '끝내기' (다음 튜토리얼 단계로 이어 갈 때) — 없으면 onExit */
+  onFinish?: () => void;
   onOpenCards: () => void;
 }
 
-export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props) {
+export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards }: Props) {
   const s = TUTORIAL_STEPS[step];
   const [rect, setRect] = useState<DOMRect | null>(null);
   // 카드 자세히 창처럼 위에 뜬 창이 있으면 그 창(의 버튼)을 가리지 않게 말풍선을 비켜 둠
@@ -248,7 +250,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
             {step + 1} / {TUTORIAL_STEPS.length}
           </span>
           <b>{s.title}</b>
-          <button className="icon-btn sm" onClick={() => void ask('튜토리얼을 그만할까요? 다시 하려면 처음부터 해야 해요.', { ok: '그만하기' }).then((yes) => yes && onExit())} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
+          <button className="icon-btn sm" onClick={() => void ask('튜토리얼을 그만할까요? 연습 메뉴나 설정의 \'튜토리얼\'에서 단계별로 언제든 다시 볼 수 있어요.', { ok: '그만하기' }).then((yes) => yes && onExit())} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -264,8 +266,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onOpenCards }: Props)
               <Icon name={done ? 'check' : 'target'} size={14} /> {done ? '잘했어요!' : s.waitHint}
             </span>
           ) : step === TUTORIAL_STEPS.length - 1 ? (
-            <button className="btn sm primary" onClick={onExit}>
-              <Icon name="check" size={14} /> 끝내기
+            <button className="btn sm primary" onClick={onFinish ?? onExit}>
+              <Icon name="check" size={14} /> {onFinish ? '결과 보기' : '끝내기'}
             </button>
           ) : (
             <button className="btn sm primary" onClick={onNext}>

@@ -29,6 +29,8 @@ const PEEK_EMPTY: Record<string, () => unknown> = {
   party: () => ({ party: null }),
   me: () => ({ isAdmin: false }),
   history: () => [],
+  tutorialState: () => ({ done: [], skipped: false, games: 0 }),
+  tutorialMark: () => ({ ok: true }),
   dailyInfo: () => null,
   missions: () => null,
 };

@@ -12,6 +12,10 @@ import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
 import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { AccountSection } from '../components/AccountSection';
+import { setFlash } from '../lib/flash';
+import { CoachTour } from '../components/CoachTour';
+import { GROWTH_STEPS, HOME_STEPS, TutorialMenu, TutorialOffer } from '../components/Tours';
+import { currentChapter, doneChapters, finishChapter, shouldOfferTutorial, tourSkipped, startTour, stopTour, useChapter, type Chapter } from '../lib/onboarding';
 import { markWelcomeSeen, welcomeSeen } from '../session';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, useNickCheck, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
@@ -525,6 +529,28 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots' | 'daily'>(null);
+  // 단계별 튜토리얼 (design/onboarding.md)
+  const chapter = useChapter();
+  const [tutMenu, setTutMenu] = useState(false);
+  const [tutOffer, setTutOffer] = useState(false);
+  const goChapter = (c: Chapter | null) => {
+    if (c === 'game' || c === 'result') go('tutorial');
+    else if (c === 'home' || c === 'growth') go('casual');
+  };
+  // 처음 하는 사람(튜토리얼 기록·끝낸 판 없음)에게 한 번 권함 — 게스트로 시작했거나 로그인했을 때
+  const offerChecked = useRef(false);
+  useEffect(() => {
+    if (offerChecked.current || !online || (account.status !== 'guest' && account.status !== 'member') || chapter) return;
+    offerChecked.current = true;
+    const games = account.status === 'member' ? account.profile?.games ?? null : null;
+    void shouldOfferTutorial(games).then((ok) => {
+      // 다른 창(환영 창·연습 창 등)이 떠 있으면 그 일이 끝난 뒤 다음 번에
+      if (ok && !document.querySelector('.modal-bg, .sheet-bg')) setTutOffer(true);
+      else if (ok) offerChecked.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 환영 창·다른 창이 닫힐 때 다시 확인
+  }, [account.status, chapter, modal, gate.el === null]);
   // 설정·더보기의 공지사항 줄: 이 기기에서 아직 안 본 공지가 있으면 점 (공지 목록은 공개라 로그인 없이도)
   const [newNotice, setNewNotice] = useState(false);
   useEffect(() => {
@@ -544,7 +570,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     if (account.status === 'loading' || firstCheck.current) return;
     firstCheck.current = true;
     if (invite.length === 6) return gate.guard(() => setModal('code'));
-    if (online && account.status === 'visitor' && !welcomeSeen()) {
+    let ask = false;
+    try {
+      ask = sessionStorage.getItem('stockduel.askWelcome') === '1';
+      sessionStorage.removeItem('stockduel.askWelcome');
+    } catch {
+      /* 무시 */
+    }
+    if (online && account.status === 'visitor' && (ask || !welcomeSeen())) {
       markWelcomeSeen();
       gate.open('intro');
     }
@@ -626,7 +659,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
         </span>
       </button>
-      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
+      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
         <i className="q-tut"><Icon name="play" size={22} /></i>
         <span>
           <b>튜토리얼</b>
@@ -646,14 +679,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       </header>
 
       {/* 이미 대결 기록이 있는 계정(다른 기기에서 해 본 회원 등)에는 '처음이세요?' 를 띄우지 않음 */}
-      {nudge && (tab === 'casual' || tab === 'ranked') && !(account.profile?.games ?? 0) && account.recent.length === 0 && (
+      {nudge && !chapter && !tourSkipped() && doneChapters().length === 0 && (tab === 'casual' || tab === 'ranked') && !(account.profile?.games ?? 0) && account.recent.length === 0 && (
         <section className="panel pad hub-nudge" aria-label="처음이라면">
           <Icon name="book" size={22} />
           <div>
             <b>처음이세요? 3분 튜토리얼부터 해 보세요</b>
             <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 진짜 대결이 훨씬 쉬워져요.</p>
           </div>
-          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
+          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('home')))}>
             튜토리얼 하기
           </button>
           <button
@@ -855,7 +888,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <b>혼자 연습</b>
             <small>원하는 속도로 혼자 한 판</small>
           </button>
-          <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
+          <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
             <i><Icon name="play" size={24} /></i>
             <b>튜토리얼</b>
             <small>연습봇과 한 단계씩</small>
@@ -925,7 +958,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             </section>
             <section className="panel pad more-links">
               <h3 className="more-h">처음이라면</h3>
-              <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => go('tutorial'))}>
+              <button className="more-row" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
                 <Icon name="play" /> <span className="mr-t"><b>튜토리얼</b><small>연습봇과 한 판 따라 하기</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('howto')}>
@@ -956,6 +989,54 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {modal === 'bots' && <BotStart onStart={startBots} onClose={() => setModal(null)} />}
       {modal === 'daily' && (member ? <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} /> : <DailyMembersOnly onClose={() => setModal(null)} onSignup={() => (setModal(null), go('signup'))} onLogin={() => (setModal(null), go('login'))} />)}
       {gate.el}
+      {tutMenu && (
+        <TutorialMenu
+          onClose={() => setTutMenu(false)}
+          onPick={(c) => {
+            setTutMenu(false);
+            startTour([c]);
+            goChapter(c);
+          }}
+          onAll={() => {
+            setTutMenu(false);
+            startTour();
+            goChapter('home');
+          }}
+        />
+      )}
+      {tutOffer && (
+        <TutorialOffer
+          onStart={() => {
+            setTutOffer(false);
+            startTour();
+            goChapter('home');
+          }}
+          onSkip={() => {
+            setTutOffer(false);
+            stopTour();
+          }}
+        />
+      )}
+      {(chapter === 'home' || chapter === 'growth') && (tab === 'casual' || tab === 'ranked') && !tutOffer && (
+        <CoachTour
+          key={chapter}
+          steps={chapter === 'home' ? HOME_STEPS : GROWTH_STEPS}
+          chapterTitle={chapter === 'home' ? '홈 둘러보기' : '미션·업적·성장'}
+          mobile={document.documentElement.dataset.device !== 'pc'}
+          doneLabel={chapter === 'home' ? '연습봇과 한 판' : '끝내기'}
+          onDone={() => {
+            const was = chapter;
+            finishChapter(was, 'done');
+            if (was === 'growth') setFlash('튜토리얼을 모두 마쳤어요! 이제 대결을 시작해 보세요.');
+            goChapter(currentChapter());
+          }}
+          onSkip={() => {
+            finishChapter(chapter, 'skip');
+            goChapter(currentChapter());
+          }}
+          onStopAll={() => stopTour()}
+        />
+      )}
     </div>
   );
 }

@@ -1816,6 +1816,29 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
 
 /** 시험 계정으로 적어 둔 계정 (서버 메모리 — 같은 계정은 한 번만 DB 에 씀) */
 const testMarked = new Set<string>();
+const TUT_CHAPTERS = ['home', 'game', 'result', 'growth'];
+/** 튜토리얼 기록 + 끝낸 판 수 (처음 하는 사람에게만 자동으로 권하려고) — 051 전이면 빈 기록 */
+async function tutorialState(uid: string) {
+  const [t, g] = await Promise.all([
+    db().from('tutorial_progress').select('done, skipped').eq('user_id', uid).maybeSingle(),
+    db().from('players').select('id, rooms!inner(status)', { count: 'exact', head: true }).eq('user_id', uid).eq('rooms.status', 'finished'),
+  ]);
+  const row = (t.data ?? null) as { done: string[]; skipped: boolean } | null;
+  return { done: (row?.done ?? []).filter((x) => TUT_CHAPTERS.includes(x)), skipped: !!row?.skipped, games: g.error ? 0 : g.count ?? 0 };
+}
+async function tutorialMark(uid: string, b: Body) {
+  const ch = typeof b.chapter === 'string' && TUT_CHAPTERS.includes(b.chapter) ? b.chapter : null;
+  const skip = b.skipped === true;
+  if (!ch && !skip) throw new GameError('잘못된 요청이에요.');
+  const cur = await db().from('tutorial_progress').select('done, skipped').eq('user_id', uid).maybeSingle();
+  if (cur.error) return { ok: false };
+  const row = (cur.data ?? { done: [], skipped: false }) as { done: string[]; skipped: boolean };
+  const done = new Set(row.done.filter((x) => TUT_CHAPTERS.includes(x)));
+  if (ch && !skip) done.add(ch);
+  await db().from('tutorial_progress').upsert({ user_id: uid, done: [...done], skipped: row.skipped || (skip && !ch), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  return { ok: true };
+}
+
 /** 토큰 속 세션 id (서명은 getUser 가 이미 확인함) */
 function sessionIdOf(token: string): string | null {
   try {
@@ -1909,6 +1932,9 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
     // (051) 내 게스트 이어하기 코드 보기·새로 받기 (게스트만)
     if (action === 'guestCode') return { status: 200, body: await guestCode(db(), uid, b.renew === true) };
+    // (051) 튜토리얼 진행 기록 — 보기·적기 (보상 없음, 표시·자동 권하기에만 씀)
+    if (action === 'tutorialState') return { status: 200, body: await tutorialState(uid) };
+    if (action === 'tutorialMark') return { status: 200, body: await tutorialMark(uid, b) };
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };
     if (INVITE_ACTIONS.includes(action)) return { status: 200, body: await inviteAct(action, b, uid) };
     if (PARTY_ACTIONS.includes(action)) return { status: 200, body: await partyAct(action, b, uid) };
