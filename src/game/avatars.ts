@@ -7,7 +7,9 @@
 export interface AvatarLook {
   char: 'ant';
   hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap' | 'bandage' | 'gradCap';
-  face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses' | 'sad' | 'dizzy' | 'sweat' | 'shock';
+  face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses' | 'sad' | 'dizzy' | 'sweat' | 'shock' | 'visor';
+  /** 로봇 개미(봇): 금속 머리·빛나는 더듬이 */
+  metal?: boolean;
   outfit?: 'suit' | 'cape' | 'medal' | 'robe';
   prop?: 'trophy' | 'moneybag' | 'globe' | 'hourglass' | 'cards' | 'diamond' | 'target' | 'shield' | 'robot' | 'newspaper' | 'umbrella' | 'rocket' | 'phone' | 'wallet' | 'fakeNews';
   back?: 'rays' | 'chartUp' | 'chartV' | 'chartDown' | 'coins' | 'sparkles' | 'flames' | 'phoenix' | 'rain' | 'confetti' | 'zen' | 'cross' | 'globe' | 'clock' | 'news' | 'circuit' | 'peak' | 'dizzy';
@@ -57,7 +59,7 @@ export const AVATARS: AvatarDef[] = [
   { id: 'bruised', name: '동네북', look: ant({ face: 'dizzy', hat: 'bandage', back: 'dizzy' }), bg: '#7a5a3a', need: 'punching_bag' },
   { id: 'fooled', name: '찌라시에 속은 개미', look: ant({ face: 'shock', prop: 'fakeNews', back: 'news' }), bg: '#3f6b8a', need: 'fooled' },
   // 게임 안 봇 자리 그림 (고를 수 없음: need '__' 로 시작하는 건 어떤 업적으로도 안 열림)
-  { id: '__bot', name: '봇', look: ant({ face: 'cool', hat: 'helmet', back: 'circuit' }), bg: '#4a4f5a', need: '__bot' },
+  { id: '__bot', name: '봇', look: ant({ face: 'visor', metal: true, back: 'circuit' }), bg: '#2f4a52', need: '__bot' },
   // 튜토리얼을 모두 끝낸 개미 (design/titles-tiers-v3.md)
   { id: 'graduate', name: '졸업한 개미', look: ant({ face: 'happy', hat: 'gradCap', back: 'confetti' }), bg: '#3d4f8a', need: 'tut_grad' },
   // 레벨 (경험치) — 개미가 자라남

@@ -220,12 +220,13 @@ function Back({ back }: { back?: AvatarLook['back'] }) {
 }
 
 /* ---------------- 몸·옷 ---------------- */
-function Body({ outfit }: { outfit?: AvatarLook['outfit'] }) {
+function Body({ outfit, metal }: { outfit?: AvatarLook['outfit']; metal?: boolean }) {
   const torso = 'M13 64 C13 53 21 46.5 32 46.5 C43 46.5 51 53 51 64 Z';
   return (
     <g>
       {outfit === 'cape' && <path d="M7 64 L15 46 L49 46 L57 64 Z" fill="#c8303f" stroke={INK} strokeWidth="1" strokeLinejoin="round" />}
-      <path d={torso} fill={outfit === 'suit' ? '#262a36' : outfit === 'robe' ? '#e0782a' : '#4a3434'} />
+      <path d={torso} fill={metal ? '#5b6573' : outfit === 'suit' ? '#262a36' : outfit === 'robe' ? '#e0782a' : '#4a3434'} />
+      {metal && <path d="M26 54 h12 M28 58.5 h8" stroke="#5eead4" strokeOpacity="0.8" strokeWidth="1.6" strokeLinecap="round" />}
       {outfit === 'suit' && (
         <g>
           <path d="M26 47.2 L32 58 L38 47.2 Z" fill="#f4f4f4" />
@@ -282,6 +283,17 @@ function Face({ face }: { face?: AvatarLook['face'] }) {
         <circle cx={R} cy={y} r="1.8" fill={INK} />
         {face === 'sweat' && <path d="M50 17 C47 22 47 25 50 25.5 C53 25 53 22 50 17 Z" fill="#7ec8ff" stroke={INK} strokeWidth="0.6" />}
         {face === 'shock' && <path d={`M${L - 5} ${y - 9} l7 1.5 M${R + 5} ${y - 9} l-7 1.5`} stroke={INK} strokeWidth="1.8" strokeLinecap="round" />}
+      </g>
+    );
+  else if (face === 'visor')
+    // (봇) 로봇 개미: 어두운 눈 띠 + 하늘색 빛 눈
+    eyes = (
+      <g>
+        <rect x={L - 8} y={y - 5} width={R - L + 16} height="10" rx="5" fill="#141a22" stroke="#9aa4b2" strokeWidth="1" />
+        <rect x={L - 3} y={y - 1.6} width="6" height="3.2" rx="1.6" fill="#5eead4" />
+        <rect x={R - 3} y={y - 1.6} width="6" height="3.2" rx="1.6" fill="#5eead4" />
+        <rect x={L - 3} y={y - 1.6} width="6" height="1.2" rx="0.6" fill="#ffffff" opacity="0.7" />
+        <rect x={R - 3} y={y - 1.6} width="6" height="1.2" rx="0.6" fill="#ffffff" opacity="0.7" />
       </g>
     );
   else if (face === 'cool')
@@ -348,7 +360,7 @@ function Face({ face }: { face?: AvatarLook['face'] }) {
   return (
     <g>
       {eyes}
-      {face !== 'cool' && (
+      {face !== 'cool' && face !== 'visor' && (
         <g fill="#ff8fa3" opacity="0.55">
           <ellipse cx="18" cy="37" rx="3.4" ry="2.2" />
           <ellipse cx="46" cy="37" rx="3.4" ry="2.2" />
@@ -360,6 +372,12 @@ function Face({ face }: { face?: AvatarLook['face'] }) {
         <ellipse cx="32" cy="40" rx="2.6" ry="3.2" fill="#fff" />
       ) : face === 'dizzy' || face === 'sweat' ? (
         <path d="M26.5 40 q1.4 -1.6 2.8 0 t2.8 0 t2.8 0 t2.8 0" fill="none" stroke="#fff" strokeOpacity="0.9" strokeWidth="1.8" strokeLinecap="round" />
+      ) : face === 'visor' ? (
+        // 로봇 입: 작은 격자
+        <g fill="none" stroke="#9aa4b2" strokeWidth="1.2" strokeLinecap="round">
+          <rect x="27" y="37.5" width="10" height="4" rx="1.5" />
+          <path d="M30.3 37.5 v4 M33.7 37.5 v4" />
+        </g>
       ) : face === 'brave' ? (
         <path d="M27.5 38.5 Q32 41.5 36.5 38.5 Z" fill="#fff" stroke="#fff" strokeWidth="1.2" strokeLinejoin="round" />
       ) : (
@@ -686,6 +704,11 @@ export function AvatarArt({ look, size }: { look: AvatarLook; size: number }) {
           <stop offset="0" stopColor="#fff" stopOpacity="0.28" />
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
+        <radialGradient id="av-head-m" cx="0.36" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#d6dde7" />
+          <stop offset="0.6" stopColor="#7f8a99" />
+          <stop offset="1" stopColor="#3a414c" />
+        </radialGradient>
         <radialGradient id="av-head" cx="0.36" cy="0.3" r="0.8">
           <stop offset="0" stopColor="#5e4646" />
           <stop offset="0.6" stopColor={HEAD} />
@@ -694,14 +717,16 @@ export function AvatarArt({ look, size }: { look: AvatarLook; size: number }) {
       </defs>
       <rect width="64" height="64" fill="url(#av-glow)" />
       <Back back={look.back} />
-      <Body outfit={look.outfit} />
+      <Body outfit={look.outfit} metal={look.metal} />
       {look.prop === 'umbrella' && <path d="M40 2 L52 54 C53 59 48 60 47 56" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />}
       {/* 더듬이 */}
-      <path d="M26 17 C23 10 19 6 14 5 M38 17 C41 10 45 6 50 5" fill="none" stroke={HEAD} strokeWidth="2.6" strokeLinecap="round" />
-      <circle cx="13.5" cy="5" r="3" fill={HEAD} />
-      <circle cx="50.5" cy="5" r="3" fill={HEAD} />
-      {/* 머리 */}
-      <ellipse cx="32" cy="31" rx="18" ry="16" fill="url(#av-head)" />
+      <path d="M26 17 C23 10 19 6 14 5 M38 17 C41 10 45 6 50 5" fill="none" stroke={look.metal ? '#9aa4b2' : HEAD} strokeWidth="2.6" strokeLinecap="round" />
+      {/* 봇은 더듬이 끝이 빛남 */}
+      <circle cx="13.5" cy="5" r="3" fill={look.metal ? '#5eead4' : HEAD} />
+      <circle cx="50.5" cy="5" r="3" fill={look.metal ? '#5eead4' : HEAD} />
+      {/* 머리 (봇은 금속) */}
+      <ellipse cx="32" cy="31" rx="18" ry="16" fill={look.metal ? 'url(#av-head-m)' : 'url(#av-head)'} />
+      {look.metal && <path d="M15 31 H17.5 M46.5 31 H49" stroke="#3a414c" strokeWidth="2" strokeLinecap="round" />}
       <ellipse cx="25" cy="22" rx="6.5" ry="3.4" fill="#fff" opacity="0.14" transform="rotate(-22 25 22)" />
       <Face face={look.face} />
       <Hat hat={look.hat} />
