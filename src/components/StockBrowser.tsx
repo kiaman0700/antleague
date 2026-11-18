@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, SectorIcon } from './Icon';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
 import { fmtUsd, quote } from '../game/quote';
-import { regionOf, riskOf, SECTOR_MAP, STOCK_SECTORS, STOCKS, type Region } from '../game/stocks';
+import { regionOf, riskOf, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type Region } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { Sparkline } from './Chart';
 import { reorderSubset, SlideChips } from './SlideChips';
@@ -94,6 +94,13 @@ export function ScrollChips({ children, rows = 1, onMore, moreLabel }: { childre
 
 export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWatch, selected, onSelect, newsSymbols, filter, onFilter, editing = false }: Props) {
   const prefs = effective(usePrefs());
+  // 줄(StockRow)이 1초마다 다시 그려지지 않게, 부모가 매번 새로 만드는 함수 대신 늘 같은 함수를 넘김
+  const selectRef = useRef(onSelect);
+  selectRef.current = onSelect;
+  const watchRef = useRef(onToggleWatch);
+  watchRef.current = onToggleWatch;
+  const stableSelect = useCallback((sym: string) => selectRef.current(sym), []);
+  const stableWatch = useCallback((sym: string) => watchRef.current(sym), []);
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('default');
   // 화면 높이가 낮으면(작은 노트북) 처음엔 접어서 종목 목록이 더 보이게
@@ -312,50 +319,25 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         )}
         {rows.map(({ s, krw, usd, ch }, i) => {
           const showHeader = grouped && (i === 0 || groupKey(rows[i - 1].s) !== groupKey(s));
-          const h = portfolio.holdings[s.symbol];
           const series = (usd !== null ? market.usd[s.symbol] : market.bars[s.symbol]).slice(Math.max(0, day - 9), day).map((b) => b.close);
           series.push(usd ?? krw);
-          const r = riskOf(s);
           return (
             <div key={s.symbol}>
               {showHeader && <div className="group-head">{groupLabel(s)}</div>}
-              <div
-                className={'srow' + (s.symbol === selected ? ' sel' : '') + (newsSymbols.has(s.symbol) ? ' has-news' : '')}
-                // 오늘 이 종목 관련 뉴스가 있으면 줄 왼쪽에 노란 세로 줄 (글자 공간을 쓰지 않음)
-                title={newsSymbols.has(s.symbol) ? '오늘 이 종목 관련 뉴스가 있어요' : undefined}
-                onClick={() => onSelect(s.symbol)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && onSelect(s.symbol)}
-              >
-                <button
-                  className={'star' + (watch.includes(s.symbol) ? ' on' : '')}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleWatch(s.symbol);
-                  }}
-                  aria-label="관심 종목"
-                >
-                  <Icon name="star" size={15} className={watch.includes(s.symbol) ? 'filled' : ''} />
-                </button>
-                <div className="sname">
-                  <b>
-                    {/* 길면 옆으로 지나가며 끝까지 보여 줌 */}
-                    <FitText>{s.name}</FitText>
-                  </b>
-                  <small>
-                    {usd !== null && <span className="flag">US · </span>}
-                    {!grouped && <>{s.etf ? s.etf.group : SECTOR_MAP[s.sector].name} · </>}
-                    <span className={'risk r' + r}>{['', '안정', '보통', '고위험'][r]}</span>
-                    {h && <span className="held"> · {num(h.qty)}주</span>}
-                  </small>
-                </div>
-                <Sparkline values={series} up={(usd ?? krw) >= series[0]} width={44} />
-                <div className="sprice">
-                  <b>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
-                  <small className={tone(ch)}>{pct(ch)}</small>
-                </div>
-              </div>
+              <StockRow
+                symbol={s.symbol}
+                krw={krw}
+                usd={usd}
+                ch={ch}
+                series={series}
+                sel={s.symbol === selected}
+                news={newsSymbols.has(s.symbol)}
+                watched={watch.includes(s.symbol)}
+                heldQty={portfolio.holdings[s.symbol]?.qty ?? 0}
+                grouped={grouped}
+                onSelect={stableSelect}
+                onToggleWatch={stableWatch}
+              />
             </div>
           );
         })}
@@ -363,3 +345,68 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
     </div>
   );
 }
+
+interface RowProps {
+  symbol: string;
+  krw: number;
+  usd: number | null;
+  ch: number;
+  series: number[];
+  sel: boolean;
+  news: boolean;
+  watched: boolean;
+  heldQty: number;
+  grouped: boolean;
+  onSelect: (s: string) => void;
+  onToggleWatch: (s: string) => void;
+}
+/**
+ * 종목 한 줄 — 장이 열려 있으면 1초마다 목록 전체가 새로 그려져서(47줄), 느린 휴대폰에서 목록 탭이 끊겼음.
+ * 이 줄의 값(가격·등락·작은 차트·선택·관심·보유)이 바뀔 때만 다시 그림
+ */
+const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, news, watched, heldQty, grouped, onSelect, onToggleWatch }: RowProps) {
+  const s = STOCK_MAP[symbol];
+  const r = riskOf(s);
+  return (
+    <div
+      className={'srow' + (sel ? ' sel' : '') + (news ? ' has-news' : '')}
+      // 오늘 이 종목 관련 뉴스가 있으면 줄 왼쪽에 노란 세로 줄 (글자 공간을 쓰지 않음)
+      title={news ? '오늘 이 종목 관련 뉴스가 있어요' : undefined}
+      onClick={() => onSelect(symbol)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onSelect(symbol)}
+    >
+      <button
+        className={'star' + (watched ? ' on' : '')}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleWatch(symbol);
+        }}
+        aria-label="관심 종목"
+      >
+        <Icon name="star" size={15} className={watched ? 'filled' : ''} />
+      </button>
+      <div className="sname">
+        <b>
+          {/* 길면 옆으로 지나가며 끝까지 보여 줌 */}
+          <FitText>{s.name}</FitText>
+        </b>
+        <small>
+          {usd !== null && <span className="flag">US · </span>}
+          {!grouped && <>{s.etf ? s.etf.group : SECTOR_MAP[s.sector].name} · </>}
+          <span className={'risk r' + r}>{['', '안정', '보통', '고위험'][r]}</span>
+          {heldQty > 0 && <span className="held"> · {num(heldQty)}주</span>}
+        </small>
+      </div>
+      <Sparkline values={series} up={(usd ?? krw) >= series[0]} width={44} />
+      <div className="sprice">
+        <b>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
+        <small className={tone(ch)}>{pct(ch)}</small>
+      </div>
+    </div>
+  );
+}, (a, b) =>
+  a.symbol === b.symbol && a.krw === b.krw && a.usd === b.usd && a.ch === b.ch && a.sel === b.sel && a.news === b.news && a.watched === b.watched && a.heldQty === b.heldQty && a.grouped === b.grouped &&
+  a.onSelect === b.onSelect && a.onToggleWatch === b.onToggleWatch &&
+  a.series.length === b.series.length && a.series.every((v, i) => v === b.series[i]));
