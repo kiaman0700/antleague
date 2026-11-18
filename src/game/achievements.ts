@@ -216,7 +216,8 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const out: Record<string, string[]> = {};
   for (const p of inp.players) {
     // 기권한 사람은 업적 없음 (현금만 들고 기권해 투자왕·존버의 미학 등을 받던 빈틈)
-    if (p.left) {
+    // 봇도 업적이 없음 (업적을 모으는 사람이 아니라서 — 사용자 요청 2026-11-18)
+    if (p.left || p.bot) {
       out[p.id] = [];
       continue;
     }

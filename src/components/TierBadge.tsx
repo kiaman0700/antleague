@@ -70,7 +70,7 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
   const shards = lv === 4 ? [-128, -104, -90, -76, -52].map((a, i) => shard(20, 10, a, (i === 2 ? 19 : 15) + grow, 3.4)) : [];
   const bladeEl = (d: string, v: string) => (
     <>
-      <path d={d} fill={lv === 5 ? gold : metal} stroke={lv === 5 ? '#4a3006' : deep} strokeWidth="0.6" />
+      <path d={d} fill={lv === 5 ? gold : metal} stroke={lv === 5 ? '#24124f' : deep} strokeWidth="0.6" />
       <path d={v} fill="none" stroke={shine} strokeOpacity="0.7" strokeWidth="0.55" strokeLinecap="round" />
     </>
   );
@@ -118,13 +118,13 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
           <stop offset="0.45" stopColor={base} />
           <stop offset="1" stopColor={dark} />
         </linearGradient>
-        {/* 마스터: 금 테두리·왕관·날개 (무지갯빛 점 대신 금 + 보라 보석) */}
+        {/* 마스터: 보라 금속 테두리·왕관·날개 (사용자: 금색 말고 마스터의 보라색 그대로 — 골드 티어와 헷갈리지 않게) */}
         <linearGradient id={`${id}-au`} x1="0" y1="0" x2="0.3" y2="1">
-          <stop offset="0" stopColor="#fff6cf" />
-          <stop offset="0.28" stopColor="#ffd96b" />
-          <stop offset="0.55" stopColor="#e3a92c" />
-          <stop offset="0.75" stopColor="#b47b14" />
-          <stop offset="1" stopColor="#6d470a" />
+          <stop offset="0" stopColor="#f3ecff" />
+          <stop offset="0.28" stopColor="#cdb6ff" />
+          <stop offset="0.55" stopColor="#9a74f2" />
+          <stop offset="0.78" stopColor="#6a45c9" />
+          <stop offset="1" stopColor="#36206e" />
         </linearGradient>
         <radialGradient id={`${id}-o`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor={base} stopOpacity="0.5" />
@@ -162,9 +162,9 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
       )}
       {lv === 5 && (
         // 금 왕관: 다섯 봉우리 끝에 보라 보석, 가운데 큰 보석, 아래 테에 작은 구슬 줄
-        <g stroke="#4a3006" strokeWidth="0.6" strokeLinejoin="round">
+        <g stroke="#24124f" strokeWidth="0.6" strokeLinejoin="round">
           <path d="M8.6 7 L7.4 -3.2 L12.6 1.2 L15.6 -5.2 L20 0.2 L24.4 -5.2 L27.4 1.2 L32.6 -3.2 L31.4 7 Q20 4 8.6 7 Z" fill={gold} />
-          <path d="M9.6 5.2 Q20 2.6 30.4 5.2" fill="none" stroke="#fff6cf" strokeOpacity="0.75" strokeWidth="0.55" />
+          <path d="M9.6 5.2 Q20 2.6 30.4 5.2" fill="none" stroke="#f3ecff" strokeOpacity="0.75" strokeWidth="0.55" />
           {[[7.4, -3.2, 1.25], [15.6, -5.2, 1.35], [24.4, -5.2, 1.35], [32.6, -3.2, 1.25]].map(([x, y, r], k) => (
             <g key={k}>
               <path d={`M${x} ${y + 3 - r * 1.3} L${x + r} ${y + 3} L${x} ${y + 3 + r * 1.3} L${x - r} ${y + 3} Z`} fill={gem} stroke={deep} strokeWidth="0.4" />
@@ -174,14 +174,14 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
           <path d="M20 -4.6 L22.6 -1 L20 2.8 L17.4 -1 Z" fill={gem} stroke={deep} strokeWidth="0.45" />
           <path d="M20 -4.6 L17.4 -1 L20 -1 Z" fill="#ffffff" opacity="0.6" stroke="none" />
           {[11.5, 14.6, 17.6, 22.4, 25.4, 28.5].map((x, k) => (
-            <circle key={k} cx={x} cy={4.7 - Math.sin(((x - 8.6) / 22.8) * Math.PI) * 0.9} r="0.55" fill="#fff6cf" stroke="none" />
+            <circle key={k} cx={x} cy={4.7 - Math.sin(((x - 8.6) / 22.8) * Math.PI) * 0.9} r="0.55" fill="#f3ecff" stroke="none" />
           ))}
         </g>
       )}
 
       {lv === 5 && <path d={SHIELD} transform={at(1.1)} fill="none" stroke={gold} strokeWidth="1.5" strokeLinejoin="round" />}
       {/* 방패: 바깥 금속 테두리 → 어두운 홈 → 안쪽 면 (그림자로 띄우고, 테두리에 빛·그늘을 넣어 입체로) */}
-      <path d={SHIELD} fill={lv === 5 ? gold : metal} stroke={lv === 5 ? '#4a3006' : deep} strokeWidth="0.8" strokeLinejoin="round" filter={`url(#${id}-sh)`} />
+      <path d={SHIELD} fill={lv === 5 ? gold : metal} stroke={lv === 5 ? '#24124f' : deep} strokeWidth="0.8" strokeLinejoin="round" filter={`url(#${id}-sh)`} />
       <path d={SHIELD} transform={at(0.93)} fill="none" stroke={`url(#${id}-bv)`} strokeWidth="1.1" strokeLinejoin="round" />
       <path d={SHIELD} transform={at(0.86)} fill={deep} />
       <path d={SHIELD} transform={at(0.8)} fill={`url(#${id}-f)`} stroke={mix(base, '#000000', 0.25)} strokeWidth="0.5" />
@@ -234,9 +234,9 @@ export function TierEmblem({ rating, placed = true, size = 28 }: { rating: numbe
       {lv === 5 && (
         // 금 리본 + 가운데 보라 보석
         <g strokeLinejoin="round">
-          <path d="M2.5 42.6 L-1.5 46 L5 45.4 Z M37.5 42.6 L41.5 46 L35 45.4 Z" fill="#b47b14" stroke="#4a3006" strokeWidth="0.5" />
-          <path d="M4.5 37 Q20 43.5 35.5 37 L37.5 42.6 Q20 49.6 2.5 42.6 Z" fill={gold} stroke="#4a3006" strokeWidth="0.6" />
-          <path d="M6 39.4 Q20 45 34 39.4" fill="none" stroke="#fff6cf" strokeOpacity="0.6" strokeWidth="0.5" />
+          <path d="M2.5 42.6 L-1.5 46 L5 45.4 Z M37.5 42.6 L41.5 46 L35 45.4 Z" fill="#5a3aa8" stroke="#24124f" strokeWidth="0.5" />
+          <path d="M4.5 37 Q20 43.5 35.5 37 L37.5 42.6 Q20 49.6 2.5 42.6 Z" fill={gold} stroke="#24124f" strokeWidth="0.6" />
+          <path d="M6 39.4 Q20 45 34 39.4" fill="none" stroke="#f3ecff" strokeOpacity="0.6" strokeWidth="0.5" />
           <path d="M20 40.2 L22.6 43.2 L20 46.2 L17.4 43.2 Z" fill={gem} stroke={deep} strokeWidth="0.45" />
           <path d="M20 40.2 L17.4 43.2 L20 43.2 Z" fill="#ffffff" opacity="0.6" />
         </g>
