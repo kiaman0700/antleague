@@ -4,7 +4,8 @@ import { GRANT_EVERY, holdLimit, USE_LIMIT } from "../game/items";
 import { CURRENT_RULES_VERSION } from "../engine/engine";
 import { useMemo, useState } from "react";
 import { companyInfo, type CompanyInfo } from "../game/companyInfo";
-import { SECTOR_MAP, STOCK_SECTORS, STOCKS } from "../game/stocks";
+import { SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS } from "../game/stocks";
+import { RIVALS } from "../game/market";
 import { Icon, SectorIcon } from "../components/Icon";
 import { SlideChips } from "../components/SlideChips";
 import { FitText } from "../components/FitText";
@@ -21,6 +22,7 @@ function Detail({
   onJump: (sym: string) => void;
 }) {
   const d = info.def;
+  const rivals = (RIVALS[d.symbol] ?? []).map((sym) => ({ symbol: sym, name: STOCK_MAP[sym]?.name ?? sym }));
   return (
     <div className="co-detail">
       <p className="co-desc">{d.desc}</p>
@@ -65,18 +67,18 @@ function Detail({
                 <span className="muted">금리·환율·유가 영향이 작아요</span>
               )}
             </dd>
-            <dt>같이 움직이는 업종</dt>
-            <dd className="co-chips">
-              {info.together.length ? (
-                info.together.map((t) => (
-                  <span key={t} className="chip sm">
-                    {t}
-                  </span>
-                ))
-              ) : (
-                <span className="muted">-</span>
-              )}
-            </dd>
+            {info.together.length > 0 && (
+              <>
+                <dt>같이 움직이는 업종</dt>
+                <dd className="co-chips">
+                  {info.together.map((t) => (
+                    <span key={t} className="chip sm">
+                      {t}
+                    </span>
+                  ))}
+                </dd>
+              </>
+            )}
             {info.opposite.length > 0 && (
               <>
                 <dt>반대로 움직이는 업종</dt>
@@ -89,28 +91,38 @@ function Detail({
                 </dd>
               </>
             )}
-            {(info.supply.length > 0 || info.affectedBy.length > 0) && (
+            {/* 화살표(→ ←)만으론 뜻을 몰라서 관계마다 이름을 붙임 (경쟁사는 뉴스 관련 종목 칩과 같은 말) */}
+            {info.supply.length > 0 && (
               <>
-                <dt>연결된 회사</dt>
+                <dt>연결된 회사 · 이 회사 소식에 같이 움직여요</dt>
                 <dd className="co-chips">
                   {info.supply.map((x) => (
-                    <button
-                      key={x.symbol}
-                      className="chip sm"
-                      onClick={() => onJump(x.symbol)}
-                      title="이 회사에 좋은 일이 생기면 같이 움직여요"
-                    >
-                      → {x.name}
+                    <button key={x.symbol} className="chip sm" onClick={() => onJump(x.symbol)}>
+                      {x.name}
                     </button>
                   ))}
+                </dd>
+              </>
+            )}
+            {info.affectedBy.length > 0 && (
+              <>
+                <dt>이 회사에 영향을 주는 회사</dt>
+                <dd className="co-chips">
                   {info.affectedBy.map((x) => (
-                    <button
-                      key={x.symbol}
-                      className="chip sm"
-                      onClick={() => onJump(x.symbol)}
-                      title="이 회사의 소식에 영향을 받아요"
-                    >
-                      ← {x.name}
+                    <button key={x.symbol} className="chip sm" onClick={() => onJump(x.symbol)}>
+                      {x.name}
+                    </button>
+                  ))}
+                </dd>
+              </>
+            )}
+            {rivals.length > 0 && (
+              <>
+                <dt>경쟁사 · 한쪽에 좋은 소식이면 다른 쪽은 반대로 갈 수 있어요</dt>
+                <dd className="co-chips">
+                  {rivals.map((x) => (
+                    <button key={x.symbol} className="chip sm" onClick={() => onJump(x.symbol)}>
+                      {x.name}
                     </button>
                   ))}
                 </dd>
