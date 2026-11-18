@@ -1453,3 +1453,5 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 화면 편집 탭 순서 화살표: 보이는 크기는 그대로, 누르는 영역만 넓힘 (문장 속 용어 단어는 styles-ui 의 터치 규칙에 이미 있음) */
 .nav-move i { position: relative; }
 .nav-move i::before { content: ''; position: absolute; inset: -7px 0; } /* 좌우는 옆 화살표와 겹치지 않게 */
+/* 휴대폰 화면 편집: '알림 자리' 견본이 아래 탭 순서 화살표를 덮지 않게 조금 위로 */
+.m-game.editing .toast.alert-sample.at-bottom:not(.free) { bottom: calc(76px + 24px + env(safe-area-inset-bottom)); }
