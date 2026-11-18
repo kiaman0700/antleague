@@ -297,7 +297,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
           {lv === 6 &&
             (size >= 40 ? (
               <text x="20" y="45.4" textAnchor="middle" fontSize="5.4" fontWeight="900" fill="#d9364b">
-                {challenger && challenger > 0 ? `#${challenger}` : '1'}
+                {challenger && challenger > 0 ? `#${challenger}` : '#1'}
               </text>
             ) : (
               <circle cx="20" cy="43.3" r="1.6" fill="#ffffff" stroke="#d9364b" strokeWidth="0.6" />
