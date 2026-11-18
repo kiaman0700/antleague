@@ -245,7 +245,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
       )}
       {info.league && (
         <p className="ms-gain ms-league">
-          <Icon name="trophy" size={14} /> 이번 주 리그({info.league.name}) <b>{info.league.size}명 중 {info.league.rank}위</b>
+          <Icon name="trophy" size={14} /> 이번 주 리그({info.league.name}) <b>{info.league.size > 1 ? `${info.league.size}명 중 ${info.league.rank}위` : '조에 들어갔어요 · 지금 1위'}</b>
         </p>
       )}
       <ul className="ms-list">

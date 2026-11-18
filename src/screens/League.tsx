@@ -96,7 +96,7 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
         <>
           {info.last && showLast && (
             <section className={'panel pad lg-last ' + (info.last.change === 1 ? 'lg-up' : info.last.change === -1 ? 'lg-down' : '')} role="status">
-              <b>지난주 결과: {info.last.size}명 중 {info.last.rank}위</b>
+              <b>지난주 결과: {(info.last.size ?? 0) > 1 ? `${info.last.size}명 중 ${info.last.rank}위` : '1위 (조에 나 혼자)'}</b>
               <span>{info.last.change === 1 ? `승급! 이제 ${names[info.tier ?? 0]}예요` : info.last.change === -1 ? `강등돼서 ${names[info.tier ?? 0]}예요. 이번 주에 다시 올라가요` : `${names[info.tier ?? 0]} 그대로예요`}</span>
               {!!info.last.reward && <em className="lg-reward">보상 +{info.last.reward} 경험치</em>}
               <button className="btn sm ghost" onClick={() => setShowLast(false)}>

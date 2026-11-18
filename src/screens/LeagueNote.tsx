@@ -33,7 +33,7 @@ export function LeagueResultNote({ member, onOpen }: { member: boolean; onOpen: 
       <Icon name="trophy" size={22} />
       <button className="ig-hint-go" onClick={onOpen}>
         <b>
-          지난주 리그 {last.size}명 중 {last.rank}위{up ? ' · 승급!' : down ? ' · 강등' : ''}
+          지난주 리그 {(last.size ?? 0) > 1 ? `${last.size}명 중 ${last.rank}위` : '1위(조에 나 혼자)'}{up ? ' · 승급!' : down ? ' · 강등' : ''}
           {!!last.reward && <em className="lg-reward"> +{last.reward} 경험치</em>}
         </b>
         <small>이번 주는 {last.name} — 눌러서 우리 조 보기</small>
