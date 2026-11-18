@@ -12,10 +12,15 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   guardRef.current = guard;
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  const soft = async () => (!guardRef.current || (await guardRef.current())) && closeRef.current();
+  const rearmRef = useRef<() => void>(() => {});
+  const soft = async () => {
+    if (!guardRef.current || (await guardRef.current())) return closeRef.current();
+    // '계속 쓰기'를 골랐으면 뒤로 가기 기록을 다시 넣음 — 다음 뒤로 가기도 이 창부터 묻게 (예전엔 두 번째 뒤로 가기에 쓰던 글이 그냥 사라졌음)
+    rearmRef.current();
+  };
   const boxRef = useDialogFocus<HTMLDivElement>();
   // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘 (ui.tsx 의 공용 순서)
-  useEscape(() => void soft(), true, true);
+  rearmRef.current = useEscape(() => void soft(), true, true);
   return (
     <div className="modal-bg" onClick={soft}>
       <div ref={boxRef} tabIndex={-1} className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined} onClick={(e) => e.stopPropagation()}>

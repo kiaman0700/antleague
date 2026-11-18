@@ -149,7 +149,9 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         const cur = await sb.auth.admin.getUserById(uid);
         const email = cur.data.user?.email ?? '';
         if (cur.error || email.endsWith('@' + USER_DOMAIN)) throw new GameError('이미 가입한 계정이에요.', 409);
-        await sb.from('profiles').delete().eq('user_id', uid);
+        // 1분 넘게 지난 반쯤 된 프로필만 지움 — 두 번 눌러 동시에 가입 중인 요청의 프로필을 서로 지우지 않게
+        const del = await sb.from('profiles').delete().eq('user_id', uid).lt('created_at', new Date(Date.now() - 60_000).toISOString()).select('user_id');
+        if (!del.error && !(del.data ?? []).length) throw new GameError('가입을 처리하는 중이에요. 잠시 후 다시 시도해 주세요.', 409);
       }
       // [필수] 세 가지: 만 14세 이상 · 이용약관 · 개인정보 수집·이용 (화면에서 칸을 지워 보내도 여기서 다시 확인)
       if (b.agree14 !== true || b.agreePrivacy !== true || b.agreeTerms !== true) throw new GameError('만 14세 이상 확인, 이용약관 동의, 개인정보 수집·이용 동의가 모두 필요해요.');
@@ -311,7 +313,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (gu.app_metadata?.role === 'admin' || (await getProfile(sb, gu.id))) throw new GameError('회원 계정의 기록은 가져올 수 없어요.', 403);
       const me = await getProfile(sb, uid);
       if (!me) throw new GameError('회원으로 로그인한 뒤에 할 수 있어요.', 403);
-      const seats = ((await sb.from('players').select('id, room_id, rooms!inner(status)').eq('user_id', gu.id)).data ?? []) as unknown as { id: string; room_id: string; rooms: { status: string } }[];
+      const seats = ((await sb.from('players').select('id, room_id, left_game, rooms!inner(status)').eq('user_id', gu.id)).data ?? []) as unknown as { id: string; room_id: string; left_game: boolean | null; rooms: { status: string } }[];
       if (action === 'guestSummary')
         return { games: seats.filter((x) => x.rooms.status === 'finished').length, playing: seats.filter((x) => x.rooms.status !== 'finished').length };
       const mode = b.mode === 'merge' ? 'merge' : 'discard';
@@ -323,7 +325,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         let busy = myRows.some((x) => x.rooms.status !== 'finished' && !x.left_game);
         for (const s of seats) {
           if (mine.has(s.room_id)) continue; // 같은 방에 이미 내 자리가 있으면 건너뜀
-          const active = s.rooms.status !== 'finished';
+          const active = s.rooms.status !== 'finished' && !s.left_game; // 기권한 자리는 진행 중으로 치지 않음
           if (active && busy) continue;
           if (active) busy = true;
           const r = await sb.from('players').update({ user_id: uid }).eq('id', s.id).eq('user_id', gu.id);

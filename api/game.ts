@@ -4,7 +4,8 @@ import { handle } from './_lib/server.js';
 /** e2e 도구 표시 값 = HMAC(서버 비밀 키, 'e2e-test') 앞 32자 — 비밀 키를 가진 이 컴퓨터의 시험 도구만 만들 수 있음 */
 function isTestKey(v: string | null): boolean {
   const key = process.env.SUPABASE_SECRET_KEY;
-  if (!v || !key || v.length !== 32) return false;
+  // 16진수 32자만 (다른 글자가 섞이면 바이트 길이가 달라져 비교 함수가 오류를 던졌음)
+  if (!v || !key || !/^[0-9a-f]{32}$/.test(v)) return false;
   const want = createHmac('sha256', key).update('e2e-test').digest('hex').slice(0, 32);
   return timingSafeEqual(Buffer.from(v), Buffer.from(want));
 }

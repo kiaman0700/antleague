@@ -135,6 +135,25 @@ let escBound = false;
 let layerSeq = 0;
 /** 창을 닫으며 우리가 history.back() 한 횟수 — 그 popstate 는 화면 이동으로 치지 않고 삼킴 */
 let swallowPops = 0;
+/** 되돌리기(history.back)가 끝나기 전에 열린 창 — 되돌리기가 끝난 뒤 기록을 넣음 (한 번 누름으로 닫고 바로 다른 창을 여는 경우) */
+const pendingPush: Layer[] = [];
+let swallowSafety: number | undefined;
+function pushLayer(entry: Layer) {
+  if (!escStack.includes(entry) || entry.popped) return;
+  if (swallowPops > 0) {
+    if (!pendingPush.includes(entry)) pendingPush.push(entry);
+    return;
+  }
+  try {
+    entry.id = ++layerSeq;
+    history.pushState({ ...((history.state as object | null) ?? {}), __layer: entry.id }, '', location.href);
+  } catch {
+    entry.id = undefined;
+  }
+}
+function flushPending() {
+  for (const e of pendingPush.splice(0)) pushLayer(e);
+}
 function onEscKey(e: KeyboardEvent) {
   if (e.key !== 'Escape' || e.defaultPrevented) return;
   const top = escStack[escStack.length - 1];
@@ -150,23 +169,36 @@ function onPop(e: PopStateEvent) {
   if (swallowPops > 0) {
     swallowPops--;
     e.stopImmediatePropagation();
+    if (swallowPops === 0) {
+      window.clearTimeout(swallowSafety);
+      flushPending();
+    }
     return;
   }
   const top = escStack[escStack.length - 1];
-  if (top?.id && !top.popped) {
+  // 맨 위 창의 기록 '아래'로 내려온 경우만 (앞으로 가기 등으로 같은/더 위 기록에 온 건 손대지 않음)
+  const at = (e.state as { __layer?: number } | null)?.__layer ?? 0;
+  if (top?.id && !top.popped && at < top.id) {
     top.popped = true;
     e.stopImmediatePropagation();
     top.close.current();
   }
 }
 
+/** 지금 기록이 창 기록이면 화면 이동은 새 기록 대신 그 자리를 바꿈 (창 안에서 다른 화면·탭으로 옮길 때 남는 기록·주소 어긋남 방지) */
+export function onLayerEntry() {
+  return typeof history !== 'undefined' && (history.state as { __layer?: number } | null)?.__layer != null;
+}
+
 /**
  * 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만, 겹쳐 있으면 맨 위 창만.
- * back: 뒤로 가기로도 닫힘 (열 때 같은 주소로 기록을 하나 넣고, 다른 방법으로 닫히면 그 기록을 되돌림)
+ * back: 뒤로 가기로도 닫힘 (열 때 같은 주소로 기록을 하나 넣고, 다른 방법으로 닫히면 그 기록을 되돌림).
+ * 돌려주는 rearm(): 뒤로 가기로 닫으려 했지만 창이 '그대로 두기'를 고르면(쓰던 글 확인 등) 기록을 다시 넣음
  */
-export function useEscape(onClose: () => void, on = true, back = false) {
+export function useEscape(onClose: () => void, on = true, back = false): () => void {
   const ref = useRef(onClose);
   ref.current = onClose;
+  const entryRef = useRef<Layer | null>(null);
   useEffect(() => {
     if (!on) return;
     if (!escBound && typeof window !== 'undefined') {
@@ -175,32 +207,45 @@ export function useEscape(onClose: () => void, on = true, back = false) {
       escBound = true;
     }
     const entry: Layer = { close: ref };
+    entryRef.current = back ? entry : null;
     // 기록은 한 박자 뒤에 넣음 — 바로 열렸다 닫히는 경우(개발 모드의 두 번 실행 등)엔 아예 넣지 않게
     let timer: number | undefined;
     if (back && typeof history !== 'undefined') {
       timer = window.setTimeout(() => {
         timer = undefined;
-        if (!escStack.includes(entry)) return;
-        try {
-          entry.id = ++layerSeq;
-          history.pushState({ ...((history.state as object | null) ?? {}), __layer: entry.id }, '', location.href);
-        } catch {
-          entry.id = undefined;
-        }
+        pushLayer(entry);
       }, 0);
     }
     escStack.push(entry);
     return () => {
       if (timer !== undefined) window.clearTimeout(timer);
+      const pi = pendingPush.indexOf(entry);
+      if (pi >= 0) pendingPush.splice(pi, 1);
       const i = escStack.lastIndexOf(entry);
       if (i >= 0) escStack.splice(i, 1);
+      if (entryRef.current === entry) entryRef.current = null;
       // X·Esc·바깥 누르기로 닫혔으면 넣어 둔 기록을 되돌림 — 단, 그사이 다른 화면으로 옮겨 갔으면(기록이 바뀜) 건드리지 않음
       if (entry.id && !entry.popped && (history.state as { __layer?: number } | null)?.__layer === entry.id) {
         swallowPops++;
         history.back();
+        // 되돌리기 popstate 가 끝내 안 오면(기록 맨 앞 등) 멈춰 있지 않게
+        window.clearTimeout(swallowSafety);
+        swallowSafety = window.setTimeout(() => {
+          if (swallowPops > 0) {
+            swallowPops = 0;
+            flushPending();
+          }
+        }, 1500);
       }
     };
   }, [on, back]);
+  return () => {
+    const e = entryRef.current;
+    if (!e || !e.popped) return;
+    e.popped = false;
+    e.id = undefined;
+    pushLayer(e);
+  };
 }
 
 /** 지금 Esc 로 닫힐 창이 있는지 (창이 없을 때만 하는 Esc 동작 — 예: 화면 편집 끝내기 — 이 겹치지 않게) */

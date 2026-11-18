@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { LobbyPage } from './screens/Lobby';
 import type { Session } from './session';
+import { onLayerEntry } from './components/ui';
 
 /** 화면 = URL. 브라우저 뒤로/앞으로 가기로 이동할 수 있게 History API 사용 */
 export type Route =
@@ -65,7 +66,8 @@ export function useRouter() {
     const path = pathOf(r);
     // 로비로 갈 때 초대 코드(?room=)는 유지
     const url = r.kind === 'lobby' && (!r.page || r.page === 'home') && location.search.includes('room=') ? path + location.search : path;
-    if (opts.replace) history.replaceState(r, '', url);
+    // 창(모달 등) 안에서 다른 화면으로 옮기면 그 창이 넣어 둔 기록 자리를 바꿈 — 쓸모없는 기록이 남아 뒤로 가기를 한 번 더 눌러야 하던 것
+    if (opts.replace || onLayerEntry()) history.replaceState(r, '', url);
     else history.pushState(r, '', url);
     setRoute(r);
     window.scrollTo(0, 0);

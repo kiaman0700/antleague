@@ -719,7 +719,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
     for (const n of news) {
       if (n.kind !== 'company' || !n.symbol || n.rel) continue;
       const def = STOCK_MAP[n.symbol];
-      if (n.fake && !n.label && rngF() < 0.3) {
+      // (v18) 머리말(단독)이 붙은 가짜 기사도 — v17 은 머리말 없는 것만 바꿔서 '단독 + 경쟁사 모양 = 진짜'가 보였음
+      if (n.fake && (version >= 18 || !n.label) && rngF() < 0.3) {
         const peers = COMPANIES.filter((p) => p.sector === def.sector && p.symbol !== def.symbol);
         if (peers.length) {
           const rival = peers[Math.floor(rngF() * peers.length)];

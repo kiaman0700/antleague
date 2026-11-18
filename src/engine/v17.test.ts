@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { buildView, marketFor, type GameData } from './engine.js';
 import { preRumors, publicRumors } from '../game/rumors.js';
 import { STOCK_MAP } from '../game/stocks.js';
+import * as T from '../game/news.js';
 
 const saltOf = (seed: number) => ((seed * 2654435761) >>> 0).toString(16).padStart(8, '0').repeat(4);
 const SEEDS = Array.from({ length: 40 }, (_, i) => 1000 + i * 37);
 
-describe('v16 이하 시장은 하나도 안 바뀜', () => {
+describe('v17 이하 시장은 하나도 안 바뀜', () => {
   // v17 을 만들기 전에 찍어 둔 지문 (시장 전체 + 장 전 찌라시 4일치)
   const SNAP: [number, number, string][] = [
     [12, 7, 'eff31e2ca94bbdf3'],
@@ -19,6 +20,9 @@ describe('v16 이하 시장은 하나도 안 바뀜', () => {
     [15, 4242, 'fee9934ba7713e92'],
     [16, 7, '88b06ac209f6ef2a'],
     [16, 4242, 'fee9934ba7713e92'],
+    // v17 (배포된 판) — v18 에서 가짜 기사 모양 규칙을 고쳐도 그대로여야 함
+    [17, 7, '9032566296ff0255'],
+    [17, 4242, '958232071e393b02'],
   ];
   for (const [v, seed, want] of SNAP)
     it(`v${v} 시드 ${seed}`, () => {
@@ -159,5 +163,30 @@ describe('v17 화면 데이터에 미래·진실이 새지 않음', () => {
       if (n.rel) for (const r of Object.values(n.rel)) expect(['link', 'peer', 'rival', 'chain', 'etf']).toContain(r);
     }
     expect(v.market!.bars.CORE.length).toBeLessThanOrEqual(4);
+  });
+});
+
+describe('v18 기사 모양으로 가짜를 알아낼 수 없음 (v17 은 단독+경쟁사 모양이 늘 진짜였음)', () => {
+  it('보통 회사 기사 중 가짜 비율이 경쟁사 모양이든 아니든 비슷 (머리말 없음·단독 각각)', () => {
+    const earn = new Set([...T.EARNINGS_GOOD, ...T.EARNINGS_BAD].map((t) => t.replace('{name}', '')));
+    const isEarn = (h: string) => [...earn].some((t) => h.endsWith(t));
+    const cnt: Record<string, [number, number]> = {};
+    for (const seed of Array.from({ length: 150 }, (_, i) => 5000 + i * 13)) {
+      for (const n of marketFor(seed, 20, 18, saltOf(seed)).news) {
+        if (n.kind !== 'company' || n.rumor || n.at != null || n.headline.includes('발표 예정') || isEarn(n.headline)) continue;
+        if (n.label && n.label !== '단독') continue;
+        const rival = !!n.rel && Object.values(n.rel).includes('rival');
+        const k = (n.label ?? '없음') + (rival ? '/경쟁사' : '/보통');
+        cnt[k] ??= [0, 0];
+        cnt[k][0]++;
+        if (n.fake) cnt[k][1]++;
+      }
+    }
+    for (const lab of ['없음', '단독']) {
+      const a = cnt[lab + '/경쟁사'];
+      const b = cnt[lab + '/보통'];
+      expect(a?.[0] ?? 0, lab).toBeGreaterThan(30);
+      expect(Math.abs(a[1] / a[0] - b[1] / b[0]), `${lab}: 경쟁사 ${a[1]}/${a[0]} · 보통 ${b[1]}/${b[0]}`).toBeLessThan(0.08);
+    }
   });
 });

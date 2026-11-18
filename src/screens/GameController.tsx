@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markActiveGame } from '../lib/activeTab';
-import { hasOpenLayer, Loading } from '../components/ui';
+import { hasOpenLayer, Loading, onLayerEntry } from '../components/ui';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
 import { setDrawScope } from '../components/ProChart';
@@ -116,7 +116,14 @@ function useMobileTab(mobile: boolean, start: Tab = 'news') {
     (t: Tab) => {
       setTabState(t);
       if (!mobile) return;
-      if (location.hash.slice(1) !== t) history.pushState(history.state, '', `${location.pathname}${location.search}#${t}`);
+      if (location.hash.slice(1) !== t) {
+        const url = `${location.pathname}${location.search}#${t}`;
+        // 창 안에서 탭을 바꾸면(일정 창에서 종목 누르기 등) 그 창 기록 자리를 바꿈 — 창 표시는 지워서 창이 닫힐 때 되돌리지 않게
+        if (onLayerEntry()) {
+          const { __layer: _l, ...rest } = (history.state ?? {}) as Record<string, unknown>;
+          history.replaceState(rest, '', url);
+        } else history.pushState(history.state, '', url);
+      }
       window.scrollTo(0, 0);
     },
     [mobile],
@@ -696,7 +703,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       const typing = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'SELECT';
       // 창(사기 창·서랍·크게 보기 차트·확인 창 등)이 떠 있으면 단축키는 그 뒤 화면에 쓰지 않음
       // (예전엔 크게 보기 차트에서 Enter → 사기 창이 차트 뒤에 열려 안 보였음, 방향키는 뒤에서 종목을 바꿨음)
-      const layered = hasOpenLayer() || !!document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open, .chart-full, .tut-layer');
+      const layered = hasOpenLayer() || !!document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open, .chart-full');
       if (layered && e.key !== 'Escape') return;
       if (e.key === '/' && !typing) {
         e.preventDefault();
