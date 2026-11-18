@@ -193,8 +193,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     }
   }, [loading, fixedKind]);
 
-  const seg = <T extends string>(value: T, items: [T, string, string?][], on: (v: T) => void) => (
-    <div className="seg mf-seg" role="radiogroup">
+  const seg = <T extends string>(value: T, items: [T, string, string?][], on: (v: T) => void, label?: string) => (
+    <div className="seg mf-seg" role="radiogroup" aria-label={label}>
       {items.map(([v, l, sub]) => (
         <button key={v} role="radio" aria-checked={value === v} className={value === v ? 'on' : ''} disabled={searching} onClick={() => on(v)}>
           <b>{l}</b>
@@ -316,15 +316,15 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           <Icon name="users" size={18} /> 대결 찾기
         </h3>
       )}
-      {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })))}
+      {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })), '대결 종류')}
       {inParty ? (
         <p className="muted small mf-note">
           파티는 <b>다인전</b>으로 같이 찾아요. 4명 방이 기본이고, 1분 30초 넘게 못 모이면 3명 방으로 시작해요.
         </p>
       ) : (
-        seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }))
+        seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }), '몇 명이서')
       )}
-      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(sizeEff, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(sizeEff, 'normal'))]], (v) => save({ ...pref, speed: v }))}
+      {seg(pref.speed, [['quick', SPEED_PRESET.quick.label, waitTag(SPEED_PRESET.quick.minutes, waitingIn(sizeEff, 'quick'))], ['normal', SPEED_PRESET.normal.label, waitTag(SPEED_PRESET.normal.minutes, waitingIn(sizeEff, 'normal'))]], (v) => save({ ...pref, speed: v }), '얼마나 빨리')}
       {!member && !loading && !fixedKind && (
         <p className="muted small mf-note">
           게스트는 일반전만 할 수 있어요. <button className="linkish-soft" onClick={onLogin}>로그인하면 랭킹전</button>
