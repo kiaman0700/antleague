@@ -1780,3 +1780,7 @@ p { text-wrap: pretty; }
 /* 휴대폰 결과 위 칩 줄: '1/5' 가 세로로 쪼개지지 않게, 좁으면 칩 여백 줄임 */
 .rs-pos { flex: none; white-space: nowrap; }
 @media (max-width: 380px) { .rs-chip { padding: 0 11px; } .rs-chips { gap: 5px; } }
+/* PC 순위 줄: 5명 이상이면 칸이 좁아 금액·수익률이 옆 상태 표시('…')와 겹침 → 작은 사진을 빼서 글자 자리 확보 */
+.desk .rank-strip:has(> .rank-chip:nth-child(5)) .rank-chip .rk-av { display: none; }
+.desk .rank-strip:has(> .rank-chip:nth-child(5)) .rank-chip { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; padding: 6px 8px; }
+.desk .rank-strip .rank-chip .rn small { overflow: hidden; text-overflow: ellipsis; }
