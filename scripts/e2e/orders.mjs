@@ -43,7 +43,7 @@ const theirs = await st(B);
 ok('상대 화면에는 내 예약 주문이 없음', !theirs.myOrders.some((o) => o.id === mine[0].id) && !JSON.stringify(theirs).includes(mine[0].id));
 
 // 8) 하루 5개까지
-for (let i = 0; i < 4; i++) await A({ action: 'placeOrder', roomId, symbol: sym, side: 'buy', qty: 1, limit: Math.round(open * (0.9 - i * 0.01)) });
+for (let i = 0; i < 4; i++) await A({ action: 'placeOrder', roomId, symbol: sym, side: 'buy', qty: 1, limit: Math.round(open * (0.995 - i * 0.005)) });
 const r8 = await A({ action: 'placeOrder', roomId, symbol: sym, side: 'buy', qty: 1, limit: Math.round(open * 0.85) });
 ok('예약 주문은 하루 5개까지 (6번째 거절)', r8.s === 400, r8.b?.error);
 
@@ -59,6 +59,23 @@ const after = (await st(A)).myOrders.find((o) => o.id === target);
 ok('취소한 주문은 취소 상태', after?.status === 'cancelled', after?.status);
 const c3 = await A({ action: 'cancelOrder', roomId, orderId: 'not-a-real-id' });
 ok('없는 주문 번호는 404', c3.s === 404, c3.b?.error);
+
+// 10) 실제 체결: 그날이 끝난 뒤 공개되는 그날 최저가가 예약 값에 닿았으면 '체결'(값 이하로), 안 닿았으면 장 마감 때 '취소'
+const openOnes = (await st(A)).myOrders.filter((o) => o.status === 'open' && o.day === day);
+await A({ action: 'endTurn', roomId });
+await B({ action: 'endTurn', roomId });
+let nx;
+for (let i = 0; i < 40; i++) {
+  nx = await st(A);
+  if (nx.room.day > day) break;
+  await new Promise((r) => setTimeout(r, 1500));
+}
+ok('두 사람 마감 → 다음 날', nx.room.day > day, String(nx.room.day));
+const low = nx.market.bars[sym][day].low;
+const res = openOnes.map((o) => nx.myOrders.find((x) => x.id === o.id));
+const wrong = res.filter((o) => (o.limit_price >= low ? o.status !== 'filled' : o.status !== 'cancelled' && o.status !== 'expired'));
+ok(`예약 체결 결과가 그날 최저가(${low})와 맞음 (${res.length}건)`, res.length > 0 && wrong.length === 0, JSON.stringify(res.map((o) => [o.limit_price, o.status, o.fill_price])));
+ok('체결 값은 예약 값 이하', res.filter((o) => o.status === 'filled').every((o) => o.fill_price <= o.limit_price), '');
 
 await A({ action: 'leave', roomId });
 await B({ action: 'leave', roomId });

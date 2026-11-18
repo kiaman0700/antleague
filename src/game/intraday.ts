@@ -93,6 +93,33 @@ function sectorFlow(m: Market, sector: string, day: number, n: number) {
   return cached(`sf:${sk(m)}:${m.totalDays}:${sector}:${day}:${n}`, () => bridge(m, `${sk(m)}:sf:${sector}:${day}:${n}`, n, 0.009));
 }
 
+/** (v23) 장중 가격이 그날 고가·저가에 실제로 닿게 (2026-11-18: 일봉 저가에 걸어 둔 예약이 체결되지 않던 문제)
+ *  가장 높은·낮은 칸 둘레를 부드럽게 끌어올려/내려 고가·저가를 정확히 찍음. 시가·종가 칸은 그대로 */
+export const TOUCH_RANGE_VERSION = 23;
+function touchRange(p: number[], bar: Bar, round: (v: number) => number): number[] {
+  const n = p.length - 1;
+  if (n < 2) return p;
+  const out = p.slice();
+  const bump = (target: number, up: boolean) => {
+    const cur = up ? Math.max(...out) : Math.min(...out);
+    if (up ? cur >= target : cur <= target) return;
+    // 가운데 칸 중 가장 높은(낮은) 곳
+    let k = 1;
+    for (let j = 1; j < n; j++) if (up ? out[j] > out[k] : out[j] < out[k]) k = j;
+    const w = Math.max(2, Math.round(n * 0.04));
+    const gap = Math.log(target / out[k]);
+    for (let j = Math.max(1, k - w); j <= Math.min(n - 1, k + w); j++) {
+      const f = 1 - Math.abs(j - k) / (w + 1);
+      const v = round(out[j] * Math.exp(gap * f));
+      out[j] = up ? Math.min(target, Math.max(out[j], v)) : Math.max(target, Math.min(out[j], v));
+    }
+    out[k] = target;
+  };
+  bump(bar.high, true);
+  bump(bar.low, false);
+  return out;
+}
+
 /**
  * symbol 의 day 장중 가격 n+1 칸 (0 = 시가, n = 종가).
  * cur='usd' 면 미국 주식의 달러 가격. 시장 데이터(m)는 서버의 전체 시장이어야 함(장중 흐름 포함).
@@ -117,7 +144,8 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
           out.push(round(Math.max(100, bar.open * Math.exp(def.etf.lev * r))));
         }
       }
-      return out;
+      // (v23) 담은 종목으로 계산한 칸이 일봉 범위를 벗어나지 않게 맞추고 고가·저가에 닿게
+      return (m.version ?? 1) >= TOUCH_RANGE_VERSION ? touchRange(out.map((v, j) => (j === 0 || j === n ? v : Math.min(bar.high, Math.max(bar.low, v)))), bar, round) : out;
     }
     const sec = SECTOR_MAP[def.sector];
     const flow =
@@ -131,14 +159,17 @@ export function dayTicks(m: Market, symbol: string, day: number, n: number, cur:
           };
     const base = fineTicks(bar, n, rngOf(m, `${sk(m)}:${symbol}:${day}:${n}`), releaseOf(m, symbol, day), round, flow, (m.version ?? 1) >= 3 ? 0.55 : 0, (m.version ?? 1) >= 13);
     // (v20) 커뮤니티·SNS 글로 잠깐 들썩였다 되돌아감 — 시가·종가는 그대로, 그날 고가·저가 안에서만
-    if ((m.version ?? 1) < COMMUNITY_VERSION || !m.salt || def.etf) return base;
+    const touch = (p: number[]) => ((m.version ?? 1) >= TOUCH_RANGE_VERSION ? touchRange(p, bar, round) : p);
+    if ((m.version ?? 1) < COMMUNITY_VERSION || !m.salt || def.etf) return touch(base);
     const posts = communityPosts(m, day, m.salt);
-    if (!posts.some((p) => p.symbol === symbol || (!p.symbol && p.sector === def.sector))) return base;
-    return base.map((v, j) => {
-      if (j === 0 || j === n) return v;
-      const h = hypeAt(posts, symbol, def.sector, j / n);
-      return h ? round(Math.min(bar.high, Math.max(bar.low, v * Math.exp(h)))) : v;
-    });
+    if (!posts.some((p) => p.symbol === symbol || (!p.symbol && p.sector === def.sector))) return touch(base);
+    return touch(
+      base.map((v, j) => {
+        if (j === 0 || j === n) return v;
+        const h = hypeAt(posts, symbol, def.sector, j / n);
+        return h ? round(Math.min(bar.high, Math.max(bar.low, v * Math.exp(h)))) : v;
+      }),
+    );
   });
 }
 
@@ -194,7 +225,9 @@ function fineTicks(
   // (v13) 속보 종목은 그날 범위에 속보 급등락이 들어 있어서, 범위로 흔들림을 정하면 속보 전 모양이 다른 종목과 달라짐
   //   → 급등락(시가→종가 차이)을 뺀 범위로 흔들림을 정하고, 속보 전에도 시가 아래위로 그만큼 움직일 자리를 줌
   const calm = quiet && at !== null;
-  const span = calm ? Math.max(0.008, Math.log(bar.high / bar.low) - Math.abs(lc - lo)) : Math.log(bar.high / bar.low);
+  // (v23) 일봉 범위를 넓혀 둔 종목은 넓히기 전 흔들림 크기(bar.span)를 그대로 쓰고, 범위는 일봉 그대로
+  const wide = calm && bar.span !== undefined;
+  const span = wide ? bar.span! : calm ? Math.max(0.008, Math.log(bar.high / bar.low) - Math.abs(lc - lo)) : Math.log(bar.high / bar.low);
   const idioAmp = (span * (flow ? 0.35 : 0.6)) / Math.sqrt(n);
   const trend: number[] = [];
   const dev: number[] = [];
@@ -204,8 +237,8 @@ function fineTicks(
     dev.push(common + (w[j] - (j / n) * w[n]) * idioAmp);
   }
   // 그날 고가·저가 안에 들어오도록 흔들림 크기만 줄임 (모양·상관은 그대로)
-  const hi = calm ? Math.max(Math.log(bar.high), lo + span / 2) : Math.log(bar.high);
-  const lw = calm ? Math.min(Math.log(bar.low), lo - span / 2) : Math.log(bar.low);
+  const hi = calm && !wide ? Math.max(Math.log(bar.high), lo + span / 2) : Math.log(bar.high);
+  const lw = calm && !wide ? Math.min(Math.log(bar.low), lo - span / 2) : Math.log(bar.low);
   let scale = 1;
   for (let j = 1; j < n; j++) {
     if (dev[j] > 0 && trend[j] + dev[j] > hi) scale = Math.min(scale, Math.max(0, (hi - trend[j]) / dev[j]));
@@ -215,7 +248,7 @@ function fineTicks(
   for (let j = 0; j <= n; j++) {
     if (j === 0) out.push(bar.open);
     else if (j === n) out.push(bar.close);
-    else out.push(Math.min(calm ? Math.exp(hi) : bar.high, Math.max(calm ? Math.exp(lw) : bar.low, round(Math.exp(trend[j] + scale * dev[j])))));
+    else out.push(Math.min(calm && !wide ? Math.exp(hi) : bar.high, Math.max(calm && !wide ? Math.exp(lw) : bar.low, round(Math.exp(trend[j] + scale * dev[j])))));
   }
   return out;
 }

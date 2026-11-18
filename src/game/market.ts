@@ -57,6 +57,8 @@ export interface Bar {
   low: number;
   /** open → close 장중 흐름 */
   path: number[];
+  /** (v23, 서버 전용) 장중 속보 종목의 흔들림 크기 — 일봉 범위를 넓히기 전 값 (화면 데이터에는 안 보냄) */
+  span?: number;
 }
 
 export interface Macro {
@@ -787,6 +789,35 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       }
       const def = STOCK_MAP[dv.symbol];
       news.push({ day: d, kind: 'company', symbol: dv.symbol, sector: def.sector, headline: `${def.name} 배당락… 시가 ${dv.yieldPct.toFixed(1)}% 낮게 출발`, rumor: false, tone: 'bad', realTone: 'bad', related: [dv.symbol], label: '시황', ...(v17 ? { rel: relationsFor(def, [dv.symbol], undefined, version) } : {}) });
+    }
+  }
+  // (v23) 장중 속보 종목은 속보 전 흔들림 자리만큼 장중 가격이 일봉 범위를 넘을 수 있었음 → 일봉 고가·저가를 그만큼 넓혀
+  //   화면의 고가·저가와 실제 거래되는 장중 가격이 같게 (흔들림 크기는 넓히기 전 값으로 — 속보 종목이 티 나지 않게)
+  if (version >= 23) {
+    const done = new Set<string>();
+    for (const nw of news) {
+      if (nw.day >= totalDays || !nw.symbol || nw.at == null || nw.fake) continue;
+      const k = nw.symbol + ':' + nw.day;
+      if (done.has(k)) continue;
+      done.add(k);
+      const def = STOCK_MAP[nw.symbol];
+      if (!def) continue;
+      const krwRound = def.etf ? (v: number) => Math.max(5, Math.round(v / 5) * 5) : roundPrice;
+      for (const [arr, round, base0] of [
+        [bars[nw.symbol], krwRound, base[nw.symbol]],
+        [usd[nw.symbol], roundUsd, baseUsd[nw.symbol]],
+      ] as [Bar[] | undefined, (v: number) => number, number | undefined][]) {
+        const b = arr?.[nw.day];
+        if (!b) continue;
+        const lo = Math.log(b.open);
+        const span = Math.max(0.008, Math.log(b.high / b.low) - Math.abs(Math.log(b.close) - lo));
+        const prev = nw.day > 0 ? arr![nw.day - 1].close : (base0 ?? b.open);
+        const capUp = arr === usd[nw.symbol] ? prev * 1.5 : prev * LIMIT_UP;
+        const capDn = arr === usd[nw.symbol] ? prev * 0.5 : prev * LIMIT_DOWN;
+        b.span = span;
+        b.high = Math.max(b.high, Math.min(capUp, round(b.open * Math.exp(span / 2))));
+        b.low = Math.min(b.low, Math.max(capDn, round(b.open * Math.exp(-span / 2))));
+      }
     }
   }
   return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
