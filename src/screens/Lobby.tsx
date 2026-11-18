@@ -585,6 +585,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       /* 무시 */
     }
     if (online && account.status === 'visitor' && (ask || !welcomeSeen())) {
+      // 처음 온 날(이 창)에는 공지 창을 자동으로 띄우지 않음 — 환영·튜토리얼에 집중 (공지 띠는 그대로 보임)
+      if (!welcomeSeen()) {
+        try {
+          sessionStorage.setItem('stockduel.onboarding', '1');
+        } catch {
+          /* 무시 */
+        }
+      }
       markWelcomeSeen();
       gate.open('intro');
     }

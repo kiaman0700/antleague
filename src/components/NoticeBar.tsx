@@ -226,6 +226,8 @@ export function NoticeCenter({ onGo, quiet }: { onGo: (p: LobbyPage) => void; /*
     if (quiet || auto || opened || !list.length) return;
     let popped = 0;
     try {
+      // 처음 온 날(환영 창을 처음 본 창)이나 튜토리얼을 하는 중이면 자동으로 띄우지 않음 — 다음에 들어올 때
+      if (sessionStorage.getItem('stockduel.onboarding') || sessionStorage.getItem('stockduel.tourQ')) return;
       popped = Number(localStorage.getItem(POPPED_KEY)) || 0;
     } catch {
       return;
