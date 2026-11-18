@@ -774,7 +774,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="trophy" size={34} />
               </i>
               <h3>랭킹전은 회원만 할 수 있어요</h3>
-              <p className="muted">실력이 비슷한 회원끼리 겨루고, 이기면 랭킹 점수가 올라요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+              <p className="muted">가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
               <div className="rg-actions">
                 <button className="btn primary" onClick={() => go('signup')}>
                   <Icon name="userPlus" /> 회원가입
@@ -900,7 +900,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
-              <small>{!member ? '회원만 · 모두 같은 시장, 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중 — 오늘도 이어 가요` : '모두 같은 시장, 하루 한 번'}</small>
+              <small>{!member ? '회원만 · 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중` : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
