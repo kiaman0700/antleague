@@ -1753,3 +1753,6 @@ p { text-wrap: pretty; }
 .daily-friends .db-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .df-together { display: inline-flex; align-items: center; gap: 2px; flex: none; font-size: 12px; font-weight: 700; color: #f5b83d; }
 .daily-friends .df-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* PC 일정 띠: 칸이 좁아져도 날짜 숫자(10~20)가 세로로 쪼개지지 않게 (1366px 노트북에서 '1/0' 으로 보였음) */
+.desk .tl-cell { min-width: 20px; }
+.desk .tl-cell small { white-space: nowrap; letter-spacing: -0.03em; }
