@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { streakOf } from './streak';
+import { streakOf, togetherDays } from './streak';
 
 const ds = (start: string, n: number, skip: number[] = []) => {
   const out: string[] = [];
@@ -27,4 +27,18 @@ describe('오늘의 도전 연속 기록', () => {
     expect(r).toMatchObject({ streak: 2, best: 4 });
   });
   it('기록 없음', () => expect(streakOf([], '2026-11-01').streak).toBe(0));
+});
+
+describe('친구와 함께 이어 온 날', () => {
+  const T = '2026-11-19';
+  it('둘 다 한 날만, 오늘 둘 다 했으면 오늘부터', () => {
+    expect(togetherDays(['2026-11-17', '2026-11-18', T], ['2026-11-17', '2026-11-18', T], T)).toEqual({ days: 3, today: true });
+  });
+  it('오늘 한쪽만 했으면 어제까지로 (끊긴 게 아님)', () => {
+    expect(togetherDays(['2026-11-17', '2026-11-18', T], ['2026-11-17', '2026-11-18'], T)).toEqual({ days: 2, today: false });
+  });
+  it('한 사람이라도 빠진 날에서 끊김', () => {
+    expect(togetherDays(['2026-11-16', '2026-11-18'], ['2026-11-16', '2026-11-17', '2026-11-18'], T)).toEqual({ days: 1, today: false });
+    expect(togetherDays([], [T], T)).toEqual({ days: 0, today: false });
+  });
 });

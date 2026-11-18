@@ -17,7 +17,7 @@ export interface DailyInfo {
   total?: number;
   top?: { rank: number; nickname: string; ret: number; me: boolean }[];
   /** 친구들의 오늘 기록 (친구만, 닉네임·수익률) */
-  friends?: { nickname: string; ret: number | null; finished: boolean }[];
+  friends?: { nickname: string; ret: number | null; finished: boolean; played?: boolean; together?: number }[];
   /** 연속 기록 (서버 계산) */
   streak?: { streak: number; best: number; freezes: number; playedToday: boolean };
 }
@@ -82,15 +82,31 @@ export function DailyFriends({ info }: { info: DailyInfo }) {
   return (
     <div className="daily-friends">
       <h4>
-        <Icon name="users" size={14} /> 오늘 친구들
+        <Icon name="users" size={14} /> 친구들
       </h4>
       <ol className="daily-board">
-        {f.map((r, i) => (
-          <li key={i}>
-            <span className="db-name">{r.nickname}</span>
-            {r.finished && r.ret !== null ? <b className={r.ret > 0 ? 'up' : r.ret < 0 ? 'down' : ''}>{pct(r.ret, 1)}</b> : <small className="muted">도전 중</small>}
-          </li>
-        ))}
+        {f.map((r, i) => {
+          const tg = r.together ?? 0;
+          return (
+            <li key={i}>
+              <span className="db-name">
+                <span className="df-nick">{r.nickname}</span>
+                {tg >= 2 && (
+                  <small className="df-together" title="둘 다 오늘의 도전을 한 날이 이어진 수">
+                    <Icon name="flame" size={12} /> 함께 {tg}일
+                  </small>
+                )}
+              </span>
+              {r.played === false ? (
+                <small className="muted">오늘 아직</small>
+              ) : r.finished && r.ret !== null ? (
+                <b className={r.ret > 0 ? 'up' : r.ret < 0 ? 'down' : ''}>{pct(r.ret, 1)}</b>
+              ) : (
+                <small className="muted">도전 중</small>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

@@ -93,4 +93,22 @@ if (sa.s === 200 && sb.s === 200) {
 }
 const rooms = (await A({ action: 'rooms' })).b ?? [];
 ok('도전 방은 방 목록에 안 나옴', !rooms.some((r) => /오늘의 도전/.test(r.title ?? '')));
+// 친구들 칸: A·B 를 잠깐 친구로 → 둘 다 오늘 했으니 A 의 친구들에 B (했음·함께 이어 온 날 숫자, 계정 id 없음) → 끝나면 친구 끊기
+{
+  const pB = (await B({ action: 'profile' })).b;
+  const nB = pB?.profile?.nickname ?? pB?.nickname;
+  for (const x of [...((await A({ action: 'friends' })).b?.friends ?? [])]) await A({ action: 'friendRemove', id: x.id });
+  const req = await A({ action: 'friendRequest', nickname: nB });
+  const inc = (await B({ action: 'friends' })).b?.incoming ?? [];
+  const mine = inc.find((x) => x.nickname !== undefined);
+  if (req.s === 200 && mine) {
+    await B({ action: 'friendRespond', id: mine.id, accept: true });
+    const fi = (await A({ action: 'dailyInfo' })).b;
+    const fB = (fi?.friends ?? []).find((x) => x.nickname === nB);
+    ok('친구들 칸에 오늘 한 친구 (했음·함께 n일)', !!fB && fB.played === true && typeof fB.together === 'number' && fB.together >= 1, JSON.stringify(fi?.friends));
+    ok('친구들 칸에 계정 id 없음', !/user_id|[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify(fi?.friends)));
+    for (const x of [...((await A({ action: 'friends' })).b?.friends ?? [])]) await A({ action: 'friendRemove', id: x.id });
+  } else ok('친구 신청 (시험 준비)', false, JSON.stringify(req.b) + ' ' + nB);
+}
+
 done();
