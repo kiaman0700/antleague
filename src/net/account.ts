@@ -3,7 +3,7 @@
  * 아이디 로그인: 서버가 아이디에 맞는 무작위 가짜 주소(…@u.stockduel.invalid)를 알려 주고 그 주소로 비밀번호 로그인 (메일은 가지 않음)
  */
 import { useEffect, useSyncExternalStore } from 'react';
-import { supabase } from '../lib/supabase';
+import { accessToken, supabase } from '../lib/supabase';
 import { saveNick } from '../session';
 import { api } from './api';
 import { resetMatch } from './matchStore';
@@ -205,7 +205,6 @@ export async function logout() {
 
 /** 게스트로 시작: 이 브라우저에 게스트 계정(세션)을 만듦 → 둘러보기에서 벗어남 */
 export async function startGuest() {
-  const { accessToken } = await import('../lib/supabase');
   await accessToken();
   await refreshAccount();
 }
