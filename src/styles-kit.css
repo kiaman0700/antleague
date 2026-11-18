@@ -1342,3 +1342,6 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .pw-eye:focus-visible { outline: 2px solid var(--accent, #6b58ee); outline-offset: -2px; }
 /* 창(Sheet) 제목이 바텀시트용 여백(16px)을 물려받아 내용보다 16px 안쪽에 있던 것 — 창 안에서는 내용과 같은 줄 */
 .sheet-modal > .sheet-head { padding: 0 0 6px; margin-right: -8px; }
+/* 카드 설명 줄 수가 달라 같은 줄 카드끼리 이름 높이가 어긋나던 것 — 설명 칸을 늘 최대 줄 수만큼 */
+.gc-desc { min-height: calc(1.4em * 3); }
+@media (max-width: 380px) { .gc-desc { min-height: calc(1.4em * 4); } }
