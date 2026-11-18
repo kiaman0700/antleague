@@ -1788,3 +1788,6 @@ p { text-wrap: pretty; }
 .tut-pulse { position: relative; z-index: 2; outline: 2px solid #8b7bff; outline-offset: 2px; animation: tutPulse 1.2s ease-in-out infinite; }
 @keyframes tutPulse { 0%, 100% { outline-color: rgba(139, 123, 255, 1); box-shadow: 0 0 0 0 rgba(139, 123, 255, 0.5); } 50% { outline-color: rgba(139, 123, 255, 0.5); box-shadow: 0 0 0 6px rgba(139, 123, 255, 0); } }
 @media (prefers-reduced-motion: reduce) { .tut-pulse { animation: none; } }
+/* 튜토리얼 말풍선: 위에 뜬 창 둘레 자리가 좁으면 제목·할 일만 */
+.tut-bubble.compact p { display: none; }
+.tut-bubble.compact { padding-top: 10px; padding-bottom: 10px; }

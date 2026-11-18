@@ -178,7 +178,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
       const kb = el?.querySelector('.btn.primary')?.getBoundingClientRect();
       setKeyBtn((p) => (kb && kb.width > 0 ? (p && p.top === kb.top && p.bottom === kb.bottom ? p : { top: kb.top, bottom: kb.bottom }) : null));
-      const m = document.querySelector('.gc-detail')?.getBoundingClientRect();
+      // 카드 자세히 창·소식 고르기 창처럼 위에 뜬 창 (튜토리얼 자신의 확인 창은 빼고)
+      const m = [...document.querySelectorAll<HTMLElement>('.gc-detail, .modal-bg > .modal, .modal-bg > [role="dialog"]')].map((e) => e.getBoundingClientRect()).find((r) => r.width > 0 && r.height > 0);
       setAvoid((p) => (m ? (p && p.top === m.top && p.bottom === m.bottom ? p : { top: m.top, bottom: m.bottom }) : null));
     };
     find();
@@ -230,6 +231,8 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
   // 위아래 자리가 없을 때: PC 는 옆에 자리가 있으면 옆으로, 아니면 눌러야 할 버튼 반대쪽(버튼이 아래쪽이면 화면 위)
   const sideLeft = rect && !ctx.mobile ? (Wd - rect.right >= 404 ? rect.right + 12 : rect.left >= 404 ? rect.left - 392 : null) : null;
   const keyLow = !!keyBtn && keyBtn.bottom > H - 230;
+  // 위에 뜬 창 위·아래 남는 자리가 좁으면 말풍선을 줄여(제목·할 일만) 창을 가리지 않게
+  const compact = !!avoid && Math.max(avoid.top, H - avoid.bottom) < 190;
   const avoidStyle: React.CSSProperties | null = avoid
     ? // 위 창 위쪽에 자리가 있으면 위에, 아니면 아래에 (가로는 화면 폭에 맞춤)
       avoid.top >= H - avoid.bottom
@@ -259,12 +262,13 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
 
   return (
     <div className="tut-layer" aria-live="polite">
-      {rect ? (
+      {/* 위에 뜬 창이 있으면 비춘 테두리가 그 창 위로 그려지지 않게 숨김 */}
+      {avoid ? null : rect ? (
         <div className="tut-spot" style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }} />
       ) : (
         <div className="tut-dim" />
       )}
-      <div className="tut-bubble" style={bubbleStyle} role="dialog" aria-label={`튜토리얼 ${step + 1}단계: ${s.title}`}>
+      <div className={'tut-bubble' + (compact ? ' compact' : '')} style={bubbleStyle} role="dialog" aria-label={`튜토리얼 ${step + 1}단계: ${s.title}`}>
         <div className="tut-head">
           <span className="tut-step">
             {step + 1} / {TUTORIAL_STEPS.length}
