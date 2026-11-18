@@ -81,7 +81,7 @@ export function Post({ p, onSelect, onSelectSector, past, time, daySec }: { p: P
             {p.author}
             {p.verified && (
               // 인증 배지: 이 게임만의 톱니 도장 + '인증' 글자 (진짜라는 보증이 아니라 '본인 맞음' 표시)
-              <span className="cf-verified" title="인증된 계정이에요 — 본인이 맞다는 표시예요. 글이 더 잘 맞지만 틀릴 때도 있어요" aria-label="인증된 계정">
+              <span className="cf-verified" role="img" title="인증된 계정이에요 — 본인이 맞다는 표시예요. 글이 더 잘 맞지만 틀릴 때도 있어요" aria-label="인증된 계정">
                 <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
                   <path d="M8 .8 l1.9 1.4 2.3 -.1 .7 2.2 1.9 1.4 -.7 2.2 .7 2.2 -1.9 1.4 -.7 2.2 -2.3 -.1 L8 15.2 6.1 13.8 3.8 13.9 3.1 11.7 1.2 10.3 1.9 8.1 1.2 5.9 3.1 4.5 3.8 2.3 6.1 2.4 Z" fill="#fff" />
                   <path d="M5 8.2 l2 2 l4 -4.2" fill="none" stroke="#6b58ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
