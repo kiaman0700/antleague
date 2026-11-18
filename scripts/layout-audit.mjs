@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 // 정렬·크기 빠른 점검 (사람이 보는 도구). 실행: BASE=http://localhost:5173 node scripts/layout-audit.mjs [phone|pc] [화면들]
 // 화면마다: 글자 크기 종류(단계 밖 크기), 1~4px 어긋난 왼쪽 정렬, 한 줄 버튼 높이 차이, 아이콘·글자 세로 중심 어긋남, 상자 밖으로 넘친 글
 import { chromium } from 'playwright-core';
@@ -125,7 +126,18 @@ async function startGuest(ctx, p, base) {
 const ctx = await browser.newContext(opts);
 if (kind === 'phone') await ctx.addInitScript(() => { Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }); Object.defineProperty(navigator, 'userAgentData', { get: () => undefined }); });
 const page = await ctx.newPage();
-await startGuest(ctx, page, BASE);
+// 회원 화면 점검: A11Y_SESSION=세션 파일({key,val}) — a11y-audit.mjs 와 같음 (토큰은 출력하지 않음)
+if (process.env.A11Y_SESSION) {
+  const sess = JSON.parse(fs.readFileSync(process.env.A11Y_SESSION, 'utf8'));
+  await ctx.addInitScript((x) => {
+    try {
+      localStorage.setItem(x.key, x.val);
+      localStorage.setItem('stockduel.welcomed', '1');
+      localStorage.setItem('stockduel.tourSkipped', '1');
+      localStorage.setItem('stockduel.tutorial', '1');
+    } catch {}
+  }, sess);
+} else await startGuest(ctx, page, BASE);
 const allSizes = {};
 for (const r of routes) {
   await page.goto(BASE + '/' + (r === 'practice' ? 'learn' : r), { waitUntil: 'domcontentloaded' });
