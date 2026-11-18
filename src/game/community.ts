@@ -206,7 +206,7 @@ export function communityPosts(m: Market, day: number, key: string): Post[] {
     const text = tpl
       .replace(/\{w\}/g, w)
       .replace(/\{t\}/g, whenText(when, at))
-      .replace(/\{h\}/g, name.replace(/\s/g, ''));
+      .replace(/\{h\}/g, name.replace(/[\s·]/g, ''));
     const mult = SECTOR_NEWS_MULT[sector] ?? 1;
     out.push({
       id: `${day}-${i}`,
