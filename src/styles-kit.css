@@ -546,7 +546,7 @@ body { background: var(--bg) !important; }
 @media (prefers-reduced-motion: reduce) { .toast.news { animation: none; } }
 
 /* ===== 티어표: 브론즈 → 마스터로 오르는 계단 (2026-11-17) ===== */
-.tier-ladder .tl-stairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(70px, 1fr)); align-items: end; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.tier-ladder .tl-stairs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(70px, 1fr)); align-items: end; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
 .tier-ladder li.tl-step { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; padding: 0; background: none; box-shadow: none; border-radius: 0; }
 .hub-grid > .tier-ladder { grid-column: 1 / -1; }
 .tl-emb { display: grid; place-items: center; margin-bottom: -6px; position: relative; z-index: 1; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
@@ -562,7 +562,7 @@ body { background: var(--bg) !important; }
 .tier-ladder li.tl-step.me .tl-block { outline: 2px solid var(--tc); outline-offset: 2px; }
 .tl-me { position: absolute; top: -26px; right: 4px; z-index: 2; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; background: var(--tc); color: #111; }
 @media (max-width: 560px) {
-  .tier-ladder .tl-stairs { grid-template-columns: repeat(6, 84px); padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .tier-ladder .tl-stairs { grid-template-columns: repeat(7, 84px); padding-bottom: 6px; scroll-snap-type: x proximity; }
   .tl-step { scroll-snap-align: start; }
 }
 .tl-emb svg { max-width: 100%; height: auto; }
