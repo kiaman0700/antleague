@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateMarket } from '../game/market';
-import { communityPosts, REACT_VERSION } from '../game/community';
+import { communityPosts, MACRO_REACT_TEXTS, REACT_VERSION } from '../game/community';
 
 const mk = (i: number, v = 25) => {
   const m = generateMarket(500 + i, 15, v, 'v25-' + i);
@@ -41,6 +41,23 @@ describe('v25 모든 소식에 커뮤니티 반응', () => {
       const b = communityPosts(flipped, d, m.salt! + 'x').filter((p) => p.id.includes('-n'));
       expect(JSON.stringify(b.map((p) => [p.at, p.text, p.likes, p.tone]))).toBe(JSON.stringify(a.map((p) => [p.at, p.text, p.likes, p.tone])));
     }
+  });
+
+  it('거시 소식 반응 글은 엉뚱한 업종(에너지) 꼬리표가 아니라 영향받는 업종으로', () => {
+    let seen = 0;
+    for (let i = 0; i < 20; i++) {
+      const m = mk(i);
+      for (let d = 0; d < m.totalDays; d++) {
+        for (const n of m.news.filter((x) => x.day === d && x.kind === 'macro' && !x.sector && x.macro !== 'oil')) {
+          const ps = communityPosts(m, d, m.salt!).filter((p) => p.re && p.target.day === d && p.target.at === (n.at ?? 0) && !p.symbol);
+          for (const p of ps) if (MACRO_REACT_TEXTS.some((t) => t === p.text)) {
+            expect(p.sector).not.toBe('energy');
+            seen++;
+          }
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(5);
   });
 
   it('v24 판의 커뮤니티 글은 그대로 (반응 글 없음)', () => {

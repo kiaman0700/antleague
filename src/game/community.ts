@@ -390,6 +390,10 @@ const MACRO_REACT: Record<MacroType, { good: string[]; bad: string[] }> = {
     bad: ['밤사이 미국 빠졌네… 오늘 우리 장도 영향 받을 듯', '미국 주식 들고 있는 사람 손… 환율까지 보면 더 아픔', '미국 기술주 빠지면 우리 반도체도 같이 맞는다'],
   },
 };
+/** 시험용: 거시 반응 문구 전부 */
+export const MACRO_REACT_TEXTS: string[] = [];
+const MACRO_SECTOR: Record<MacroType, string> = { rate: 'build', fed: 'us_tech', oil: 'air', fx: 'air', kr: 'etf', us: 'us_tech' };
+for (const v of Object.values(MACRO_REACT)) MACRO_REACT_TEXTS.push(...v.good, ...v.bad);
 const COMPANY_REACT = {
   good: ['{n} 뉴스 봤음? 오늘 {n} 토론방 난리남 ㅋㅋ', '{n} 호재 떴다!! 근데 이미 오른 거 아님?', '{n} 들고 있던 사람 축하합니다 🎉', '{n} 이 정도면 {sec} 업종 전체 분위기도 좋아지겠다'],
   bad: ['{n} 악재… 물린 사람 손 ✋', '{n} 뉴스 보고 바로 던졌다 ㅠㅠ', '{n} 토론방 분위기 초상집…', '{n} 이러면 {sec} 업종 다른 회사들도 같이 눈치 보겠다'],
@@ -424,7 +428,8 @@ function reactAll(m: Market, day: number, key: string, out: Post[]) {
     const count = 1 + (big ? 1 : 0) + (r() < 0.55 ? 1 : 0);
     const tone = n.tone;
     const sym = n.symbol ?? undefined;
-    const sec = n.sector ?? (sym ? STOCK_MAP[sym]?.sector : undefined) ?? 'energy';
+    // 거시 소식은 가장 크게 영향받는 업종 꼬리표 (금리 → 건설·부동산, 연준·미국 → 미국 빅테크, 유가·환율 → 항공·여행, 국내 증시 → ETF)
+    const sec = n.sector ?? (sym ? STOCK_MAP[sym]?.sector : undefined) ?? (n.macro ? MACRO_SECTOR[n.macro] : 'etf');
     const nm = sym ? STOCK_MAP[sym]?.name ?? '' : '';
     const secName = SECTOR_MAP[sec]?.name ?? '';
     const rels = Object.entries(n.rel ?? {}).filter(([s]) => STOCK_MAP[s]);

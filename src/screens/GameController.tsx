@@ -1162,8 +1162,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <Sheet title={<><CardIcon kind="detector" size={18} /> 어떤 소식을 확인할까요?</>} onClose={() => setDetectorPick(false)}>
           <p className="muted small">하나만 골라요. 고른 소식이 진짜인지 가짜인지 알려줘요.</p>
           <ul className="det-pick">
-            {/* (v20) 오늘 올라온 커뮤니티·SNS 글 (새 글이 위) */}
-            {[...(view.community ?? [])].sort((a, b) => b.at - a.at).map((p) => (
+            {/* (v20) 오늘 올라온 커뮤니티·SNS 글 (새 글이 위). 이미 나온 소식에 대한 반응 글(re)은 늘 진짜라 확인할 필요가 없어 뺌 — 카드를 헛되이 쓰지 않게 */}
+            {(view.community ?? []).filter((p) => !p.re).sort((a, b) => b.at - a.at).map((p) => (
               <li key={'p' + p.id}>
                 <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: p.text }))}>
                   <span className="det-kind">{PLATFORMS[p.platform].name}{p.verified ? ' · 인증' : ''}</span>
@@ -1193,7 +1193,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 </li>
               ))}
           </ul>
-          {!(view.rumors ?? []).length && !(view.community ?? []).length && !(market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
+          {!(view.rumors ?? []).length && !(view.community ?? []).some((p) => !p.re) && !(market?.news ?? []).some((n) => n.day === view.room.day) && <p className="muted small">오늘은 확인할 소식이 없어요.</p>}
         </Sheet>
       )}
       {fakeModal && (
