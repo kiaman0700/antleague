@@ -29,21 +29,27 @@ export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
  * 튜토리얼 시나리오: 첫날 아침에 '좋은 기업 뉴스'가 있는 시장을 골라 고정.
  * 시간은 흐르지 않고(장 마감은 직접), 봇이 함께 함
  */
-/** 튜토리얼은 미리 정한 장면(첫날 오를 좋은 뉴스)을 찾아야 해서 비밀값 없는 v3 규칙 */
-const TUTORIAL_VERSION = 3;
+/**
+ * 튜토리얼도 늘 최신 규칙 (사용자 요청 2026-11-18 — 규칙이 바뀌면 튜토리얼도 같이).
+ * 장면(첫날 오르는 좋은 기업 뉴스)을 찾으려고 비밀값은 공개된 고정값 — 튜토리얼 시장은 숨길 게 없음
+ */
+export const TUTORIAL_VERSION = CURRENT_RULES_VERSION;
+/** v4+ 시장은 비밀값으로만 만들어져서, 장면을 찾을 때 비밀값을 바꿔 가며 찾음 (공개 값) */
+const tutorialSalt = (n: number) => `tutorial-${n}`;
 
 export function makeTutorial(nickname: string): SoloSave {
   let seed = 7000;
   let pick: { symbol: string; headline: string } | null = null;
   for (; seed < 9000 && !pick; seed++) {
-    const m = marketFor(seed, 6, TUTORIAL_VERSION);
+    const m = marketFor(seed, 6, TUTORIAL_VERSION, tutorialSalt(seed));
     const n = m.news.find((x) => x.day === 0 && x.kind === 'company' && x.tone === 'good' && !x.rumor && !x.fake && x.at == null && x.symbol && !STOCK_MAP[x.symbol].etf);
-    if (n && m.bars[n.symbol!][0].close > m.bars[n.symbol!][0].open) pick = { symbol: n.symbol!, headline: n.headline };
+    // 최신 규칙은 아침 뉴스가 시가에 먼저 반영돼서(장중엔 되돌림도 있음) '전날보다 2% 넘게 오른 종목'으로 고름
+    if (n && m.bars[n.symbol!][0].close > m.base[n.symbol!] * 1.02 && m.bars[n.symbol!][0].close >= m.bars[n.symbol!][0].open) pick = { symbol: n.symbol!, headline: n.headline };
   }
   seed--;
   const now = new Date().toISOString();
   const data: GameData = {
-    room: { id: 'tutorial', code: 'TUTOR0', seed, status: 'playing', total_days: 6, turn_seconds: 180, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: TUTORIAL_VERSION },
+    room: { id: 'tutorial', code: 'TUTOR0', seed, status: 'playing', total_days: 6, turn_seconds: 180, day: 0, deadline: null, day_deadline: null, host_id: 'me', version: TUTORIAL_VERSION, salt: tutorialSalt(seed) },
     players: [
       { id: 'me', room_id: 'tutorial', nickname: nickname || '나', mode: 'easy', ready: true, ended_day: -1, created_at: '1', version: 0 },
       { id: TUTORIAL_BOT.id, room_id: 'tutorial', nickname: TUTORIAL_BOT.nickname, mode: 'easy', ready: true, ended_day: -1, created_at: '2', version: 0 },
@@ -56,7 +62,7 @@ export function makeTutorial(nickname: string): SoloSave {
     ],
     orders: [],
   };
-  const m = marketFor(seed, 6, TUTORIAL_VERSION);
+  const m = marketFor(seed, 6, TUTORIAL_VERSION, tutorialSalt(seed));
   // 봇: 첫날 지수 ETF 를 조금 삼
   data.trades.push({ id: 'tut-b1', player_id: TUTORIAL_BOT.id, day: 0, symbol: 'KIDX', side: 'buy', qty: 200, price: m.bars.KIDX[0].open, fee: 0.0015, created_at: now });
   return { nickname: nickname || '나', data, tutorial: pick ?? { symbol: 'CORE', headline: '' } };

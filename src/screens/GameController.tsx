@@ -970,6 +970,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     headline: tutorialInfo?.headline ?? '',
     myTrades: view?.myTrades.length ?? 0,
     detectorUsed: (view?.myItems.used.detector ?? 0) > 0,
+    // 다른 정보 카드를 먼저 써서 오늘은 감별기를 못 씀 (정보 카드 하루 1장) — 튜토리얼이 막히지 않게
+    otherInfoUsed: (view?.myItems.used.detector ?? 0) === 0 && [...usedToday].some((k) => ITEM_MAP[k]?.type === 'info'),
     serverDay: serverDay ?? 0,
     closing: closing !== null,
     viewDay: viewDay ?? 0,

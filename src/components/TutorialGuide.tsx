@@ -15,6 +15,8 @@ export interface TutorialCtx {
   headline: string;
   myTrades: number;
   detectorUsed: boolean;
+  /** 다른 정보 카드를 먼저 써서 오늘은 감별기를 못 씀 */
+  otherInfoUsed: boolean;
   serverDay: number;
   closing: boolean;
   viewDay: number;
@@ -39,7 +41,7 @@ export interface TutorialStep {
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: '개미리그에 온 걸 환영해요',
-    text: () => '마지막 날 재산이 가장 많은 사람이 이겨요. 이 연습에서는 1,000만원으로 시작해요(실제 대결은 100만원). 오늘 상대는 연습봇이에요. 튜토리얼 동안은 시간이 멈춰 있으니 천천히 따라오세요.',
+    text: () => '마지막 날 재산이 가장 많은 사람이 이겨요. 실제 대결처럼 100만원으로 시작하고, 오늘 상대는 연습봇이에요. 튜토리얼 동안은 시간이 멈춰 있으니 천천히 따라오세요.',
   },
   {
     title: '내 재산',
@@ -53,8 +55,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tab: 'news',
   },
   {
+    title: '찌라시(장 전 소문)',
+    text: () => "소식 칸의 '찌라시'에는 장이 열리기 전에 도는 소문이 있어요. 일부는 그날 진짜 속보의 단서지만 헛소문도 섞여 있어요. 실제 대결에선 날마다 장 전 시간에 찌라시를 보고 예약 주문을 걸어 둘 수 있어요.",
+    target: '.news-panel',
+    tab: 'news',
+  },
+  {
     title: '뉴스에서 종목 찾기',
-    text: (c) => `"${c.headline}" — 좋은 소식이네요. 뉴스 아래 관련 종목에서 ${josa(c.symbolName, '을', '를')} 눌러 보세요.`,
+    text: (c) => `‘${c.headline.replace(/"/g, '')}’ — 좋은 소식이네요. 뉴스 아래 관련 종목에서 ${josa(c.symbolName, '을', '를')} 눌러 보세요.`,
     target: '.news-panel',
     tab: 'news',
     wait: (c) => c.selected === c.symbol,
@@ -90,15 +98,18 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '루머 감별기 써 보기',
-    text: () => '루머 감별기를 써 보세요. 연습에선 오늘 뉴스를 모두 판정해 주지만, 실제 대결에선 오늘 소식(뉴스·찌라시) 중 하나를 골라 그것만 진짜인지 알려줘요. 값도 비싸니 큰돈이 걸린 소식에 쓰세요.',
+    text: (c) =>
+      c.otherInfoUsed
+        ? '방금 다른 정보 카드를 써서 오늘은 루머 감별기를 쓸 수 없어요 — 정보 카드는 하루 한 장만 쓸 수 있어요. 감별기는 오늘 소식(뉴스·찌라시) 중 하나를 골라 그것만 진짜인지 알려 줘요. 내일 써 보세요.'
+        : '루머 감별기를 써 보세요. 오늘 소식(뉴스·찌라시) 중 하나를 골라 그것만 진짜인지 알려 줘요. 정보 카드는 하루 한 장만 쓸 수 있으니 큰돈이 걸린 소식에 쓰세요.',
     target: '.p-cards, .m-page .cards',
     tab: 'cards',
-    wait: (c) => c.detectorUsed,
-    waitHint: '루머 감별기 카드를 누르고 "사용하기"를 눌러 보세요',
+    wait: (c) => c.detectorUsed || c.otherInfoUsed,
+    waitHint: '루머 감별기 카드를 누르고 "사용하기" → 확인할 소식을 골라 보세요',
   },
   {
     title: '감별 결과',
-    text: () => '뉴스마다 사실 / 가짜 표시가 붙었어요. 가짜 뉴스를 믿고 사면 손해를 볼 수 있어요.',
+    text: () => '고른 소식에 사실 / 가짜 표시가 붙었어요. 가짜 소식을 믿고 사면 손해를 볼 수 있어요. 지난 소문의 진위는 다음 날 공개돼요.',
     target: '.detector-sum, .news-panel',
     tab: 'news',
   },
