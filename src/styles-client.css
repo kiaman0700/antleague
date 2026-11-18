@@ -48,7 +48,7 @@
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 75%);
   z-index: 0;
 }
-.lobby-shell.client > *:not(.modal-bg):not(.invite-pop):not(.mm-notice):not(.mm-pill):not(.rc-pill):not(.lobby-bottom):not(.ui-toast) {
+.lobby-shell.client > *:not(.modal-bg):not(.invite-pop):not(.mm-notice):not(.mm-pill):not(.rc-pill):not(.lobby-bottom):not(.ui-toast):not(.skip-link) {
   position: relative;
   z-index: 1;
 }
