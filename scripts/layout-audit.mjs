@@ -91,9 +91,35 @@ const audit = () => {
 };
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
+
+/** 게스트로 시작 (고르기 전 '둘러보기'면 연습·화면 편집이 홈으로 돌아가서) — 환영 창·튜토리얼 권하기는 안 뜨게 */
+async function startGuest(ctx, p, base) {
+  await ctx.addInitScript(() => {
+    try {
+      localStorage.setItem('stockduel.welcomed', '1');
+      localStorage.setItem('stockduel.tourSkipped', '1');
+      localStorage.setItem('stockduel.tutorial', '1');
+    } catch {}
+  });
+  await p.goto(base + '/more', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1500);
+  const go = p.locator('button', { hasText: '시작하기' }).first();
+  if (!(await go.count())) return;
+  await go.click();
+  await p.waitForTimeout(400);
+  const d = p.locator('[role=dialog]').last();
+  await d.locator('button', { hasText: '게스트로 시작' }).click().catch(() => {});
+  await p.waitForTimeout(300);
+  await d.locator('input').fill('점검개미' + Math.floor(Math.random() * 900)).catch(() => {});
+  await p.waitForTimeout(1200);
+  await d.locator('button[type=submit]').click().catch(() => {});
+  await p.waitForTimeout(2500);
+}
+
 const ctx = await browser.newContext(opts);
 if (kind === 'phone') await ctx.addInitScript(() => { Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }); Object.defineProperty(navigator, 'userAgentData', { get: () => undefined }); });
 const page = await ctx.newPage();
+await startGuest(ctx, page, BASE);
 const allSizes = {};
 for (const r of routes) {
   await page.goto(BASE + '/' + (r === 'practice' ? 'learn' : r), { waitUntil: 'domcontentloaded' });

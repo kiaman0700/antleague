@@ -98,6 +98,31 @@ const audit = () => {
   return out;
 };
 
+
+/** 게스트로 시작 (고르기 전 '둘러보기'면 연습·화면 편집이 홈으로 돌아가서) — 환영 창·튜토리얼 권하기는 안 뜨게 */
+async function startGuest(ctx, p, base) {
+  await ctx.addInitScript(() => {
+    try {
+      localStorage.setItem('stockduel.welcomed', '1');
+      localStorage.setItem('stockduel.tourSkipped', '1');
+      localStorage.setItem('stockduel.tutorial', '1');
+    } catch {}
+  });
+  await p.goto(base + '/more', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1500);
+  const go = p.locator('button', { hasText: '시작하기' }).first();
+  if (!(await go.count())) return;
+  await go.click();
+  await p.waitForTimeout(400);
+  const d = p.locator('[role=dialog]').last();
+  await d.locator('button', { hasText: '게스트로 시작' }).click().catch(() => {});
+  await p.waitForTimeout(300);
+  await d.locator('input').fill('점검개미' + Math.floor(Math.random() * 900)).catch(() => {});
+  await p.waitForTimeout(1200);
+  await d.locator('button[type=submit]').click().catch(() => {});
+  await p.waitForTimeout(2500);
+}
+
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 for (const [label, opts] of SIZES) {
   const ctx = await browser.newContext(opts);
@@ -105,6 +130,7 @@ for (const [label, opts] of SIZES) {
   // 사파리처럼 '기기 종류' 정보 없음 (시험용 크롬이 데스크톱이라고 알려 주지 않게) — devices.mjs 와 같음
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'userAgentData', { get: () => undefined }));
   const p = await ctx.newPage();
+  await startGuest(ctx, p, BASE);
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   for (const r of ROUTES) {
