@@ -71,16 +71,33 @@ async function session() {
   }
   // 이번 실행에서 아직 안 쓴 계정을 차례로 (다 썼으면 처음부터 다시 — 테스트마다 새 방을 쓰므로 괜찮음)
   if (used.size >= c.tokens.length) used.clear();
+  const dead = [];
   for (let k = 0; k < c.tokens.length; k++) {
     const i = (c.next + k) % c.tokens.length;
     if (used.has(i)) continue;
     const { data, error } = await sb.auth.refreshSession({ refresh_token: c.tokens[i] });
-    if (error || !data.session) continue;
+    if (error || !data.session) {
+      dead.push(i);
+      continue;
+    }
     c.tokens[i] = data.session.refresh_token;
     c.next = (i + 1) % c.tokens.length;
     saveCache(c);
     used.add(i);
     return data.session.access_token;
+  }
+  // 게스트 자동 삭제(052, 사흘 동안 활동 없으면 삭제)로 지워진 계정은 목록에서 빼고 새로 만들어 봄
+  if (dead.length && !session.retried) {
+    c.tokens = c.tokens.filter((_, i) => !dead.includes(i));
+    c.next = 0;
+    used.clear();
+    saveCache(c);
+    session.retried = true;
+    try {
+      return await session();
+    } finally {
+      session.retried = false;
+    }
   }
   throw new Error('테스트 계정이 모자라요 (익명 계정 생성 제한). 잠시 후 다시 실행해 주세요.');
 }
