@@ -1902,6 +1902,10 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
   };
   return (
     <div className={'lobby-shell client' + (socialFold ? ' social-folded' : '')}>
+      {/* 키보드로 쓸 때: 위 메뉴를 건너뛰고 바로 본문 (Tab 을 처음 누르면 보임) */}
+      <a className="skip-link" href="#lobby-main" onClick={(e) => (e.preventDefault(), document.getElementById('lobby-main')?.focus())}>
+        본문으로 건너뛰기
+      </a>
       <TopBar
         active={active}
         account={account}
@@ -1924,7 +1928,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         onAdmin={() => go('admin')}
       />
       <div className="cl-body">
-        <main className="lobby-main">
+        <main className="lobby-main" id="lobby-main" tabIndex={-1}>
           <div className="lobby-topbar">
             <Brand />
             <span className="lt-right">

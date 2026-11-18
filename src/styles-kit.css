@@ -1759,3 +1759,7 @@ p { text-wrap: pretty; }
 /* 대결 찾기 옆: 찾는 사람이 없을 때 봇전 바로가기 (텍스트 버튼) */
 .st-status .st-bots { padding: 0; border: 0; background: none; color: #b9adff; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .st-status .st-bots:hover { color: #d4ccff; }
+/* 본문으로 건너뛰기: 평소엔 숨기고 키보드 포커스 때만 왼쪽 위에 */
+.skip-link { position: fixed; left: 12px; top: -60px; z-index: 1000; padding: 10px 14px; border-radius: 10px; background: #6b58ee; color: #fff; font-weight: 700; text-decoration: none; transition: top 0.15s; }
+.skip-link:focus { top: 12px; outline: 2px solid #fff; outline-offset: 2px; }
+.lobby-main:focus { outline: none; }
