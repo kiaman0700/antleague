@@ -328,8 +328,13 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
           const active = s.rooms.status !== 'finished' && !s.left_game; // 기권한 자리는 진행 중으로 치지 않음
           if (active && busy) continue;
           if (active) busy = true;
-          const r = await sb.from('players').update({ user_id: uid }).eq('id', s.id).eq('user_id', gu.id);
-          if (!r.error) moved++;
+          // 대기실 자리는 회원 닉네임으로 (게임 중·끝난 판은 그대로 — 다른 사람 화면·끝난 판 기록이 이름으로 이어져 있어서)
+          const r = await sb.from('players').update(s.rooms.status === 'waiting' ? { user_id: uid, nickname: me.nickname } : { user_id: uid }).eq('id', s.id).eq('user_id', gu.id);
+          if (r.error && s.rooms.status === 'waiting') {
+            // 같은 방에 같은 닉네임이 있어 막히면 닉네임은 그대로 두고 자리만 옮김
+            const r2 = await sb.from('players').update({ user_id: uid }).eq('id', s.id).eq('user_id', gu.id);
+            if (!r2.error) moved++;
+          } else if (!r.error) moved++;
         }
       }
       // 가져오지 않은 진행·대기 중 자리는 제대로 나가기 (게임 중이면 기권 → 남은 사람이 기다리지 않게, 대기실이면 자리 빼기)
