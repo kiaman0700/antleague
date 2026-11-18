@@ -1459,9 +1459,9 @@ function Records({ go }: Pick<Props, 'go'>) {
         <section className="panel pad">
           <h3>최근 전적</h3>
           <div className="rec-sum">
-            <div><b>{sum.games}</b><small>판</small></div>
+            <div><b>{sum.games}</b><small>대결</small></div>
             <div><b className="rec-gold">{sum.wins}</b><small>1위</small></div>
-            <div><b>{sum.games > 0 ? Math.round((sum.wins / sum.games) * 100) : 0}%</b><small>승률{record.draws ? ` · 비김 ${record.draws}` : ''}</small></div>
+            <div><b>{sum.games > 0 ? `${Math.round((sum.wins / sum.games) * 100)}%` : '-'}</b><small>승률{record.draws ? ` · 비김 ${record.draws}` : ''}</small></div>
           </div>
           {/* 롤·배그 전적처럼 한 줄 카드 — 누르면 그 판의 상세(참가자별 순위·수익률·재산·업적)가 펼쳐짐 */}
           <ul className="mr-list">

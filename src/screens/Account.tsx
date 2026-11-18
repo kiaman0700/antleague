@@ -551,7 +551,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       <section className="panel pad me-recent">
         <h3>최근 대결</h3>
         {acc.recent.length === 0 ? (
-          <p className="muted small">아직 끝낸 대결이 없어요. 친구와 대결을 끝내면 여기에 쌓여요.</p>
+          <p className="muted small">아직 끝낸 대결이 없어요. 대결을 끝내면 여기에 쌓여요 (오늘의 도전 기록은 업적 화면에).</p>
         ) : (
           <ul className="me-recent mr-list">
             {/* 롤·배그 전적처럼: 왼쪽 색 띠(1위 강조) · 판 종류와 날짜 · 큰 순위 · 수익률 · 랭킹전만 점수 */}
