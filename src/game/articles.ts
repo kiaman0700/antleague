@@ -72,6 +72,8 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean, daySec?: num
   const person = () => pick(SUR) + pick(GIVEN);
   const good = n.tone === 'good';
   const title = n.headline.replace(/^\[[^\]]+\]\s*/, '');
+  // 제목에 이미 따옴표가 있으면 바깥 작은따옴표를 붙이지 않음 (''증권가 "…"'' 처럼 겹치던 것)
+  const qt = /["'“”‘’]/.test(title) ? title : `'${title}'`;
   const co = n.symbol && STOCK_MAP[n.symbol] ? STOCK_MAP[n.symbol].name : null;
   const sec = n.sector ? SECTOR_MAP[n.sector]?.name ?? null : co && n.symbol ? SECTOR_MAP[STOCK_MAP[n.symbol].sector]?.name ?? null : null;
   const subject = co ?? (sec ? `${sec} 업종` : '국내 증시');
@@ -93,10 +95,11 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean, daySec?: num
     const named = (Object.keys(PLATFORMS) as Platform[]).find((k) => title.includes(`'${PLATFORMS[k].name}'`));
     const pf = named ?? picked;
     cite = { platform: pf, name: PLATFORMS[pf].name };
+    const said = (/"([^"]+)"/.exec(title) ?? [])[1] ?? title;
     // (v21) 장중 소문 기사는 제목이 이미 기사 문장이라 따옴표로 옮기지 않음
     lead = named
       ? `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${subject} ${good ? '호재설' : '악재설'} 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`
-      : `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${jo(subject, '과', '와')} 관련해 "${title}"라는 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`;
+      : `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${jo(subject, '과', '와')} 관련해 "${said}"${jo(said, '이라는', '라는').slice(said.length)} 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`;
     body.push(`글이 올라온 뒤 비슷한 내용의 글이 잇따르면서 ${jo(subject, '을', '를')} 찾는 사람이 크게 늘었다. ${named ? '회사 측은 "확인해 줄 수 없다"는 입장만 내놓았다.' : '다만 회사 측은 아직 공식 입장을 내지 않았다.'}`);
     body.push(`시장에서는 "확인되지 않은 소문만 믿고 사고팔면 손해를 볼 수 있다"며 신중하라는 목소리가 나온다.`);
   } else if (n.label === '시황' && n.at != null) {
@@ -111,28 +114,28 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean, daySec?: num
     body.push(`회사에 나쁜 일이 생긴 것은 아니어서, 배당락 뒤 흐름은 그날 나오는 다른 소식에 달려 있다는 분석이다.`);
   } else if (n.label === '특징주' && n.revealDay != null) {
     // (v15) 사건 반전 기사: 앞서 나온 기대와 반대되는 소식 — 진위는 발표 다음 날에야 밝혀짐
-    lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '을', '를') : jo(subject, '을', '를')} 둘러싼 기대에 물음표가 붙었다.`;
+    lead = `${when}, ${qt} 소식이 전해지면서 ${co ? jo(co, '을', '를') : jo(subject, '을', '를')} 둘러싼 기대에 물음표가 붙었다.`;
     body.push(`앞서 나온 기대와 반대되는 내용이라 투자자들 사이에서 의견이 엇갈리고 있다. 회사 측은 아직 공식 입장을 내지 않았다.`);
     body.push(`결과가 발표되기 전까지는 사실인지 확인하기 어렵다는 지적이 나온다.`);
   } else if (n.label === '시황' || n.label === '특징주') {
     // 지난 움직임을 정리한 기사 (아침에 나오는 전날 정리 등)
-    lead = `${when}, '${title}' 소식이 전해졌다.`;
+    lead = `${when}, ${qt} 소식이 전해졌다.`;
     body.push(`${subject}에는 전날 ${good ? '매수세가 몰리며 강한 흐름' : '매도세가 이어지며 약한 흐름'}이 나타났다. ${others.length ? `${others.join('·')} 등 관련 종목도 함께 주목받았다.` : ''}`.trim());
     body.push(`이 흐름이 이어질지는 오늘 나오는 소식에 달려 있다는 분석이다.`);
   } else if (/발표 예정|앞둬|예고/.test(title)) {
     // 사건 예고 기사: 결과는 아직 모름
     const due = (/(\d+)일차 발표 예정/.exec(title) ?? [])[1];
-    lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '이', '가') : `${subject}이`} 시장의 관심을 모으고 있다.`;
+    lead = `${when}, ${qt} 소식이 전해지면서 ${jo(co ?? subject, '이', '가')} 시장의 관심을 모으고 있다.`;
     body.push(`${due ? `발표가 예정된 ${due}일차까지` : '발표 전까지'} 기대와 걱정이 엇갈릴 것으로 보인다. 결과에 따라 주가가 크게 움직일 수 있다.`);
     body.push(`발표 전에는 확인되지 않은 소문이 많이 돌 수 있어 주의가 필요하다는 지적도 나온다.`);
   } else if (n.kind === 'macro') {
     // 제목에 맞는 설명 (난수를 더 쓰지 않음 — 진행 중인 판의 기사 그대로)
     const why = macroWhy(title);
-    lead = `${when}, '${title}' 소식이 전해졌다. ${why ? why.lead : '시장 전체에 영향을 줄 수 있는 소식이다.'}`;
+    lead = `${when}, ${qt} 소식이 전해졌다. ${why ? why.lead : '시장 전체에 영향을 줄 수 있는 소식이다.'}`;
     body.push(why ? why.body : `시장 전문가들은 "${good ? '투자 심리가 살아날 수 있는 신호' : '당분간 변동성이 커질 수 있는 신호'}"라고 풀이했다.`);
     body.push(`${pick(['외국인', '기관', '개인'])} 투자자의 움직임에 따라 하루 흐름이 크게 달라질 수 있다는 분석도 나왔다.`);
   } else {
-    lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '이', '가') : `${subject}이`} 시장의 관심을 모으고 있다.`;
+    lead = `${when}, ${qt} 소식이 전해지면서 ${jo(co ?? subject, '이', '가')} 시장의 관심을 모으고 있다.`;
     body.push(
       good
         ? `업계에서는 이번 소식이 ${subject}의 실적과 성장에 보탬이 될 것으로 본다. ${others.length ? `${others.join('·')} 등 관련 종목에도 관심이 이어지고 있다.` : '관련 업종 전반으로 기대감이 번지는 모습이다.'}`
