@@ -58,6 +58,8 @@ export interface PlayerRow {
   version: number;
   /** 게임 중 나감(기권) — 007 마이그레이션 */
   left_game?: boolean;
+  /** (050) 기권한 날 — 상대가 모두 기권해 판이 바로 끝났을 때 업적을 그 날까지만 계산 */
+  left_day?: number | null;
   /** 마지막으로 화면을 받아 간 시각 (자리 비움 판단) — 서버만 */
   last_seen?: string | null;
   /** (v7) 장 전 '준비 완료'를 누른 날 — 025 마이그레이션 */
@@ -806,9 +808,24 @@ const allStayingEnded = (d: GameData) => {
 };
 
 /** 게임 중 나가기 = 기권: 남은 날 모두 마감한 것으로 (기록과 순위에는 그대로 남음) */
-export function validateLeave(d: GameData, meId: string): { left_game: true; ended_day: number } {
+export function validateLeave(d: GameData, meId: string): { left_game: true; ended_day: number; left_day: number } {
   if (!d.players.some((p) => p.id === meId)) throw new GameError('이 방의 플레이어가 아니에요.', 403);
-  return { left_game: true, ended_day: d.room.total_days };
+  return { left_game: true, ended_day: d.room.total_days, left_day: Math.min(d.room.day, d.room.total_days - 1) };
+}
+
+/**
+ * 상대가 모두 기권해 판이 바로 끝났으면 실제로 한 마지막 날 (마지막으로 기권한 날). 끝까지 한 판·기록이 없으면 null
+ * — 그 뒤 날은 아무도 하지 않았으므로 업적 계산에 넣지 않음 (사용자 결정 2026-11-18)
+ */
+export function playedLastDay(d: GameData): number | null {
+  if (d.players.length < 2) return null;
+  const staying = d.players.filter((p) => !p.left_game);
+  const humansLeftAll = d.players.some((p) => p.bot_level) && !staying.some((p) => !p.bot_level);
+  if (staying.length > 1 && !humansLeftAll) return null;
+  const days = d.players.filter((p) => p.left_game).map((p) => p.left_day);
+  if (!days.length || days.some((x) => typeof x !== 'number')) return null;
+  const last = Math.max(...(days as number[]));
+  return last < d.room.total_days - 1 ? last : null;
 }
 
 /**
@@ -902,6 +919,7 @@ export function finalResults(d: GameData) {
   const isIdle = (p: PlayerRow) => idleRule && !p.left_game && !d.trades.some((t) => t.player_id === p.id);
   const badges = computeAchievements({
     market: m,
+    endDay: playedLastDay(d),
     seed: d.room.seed,
     items: d.items,
     players: players.map((p) => ({

@@ -259,13 +259,15 @@ async function loadGame(roomId: string): Promise<GameData> {
   const [room, secret, players, trades, items, orders] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
-    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step').eq('room_id', roomId),
+    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step, left_day').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
   ]);
   // 007 마이그레이션 전이면 나감·접속 컬럼 없이 다시 읽음
   let pl = players as { data: unknown; error: { message: string } | null };
+  // 050(left_day) 적용 전이면 그 칸만 빼고 다시
+  if (pl.error && /left_day/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step').eq('room_id', roomId);
   // 033(봇) 적용 전이면 봇 칸만 빼고 다시
   if (pl.error && /bot_level|bot_step/.test(pl.error.message)) pl = await sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day').eq('room_id', roomId);
   // 025(pre_day) 적용 전이면 그 칸만 빼고 다시
@@ -1771,7 +1773,9 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
       const meNow = buildView(d, playerId, Date.now()).players.find((p) => p.id === playerId);
       return meNow ? meNow.equity / startCashFor(d.room.version) - 1 : null;
     })() : null;
-    const res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
+    let res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
+    // 050(left_day) 적용 전이면 그 칸만 빼고
+    if (res.error && /left_day/.test(res.error.message)) res = await sb.from('players').update({ left_game: true, ended_day: patch.ended_day, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');
     if (dailyRet !== null) await recordDaily(roomId, dailyRet);

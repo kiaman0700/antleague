@@ -1,5 +1,5 @@
 import { deriveItems, type ItemRow } from './items.js';
-import { KR_INDEX_BASE, type Market } from './market.js';
+import { KR_INDEX_BASE, type Bar, type Market } from './market.js';
 import { computePortfolio, equityHistory, moneyScale, startCashFor, type Spend, type Trade } from './portfolio.js';
 import { STOCK_MAP } from './stocks.js';
 
@@ -85,13 +85,35 @@ export interface AchievementInput {
   seed: number;
   players: { id: string; trades: Trade[]; spends: Spend[]; filledOrders: number; /** 봇이면 난이도 */ bot?: number | null; /** 기권함 — 업적 없음, 순위는 맨 뒤 */ left?: boolean }[];
   items: ItemRow[];
+  /** 실제로 한 마지막 날 (상대가 모두 기권해 바로 끝난 판) — 그 뒤 날은 업적 계산에서 뺌 */
+  endDay?: number | null;
+}
+
+/** 시장을 0..endDay 날까지만 남김 (기권 뒤 아무도 하지 않은 날 빼기) */
+export function cutMarket(m: Market, endDay: number): Market {
+  const n = endDay + 1;
+  const cut = <T>(a: T[]) => a.slice(0, n);
+  const map = (r: Record<string, Bar[]>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, cut(v)]));
+  return {
+    ...m,
+    totalDays: n,
+    bars: map(m.bars),
+    usd: map(m.usd),
+    index: cut(m.index),
+    usIndex: cut(m.usIndex),
+    macro: cut(m.macro),
+    news: m.news.filter((x) => x.day <= endDay),
+    events: m.events.filter((x) => x.day <= endDay),
+    dividends: m.dividends.filter((x) => x.day <= endDay),
+  };
 }
 
 export function computeAchievements(inp: AchievementInput): Record<string, string[]> {
-  const { market: m } = inp;
+  const full = inp.market;
+  const m = inp.endDay != null && inp.endDay >= 0 && inp.endDay < full.totalDays - 1 ? cutMarket(full, inp.endDay) : full;
   const last = m.totalDays - 1;
   const solo = inp.players.length < 2;
-  const items = deriveItems(inp.seed, inp.players.map((p) => p.id), inp.items, last, m.totalDays, solo, m.version ?? 1);
+  const items = deriveItems(inp.seed, inp.players.map((p) => p.id), inp.items, last, full.totalDays, solo, m.version ?? 1);
   const hist = Object.fromEntries(inp.players.map((p) => [p.id, equityHistory(p.trades, p.spends, m)]));
   const finalEq = (id: string) => hist[id][hist[id].length - 1];
   const indexRet = m.index[last].close / KR_INDEX_BASE - 1;

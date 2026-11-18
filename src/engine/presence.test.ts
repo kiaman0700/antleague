@@ -71,7 +71,7 @@ describe('나감·자리 비움', () => {
   it('게임 중 나가기는 기권: 끝까지 마감한 것으로', () => {
     const d = game(3);
     const r = validateLeave(d, 'p1');
-    expect(r).toEqual({ left_game: true, ended_day: 10 });
+    expect(r).toEqual({ left_game: true, ended_day: 10, left_day: 2 });
   });
   it('화면 데이터: 나감·자리 비움 표시는 있지만 접속 시각 자체는 없음', () => {
     const d = game(3);
