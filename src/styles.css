@@ -23,7 +23,8 @@
   --r: 14px;
   --r-sm: 10px;
   --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* 숫자 전용 글꼴을 따로 받지 않고 Pretendard 의 같은 폭 숫자(tnum)로 — 글꼴 파일 하나 덜 받음, 숫자·한글 굵기 같게 (2026-11-19 조사) */
+  --mono: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
   color-scheme: dark;
 }
 

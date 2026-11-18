@@ -1730,3 +1730,17 @@ button, a.btn, .srow, .chip, [role='button'] { touch-action: manipulation; }
   .nt-center.show-list .ntc-list { display: flex; }
   .nt-center.show-list .ntc-detail { display: none; }
 }
+
+/* ---------- 글씨 기준 (2026-11-19 조사: Pretendard · 한글 낱말 단위 줄바꿈 · 본문 1.6 · 숫자는 같은 폭) ---------- */
+.chart .drawn-tag text, .mf-modal .mf-time, .sc-num, .mf-clock, .cl-play.searching span, .mm-txt small, .ms-day em, .rk-big b { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+/* 한글은 낱말 중간에서 끊지 않음(길면 그래도 넘치지 않게 끊음) · 제목은 줄 길이를 고르게 · 문단은 끝 줄 외톨이 줄이기 */
+body { word-break: keep-all; overflow-wrap: anywhere; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+/* 긴 글(뉴스 기사·공지·공부)은 줄 간격 넉넉히 */
+.notice-text, .art-body, .study-body p { line-height: 1.65; }
+/* 화면 안 불러오기 표시: 0.4초 안에 끝나면 아예 안 보이게 (깜빡임 방지 — 2026-11-19 조사) */
+.ui-loading { animation: uiLoadLate 0.2s 0.4s both; }
+@keyframes uiLoadLate { from { opacity: 0; } to { opacity: 1; } }
+.ui-loading.with-tip { flex-wrap: wrap; justify-content: center; }
+.ui-tip { flex-basis: 100%; text-align: center; margin-top: 10px; color: var(--text-3, #9a9a9a); font-size: 13px; animation: ntFade 0.3s ease-out; }

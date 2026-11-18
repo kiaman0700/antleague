@@ -25,7 +25,7 @@ const GUIDES: Record<Exclude<GuideId, 'none'>, { label: string; steps: Step[]; n
       { text: <><b>홈 화면에 추가</b>를 눌러요</>, art: <IosShareListArt /> },
       { text: <>오른쪽 위 <b>추가</b> — 끝!</>, art: <IosStep4 /> },
     ],
-    note: '사파리가 아래 막대 모양이면 가운데 공유 버튼을 바로 눌러요.',
+    note: "사파리가 아래 막대 모양이면 가운데 공유 버튼을 바로 눌러요. 목록에 '홈 화면에 추가'가 없으면 맨 아래 '동작 편집'에서 켜요.",
   },
   'ios-other': {
     label: '아이폰 (Chrome 등)',
@@ -52,7 +52,7 @@ const GUIDES: Record<Exclude<GuideId, 'none'>, { label: string; steps: Step[]; n
       { text: <><b>설치</b>를 눌러요</>, art: <ChromeStep3 /> },
       { text: <>홈 화면 <b>개미리그</b>로 열어요</>, art: <HomeStep kind="android" /> },
     ],
-    note: "새 Chrome 은 '설치 및 바로가기 만들기'예요. 주소창을 아래로 옮겼다면 아래 ⋮.",
+    note: "새 Chrome 은 '설치 및 바로가기 만들기'예요. 갤럭시는 아이콘이 앱 목록에 먼저 생길 수 있어요. 주소창을 아래로 옮겼다면 아래 ⋮.",
   },
   samsung: {
     label: '갤럭시 (삼성 인터넷)',
@@ -62,21 +62,24 @@ const GUIDES: Record<Exclude<GuideId, 'none'>, { label: string; steps: Step[]; n
       { text: <><b>홈 화면</b>을 골라요</>, art: <SamsungStep3 /> },
       { text: <>홈 화면 <b>개미리그</b>로 열어요</>, art: <HomeStep kind="android" /> },
     ],
+    note: "'빠른 실행'은 홈 화면이 아니에요. 꼭 '홈 화면'을 골라요.",
   },
   inapp: {
     label: '카카오톡·네이버 앱 안',
     steps: [
-      { text: <>앱 안 브라우저에선 안 돼요. <b>⋮</b>을 눌러요</>, art: <InAppStep1 /> },
+      { text: <>앱 안 브라우저에선 안 돼요. 오른쪽 아래 <b>⋮</b>을 눌러요</>, art: <InAppStep1 /> },
       { text: <><b>다른 브라우저로 열기</b> → 그 브라우저 안내대로</>, art: <InAppStep2 /> },
     ],
+    note: '아이폰 카카오톡은 오른쪽 아래 공유 버튼 → Safari 를 골라요.',
   },
   pc: {
     label: 'PC (Chrome·Edge)',
     steps: [
       { text: <>주소창 오른쪽 <b>설치</b> 아이콘을 눌러요</>, art: <PcStep1 /> },
       { text: <><b>설치</b>를 누르면 끝</>, art: <PcStep2 /> },
-      { text: <>아이콘이 없으면 <b>⋮</b> → <b>전송, 저장, 공유</b> → <b>페이지를 앱으로 설치</b></>, art: <PcMenuStep /> },
+      { text: <>아이콘이 없으면 <b>⋮</b> → <b>전송, 저장, 공유</b> → <b>개미리그 설치</b></>, art: <PcMenuStep /> },
     ],
+    note: 'Edge 는 ⋯ → 앱 → 이 사이트를 앱으로 설치예요.',
   },
   'mac-safari': {
     label: 'Mac (Safari)',
@@ -93,7 +96,7 @@ export function guideFor(env: InstallEnv): GuideId {
   if (env.os === 'ipados') return env.browser === 'safari' ? 'ipad' : 'ios-other';
   if (env.os === 'android') return env.browser === 'samsung' ? 'samsung' : 'android';
   if (env.os === 'mac' && env.browser === 'safari') return 'mac-safari';
-  if (env.browser === 'firefox') return 'none';
+  if (env.browser === 'firefox') return 'none'; // 안드로이드 파이어폭스는 위에서 안드로이드 안내로 (⋮ → 설치)
   return 'pc';
 }
 const ORDER: Exclude<GuideId, 'none'>[] = ['ios', 'samsung', 'android', 'ipad', 'ios-other', 'pc', 'mac-safari', 'inapp'];
@@ -138,7 +141,7 @@ export function InstallGuide() {
             기본 브라우저로 열기
           </a>
         )}
-        {mine === 'none' && <p className="muted small">이 브라우저(Firefox)는 앱 설치를 지원하지 않아요. Chrome·Edge·Safari로 열어 주세요.</p>}
+        {mine === 'none' && <p className="muted small">PC 파이어폭스는 앱 설치가 안 돼요. Chrome·Edge 로 열어 주세요.</p>}
       </section>
       <section className="panel pad">
         <h3>

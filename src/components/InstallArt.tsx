@@ -388,6 +388,7 @@ export function SamsungStep3() {
 
 /* ================= 카카오톡·네이버 앱 안 ================= */
 export function InAppStep1() {
+  // 카카오톡(안드로이드): 위엔 닫기·주소, 아래 도구 막대 오른쪽 ⋮
   return (
     <Frame kind="android">
       <text x="14" y="34" fontSize="8" fill={INK}>
@@ -396,9 +397,14 @@ export function InAppStep1() {
       <text x="60" y="34" fontSize="6.5" fill={INK} textAnchor="middle">
         antleague.vercel.app
       </text>
-      {dots(106, 31, HL, true)}
-      {ring(106, 31, 9)}
-      {page(48, 220)}
+      {page(48, 196)}
+      <rect x="2" y="204" width={W - 4} height="30" fill={SURF} />
+      {[16, 34].map((x, k) => (
+        <path key={x} d={k ? `M${x - 2} 214 l4 4 l-4 4` : `M${x + 2} 214 l-4 4 l4 4`} stroke={INK} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      ))}
+      {shareIcon(84, 220)}
+      {dots(104, 218, HL, true)}
+      {ring(104, 218, 9)}
     </Frame>
   );
 }

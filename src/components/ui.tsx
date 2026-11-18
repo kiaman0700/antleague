@@ -13,11 +13,34 @@ import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
 
 /** 불러오는 중 — inline 이면 줄 안에 작게, 아니면 칸 가운데 */
-export function Loading({ label = '불러오는 중…', inline = false }: { label?: string; inline?: boolean }) {
+/** 게임에 들어갈 때 오래 걸리면 보여 줄 짧은 팁 (규칙·카드 — 한 줄, 4초씩) */
+export const LOADING_TIPS = [
+  '장중 속보가 뜨는 순간 가격이 크게 움직여요',
+  "'인증' 배지가 붙은 글이 더 잘 맞아요",
+  '루머 감별기는 고른 소식 하나가 진짜인지 알려줘요',
+  '좋은 소식은 시가에 이미 많이 들어가 있을 수 있어요',
+  '경쟁사는 반대로, 거래처는 같은 쪽으로 움직여요',
+  '예약 주문은 장중 가격이 그 값에 닿으면 체결돼요',
+  "'소식 반응' 글은 이미 나온 뉴스 얘기라 단서가 아니에요",
+  '레버리지·인버스 ETF는 재산의 30%까지만 살 수 있어요',
+];
+export function Loading({ label = '불러오는 중…', inline = false, tips = false }: { label?: string; inline?: boolean; /** 1.5초 넘게 걸리면 팁 한 줄 */ tips?: boolean }) {
+  const [tip, setTip] = useState(-1);
+  useEffect(() => {
+    if (!tips) return;
+    const start = setTimeout(() => setTip(Math.floor(Math.random() * LOADING_TIPS.length)), 1500);
+    const next = setInterval(() => setTip((t) => (t < 0 ? t : (t + 1) % LOADING_TIPS.length)), 4000);
+    return () => (clearTimeout(start), clearInterval(next));
+  }, [tips]);
   return (
-    <div className={'ui-loading' + (inline ? ' inline' : '')} role="status" aria-live="polite">
+    <div className={'ui-loading' + (inline ? ' inline' : '') + (tips ? ' with-tip' : '')} role="status" aria-live="polite">
       <span className="ui-spin" aria-hidden />
       <span>{label}</span>
+      {tip >= 0 && (
+        <small key={tip} className="ui-tip">
+          팁 · {LOADING_TIPS[tip]}
+        </small>
+      )}
     </div>
   );
 }

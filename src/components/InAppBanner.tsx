@@ -43,7 +43,7 @@ export function InAppBanner() {
       <Icon name="globe" size={20} />
       <div className="ig-hint-go">
         <b>{APP_NAME[env.browser] ?? '앱'} 안에서 열렸어요</b>
-        <small>{href ? '브라우저로 열면 화면이 더 매끄럽고 앱처럼 설치할 수도 있어요' : '오른쪽 ⋯ 메뉴에서 "Safari로 열기"를 누르면 더 매끄러워요'}</small>
+        <small>{href ? '브라우저로 열면 화면이 더 매끄럽고 앱처럼 설치할 수도 있어요' : env.os === 'ios' || env.os === 'ipados' ? '오른쪽 아래 공유 버튼 → Safari 로 열면 더 매끄러워요' : '오른쪽 ⋮ 메뉴 → 다른 브라우저로 열기'}</small>
       </div>
       {href && (
         <a className="btn sm primary" href={href}>

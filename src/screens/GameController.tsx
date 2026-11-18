@@ -794,7 +794,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           </>
         ) : (
           <>
-            <Loading label="게임 불러오는 중…" />
+            <Loading label="게임 불러오는 중…" tips />
           </>
         )}
       </div>
