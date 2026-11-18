@@ -86,6 +86,8 @@ function RelatedChips({ symbols, change, onSelect, rel, tone: newsTone }: { symb
             key={sym}
             className={'rel-chip' + (r ? ' r-' + r : '')}
             title={r ? `${REL_NAME[r]} — 이 기사에 ${up ? '같이 오를' : '내릴'} 수 있어요 (예상)` : undefined}
+            // 화면 읽기: '▲' 대신 말로
+            aria-label={`${r ? REL_NAME[r] + ' ' : ''}${STOCK_MAP[sym].name}${r && up !== null ? (up ? ', 오를 수 있음' : ', 내릴 수 있음') : ''}, 지금 ${pct(ch, 1)}`}
             onClick={(e) => {
               e.stopPropagation();
               onSelect(sym);
