@@ -19,6 +19,7 @@ import { play } from '../lib/sound';
 import type { Session } from '../session';
 import { DailyResult, useDailyInfo } from '../components/Daily';
 import { keyMoments } from '../game/keyMoments';
+import { realLessons } from '../game/realWorld';
 import { useIsMobile } from '../components/Extras';
 import { MissionsPanel } from '../components/Missions';
 import { useAccount } from '../net/account';
@@ -395,8 +396,25 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
       </div>
     </div>
   );
+  // (밤샘 조사) 실제 시장에서는? — 그 판에 있었던 사건을 실제 시장 지식으로 (끝난 판의 공개 뉴스 제목만)
+  const lessons = useMemo(() => realLessons(market.news, last), [market.news, last]);
+  const lessonsEl = lessons.length > 0 && (
+    <div className="panel pad rw-panel">
+      <h3><Icon name="book" /> 실제 시장에서는?</h3>
+      <div className="km-list">
+        {lessons.map((l, i) => (
+          <button key={l.kind} className="km-card rw-card" style={{ ['--k' as string]: i + moments.length }} onClick={() => setReplayDay(l.day)}>
+            <b>{l.title}</b>
+            <span>{l.text}</span>
+            <small className="muted">{l.day + 1}일차 소식 다시 보기</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
   const highlightsEl = <>
       {momentsEl}
+      {lessonsEl}
       {highlights.length > 0 && (
       <div className="panel pad">
         <h3><Icon name="star" /> 하이라이트</h3>
