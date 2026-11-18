@@ -145,6 +145,9 @@ export interface View {
   rumors?: PublicRumor[];
   /** (v20) 오늘 지금까지 올라온 커뮤니티·SNS 글 (지난 날 글은 market.community) */
   community?: PublicPost[];
+  /** 오늘 글 목록 표시 (날짜:개수:진위 수) — 화면이 같은 표시를 보내면 글을 다시 보내지 않고 communitySame */
+  communityKey?: string;
+  communitySame?: boolean;
   /** 시장 정보가 바뀌었을 때만 채워짐 (marketKey 로 판단) */
   market: Market | null;
   /** 오늘 장중 가격 — 지금 칸까지만. 장이 열려 있을 때만 */
@@ -497,7 +500,7 @@ export function portfolioOf(d: GameData, pid: string) {
  * keySalt: 시장 키를 섞을 서버 비밀값(방마다). 시드처럼 화면이 알면 안 되는 값은 절대 키에 넣지 않음.
  * 없으면(혼자 연습 — 어차피 브라우저에서 도는 게임) 방 ID 를 씀
  */
-export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, avatars?: Map<string, string>, liveFrom?: { day: number; from: number }): View {
+export function buildView(d: GameData, meId: string, now: number, clientMarketKey?: string, keySalt?: string, avatars?: Map<string, string>, liveFrom?: { day: number; from: number }, postsKey?: string): View {
   const r = d.room;
   const players = sortedPlayers(d);
   const base: Omit<View, 'market' | 'marketKey'> & { market: Market | null; marketKey: string } = {
@@ -628,6 +631,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   base.room.preUntil = inPremarket(r, now) ? premarketEnd(r, now) : null;
   // (v20) 커뮤니티·SNS: 장이 열려 있는 동안 지금 칸까지 올라온 글만 (앞으로 올라올 글·시각은 절대 안 보냄). 정보 차단 맞은 날은 안 보임
   if (!finished && (r.version ?? 1) >= COMMUNITY_VERSION && r.salt && !blackout) base.community = open ? publicPosts(communityPosts(m, day, r.salt), day, clock.tick / Math.max(1, clock.n), detectorPick).filter((p) => p.day === day) : [];
+  if (base.community) {
+    // 1초마다 같은 글을 다시 보내지 않게 (글이 늘거나 진위가 붙을 때만)
+    base.communityKey = `${day}:${base.community.length}:${base.community.filter((p) => p.verdict).length}`;
+    if (postsKey === base.communityKey) {
+      delete base.community;
+      base.communitySame = true;
+    }
+  }
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
   const liveToday = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, day, r.salt, clock.n) : [];

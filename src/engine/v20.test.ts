@@ -139,3 +139,19 @@ describe('v20 들썩임·기사', () => {
     expect(qReal / q).toBeGreaterThan(nqReal / nq);
   });
 });
+
+describe('v20 커뮤니티 글 다시 보내지 않기', () => {
+  it('화면이 같은 표시를 보내면 글을 빼고 communitySame', () => {
+    const start = 1_800_000_000_000;
+    const g = game(3, start);
+    const at = g.room.deadline! - 90_000;
+    const v1 = buildView(g, 'a', at);
+    expect(v1.community?.length).toBeGreaterThan(0);
+    const v2 = buildView(g, 'a', at, undefined, undefined, undefined, undefined, v1.communityKey);
+    expect(v2.community).toBeUndefined();
+    expect(v2.communitySame).toBe(true);
+    // 글이 늘면 다시 보냄
+    const v3 = buildView(g, 'a', g.room.deadline! - 2_000, undefined, undefined, undefined, undefined, v1.communityKey);
+    if ((v3.communityKey ?? '') !== v1.communityKey) expect(v3.community?.length).toBeGreaterThan(v1.community!.length);
+  });
+});

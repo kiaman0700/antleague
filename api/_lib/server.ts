@@ -712,7 +712,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await maybeAdvance(d)) d = await loadGame(roomId);
       // 화면이 이미 가진 장중 칸 수 (숫자만 받음)
       const lf = typeof b.liveDay === 'number' && typeof b.liveFrom === 'number' ? { day: Math.floor(b.liveDay), from: Math.floor(b.liveFrom) } : undefined;
-      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await playerAvatars(roomId), lf);
+      const pk = typeof b.postsKey === 'string' && b.postsKey.length <= 40 ? b.postsKey : undefined;
+      return buildView(d, playerId, Date.now(), typeof b.marketKey === 'string' ? b.marketKey : undefined, keySalt(roomId), await playerAvatars(roomId), lf, pk);
     }
 
     case 'ready':

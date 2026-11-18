@@ -140,6 +140,7 @@ export function useLiveView(roomId: string | null): LiveView {
   const doneRef = useRef(false);
   /** 지금까지 받은 오늘 장중 가격 — 다음엔 새로 생긴 칸만 받아 이어 붙임 */
   const liveRef = useRef<View['live']>(null);
+  const postsRef = useRef<{ key: string; list: NonNullable<View['community']> } | null>(null);
   /** 서버가 '너무 많은 요청'(429)을 주면 잠깐 천천히 */
   const slowUntil = useRef(0);
   /** 이 방에서 빠졌거나 방이 사라짐(403·404) — 더 묻지 않음 (화면은 '더 이상 할 수 없어요' 안내) */
@@ -155,7 +156,12 @@ export function useLiveView(roomId: string | null): LiveView {
     try {
       const t0 = Date.now();
       const have = liveRef.current;
-      const v = await api<View>('state', { roomId, marketKey: keyRef.current, ...(have ? { liveDay: have.day, liveFrom: have.tick + 1 } : {}) });
+      const posts = postsRef.current;
+      const v = await api<View>('state', { roomId, marketKey: keyRef.current, ...(have ? { liveDay: have.day, liveFrom: have.tick + 1 } : {}), ...(posts ? { postsKey: posts.key } : {}) });
+      // (v20) 오늘 커뮤니티 글이 그대로면 서버가 빼고 보냄 → 가진 것 그대로
+      if (v.communitySame && posts) v.community = posts.list;
+      else if (v.community && v.communityKey) postsRef.current = { key: v.communityKey, list: v.community };
+      else if (!v.community) postsRef.current = null;
       // 새로 생긴 칸만 왔으면 가진 것에 이어 붙임 (안 맞으면 다음에 처음부터 다시 받음)
       if (v.live) {
         const from = v.live.from ?? 0;
