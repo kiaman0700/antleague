@@ -332,7 +332,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
         <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.length) }}>
           {results.map((r, i) => (
             <div key={r.id}>
-              <small style={{ color: COLORS[i] }}>{r.nickname}</small>
+              {results.length > 1 && <small style={{ color: COLORS[i] }}>{r.nickname}</small>}
               <div className="badges">
                 {(final.badges[r.id] ?? []).length === 0 && <span className="muted small">이번엔 없어요</span>}
                 {(final.badges[r.id] ?? []).map((id) => {
@@ -412,6 +412,8 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
 
       <div className="panel pad">
         <h3>자산 추이</h3>
+        {/* 혼자 한 판이면 '나' 하나뿐이라 범례를 숨김 */}
+        {results.length > 1 && (
         <div className="legend">
           {results.map((r, i) => (
             <span key={r.id}>
@@ -419,6 +421,7 @@ export function ResultScreen({ session, market, final, onExit, nextCode, onRemat
             </span>
           ))}
         </div>
+        )}
         <LineChart
           series={results.map((r, i) => ({ values: r.hist.slice(1), color: COLORS[i] }))}
           totalDays={market.totalDays}

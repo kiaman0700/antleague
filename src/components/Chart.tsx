@@ -58,7 +58,8 @@ function Axes({ f, count, fmt }: { f: Frame; count: number; fmt: (v: number) => 
       {ticks.map((v, i) => (
         <g key={i}>
           <line x1={f.padL} x2={W - f.padR} y1={f.y(v)} y2={f.y(v)} className="grid" />
-          <text x={W - f.padR + 8} y={f.y(v) + 4} className="axis">
+          {/* 오른쪽 끝에 맞춰 씀 — 왼쪽 맞춤이면 휴대폰에서 '101.7만' 끝이 잘렸음 */}
+          <text x={W - 2} y={f.y(v) + 4} className="axis" textAnchor="end">
             {fmt(v)}
           </text>
         </g>

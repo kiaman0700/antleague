@@ -25,7 +25,7 @@ export interface ItemDef {
  * - 방어 카드: 막는 공격 평균 가격보다 싸게, 반사는 공격 효과까지 주니 더 비싸게
  */
 export const ITEMS: ItemDef[] = [
-  { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 600_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보라 가장 비싸요)' },
+  { kind: 'paper', name: '내일 신문', emoji: '📰', type: 'info', cost: 600_000, desc: '내일 아침에 나올 뉴스 헤드라인을 오늘 미리 봐요. (확실한 정보예요)' },
   { kind: 'analyst', name: '애널리스트 콜', emoji: '📈', type: 'info', cost: 300_000, desc: '오늘 장에서 가장 많이 오를 업종을 알려줘요.' },
   { kind: 'scout', name: '차트 분석', emoji: '📊', type: 'info', cost: 200_000, desc: '지금 보고 있는 종목이 오늘 오를지 내릴지 알려줘요. (정확도 약 70%)' },
   { kind: 'detector', name: '루머 감별기', emoji: '🔍', type: 'info', cost: 100_000, desc: '오늘 소식(뉴스·찌라시·소문 기사) 중 하나를 골라 진짜인지 가짜인지 알려줘요. 표시 없는 가짜 기사와 상대가 보낸 가짜 뉴스도 잡아내요. 비싸니 중요한 순간에 쓰세요.' },

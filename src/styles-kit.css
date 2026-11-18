@@ -1246,3 +1246,27 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 @media (max-width: 480px) { .mr-rank b { font-size: 15px; } }
 @media (max-width: 860px) { .lobby-main:has(> .rc-pill) > .cl-foot { padding-bottom: 76px; } .lobby-main:has(> .rc-pill):has(> .mm-pill) > .cl-foot { padding-bottom: 132px; } }
 .news-empty { margin: 4px 2px 12px; }
+
+/* 글자 대비 4.5:1 맞춤 (2026-11-18 접근성 점검 scripts/a11y-audit.mjs) */
+.st-seg button.on small { color: #fff; }
+.m-end2 small { opacity: 0.95; }
+.news-cats .nc-unread, .news-mode .nc-unread { background: #d42f48; }
+.mode-pick.compact .mp-row > button.on { color: #b1a6ff; }
+/* PC 타임라인: 지난 날은 흐리게 두되 날짜 숫자는 읽히게, 오늘 숫자는 밝은 보라 */
+.tl-cell.past { opacity: 0.62; }
+.tl-cell.past small { color: #d0d0d0; }
+.tl-cell.today small { color: #b1a6ff; }
+/* 작은 손익 알약(11px)은 빨강·파랑을 조금 밝게 — 색 배경 위 대비 4.5:1 */
+.pl-pill.up, .pl-pill.up .ft-in { color: #ff7d8b; }
+.pl-pill.down, .pl-pill.down .ft-in { color: #79a8ff; }
+/* PC 장 전 '장 시작' 호박 버튼: 아래 작은 글자도 진한 글자 (흰 글자는 호박 위 1.7:1 — 안 보였음) */
+.desk .end-turn.pre:not(.waiting) .et-sub { color: #1a1406; opacity: 0.85; }
+/* 관심 종목 별: 보이는 크기는 그대로, 누르는 자리만 넓게 (휴대폰 22×15 → 34×27) */
+.star { padding: 6px; margin: -6px; }
+/* 알림 폭: left 50% 에서 시작하면 남은 절반 폭(휴대폰 187px)에 갇혀 5줄로 꺾였음 → 글 길이만큼, 화면 폭 −32px 까지 */
+.toast:not(.news) { width: max-content; max-width: min(640px, calc(100vw - 32px)); word-break: keep-all; }
+/* 결산 팝업 '많이 오른/내린 종목' 두 칸이 긴 종목 이름 때문에 창 밖으로 밀려나던 것 → 칸 폭 고정, 이름은 말줄임 */
+.movers { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.movers > div { min-width: 0; }
+.mv span { min-width: 0; }
+.mv b { flex: none; }

@@ -629,7 +629,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     } catch {
       return;
     }
-    showToast("장 전 시간이에요. 찌라시(소문)를 보고 예약 주문을 걸어 두세요. 다 했으면 '준비 완료'!", 'warn');
+    // 버튼 이름과 같게: 혼자 하는 판(시간 제한 없음)은 '장 시작', 대결은 '준비 완료'
+    showToast(`장 전 시간이에요. 찌라시(소문)를 보고 예약 주문을 걸어 두세요. 다 했으면 '${freePre ? '장 시작' : '준비 완료'}'!`, 'warn');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 한 번만 (freePre 가 바뀌어도 다시 띄우지 않음)
   }, [inPre, showToast]);
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
   const cancelEnd = () => {
