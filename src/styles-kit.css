@@ -1791,3 +1791,8 @@ p { text-wrap: pretty; }
 /* 튜토리얼 말풍선: 위에 뜬 창 둘레 자리가 좁으면 제목·할 일만 */
 .tut-bubble.compact p { display: none; }
 .tut-bubble.compact { padding-top: 10px; padding-bottom: 10px; }
+/* 공지 줄 안쪽 여백을 아래 내용 칸(.hub)과 똑같이 — 큰 PC 화면에서 '공지' 글자와 카드 왼쪽 끝이 20px 어긋났음 */
+.nt-bar { max-width: 1040px; padding: 0 28px; }
+@media (min-width: 861px) and (max-width: 1179px) { .nt-bar { padding: 0 20px; } }
+@media (min-width: 1440px) { .nt-bar { max-width: 1180px; padding: 0 40px; } }
+@media (max-width: 860px) { .nt-bar { max-width: 640px; padding: 0 16px; } }
