@@ -4,6 +4,7 @@ import { chartPrefSec } from "../prefs";
 import { getEffective } from "../prefs";
 import { Icon, SectorIcon } from "./Icon";
 import type { Market, NewsEvent } from "../game/market";
+import { HaltTag, HaltNote } from "./HaltTag";
 import { releaseTick } from "../game/intraday";
 import { roundPrice, roundUsd } from "../game/market";
 import {
@@ -118,6 +119,7 @@ export function StockDetail(props: Props) {
   const isUS = s.currency === "USD";
   const etf = s.etf;
   const q = quote(market, symbol, day, closed);
+  const haltK = market.halts?.find((h) => h.symbol === symbol && h.day === day)?.kind;
   const price = q.krw;
   const fx = market.macro[day]?.fx ?? market.macro0.fx;
   const r = riskOf(s);
@@ -322,6 +324,7 @@ export function StockDetail(props: Props) {
       <div className="detail-head">
         <div className="title-line">
           <h2>{s.name}</h2>
+          {haltK && <HaltTag kind={haltK} />}
           <button
             className={"star big" + (watched ? " on" : "")}
             onClick={onToggleWatch}
@@ -350,6 +353,7 @@ export function StockDetail(props: Props) {
           </span>
           {ui === "pro" && <span className="tag mono">{s.symbol}</span>}
         </div>
+        {haltK && <HaltNote kind={haltK} />}
         <div className="price-line">
           <span className={"price " + tone(diff)}>
             {isUS ? fmtUsd(nativeNow) : `${num(price)}원`}

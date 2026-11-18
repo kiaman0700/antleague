@@ -1,6 +1,7 @@
 import { gaussian, mulberry32, pick, range, seeded, type Rng } from '../lib/rng.js';
 import * as T from './news.js';
 import { planStories, SECTOR_NEWS_MULT } from './stories.js';
+import { delistStages, EVENTS_VERSION, nameOf, planEvents24, range24, type HaltMark } from './events24.js';
 import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
 /** 하루 장중 가격 포인트 수 (마감 애니메이션 / 라인차트용) */
@@ -83,6 +84,8 @@ export interface Market {
   bars: Record<string, Bar[]>;
   /** 미국 주식의 달러 가격 (표시용) */
   usd: Record<string, Bar[]>;
+  /** (v24) 거래정지·정리매매·상장폐지 표시 — 화면에는 그날까지만 (sliceMarket) */
+  halts?: HaltMark[];
   baseUsd: Record<string, number>;
   index: Bar[];
   usIndex: Bar[];
@@ -315,6 +318,23 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
   });
   /** 사건마다 지금까지 쌓인 기대감(사건 때문에 오른 만큼, 로그) */
   const runup = stories.map(() => 0);
+  // (v24) 실제 시장 같은 사건 — 전용 난수(ev24), 한 판에 최대 3개 (src/game/events24.ts)
+  const v24 = version >= EVENTS_VERSION;
+  const rngE = R('ev24', () => mulberry32((seed ^ 0x6a09e667) >>> 0));
+  const ev24 = v24 ? planEvents24(rngE, totalDays, new Set(stories.map((x) => x.symbol))) : [];
+  const halts: HaltMark[] = [];
+  /** 가격 제한을 넓히는 날 (미국 승인 결과 발표: 하루 −80%~+200%) */
+  const wideDay = new Set<string>();
+  for (const e of ev24) {
+    if (e.kind === 'delist') {
+      const st = delistStages(e, totalDays);
+      for (const d of [st.halt1, st.review]) if (d < totalDays) halts.push({ symbol: e.symbol, day: d, kind: 'halt' });
+      for (const d of [st.clear1, st.clear2]) if (d >= 0 && d < totalDays) halts.push({ symbol: e.symbol, day: d, kind: 'clear' });
+      if (st.delistFrom >= 0) for (let d = st.delistFrom; d < totalDays; d++) halts.push({ symbol: e.symbol, day: d, kind: 'delisted' });
+    }
+    if (e.kind === 'binary') wideDay.add(e.symbol + ':' + e.resolve);
+  }
+  const haltKind = (sym: string, day: number) => halts.find((h) => h.symbol === sym && h.day === day)?.kind;
 
   const bars: Record<string, Bar[]> = Object.fromEntries(STOCKS.map((s) => [s.symbol, []]));
   const usd: Record<string, Bar[]> = Object.fromEntries(COMPANIES.filter((s) => s.currency === 'USD').map((s) => [s.symbol, []]));
@@ -559,6 +579,128 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       }
     }
 
+    // ---- (v24) 실제 시장 같은 사건 ----
+    for (const e of ev24) {
+      const ev = (headline: string, tone: 'good' | 'bad', extra: Partial<NewsEvent> = {}, realTone: 'good' | 'bad' = tone) => {
+        const sym = 'symbol' in e ? e.symbol : null;
+        const def = sym ? STOCK_MAP[sym] : null;
+        const n: NewsEvent = { day, kind: def ? 'company' : 'macro', symbol: sym, sector: def?.sector ?? null, headline, rumor: false, tone, realTone, related: def ? relatedForCompany(def) : MACRO_RELATED.oil, ...(def ? {} : { macro: 'oil' as MacroType }), ...extra };
+        storyNews.add(n);
+        news.push(n);
+        return n;
+      };
+      if (e.kind === 'pump') {
+        // 테마주: 근거 없는 소문 → 상한가 연속 → '투자경고' → '사실무근' 공시 → 하한가 → 흘러내림
+        const nm = nameOf(e.symbol);
+        const i = day - e.start;
+        const crash = e.ups + 1;
+        if (i === 0) {
+          ev(`[루머] ${nm}, 신사업 테마 대장주로 뜬다… 개미들 몰려`, 'good', { rumor: true, revealDay: e.start + crash + 1 }, 'bad');
+          addStock(e.symbol, range24(rngE, 0.14, 0.22));
+        } else if (i >= 1 && i <= e.ups) {
+          addStock(e.symbol, 0.34);
+          ev(`${nm}, ${i}일째 급등… 테마 과열`, 'good', { label: '특징주' });
+          if (i === e.ups) ev(`${nm} '투자경고 종목' 지정… 거래소 "과열 주의"`, 'bad', { label: '시황' });
+        } else if (i === crash) {
+          addStock(e.symbol, -0.42);
+          ev(`${nm} "신사업 테마와 무관" 공시… 거품 꺼지나`, 'bad', { label: '단독' });
+        } else if (i === crash + 1) addStock(e.symbol, -range24(rngE, 0.08, 0.15));
+        else if (i === crash + 2) addStock(e.symbol, -range24(rngE, 0.03, 0.08));
+      } else if (e.kind === 'binary') {
+        // 미국 종목 승인 결과: 발표 날 장중 속보로 하루 +60~160% 또는 -50~75%
+        const nm = nameOf(e.symbol);
+        if (day === e.start) {
+          ev(`[단독] ${nm}, 핵심 제품 승인 여부 ${e.resolve + 1}일차 발표 예정… "결과 따라 주가 운명 갈려"`, 'good', { label: '단독' });
+          addStock(e.symbol, range24(rngE, 0.03, 0.06));
+        } else if (day > e.start && day < e.resolve) {
+          addStock(e.symbol, range24(rngE, 0.01, 0.04));
+          if (rngE() < 0.8) {
+            const rg = rngE() < 0.7 ? e.good : !e.good;
+            ev(`[루머] ${nm} 승인 ${rg ? '"사실상 통과" 소식 돌아' : '"보완 요구 받았다" 말 돌아'}`, rg ? 'good' : 'bad', { rumor: true, revealDay: e.resolve + 1 }, e.good ? 'good' : 'bad');
+          }
+        } else if (day === e.resolve) {
+          addStock(e.symbol, e.good ? range24(rngE, 0.5, 0.95) : -range24(rngE, 0.7, 1.3));
+          ev(e.good ? `[속보] ${nm} 승인 통과… 주가 폭등` : `[속보] ${nm} 승인 거절… 주가 폭락`, e.good ? 'good' : 'bad', { at: e.at, label: '속보' });
+          storyBreaking.push({ sym: e.symbol, at: e.at });
+        } else if (day === e.resolve + 1) addStock(e.symbol, (rngE() < 0.5 ? -1 : 1) * range24(rngE, 0.03, 0.12));
+      } else if (e.kind === 'delist') {
+        // 상장 폐지: 소문 → 공시(하한가 근처) → 감사의견 거절·거래정지 → 실질심사(정지) → 정리매매(제한 없음) → 상장폐지(값 거의 0)
+        const nm = nameOf(e.symbol);
+        const st = delistStages(e, totalDays);
+        if (day === st.rumor) {
+          ev(`[루머] ${nm} "감사 늦어진다"… 대표 연락두절설까지`, 'bad', { rumor: true, revealDay: st.disclosure + 1 }, 'bad');
+          addStock(e.symbol, -range24(rngE, 0.03, 0.07));
+        } else if (day === st.disclosure) {
+          ev(`[단독] ${nm}, 감사보고서 제출 지연 공시… 횡령 의혹도`, 'bad', { label: '단독' });
+          addStock(e.symbol, -range24(rngE, 0.25, 0.36));
+        } else if (day === st.halt1) ev(`[속보] ${nm} 감사의견 '거절'… 오늘부터 거래정지`, 'bad', { label: '속보' });
+        else if (day === st.review) {
+          if (e.survive) ev(`${nm}, 개선기간 받아… 내일 거래 재개`, 'good', { label: '시황' });
+          else ev(`${nm} 상장적격성 심사… "상장폐지 가능성 커"`, 'bad', { label: '시황' });
+        } else if (day === st.resume) addStock(e.symbol, range24(rngE, -0.1, 0.15));
+        else if (day === st.clear1) {
+          ev(`[속보] ${nm} 상장폐지 결정… 오늘부터 정리매매 (가격 제한 없음)`, 'bad', { label: '속보' });
+          addStock(e.symbol, Math.log(range24(rngE, 0.05, 0.15)));
+        } else if (day === st.clear2) addStock(e.symbol, range24(rngE, -0.35, 0.3));
+        else if (day === st.delistFrom) ev(`${nm} 상장폐지… 남은 주식은 사실상 0원`, 'bad', { label: '시황' });
+      } else if (e.kind === 'war') {
+        // 전쟁·유가 충격 (가상의 지역): 전날 긴장 → 충격 → 일부 회복
+        if (day === e.day - 1) {
+          ev(`[해외] ${e.place} 긴장 고조… 국제 유가 들썩`, 'bad', { label: '해외' });
+          oilPct += range24(rngE, 1, 3);
+          krSent -= range24(rngE, 0.003, 0.008);
+        } else if (day === e.day) {
+          // 같은 날 '유가 하락' 같은 반대 뉴스는 빼고(시장이 앞뒤가 맞게), 원인을 짚는 업종 기사를 함께 (사용자: 뉴스·속보·커뮤니티가 서로 이어지게)
+          for (let k = news.length - 1; k >= 0; k--) {
+            const x = news[k];
+            if (x.day === day && x.kind === 'macro' && /유가/.test(x.headline) && /하락|급락/.test(x.headline)) news.splice(k, 1);
+          }
+          ev(`[속보] ${e.place} 무력 충돌… 국제 유가 급등, 증시 출렁`, 'bad', { label: '속보' });
+          const secNews = (sector: string, headline: string, tone: 'good' | 'bad') => {
+            const n: NewsEvent = { day, kind: 'sector', symbol: null, sector, headline, rumor: false, tone, realTone: tone, related: COMPANIES.filter((c) => c.sector === sector).map((c) => c.symbol), label: '특징주' };
+            storyNews.add(n);
+            news.push(n);
+          };
+          secNews('energy', `정유주 강세… "${e.place} 충돌로 유가 급등, 정제 마진 수혜"`, 'good');
+          secNews('air', `항공·여행주 급락… "${e.place} 충돌에 기름값·여행 수요 부담"`, 'bad');
+          oilPct = Math.max(oilPct, 0) + range24(rngE, 6, 12);
+          fxPct += range24(rngE, 0.8, 1.6);
+          krSent -= range24(rngE, 0.025, 0.045);
+          usSent -= range24(rngE, 0.012, 0.025);
+          addSec('air', -range24(rngE, 0.04, 0.08));
+          addSec('energy', range24(rngE, 0.03, 0.06));
+        } else if (day === e.day + 1) {
+          ev(`${e.place} 긴장 다소 누그러져… 유가 숨 고르고 증시 낙폭 일부 회복`, 'good', { label: '해외' });
+          krSent += range24(rngE, 0.008, 0.016);
+          oilPct -= range24(rngE, 1.5, 4);
+        }
+      } else if (e.kind === 'rights') {
+        // 유상증자: 전날 '자금난' 소문 → 공시 → 주가 하락
+        const nm = nameOf(e.symbol);
+        if (day === e.day - 1) ev(`[루머] ${nm} "돈줄 말랐다"… 자금난설`, 'bad', { rumor: true, revealDay: e.day + 1 }, 'bad');
+        else if (day === e.day) {
+          ev(`[단독] ${nm}, 대규모 유상증자 결정… 주식 수 늘어 기존 주주 부담`, 'bad', { label: '단독' });
+          addStock(e.symbol, -range24(rngE, 0.12, 0.25));
+        }
+      } else if (e.kind === 'short') {
+        // 공매도 보고서: 장중 속보로 급락 → 다음 날 사실이면 더 빠지고, 틀렸으면 반등 (진위는 다음 날 밝혀짐)
+        const nm = nameOf(e.symbol);
+        if (day === e.day) {
+          ev(`[속보] 해외 공매도 업체 "${nm} 실적 부풀렸다" 보고서`, 'bad', { at: e.at, label: '속보', revealDay: e.day + 1, ...(e.trueReport ? {} : { fake: true }) }, e.trueReport ? 'bad' : 'good');
+          addStock(e.symbol, -range24(rngE, 0.1, 0.18));
+          storyBreaking.push({ sym: e.symbol, at: e.at });
+        } else if (day === e.day + 1) {
+          if (e.trueReport) {
+            ev(`${nm}, 보고서에 제대로 해명 못 해… 이틀째 하락`, 'bad', { label: '특징주' });
+            addStock(e.symbol, -range24(rngE, 0.05, 0.1));
+          } else {
+            ev(`${nm} "보고서는 사실무근" 반박… 주가 반등`, 'good', { label: '특징주' });
+            addStock(e.symbol, range24(rngE, 0.06, 0.12));
+          }
+        }
+      }
+    }
+
     // 금리 결정일: 반드시 결정 뉴스 (동결 포함), 변동 폭도 더 큼
     if (fomc) {
       const t = rng();
@@ -659,7 +801,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       let rOpen: number;
       let rDay: number;
       if (v3) {
-        const g = breaking.has(s.symbol) ? 0.05 : range(rng3, 0.8, 0.95);
+        // (v24) 정리매매 첫날은 아침부터 크게 (다른 종목 속보에 딸려 장중으로 미뤄지지 않게)
+        const g = breaking.has(s.symbol) && !(v24 && haltKind(s.symbol, day) === 'clear') ? 0.05 : range(rng3, 0.8, 0.95);
         const N3 = s.sectorBeta * sr.n3 + s.vol * gaussian(rng3);
         rOpen = g * S + 0.45 * N3;
         rDay = (1 - g) * S + 0.9 * N;
@@ -679,7 +822,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
 
       if (s.currency === 'USD') {
         const prev = lastUsd[s.symbol];
-        const lim = (p: number) => Math.min(prev * 1.5, Math.max(prev * 0.5, p));
+        const wide = wideDay.has(s.symbol + ':' + day);
+        const lim = (p: number) => Math.min(prev * (wide ? 3 : 1.5), Math.max(prev * (wide ? 0.2 : 0.5), p));
         const open = roundUsd(lim(prev * Math.exp(rOpen)));
         const close = roundUsd(lim(open * Math.exp(rDay)));
         const path = intradayPath(rng, open, close, vol, false).map(roundUsd);
@@ -695,16 +839,28 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         usN += wu;
       } else {
         const prev = last[s.symbol];
-        // 실제 한국 시장처럼 하루 ±30% 가격제한폭(상한가/하한가)
-        const lim = (p: number) => Math.min(prev * LIMIT_UP, Math.max(prev * LIMIT_DOWN, Math.max(s.basePrice * 0.05, p)));
-        const open = roundPrice(lim(prev * Math.exp(rOpen)));
-        const close = roundPrice(lim(open * Math.exp(rDay)));
-        const path = intradayPath(rng, open, close, vol).map((p, i, a) => (i === 0 || i === a.length - 1 ? p : roundPrice(lim(p))));
+        const hk = v24 ? haltKind(s.symbol, day) : undefined;
+        // 실제 한국 시장처럼 하루 ±30% 가격제한폭(상한가/하한가) — (v24) 정리매매 날은 제한 없음
+        const lim =
+          hk === 'clear'
+            ? (p: number) => Math.min(prev * 3, Math.max(1, p))
+            : (p: number) => Math.min(prev * LIMIT_UP, Math.max(prev * LIMIT_DOWN, Math.max(s.basePrice * 0.05, p)));
+        let open = roundPrice(lim(prev * Math.exp(rOpen)));
+        let close = roundPrice(lim(open * Math.exp(rDay)));
+        let path = intradayPath(rng, open, close, vol).map((p, i, a) => (i === 0 || i === a.length - 1 ? p : roundPrice(lim(p))));
+        // (v24) 거래정지 날은 가격이 그대로, 상장폐지 뒤엔 1원(사실상 0원)
+        if (hk === 'halt' || hk === 'delisted') {
+          const px = hk === 'delisted' ? 1 : prev;
+          open = close = px;
+          path = path.map(() => px);
+        }
         bars[s.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
         const w = v2 ? (CAP_WEIGHT[s.symbol] ?? 1) : 1; // v2: 시가총액 가중
-        krO += w * Math.log(open / prev);
-        krC += w * Math.log(close / prev);
-        krN += w;
+        if (!hk) {
+          krO += w * Math.log(open / prev);
+          krC += w * Math.log(close / prev);
+          krN += w;
+        }
       }
       const b = bars[s.symbol][day];
       rOpenK[s.symbol] = Math.log(b.open / last[s.symbol]);
@@ -820,7 +976,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       }
     }
   }
-  return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
+  return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends, ...(v24 ? { halts } : {}) };
 }
 
 /** 미리 공지되는 일정: 연준·금통위·실적 시즌·옵션 만기·배당 기준일 */

@@ -1486,3 +1486,15 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .sc-bar { font-size: 18px; letter-spacing: 1px; word-break: break-all; }
 .guest-save { display: flex; flex-direction: column; gap: 6px; border-color: #6b58ee !important; }
 .guest-save .row { display: flex; gap: 8px; }
+
+/* (v24) 거래 상태: 거래정지 · 정리매매 · 상장폐지 */
+.halt-tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 800; line-height: 16px; white-space: nowrap; }
+.halt-tag.h-halt { background: #3a2f12; color: #f5b83d; border: 1px solid #6b5420; }
+.halt-tag.h-clear { background: #3a1219; color: #ff6b85; border: 1px solid #7a2032; }
+.halt-tag.h-delisted { background: #2a2a2a; color: #9a9a9a; border: 1px solid #3a3a3a; text-decoration: line-through; }
+.halt-note { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.halt-note.h-halt { background: #2a2310; color: #f2e2b8; border: 1px solid #6b5420; }
+.halt-note.h-clear { background: #2a1015; color: #ffd0d8; border: 1px solid #7a2032; }
+.halt-note.h-delisted { background: #222; color: #c8c8c8; border: 1px solid #3a3a3a; }
+.halt-note b { margin-right: 4px; }
+.title-line .halt-tag { margin-left: 6px; }

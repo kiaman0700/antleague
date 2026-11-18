@@ -305,7 +305,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 23;
+export const CURRENT_RULES_VERSION = 24;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -458,6 +458,8 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
     index: cut(m.index),
     usIndex: cut(m.usIndex),
     version: m.version,
+    // (v24) 거래정지·정리매매·상장폐지 — 그날 아침 공시로 알려진 것까지만 (앞날 상태는 안 보냄)
+    ...(m.halts ? { halts: m.halts.filter((h) => h.day <= day) } : {}),
     macro: m.macro.slice(0, day + 1),
     macro0: m.macro0,
     news,
@@ -683,6 +685,17 @@ function requirePlaying(d: GameData, meId: string, now: number) {
   return me;
 }
 
+/** (v24) 그날 그 종목의 거래 상태 (거래정지·정리매매·상장폐지) */
+export function haltOn(m: Market, symbol: string, day: number): 'halt' | 'clear' | 'delisted' | undefined {
+  return m.halts?.find((h) => h.symbol === symbol && h.day === day)?.kind;
+}
+function requireTradable(d: GameData, symbol: string) {
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
+  const h = haltOn(m, symbol, d.room.day);
+  if (h === 'halt') throw new GameError('이 종목은 오늘 거래정지예요. 사고팔 수 없어요.', 409);
+  if (h === 'delisted') throw new GameError('상장폐지된 종목이라 사고팔 수 없어요.', 409);
+}
+
 export function validateTrade(d: GameData, meId: string, now: number, input: { symbol?: unknown; side?: unknown; qty?: unknown }): Trade {
   requirePlaying(d, meId, now);
   if (inPremarket(d.room, now)) throw new GameError('아직 장이 열리지 않았어요. 장 전에는 예약 주문만 할 수 있어요.', 409);
@@ -691,6 +704,7 @@ export function validateTrade(d: GameData, meId: string, now: number, input: { s
   if (!side) throw new GameError('사기/팔기를 골라 주세요.');
   const qty = input.qty;
   if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) throw new GameError('수량을 확인해 주세요.');
+  requireTradable(d, symbol);
 
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
@@ -994,6 +1008,11 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
   if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) throw new GameError('수량을 확인해 주세요.');
   const limit = input.limit;
   if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) throw new GameError('예약 가격을 확인해 주세요.');
+  requireTradable(d, symbol);
+  {
+    const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
+    if (haltOn(m, symbol, d.room.day) === 'clear') throw new GameError('정리매매 중인 종목은 예약 주문을 걸 수 없어요. 지금 가격으로만 사고팔 수 있어요.', 409);
+  }
 
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
@@ -1053,6 +1072,11 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
   const out: { id: string; status: OrderRow['status']; trade?: Trade }[] = [];
   const extra: Trade[] = [];
   for (const o of open) {
+    const hk = haltOn(m, o.symbol, day);
+    if (hk) {
+      out.push({ id: o.id!, status: 'cancelled' });
+      continue;
+    }
     const isUS = STOCK_MAP[o.symbol].currency === 'USD';
     const ticks = dayTicks(m, o.symbol, day, clock.n, isUS ? 'usd' : 'krw');
     const from = Math.min(clock.n, tickOf(clock.startAt, o.created_at, clock.tickMs) + 1);

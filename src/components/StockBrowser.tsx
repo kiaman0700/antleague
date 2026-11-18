@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, SectorIcon } from './Icon';
 import type { Market } from '../game/market';
+import { HaltTag } from './HaltTag';
 import type { PortfolioState } from '../game/portfolio';
 import { fmtUsd, quote } from '../game/quote';
 import { regionOf, riskOf, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type Region } from '../game/stocks';
@@ -335,6 +336,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
                 watched={watch.includes(s.symbol)}
                 heldQty={portfolio.holdings[s.symbol]?.qty ?? 0}
                 grouped={grouped}
+                halt={market.halts?.find((h) => h.symbol === s.symbol && h.day === day)?.kind}
                 onSelect={stableSelect}
                 onToggleWatch={stableWatch}
               />
@@ -359,12 +361,14 @@ interface RowProps {
   grouped: boolean;
   onSelect: (s: string) => void;
   onToggleWatch: (s: string) => void;
+  /** (v24) 거래정지·정리매매·상장폐지 */
+  halt?: 'halt' | 'clear' | 'delisted';
 }
 /**
  * 종목 한 줄 — 장이 열려 있으면 1초마다 목록 전체가 새로 그려져서(47줄), 느린 휴대폰에서 목록 탭이 끊겼음.
  * 이 줄의 값(가격·등락·작은 차트·선택·관심·보유)이 바뀔 때만 다시 그림
  */
-const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, news, watched, heldQty, grouped, onSelect, onToggleWatch }: RowProps) {
+const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, news, watched, heldQty, grouped, onSelect, onToggleWatch, halt }: RowProps) {
   const s = STOCK_MAP[symbol];
   const r = riskOf(s);
   return (
@@ -395,7 +399,7 @@ const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, new
         <small>
           {usd !== null && <span className="flag">US · </span>}
           {!grouped && <>{s.etf ? s.etf.group : SECTOR_MAP[s.sector].name} · </>}
-          <span className={'risk r' + r}>{['', '안정', '보통', '고위험'][r]}</span>
+          {halt ? <HaltTag kind={halt} /> : <span className={'risk r' + r}>{['', '안정', '보통', '고위험'][r]}</span>}
           {heldQty > 0 && <span className="held"> · {num(heldQty)}주</span>}
         </small>
       </div>

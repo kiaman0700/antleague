@@ -277,6 +277,47 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
       out.push({ id: `${day}-r${out.length}`, day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0 });
     }
   }
+  // (v24) 그날 나온 큰 사건 뉴스에 반응하는 글 — 사건의 원인·결과를 짚음(전쟁 → 유가·정유·항공, 테마 과열, 상장 폐지, 유상증자, 공매도 보고서).
+  //   이미 공개된 뉴스를 두고 하는 말이라 진짜(real)·들썩임 없음, 뉴스가 나온 뒤에만 올라옴 (아침 뉴스면 장 초반)
+  if ((m.version ?? 1) >= 24) {
+    const r4 = seeded(`${key}:sns24:${day}`);
+    const nick = () => NICKS[Math.floor(r4() * NICKS.length)];
+    const plat = (): Platform => PLATFORM_IDS[Math.floor(r4() * PLATFORM_IDS.length)];
+    const add = (afterAt: number, text: string, sector: string, tone: 'good' | 'bad', symbol?: string) =>
+      out.push({ id: `${day}-e${out.length}`, day, at: Math.min(0.97, afterAt + 0.01 + r4() * 0.12), platform: plat(), author: nick(), verified: null, text, symbol, sector, tone, target: { day, at: afterAt }, likes: Math.floor(80 + r4() * 900), replies: Math.floor(10 + r4() * 200), real: true, hype: 0 });
+    for (const n of m.news.filter((x) => x.day === day && !x.rumor)) {
+      const at0 = n.at ?? 0.02;
+      const h = n.headline;
+      const nm = n.symbol ? STOCK_MAP[n.symbol]?.name ?? '' : '';
+      if (/무력 충돌/.test(h)) {
+        add(at0, '전쟁 났다고? 기름값 또 뛰겠네… 정유주는 웃고 항공주는 우는 날 ㅠ', 'energy', 'good');
+        add(at0, '항공주 들고 있는 사람 손… 유가 오르면 비행기 연료비 감당 안 됨', 'air', 'bad');
+        add(at0, '전쟁 소식에 지수 빠질 때 패닉셀 금지. 보통 며칠 뒤 일부 돌아온다', 'energy', 'good');
+      } else if (/긴장 고조/.test(h)) {
+        add(at0, '뉴스 보니까 분위기 심상치 않다… 혹시 모르니 항공주 줄여 둠', 'air', 'bad');
+      } else if (/투자경고/.test(h) && n.symbol) {
+        add(at0, `${nm} 투자경고 떴다… 근거 뉴스는 없는데 오르기만 함. 꼭지 조심`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+        add(at0, `${nm} 아직 안 늦음 가즈아!! 상한가 한 번 더`, STOCK_MAP[n.symbol].sector, 'good', n.symbol);
+      } else if (/일째 급등/.test(h) && n.symbol) {
+        add(at0, `${nm} 또 상한가ㅋㅋ 이거 무슨 재료인지 아는 사람?`, STOCK_MAP[n.symbol].sector, 'good', n.symbol);
+      } else if (/무관.*공시|사실무근/.test(h) && n.symbol) {
+        add(at0, `${nm} 공시 보고 다 같이 던지는 중… 소문만 믿고 탄 사람들 어떡함`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/감사보고서 제출 지연|횡령/.test(h) && n.symbol) {
+        add(at0, `${nm} 감사 지연에 횡령 의혹까지… 이거 거래정지 각 아님?`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/거래정지/.test(h) && n.symbol) {
+        add(at0, `${nm} 거래정지 걸렸다… 물린 사람 팔지도 못함 ㅠㅠ`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/정리매매/.test(h) && n.symbol) {
+        add(at0, `${nm} 정리매매 시작… 한 푼이라도 건지려면 지금이 마지막`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/유상증자/.test(h) && n.symbol) {
+        add(at0, `${nm} 유상증자… 주식 수 늘어나면 내 주식 가치는 희석됨. 그래서 빠지는 거`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/공매도 업체/.test(h) && n.symbol) {
+        add(at0, `${nm} 공매도 보고서 떴다. 진짜인지는 회사 해명 봐야 앎`, STOCK_MAP[n.symbol].sector, 'bad', n.symbol);
+      } else if (/승인 통과|승인 거절/.test(h) && n.symbol) {
+        const ok = /통과/.test(h);
+        add(at0, ok ? `${nm} 승인 통과!! 하루에 두 배 실화냐` : `${nm} 승인 거절… 하루 만에 반토막`, STOCK_MAP[n.symbol].sector, ok ? 'good' : 'bad', n.symbol);
+      }
+    }
+  }
   out.sort((a, b) => a.at - b.at);
   if (cache.size > 2000) cache.clear();
   cache.set(ck, out);
