@@ -37,7 +37,13 @@ export interface NewsEvent {
   at?: number;
   /** (v12 사건 찌라시) 이 날부터 진위를 밝힘 — 결과 발표 전에 '사실로 확인'이 붙어 결과가 새지 않게. 서버 전용 */
   revealDay?: number;
+  /**
+   * (v17) 관련 회사와의 관계 — 화면이 '거래처·같은 업종·경쟁사·연관 업종·ETF' 와 예상 방향(공개 tone 기준, 경쟁사는 반대)을 보여 줌.
+   * 고정된 회사 정보라 공개해도 됨 (실제로 얼마나 움직이는지는 넣지 않음)
+   */
+  rel?: Record<string, NewsRel>;
 }
+export type NewsRel = 'link' | 'peer' | 'rival' | 'chain' | 'etf';
 export type NewsLabel = '속보' | '단독' | '시황' | '특징주' | '해외';
 
 export interface Bar {
@@ -148,6 +154,35 @@ export function relatedForCompany(s: StockDef): string[] {
   return uniq([s.symbol, ...peers.slice(0, 2), ...linked, ...etfsHolding([s.symbol])]);
 }
 
+/** (v17) 관련 칩의 회사마다 관계 이름표 */
+function relationsFor(s: StockDef, related: string[], rival?: string): Record<string, NewsRel> {
+  const out: Record<string, NewsRel> = {};
+  for (const x of related) {
+    if (x === s.symbol) continue;
+    const d = STOCK_MAP[x];
+    if (!d) continue;
+    if (x === rival) out[x] = 'rival';
+    else if (d.etf) out[x] = 'etf';
+    else if (COMPANY_LINKS[s.symbol]?.[x] != null || COMPANY_LINKS[x]?.[s.symbol] != null) out[x] = 'link';
+    else if (d.sector === s.sector) out[x] = 'peer';
+    else out[x] = 'chain';
+  }
+  return out;
+}
+/** (v17) 경쟁사가 반대로 움직이는 '나눠 먹는' 소식 (수주·점유율·신제품·리콜) */
+const SHARE_GOOD = [
+  '{name}, {rival} 제치고 대형 계약 따내',
+  '{name} 신제품 돌풍… {rival} 고객 이탈 우려',
+  '{name}, 점유율 큰 폭 상승… {rival} 자리 위협',
+  '{name}, 경쟁 입찰서 {rival} 누르고 수주',
+];
+const SHARE_BAD = [
+  '{name}, 대형 수주 경쟁서 {rival}에 밀려',
+  '{name} 제품 결함 리콜… 고객 {rival} 쪽으로 이동하나',
+  '{name}, 점유율 하락세… {rival} 반사이익 기대',
+  '{name} 핵심 거래처, {rival} 쪽으로 갈아타',
+];
+
 export function relatedForSector(id: string): string[] {
   const own = COMPANIES.filter((c) => c.sector === id).map((c) => c.symbol);
   const linked = Object.entries(SECTOR_MAP[id].links)
@@ -232,6 +267,9 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
   // v15 (설계서 design/story-v2.md): 예고 → 날마다 기대감 → (약 35%) 전날·당일 반전 소식 → 발표 크기는 '이미 오른 만큼'을 빼고.
   // 별도 난수(story15)라 v14 이하 가격·사건은 그대로
   const v15 = version >= 15;
+  // v17 (설계서 design/stock-news-v17.md): 회사 뉴스 늘리고 경쟁사 반대 반응 — 전용 난수(news17)라 v16 이하 그대로
+  const v17 = version >= 17;
+  const rngN = R('news17', () => mulberry32((seed ^ 0x3c6ef372) >>> 0));
   const rngT = R('story15', () => mulberry32((seed ^ 0x51ed270b) >>> 0));
   const twist = stories.map((st) => {
     if (!v15) return null;
@@ -347,7 +385,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           krSent += m * (v2 ? 0.15 : 0.4); // 미국 증시는 한국에도 영향 (v2: 대부분은 다음 날 아침에)
           pushMacro('us', pick(rng, good ? T.MACRO.usGood : T.MACRO.usBad), good ? 'good' : 'bad');
         }
-      } else if (r < 0.5) {
+      } else if (r < (v17 ? 0.385 : 0.5)) {
         const sec = pick(rng, STOCK_SECTORS);
         const good = rng() < 0.5;
         const rumor = rng() < 0.2;
@@ -391,21 +429,30 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         addStock(s.symbol, mag);
         // v2: 공급망·고객사로 번짐
         if (v2) for (const [l, w] of Object.entries(COMPANY_LINKS[s.symbol] ?? {})) addStock(l, mag * w);
-        for (const p of COMPANIES) if (p.sector === s.sector && p.symbol !== s.symbol) addStock(p.symbol, mag * 0.25);
+        // (v17) 약 30%는 '나눠 먹는' 소식 — 같은 업종 경쟁사 하나는 반대로 움직임 (루머·실적 뉴스 제외)
+        const peers = COMPANIES.filter((p) => p.sector === s.sector && p.symbol !== s.symbol);
+        const rival = v17 && !rumor && !earningsOnly && peers.length && rngN() < 0.3 ? peers[Math.floor(rngN() * peers.length)] : null;
+        for (const p of peers) addStock(p.symbol, p === rival ? -mag * range(rngN, 0.35, 0.6) : mag * 0.25);
         for (const [link, w] of Object.entries(sec.links)) addSec(link, mag * w * 0.3);
-        const pool = earningsOnly
-          ? (good ? T.EARNINGS_GOOD : T.EARNINGS_BAD)
-          : [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
+        const pool = rival
+          ? good
+            ? SHARE_GOOD
+            : SHARE_BAD
+          : earningsOnly
+            ? (good ? T.EARNINGS_GOOD : T.EARNINGS_BAD)
+            : [...(good ? T.COMPANY_GOOD : T.COMPANY_BAD), ...((good ? T.SECTOR_COMPANY_GOOD : T.SECTOR_COMPANY_BAD)[s.sector] ?? [])];
+        const related = rival ? uniq([s.symbol, rival.symbol, ...relatedForCompany(s).filter((x) => x !== s.symbol && x !== rival.symbol)]) : relatedForCompany(s);
         news.push({
           day,
           kind: 'company',
           symbol: s.symbol,
           sector: s.sector,
-          headline: (rumor ? '[루머] ' : '') + fill(pick(rng, pool), { name: s.name }),
+          headline: (rumor ? '[루머] ' : '') + fill(pick(rival ? rngN : rng, pool), { name: s.name, rival: rival?.name ?? '' }),
           rumor,
           tone: good ? 'good' : 'bad',
           realTone: realGood ? 'good' : 'bad',
-          related: relatedForCompany(s),
+          related,
+          ...(v17 ? { rel: relationsFor(s, related, rival?.symbol) } : {}),
         });
       }
     }
@@ -665,6 +712,26 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
 
   for (const dv of dividends) dv.perShare = Math.max(1, Math.round((bars[dv.symbol][dv.day].close * dv.yieldPct) / 100));
   decorateNews(seed, totalDays, news, bars, indexBars, v3, S ? seeded(`${S}:news`) : undefined);
+  if (v17) {
+    // 관계 이름표가 없는 회사 기사(사건 흐름·특징주·표시 없는 가짜 기사)에도 붙임.
+    // 가짜 기사도 30%는 '경쟁사' 모양으로 바꿈 — 경쟁사 기사 = 진짜 기사로 티 나지 않게 (가격 영향은 원래 없음)
+    const rngF = R('fake17', () => mulberry32((seed ^ 0x6a09e667) >>> 0));
+    for (const n of news) {
+      if (n.kind !== 'company' || !n.symbol || n.rel) continue;
+      const def = STOCK_MAP[n.symbol];
+      if (n.fake && !n.label && rngF() < 0.3) {
+        const peers = COMPANIES.filter((p) => p.sector === def.sector && p.symbol !== def.symbol);
+        if (peers.length) {
+          const rival = peers[Math.floor(rngF() * peers.length)];
+          n.headline = fill(pick(rngF, n.tone === 'good' ? SHARE_GOOD : SHARE_BAD), { name: def.name, rival: rival.name });
+          n.related = uniq([def.symbol, rival.symbol, ...n.related.filter((x) => x !== def.symbol && x !== rival.symbol)]);
+          n.rel = relationsFor(def, n.related, rival.symbol);
+          continue;
+        }
+      }
+      n.rel = relationsFor(def, n.related);
+    }
+  }
   return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };
 }
 

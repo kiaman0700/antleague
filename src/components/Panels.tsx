@@ -5,7 +5,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { CardIcon, Icon, SectorIcon } from './Icon';
 import { CardGuide } from './CardGuide';
 import { ITEM_MAP, ITEMS, infoLimitReason, canBuy, canUse, itemCost, holdLimit, USE_LIMIT, GRANT_EVERY, type ItemKind, type PlayerItems } from '../game/items';
-import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent } from '../game/market';
+import { KR_INDEX_BASE, US_INDEX_BASE, type Market, type NewsEvent, type NewsRel } from '../game/market';
 import { START_CASH, type Holding, type PortfolioState } from '../game/portfolio';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, won, wonShort } from '../lib/format';
@@ -17,7 +17,7 @@ import { EmptyState, useDialogFocus, useEscape } from './ui';
 
 interface NewsProps {
   /** (v7) 오늘 장 전 찌라시 */
-  rumors?: { text: string; sector: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
+  rumors?: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
   /** 지금 장 전인지 (찌라시 칸을 강조) */
   pre?: boolean;
   ui: UiMode;
@@ -68,22 +68,35 @@ export function unreadToday(news: NewsEvent[], day: number): number {
 }
 const rumorKey = (day: number, text: string) => 'r:' + day + ':' + text;
 
-function RelatedChips({ symbols, change, onSelect }: { symbols: string[]; change: (s: string) => number; onSelect: (s: string) => void }) {
+/** (v17) 관계 이름 — 기사 아래 관련 칩에 작게 */
+const REL_NAME: Record<NewsRel, string> = { link: '거래처', peer: '같은 업종', rival: '경쟁사', chain: '연관 업종', etf: 'ETF' };
+
+function RelatedChips({ symbols, change, onSelect, rel, tone: newsTone }: { symbols: string[]; change: (s: string) => number; onSelect: (s: string) => void; rel?: Record<string, NewsRel>; tone?: 'good' | 'bad' }) {
   if (!symbols.length) return null;
   return (
-    <div className="related">
+    <div className={'related' + (rel ? ' with-rel' : '')}>
       <span className="related-label">관련</span>
       {symbols.map((sym) => {
         const ch = change(sym);
+        const r = rel?.[sym];
+        // 예상 방향: 기사 방향 그대로, 경쟁사는 반대 (실제 결과는 옆의 지금 등락률)
+        const up = newsTone ? (newsTone === 'good') !== (r === 'rival') : null;
         return (
           <button
             key={sym}
-            className="rel-chip"
+            className={'rel-chip' + (r ? ' r-' + r : '')}
+            title={r ? `${REL_NAME[r]} — 이 기사에 ${up ? '같이 오를' : '내릴'} 수 있어요 (예상)` : undefined}
             onClick={(e) => {
               e.stopPropagation();
               onSelect(sym);
             }}
           >
+            {r && (
+              <small className="rc-rel">
+                {REL_NAME[r]}
+                {up !== null && <b className={up ? 'up' : 'down'}>{up ? '▲' : '▼'}</b>}
+              </small>
+            )}
             {STOCK_MAP[sym].name}
             <i className={tone(ch)}>{pct(ch, 1)}</i>
           </button>
@@ -264,7 +277,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                   {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
                   {n.headline.replace('[루머] ', '')}
                 </div>
-                <RelatedChips symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
+                <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
               </div>
             ))}
         </>
@@ -296,8 +309,9 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                     </div>
                     <p className="sp-text">{r.text}</p>
                     <div className="sp-foot">
-                      <button className={'sp-tag ' + r.tone} onClick={() => onSelectSector(r.sector)} title="이 업종 종목 보기">
-                        <SectorIcon id={r.sector} /> #{SECTOR_MAP[r.sector]?.name ?? r.sector} {r.tone === 'good' ? '호재설' : '악재설'}
+                      {/* (v17) 회사 이름 소문이면 그 회사 차트로, 업종 소문이면 그 업종 목록으로 */}
+                      <button className={'sp-tag ' + r.tone} onClick={() => (r.symbol && STOCK_MAP[r.symbol] ? onSelect(r.symbol) : onSelectSector(r.sector))} title={r.symbol ? '이 종목 보기' : '이 업종 종목 보기'}>
+                        <SectorIcon id={r.sector} /> #{r.symbol && STOCK_MAP[r.symbol] ? STOCK_MAP[r.symbol].name : (SECTOR_MAP[r.sector]?.name ?? r.sector)} {r.tone === 'good' ? '호재설' : '악재설'}
                       </button>
                       <span className="sp-stat" aria-label={`본 사람 ${f.views}`}>
                         <Icon name="eye" size={13} /> {f.views}
@@ -355,7 +369,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                 <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
                 {n.headline.replace('[루머] ', '')}
               </div>
-              <RelatedChips symbols={n.related} change={change} onSelect={onSelect} />
+              <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related} change={change} onSelect={onSelect} />
             </div>
           ))}
         </>
@@ -371,7 +385,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                   {n.headline.replace('[루머] ', '')}
                   {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
                   {n.verdict === 'true' && <em className="old-verdict true">사실로 확인</em>}
-                  <RelatedChips symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
+                  <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
                 </span>
               </li>
             ))}
@@ -386,7 +400,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           {tomorrow.map((n, i) => (
             <div key={i} className="reveal-item">
               <div className={'reveal-line ' + n.tone}>{n.headline}</div>
-              <RelatedChips symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
+              <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
             </div>
           ))}
         </div>
@@ -466,7 +480,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
             {n.headline.replace('[루머] ', '')}
           </div>
-          <RelatedChips symbols={n.related} change={change} onSelect={onSelect} />
+          <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related} change={change} onSelect={onSelect} />
           {ui === 'easy' && i === 0 && <div className="news-go">관련 종목을 누르면 바로 차트로 이동해요</div>}
         </div>
       ))}
@@ -489,7 +503,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                     {n.headline}
                     {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
                     {n.verdict === 'true' && n.rumor && <em className="old-verdict true">사실로 확인</em>}
-                    <RelatedChips symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
+                    <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />
                   </span>
                 </li>
               ))}

@@ -1299,3 +1299,7 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .hub > .hub-nudge { margin-bottom: 0; }
 /* PC 연습·커스텀 바로가기 타일: 아이콘과 이름 사이가 비어 보이던 것 → 조금 낮게 */
 @media (min-width: 861px) { .lobby-shell.client .home-actions .tile { min-height: 124px; } }
+/* (v17) 관련 칩의 관계 이름표 (거래처·같은 업종·경쟁사·연관 업종·ETF) + 예상 방향 */
+.rel-chip .rc-rel { display: inline-flex; align-items: center; gap: 2px; margin-right: 6px; padding-right: 6px; border-right: 1px solid var(--line-2, #3a3a3a); font-size: 11px; font-weight: 600; color: #a8a8a8; white-space: nowrap; }
+.rel-chip .rc-rel b { font-size: 10px; font-weight: 700; }
+.rel-chip.r-rival .rc-rel { color: #f0b35a; }

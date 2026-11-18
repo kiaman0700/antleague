@@ -7,11 +7,13 @@
  */
 import { seeded } from '../lib/rng.js';
 import type { Market } from './market.js';
-import { SECTOR_MAP, STOCK_SECTORS } from './stocks.js';
+import { COMPANIES, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS } from './stocks.js';
 
 export interface Rumor {
   text: string;
   sector: string;
+  /** (v17) 회사 이름으로 도는 소문이면 그 회사 */
+  symbol?: string;
   tone: 'good' | 'bad';
   /** 서버에만 — 화면 데이터에는 감별기를 쓴 사람에게 verdict 로만 */
   real: boolean;
@@ -19,6 +21,7 @@ export interface Rumor {
 export interface PublicRumor {
   text: string;
   sector: string;
+  symbol?: string;
   tone: 'good' | 'bad';
   verdict?: 'true' | 'false';
 }
@@ -33,6 +36,25 @@ const BAD = [
   (s: string) => `${s} 쪽에 오늘 악재가 나온다는 얘기가 돌아요`,
   (s: string) => `${s} 업계에 안 좋은 발표가 있을 거라는 소문이에요`,
   (s: string) => `큰손들이 오늘 ${s} 주식을 던질 거라는 말이 있어요`,
+  (s: string) => `${s} 실적이 생각보다 나쁘다는 얘기가 새어 나왔대요`,
+];
+
+/** 받침에 따라 조사 (코어반도체가 / 대한건설이) */
+const jo = (w: string, withB: string, noB: string) => {
+  const c = w.charCodeAt(w.length - 1);
+  return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0 ? w + withB : w + noB;
+};
+/** (v17) 회사 이름으로 도는 소문 */
+const CO_GOOD = [
+  (s: string) => `${s}에 오늘 큰 호재가 터진다는 얘기가 돌아요`,
+  (s: string) => `${jo(s, '이', '가')} 깜짝 발표를 준비 중이라는 소문이에요`,
+  (s: string) => `큰손들이 오늘 ${jo(s, '을', '를')} 쓸어 담을 거라는 말이 있어요`,
+  (s: string) => `${s} 실적이 예상보다 훨씬 좋다는 얘기가 새어 나왔대요`,
+];
+const CO_BAD = [
+  (s: string) => `${s}에 오늘 악재가 나온다는 얘기가 돌아요`,
+  (s: string) => `${s}에 안 좋은 발표가 있을 거라는 소문이에요`,
+  (s: string) => `큰손들이 오늘 ${jo(s, '을', '를')} 던질 거라는 말이 있어요`,
   (s: string) => `${s} 실적이 생각보다 나쁘다는 얘기가 새어 나왔대요`,
 ];
 
@@ -64,10 +86,25 @@ export function preRumors(m: Market, day: number, key: string): Rumor[] {
     out.push({ text: '', sector: s.id, tone, real: false });
     if (rng() < 0.6 && out.length < 6) out.push({ text: '', sector: s.id, tone: tone === 'good' ? 'bad' : 'good', real: false });
   }
+  // (v17) 약 절반은 회사 이름으로 — 진짜 단서·헛소문 모두 같은 비율(전용 난수), 같은 업종 짝 소문은 같은 회사를 말함
+  // 진짜 단서가 회사 속보에서 왔으면 그 회사, 아니면 그 업종의 아무 회사 (겉모습으로 진위를 알 수 없게)
+  if ((m.version ?? 1) >= 17) {
+    const rngC = seeded(`${key}:pre17:${day}`);
+    const bySector = new Map<string, string | null>();
+    for (const r of out) {
+      if (!bySector.has(r.sector)) {
+        const src = sources.find((n) => n.sector === r.sector && n.symbol);
+        const peers = COMPANIES.filter((c) => c.sector === r.sector);
+        bySector.set(r.sector, rngC() < 0.5 && peers.length ? (src?.symbol && rngC() < 0.7 ? src.symbol : peers[Math.floor(rngC() * peers.length)].symbol) : null);
+      }
+      const sym = bySector.get(r.sector);
+      if (sym) r.symbol = sym;
+    }
+  }
   // 같은 문구 틀에서 고르고 순서를 섞음 → 겉모습으로 진위를 알 수 없음
   for (const r of out) {
-    const t = r.tone === 'good' ? GOOD : BAD;
-    r.text = t[Math.floor(rng() * t.length)](SECTOR_MAP[r.sector].name);
+    const t = r.symbol ? (r.tone === 'good' ? CO_GOOD : CO_BAD) : r.tone === 'good' ? GOOD : BAD;
+    r.text = t[Math.floor(rng() * t.length)](r.symbol ? STOCK_MAP[r.symbol].name : SECTOR_MAP[r.sector].name);
   }
   return shuffle(out, rng);
 }
@@ -84,5 +121,5 @@ function shuffle<T>(a: T[], rng: () => number): T[] {
 /** 화면에 보낼 찌라시 — 진위는 감별기를 쓴 사람에게만 */
 export function publicRumors(rs: Rumor[], rumorCheck: boolean, pick?: string): PublicRumor[] {
   // (v14) 감별기로 고른 찌라시 하나만 판정
-  return rs.map((r) => ({ text: r.text, sector: r.sector, tone: r.tone, ...(rumorCheck || (pick !== undefined && r.text === pick) ? { verdict: r.real ? ('true' as const) : ('false' as const) } : {}) }));
+  return rs.map((r) => ({ text: r.text, sector: r.sector, ...(r.symbol ? { symbol: r.symbol } : {}), tone: r.tone, ...(rumorCheck || (pick !== undefined && r.text === pick) ? { verdict: r.real ? ('true' as const) : ('false' as const) } : {}) }));
 }
