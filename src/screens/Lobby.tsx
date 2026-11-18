@@ -1299,7 +1299,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <h3 className="sec-h">기본</h3>
         <label className="field">
           <span>방 제목</span>
-          <input value={title} maxLength={20} placeholder={`${account.profile?.nickname ?? (profile.nick.trim() || '나')}의 방`} onChange={(e) => setTitle(e.target.value)} />
+          <input value={title} maxLength={20} placeholder={`${account.profile?.nickname ?? ((account.status !== 'visitor' && profile.nick.trim()) || '나')}의 방`} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <div className="field">
           <span>인원 (방장 포함)</span>

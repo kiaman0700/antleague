@@ -96,6 +96,8 @@ export function refreshAccount(): Promise<void> {
     .catch(() => true)
     .then((has) => {
       if (!has) {
+        // 회원이던 기기가 (다른 곳 접속·만료로) 로그아웃됐으면 회원 닉네임을 이 기기에 남기지 않음 (함께 쓰는 기기)
+        if (state.status === 'member') saveNick('');
         set({ status: 'visitor', profile: null, recent: [], badges: {} });
         return;
       }
