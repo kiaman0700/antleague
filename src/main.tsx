@@ -25,6 +25,8 @@ document.addEventListener('touchstart', () => {}, { passive: true });
 // 새로 배포된 뒤 열려 있던 창에서 나중에 받는 화면(게임·공부·계정 등)의 옛 파일이 없어 못 받으면 한 번만 새로 고침
 // (같은 창에서 1분 안에 또 실패하면 다시 고치지 않고 오류 화면 — 무한 새로 고침 방지)
 window.addEventListener('vite:preloadError', (e) => {
+  // 인터넷이 끊긴 거면 새로 고쳐도 브라우저 '오프라인' 화면만 나옴 → 오류 화면(연결되면 저절로 다시)에 맡김
+  if (navigator.onLine === false) return;
   try {
     const last = Number(sessionStorage.getItem('stockduel.reloadAt') ?? 0);
     if (Date.now() - last < 60_000) return;

@@ -6,6 +6,9 @@ import { Component, type ReactNode } from 'react';
 import { resetLayout } from '../prefs';
 import { FeedbackSheet } from './FeedbackSheet';
 
+/** 나중에 받는 화면 파일을 못 받은 오류 (인터넷 끊김 등) — 브라우저마다 문구가 다름 */
+const isLoadError = (e: Error | null) => /dynamically imported module|Importing a module script failed|Loading chunk|module script/i.test(String(e?.message ?? ''));
+
 interface State {
   error: Error | null;
   report: boolean;
@@ -16,8 +19,19 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   static getDerivedStateFromError(error: Error): State {
     return { error, report: false };
   }
+  private onOnline = () => {
+    // 인터넷이 돌아오면 바로 다시 그려 봄 (파일 받기 실패였을 때만)
+    if (isLoadError(this.state.error)) location.reload();
+  };
+  componentDidMount() {
+    window.addEventListener('online', this.onOnline);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('online', this.onOnline);
+  }
   componentDidCatch(error: Error) {
     console.error('화면 오류', error);
+    if (isLoadError(error)) return; // 화면 배치 탓이 아님 — 배치 되돌리기 계산에서 뺌
     // 같은 오류가 2분 안에 또 나면 내가 바꾼 화면 배치가 원인일 수 있어 자동으로 처음 배치로 (게임 기록은 그대로)
     try {
       const key = 'stockduel.crash';
@@ -33,6 +47,25 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
   render() {
     if (!this.state.error) return this.props.children;
+    if (isLoadError(this.state.error)) {
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      return (
+        <div className="crash">
+          <div className="crash-box">
+            <h2>{offline ? '인터넷 연결이 끊겼어요' : '화면을 불러오지 못했어요'}</h2>
+            <p className="muted">{offline ? '연결되면 저절로 다시 열려요. 진행 중인 게임은 그대로예요.' : '잠깐 연결이 불안했어요. 다시 시도해 주세요. 진행 중인 게임은 그대로예요.'}</p>
+            <div className="crash-actions">
+              <button className="btn primary" onClick={() => location.reload()}>
+                다시 시도
+              </button>
+              <button className="btn ghost" onClick={() => location.assign('/')}>
+                홈으로
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="crash">
         <div className="crash-box">
