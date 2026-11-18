@@ -1334,3 +1334,9 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .modal-x { position: absolute; top: 18px; right: 14px; }
 /* 창 안 오류 글: .modal p 의 회색에 덮이지 않게 */
 .modal p.error { color: var(--danger-text); }
+/* 비밀번호 보기 버튼 (PwInput) */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap > input[type] { width: 100%; box-sizing: border-box; padding-right: 48px; margin-top: 0; }
+.pw-eye { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: 8px; cursor: pointer; z-index: 1; }
+.pw-eye:hover { color: var(--text); }
+.pw-eye:focus-visible { outline: 2px solid var(--accent, #6b58ee); outline-offset: -2px; }

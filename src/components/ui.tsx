@@ -8,7 +8,7 @@
  *   Toast        화면 아래 짧은 확인 안내 (몇 초 뒤 사라지는 건 쓰는 쪽에서)
  * 모양은 styles-kit.css
  */
-import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 /** 불러오는 중 — inline 이면 줄 안에 작게, 아니면 칸 가운데 */
@@ -274,4 +274,26 @@ export function useDialogFocus<T extends HTMLElement>() {
 export function DialogBox(props: HTMLAttributes<HTMLDivElement>) {
   const ref = useDialogFocus<HTMLDivElement>();
   return <div ref={ref} tabIndex={-1} role="dialog" aria-modal {...props} />;
+}
+
+/** 비밀번호 칸 + 오른쪽 '보기' 버튼 (휴대폰에서 잘못 친 걸 확인할 수 있게). 나머지 속성은 input 에 그대로 */
+export function PwInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="pw-wrap">
+      <input {...props} type={show ? 'text' : 'password'} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      <button
+        type="button"
+        className="pw-eye"
+        aria-label={show ? '비밀번호 숨기기' : '비밀번호 보기'}
+        aria-pressed={show}
+        onClick={(e) => {
+          e.preventDefault();
+          setShow((v) => !v);
+        }}
+      >
+        <Icon name={show ? 'eyeOff' : 'eye'} size={18} />
+      </button>
+    </span>
+  );
 }

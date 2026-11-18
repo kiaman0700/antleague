@@ -3,7 +3,7 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { useEffect, useState } from 'react';
-import { EmptyState, ErrorState, Loading } from '../components/ui';
+import { EmptyState, ErrorState, Loading, PwInput } from '../components/ui';
 import { Avatar } from '../components/Avatar';
 import { AVATARS, canUseAvatar } from '../game/avatars';
 import { TierBadge, TierEmblem, TierLadder } from '../components/TierBadge';
@@ -254,14 +254,14 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
         )}
         <label className={tab !== 'login' && password ? fieldCls(pOk ? 'ok' : 'invalid') : 'field'}>
           <span>{tab === 'reset' ? '새 비밀번호' : '비밀번호'}</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={72} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder={tab === 'login' ? '' : '8자 이상, 영어+숫자'} />
+          <PwInput value={password} onChange={(e) => setPassword(e.target.value)} maxLength={72} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder={tab === 'login' ? '' : '8자 이상, 영어+숫자'} />
           {tab !== 'login' && password && !pOk && <small className="error">8자 이상, 영어와 숫자를 함께 (아이디는 넣지 말아 주세요)</small>}
           {tab !== 'login' && password && pOk && (weakPw(password) ? <small className="warn-msg">쓸 수는 있지만 흔한 비밀번호예요. 다른 사이트와 다르게, 더 길게 정하면 안전해요</small> : <small className="good-msg">쓸 수 있는 비밀번호예요</small>)}
         </label>
         {tab !== 'login' && (
           <label className={fieldCls(pwState)}>
             <span>비밀번호 확인</span>
-            <input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} maxLength={72} autoComplete="new-password" />
+            <PwInput value={password2} onChange={(e) => setPassword2(e.target.value)} maxLength={72} autoComplete="new-password" />
             {pwState === 'mismatch' && <small className="error">{password2 !== password ? '비밀번호가 서로 달라요' : '먼저 위 비밀번호 조건을 맞춰 주세요'}</small>}
             {pwState === 'match' && <small className="good-msg">비밀번호가 같아요</small>}
           </label>
@@ -595,9 +595,9 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         <Sheet title="비밀번호 바꾸기" onClose={() => setSheet(null)}>
           <div className="acc-sheet">
             <div className="acc-pw">
-              <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
-              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" aria-label="새 비밀번호" maxLength={72} autoComplete="new-password" />
-              <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
+              <PwInput value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
+              <PwInput value={pw} onChange={(e) => setPw(e.target.value)} placeholder="새 비밀번호 (8자 이상, 영어+숫자)" aria-label="새 비밀번호" maxLength={72} autoComplete="new-password" />
+              <PwInput value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="새 비밀번호 확인" aria-label="새 비밀번호 확인" maxLength={72} autoComplete="new-password" />
             </div>
             {(pw || pw2) && (
               <p className="small pw-hint" aria-live="polite">
@@ -637,7 +637,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         <Sheet title="복구 코드 새로 받기" onClose={() => setSheet(null)}>
           <div className="acc-sheet">
             <p className="muted small">새 코드를 받으면 예전 복구 코드는 더 이상 못 써요. 지금 비밀번호를 적어 주세요.</p>
-            <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
+            <PwInput value={cur} onChange={(e) => setCur(e.target.value)} placeholder="지금 비밀번호" aria-label="지금 비밀번호" maxLength={72} autoComplete="current-password" />
             <button
               className="btn primary block"
               disabled={!cur}
