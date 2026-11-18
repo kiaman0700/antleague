@@ -91,7 +91,22 @@ function markAllSeen(list: NoticeItem[]) {
 }
 
 /** 띠에 보일 공지: 고정 + 최근 14일 (최대 5개) */
+/** 이미 홈 화면 앱으로 열려 있으면 설치 안내 공지(글 속 /install 링크)는 띠·창에서 뺌 (공지 목록엔 그대로) */
+let standalone: boolean | null = null;
+function isStandalone() {
+  if (standalone === null) {
+    try {
+      standalone = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+    } catch {
+      standalone = false;
+    }
+  }
+  return standalone;
+}
+const relevant = (n: NoticeItem) => !(isStandalone() && /\]\(\/install\)/.test(n.body));
+
 function tickerList(list: NoticeItem[]) {
+  list = list.filter(relevant);
   const now = Date.now();
   return list.filter((n) => n.pinned || now - new Date(n.created_at).getTime() < 14 * DAY).slice(0, 5);
 }
@@ -232,7 +247,7 @@ export function NoticeCenter({ onGo, quiet }: { onGo: (p: LobbyPage) => void; /*
     } catch {
       return;
     }
-    const fresh = list.filter((n) => new Date(n.created_at).getTime() > Math.max(popped, seenAt()) && Date.now() - new Date(n.created_at).getTime() < 30 * DAY);
+    const fresh = list.filter(relevant).filter((n) => new Date(n.created_at).getTime() > Math.max(popped, seenAt()) && Date.now() - new Date(n.created_at).getTime() < 30 * DAY);
     if (!fresh.length) return;
     // 다른 창이 떠 있으면 그게 닫힌 뒤에 (2초마다 다시 봄)
     const t = setInterval(() => {
@@ -245,7 +260,7 @@ export function NoticeCenter({ onGo, quiet }: { onGo: (p: LobbyPage) => void; /*
   const show = opened ?? auto;
   if (!show || !list.length) return null;
   // 창 안에서 넘겨 볼 순서: 고정 → 최신
-  const ordered = [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || +new Date(b.created_at) - +new Date(a.created_at));
+  const ordered = list.filter(relevant).sort((a, b) => Number(b.pinned) - Number(a.pinned) || +new Date(b.created_at) - +new Date(a.created_at));
   const close = () => {
     markAllSeen(list);
     setAuto(null);
