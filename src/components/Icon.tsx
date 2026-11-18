@@ -172,6 +172,7 @@ const ICONS = {
   share: Share2,
   phone: Smartphone,
   shareUp: Share,
+  shield: Shield,
   door: DoorOpen,
   play: Play,
   ff: FastForward,

@@ -1669,3 +1669,14 @@ button, .bottom-nav, .lobby-bottom, .srow, .gc-face { -webkit-touch-callout: non
 .inapp-hint .btn { flex: none; text-decoration: none; }
 /* 버튼을 빠르게 두 번 눌러도 화면이 확대되지 않게 (두 손가락 확대는 그대로) */
 button, a.btn, .srow, .chip, [role='button'] { touch-action: manipulation; }
+/* 나의 결정적 순간 (결과 화면) */
+.km-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 8px; }
+.km-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line, #2e2e2e); background: var(--surface-2, #242424); color: inherit; text-align: left; font: inherit; cursor: pointer; animation: badgePop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; animation-delay: calc(0.1s + var(--k, 0) * 0.1s); }
+.km-card b { font-size: 15px; }
+.km-card > span:last-child { font-size: 13px; color: var(--text-2, #c8c8c8); line-height: 1.5; }
+.km-icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #2c2c2c; }
+.km-caught { border-left: 3px solid #d9364b; } .km-caught .km-icon { color: #ff6b7d; }
+.km-dodged { border-left: 3px solid #2fb36b; } .km-dodged .km-icon { color: #2fb36b; }
+.km-fooled { border-left: 3px solid #f5b83d; } .km-fooled .km-icon { color: #f5b83d; }
+.km-missed { border-left: 3px solid #6b58ee; } .km-missed .km-icon { color: #b9adff; }
+@media (prefers-reduced-motion: reduce) { .km-card { animation: none; } }

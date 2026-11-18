@@ -18,6 +18,7 @@ import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
 import { DailyResult, useDailyInfo } from '../components/Daily';
+import { keyMoments } from '../game/keyMoments';
 import { useIsMobile } from '../components/Extras';
 import { MissionsPanel } from '../components/Missions';
 import { useAccount } from '../net/account';
@@ -377,7 +378,25 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         </div>
       </div>
     </>;
+  // (밤샘 조사) 나의 결정적 순간 — 판이 끝나 공개된 뉴스 진위·내 거래만으로 (잡은·피한·속은·놓친)
+  const moments = useMemo(() => keyMoments(market, final.trades.filter((t) => t.player_id === session.playerId), last), [market, final.trades, session.playerId, last]);
+  const MOMENT_ICON: Record<string, IconName> = { caught: 'trend', dodged: 'shield', fooled: 'warn', missed: 'target' };
+  const momentsEl = moments.length > 0 && (
+    <div className="panel pad km-panel">
+      <h3><Icon name="target" /> 나의 결정적 순간</h3>
+      <div className="km-list">
+        {moments.map((k, i) => (
+          <button key={i} className={'km-card km-' + k.kind} style={{ ['--k' as string]: i }} onClick={() => setReplayDay(k.day)}>
+            <span className="km-icon"><Icon name={MOMENT_ICON[k.kind]} size={18} /></span>
+            <b>{k.title}</b>
+            <span>{k.text}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
   const highlightsEl = <>
+      {momentsEl}
       {highlights.length > 0 && (
       <div className="panel pad">
         <h3><Icon name="star" /> 하이라이트</h3>
