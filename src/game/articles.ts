@@ -85,10 +85,16 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   let cite: Article['cite'];
   if (n.rumor) {
     // 커뮤니티·SNS 인용 기사
-    const pf = pick(Object.keys(PLATFORMS) as Platform[]);
+    // 제목에 플랫폼 이름이 있으면 그 플랫폼 (뽑기는 그대로 해서 난수 횟수 유지)
+    const picked = pick(Object.keys(PLATFORMS) as Platform[]);
+    const named = (Object.keys(PLATFORMS) as Platform[]).find((k) => title.includes(`'${PLATFORMS[k].name}'`));
+    const pf = named ?? picked;
     cite = { platform: pf, name: PLATFORMS[pf].name };
-    lead = `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${jo(subject, '과', '와')} 관련해 "${title}"라는 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`;
-    body.push(`글이 올라온 뒤 비슷한 내용의 글이 잇따르면서 ${jo(subject, '을', '를')} 찾는 사람이 크게 늘었다. 다만 회사 측은 아직 공식 입장을 내지 않았다.`);
+    // (v21) 장중 소문 기사는 제목이 이미 기사 문장이라 따옴표로 옮기지 않음
+    lead = named
+      ? `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${subject} ${good ? '호재설' : '악재설'} 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`
+      : `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${jo(subject, '과', '와')} 관련해 "${title}"라는 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`;
+    body.push(`글이 올라온 뒤 비슷한 내용의 글이 잇따르면서 ${jo(subject, '을', '를')} 찾는 사람이 크게 늘었다. ${named ? '회사 측은 "확인해 줄 수 없다"는 입장만 내놓았다.' : '다만 회사 측은 아직 공식 입장을 내지 않았다.'}`);
     body.push(`시장에서는 "확인되지 않은 소문만 믿고 사고팔면 손해를 볼 수 있다"며 신중하라는 목소리가 나온다.`);
   } else if (n.label === '시황' && n.at != null) {
     // (v21) 장중 시황: 이미 지나간 움직임 정리 — 인터뷰 없음
