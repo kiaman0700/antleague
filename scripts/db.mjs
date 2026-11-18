@@ -75,11 +75,14 @@ try {
     if (!r.rows.length) console.log('기록된 서버 오류가 없어요.');
     await c.end();
   } else if (cmd === 'feedback') {
-    // 이용자가 보낸 의견 최근 30개 (읽기만)
+    // 이용자가 보낸 의견 최근 30개 (읽기만). 기본은 안 읽은 것만(자동 시험 글은 읽음으로 저장됨), --all 이면 전부
+    // 글 안의 제어문자(터미널 색·커서 조작)는 보여 주기 전에 지움
+    const all = process.argv.includes('--all');
     const c = await connect();
-    const r = await c.query('select id, kind, body, page, created_at from public.feedback order by created_at desc limit 30');
-    for (const f of r.rows) console.log(`#${f.id} [${f.kind}] ${new Date(f.created_at).toLocaleString('ko-KR')} ${f.page ?? ''}\n  ${f.body.split('\n').join('\n  ')}`);
-    if (!r.rows.length) console.log('아직 받은 의견이 없어요.');
+    const r = await c.query(`select id, kind, body, page, created_at from public.feedback ${all ? '' : 'where read_at is null'} order by created_at desc limit 30`);
+    const clean = (t) => String(t ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '');
+    for (const f of r.rows) console.log(`#${f.id} [${f.kind}] ${new Date(f.created_at).toLocaleString('ko-KR')} ${clean(f.page)}\n  ${clean(f.body).split('\n').join('\n  ')}`);
+    if (!r.rows.length) console.log(all ? '아직 받은 의견이 없어요.' : '안 읽은 의견이 없어요. (전부 보기: --all)');
     await c.end();
   } else if (cmd === 'balance') {
     // 실제로 끝난 대결로 밸런스 확인 (읽기만). 사람 이름·아이디는 출력하지 않음
