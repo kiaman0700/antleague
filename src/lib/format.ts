@@ -31,7 +31,10 @@ export const num = (n: number) => nf.format(Math.round(n));
 
 export function pct(r: number, digits = 2) {
   const v = r * 100;
-  return `${v > 0 ? '+' : ''}${v.toFixed(digits)}%`;
+  const s = v.toFixed(digits);
+  // 반올림하면 0 인 아주 작은 값은 부호 없이 (예전엔 '-0.0%'·'+0.0%' 로 보였음)
+  if (Number(s) === 0) return `${(0).toFixed(digits)}%`;
+  return `${v > 0 ? '+' : ''}${s}%`;
 }
 
 export const tone = (v: number) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');

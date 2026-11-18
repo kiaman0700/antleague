@@ -9,6 +9,7 @@ const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleW
 const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const SIZES = [
   ['phone', { viewport: { width: 375, height: 740 }, screen: { width: 375, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: UA_IPHONE }],
+  ['small', { viewport: { width: 320, height: 640 }, screen: { width: 320, height: 640 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: UA_IPHONE }],
   ['tablet', { viewport: { width: 820, height: 1180 }, screen: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: UA_IPAD }],
   ['pc', { viewport: { width: 1440, height: 900 }, screen: { width: 1920, height: 1080 } }],
 ].filter(([n]) => !only || n === only);
