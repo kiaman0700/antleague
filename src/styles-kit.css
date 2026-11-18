@@ -1327,3 +1327,10 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 위 메뉴 화면(랭킹·업적·공부 등)도 다른 탭(.hub)과 같은 폭·여백 단계: 861~1179px 여백 20 · 1440px 이상 1180px·여백 40 */
 @media (min-width: 861px) and (max-width: 1179px) { .lobby-shell.client .lobby.page:has(> .page-head.top) { padding: 24px 20px 0; } }
 @media (min-width: 1440px) { .lobby-shell.client .lobby.page:has(> .page-head.top) { max-width: 1180px; padding: 40px 40px 0; } }
+
+/* 로비 창: 오른쪽 위 닫기(X) — 휴대폰에서 바깥을 눌러 닫는 걸 모르는 사람도 (2026-11-18) */
+.modal.has-x { position: relative; }
+.modal.has-x > h3 { padding-right: 36px; }
+.modal-x { position: absolute; top: 18px; right: 14px; }
+/* 창 안 오류 글: .modal p 의 회색에 덮이지 않게 */
+.modal p.error { color: var(--danger-text); }

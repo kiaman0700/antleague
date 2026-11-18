@@ -279,7 +279,10 @@ function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => vo
   const boxRef = useDialogFocus<HTMLDivElement>();
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div ref={boxRef} tabIndex={-1} className="modal guest-start" role="dialog" aria-modal aria-label="게스트로 시작하기" onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal guest-start has-x" role="dialog" aria-modal aria-label="게스트로 시작하기" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="icon-btn sm modal-x" aria-label="닫기" onClick={onClose}>
+          <Icon name="x" size={16} />
+        </button>
         {step === 'intro' ? (
           <>
             <h3>

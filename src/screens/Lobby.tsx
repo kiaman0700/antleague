@@ -184,8 +184,11 @@ function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => 
   useEscape(onClose, true, true);
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+      <div ref={boxRef} tabIndex={-1} className="modal has-x" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
+        <button type="button" className="icon-btn sm modal-x" aria-label="닫기" onClick={onClose}>
+          <Icon name="x" size={16} />
+        </button>
         {children}
       </div>
     </div>
@@ -257,7 +260,7 @@ function CodeJoin({
       </form>
       {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
       {!err && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
-      {err && <p className="error">{err}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
     </Modal>
   );
 }
@@ -1031,7 +1034,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         </button>
       </div>
 
-      {err && <p className="error">{err}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
 
       <div className="room-list">
         {rooms === null && <Loading />}
@@ -1236,7 +1239,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <p className="create-sum">
           {maxPlayers}명 · {days}일 · 하루 {turnLabel(turnSec)} · 약 {est.typical}분 · {isPrivate ? '비밀방' : '공개방'}
         </p>
-        {err && <p className="error">{err}</p>}
+        {err && <p className="error" role="alert">{err}</p>}
         <button className="btn primary xl" disabled={busy || !online || !pwOk} onClick={create}>
           {busy ? '만드는 중…' : '방 만들기'}
         </button>
