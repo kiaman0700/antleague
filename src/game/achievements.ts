@@ -30,14 +30,14 @@ export const BADGES: Badge[] = [
   { id: 'news_jump', emoji: '📰', name: '사건 해결사', desc: '장중 호재 속보로 하루 +10% 넘게 오른 종목을 전날부터 들고 있었음', rarity: 2 },
   { id: 'escape', emoji: '🏃', name: '위기 탈출', desc: '하루 8% 넘게 떨어진 종목을 그날 종가보다 비싸게 팔아 피함', rarity: 2 },
   { id: 'sniper', emoji: '🔭', name: '명중', desc: '한 번 사고판 거래로 +20% 넘게 벌었음', rarity: 2 },
-  { id: 'rumor_right', emoji: '🗝️', name: '찌라시 해독가', desc: '찌라시가 나온 종목을 그날·다음 날 사서 5% 넘게 벌었음', rarity: 2 },
+  { id: 'rumor_right', emoji: '🗝️', name: '찌라시 해독가', desc: '커뮤니티 소문이 나온 종목을 그날·다음 날 사서 5% 넘게 벌었음', rarity: 2 },
   { id: 'multi_win', emoji: '👑', name: '다인전의 왕', desc: '3명 이상 판에서 1위', rarity: 2 },
   { id: 'bear_proof', emoji: '☂️', name: '하락장 생존자', desc: '지수가 3% 넘게 빠진 판에서 플러스로 마감', rarity: 2 },
   { id: 'specialist', emoji: '🔬', name: '업종 전문가', desc: '한 업종 종목만 6번 이상 거래', rarity: 2 },
   { id: 'saboteur', emoji: '😈', name: '훼방꾼', desc: '방해 카드가 상대에게 2번 이상 통함', rarity: 2 },
   { id: 'crash_winner', emoji: '🐻', name: '폭락장의 승자', desc: '지수가 3% 넘게 빠진 날 인버스 ETF를 들고 있었음', rarity: 2 },
   { id: 'diamond', emoji: '💎', name: '다이아몬드 핸드', desc: '한 종목을 7일 이상 계속 보유', rarity: 2 },
-  { id: 'bottom', emoji: '🎯', name: '저점 매수의 신', desc: '그 종목의 게임 중 최저가 3% 안에서 매수', rarity: 2 },
+  { id: 'bottom', emoji: '🎯', name: '저점 매수의 신', desc: '판 동안 10% 넘게 움직인 종목을 최저가 3% 안에서 매수', rarity: 2 },
   { id: 'big_win', emoji: '🎰', name: '한 방', desc: '한 종목으로 시작 돈의 10% 넘게 수익', rarity: 2 },
   { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2 },
   { id: 'lv5', emoji: '🌱', name: '새싹 개미', desc: '미션으로 레벨 5 달성', rarity: 1 },
@@ -60,7 +60,7 @@ export const BADGES: Badge[] = [
   { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼 4단계(홈·게임·결과·미션)를 모두 끝냄', rarity: 1 },
   // 웃픈 업적 (2026-11-17 사용자 요청: 안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
   { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
-  { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '그 종목의 게임 중 최고가 3% 안에서 매수', rarity: 1, funny: true },
+  { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '판 동안 10% 넘게 움직인 종목을 최고가 3% 안에서 매수', rarity: 1, funny: true },
   { id: 'punching_bag', emoji: '🩹', name: '동네북', desc: '한 판에 방해 카드를 3번 넘게 맞음', rarity: 2, funny: true },
   { id: 'fooled', emoji: '🙈', name: '찌라시에 속은 개미', desc: '거짓 호재 찌라시가 난 날 그 종목을 사서 손해', rarity: 1, funny: true },
   { id: 'last_place', emoji: '🕳️', name: '바닥 체험', desc: '3명 이상 판에서 꼴찌', rarity: 1, funny: true },
@@ -211,6 +211,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   // 각 종목의 게임 중 최저가
   const minPrice: Record<string, number> = {};
   for (const [sym, bars] of Object.entries(m.bars)) minPrice[sym] = Math.min(...bars.map((b) => Math.min(b.low, b.open, b.close)));
+  const maxOf = (sym: string) => Math.max(...m.bars[sym].map((b) => Math.max(b.high, b.open, b.close)));
 
   const out: Record<string, string[]> = {};
   for (const p of inp.players) {
@@ -273,7 +274,9 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if (used >= 4) got.add('card_master');
     if (items.effects.some((e) => e.to === p.id && e.blocked && !e.crowded)) got.add('shield');
 
-    if (p.trades.some((t) => t.side === 'buy' && t.price <= minPrice[t.symbol] * 1.03)) got.add('bottom');
+    // 판 동안 10% 넘게 움직인 종목만 (거의 안 움직인 종목은 산 값이 최저·최고 3% 안에 다 들어가 '저점'·'꼭지'를 한 번에 받던 문제)
+    const moved = (sym: string) => maxOf(sym) >= minPrice[sym] * 1.1;
+    if (p.trades.some((t) => t.side === 'buy' && moved(t.symbol) && t.price <= minPrice[t.symbol] * 1.03)) got.add('bottom');
 
     const pfEnd = computePortfolio(p.trades, p.spends, Infinity, m.dividends, startCashFor(m.version));
     const k = moneyScale(m.version);
@@ -321,8 +324,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if (traded && ret <= -0.2) got.add('big_loss');
     if (p.trades.length > 30 && ret < 0) got.add('fee_donor');
     if (ids.length >= 3 && rank === ids.length - 1 && finalEq(p.id) < finalEq(byFinal[ids.length - 2])) got.add('last_place');
-    const maxPrice = (sym: string) => Math.max(...m.bars[sym].map((b) => Math.max(b.high, b.open, b.close)));
-    if (p.trades.some((t) => t.side === 'buy' && t.price >= maxPrice(t.symbol) * 0.97)) got.add('buy_high');
+    if (p.trades.some((t) => t.side === 'buy' && moved(t.symbol) && t.price >= maxOf(t.symbol) * 0.97)) got.add('buy_high');
     if (items.effects.filter((e) => e.to === p.id && e.from !== p.id && !e.blocked && !e.crowded).length > 3) got.add('punching_bag');
     // 판 뒤 그 종목이 판 값보다 15% 넘게 오름 (판 날 다음 날부터 마지막 날까지 종가 중 가장 높은 것)
     if (p.trades.some((t) => t.side === 'sell' && m.bars[t.symbol].slice(t.day + 1).some((b) => b.close >= t.price * 1.15))) got.add('paper_hands');

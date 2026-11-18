@@ -80,6 +80,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
   const last = market.totalDays - 1;
   const START_CASH = startCashFor(market.version);
 
+  const botIds = new Set(final.players.filter((p) => p.bot).map((p) => p.id));
   const results = useMemo(() => {
     const people = [...final.players].sort((a, b) => (a.id === session.playerId ? -1 : b.id === session.playerId ? 1 : 0));
     const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2, market.version ?? 1);
@@ -349,10 +350,11 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
 
       <div className="panel pad">
         <h3><Icon name="medal" /> 이번 판 업적</h3>
-        <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.length) }}>
-          {results.map((r, i) => (
+        {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적이 길게 나와 내 업적이 묻히던 것) */}
+        <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.filter((r) => !botIds.has(r.id)).length) }}>
+          {results.map((r, i) => botIds.has(r.id) ? null : (
             <div key={r.id}>
-              {results.length > 1 && <small style={{ color: COLORS[i] }}>{r.nickname}</small>}
+              {results.length - botIds.size > 1 && <small style={{ color: COLORS[i] }}>{r.nickname}</small>}
               <div className="badges">
                 {(final.badges[r.id] ?? []).length === 0 && <span className="muted small">이번엔 없어요</span>}
                 {(final.badges[r.id] ?? []).map((id) => {

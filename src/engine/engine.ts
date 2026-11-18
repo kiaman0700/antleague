@@ -169,7 +169,7 @@ export interface View {
   };
   /** 게임이 끝나면 모든 기록 공개 */
   /** endDay: 상대가 모두 기권해 바로 끝난 판이면 실제로 한 마지막 날 — 결과 화면은 그 날 가격으로 멈춤 (사용자 결정 2026-11-18) */
-  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean }[]; badges: Record<string, string[]>; endDay?: number | null } | null;
+  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean; bot?: number }[]; badges: Record<string, string[]>; endDay?: number | null } | null;
 }
 
 export interface LiveView {
@@ -665,7 +665,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   }
 
   if (finished) {
-    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game })), badges: finalResults(d).badges, endDay: playedLastDay(d) };
+    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game, ...(p.bot_level ? { bot: p.bot_level } : {}) })), badges: finalResults(d).badges, endDay: playedLastDay(d) };
   }
   return base;
 }
