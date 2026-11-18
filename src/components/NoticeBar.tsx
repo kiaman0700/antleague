@@ -73,6 +73,22 @@ function useOpenNotice() {
   );
 }
 
+const READ_KEY = 'stockduel.noticeRead';
+function readIds(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+function markRead(id: string) {
+  try {
+    const ids = [id, ...[...readIds()].filter((x) => x !== id)].slice(0, 60);
+    localStorage.setItem(READ_KEY, JSON.stringify(ids));
+  } catch {
+    /* 무시 */
+  }
+}
 const seenAt = () => {
   try {
     return Number(localStorage.getItem(SEEN_KEY)) || 0;
@@ -91,22 +107,7 @@ function markAllSeen(list: NoticeItem[]) {
 }
 
 /** 띠에 보일 공지: 고정 + 최근 14일 (최대 5개) */
-/** 이미 홈 화면 앱으로 열려 있으면 설치 안내 공지(글 속 /install 링크)는 띠·창에서 뺌 (공지 목록엔 그대로) */
-let standalone: boolean | null = null;
-function isStandalone() {
-  if (standalone === null) {
-    try {
-      standalone = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
-    } catch {
-      standalone = false;
-    }
-  }
-  return standalone;
-}
-const relevant = (n: NoticeItem) => !(isStandalone() && /\]\(\/install\)/.test(n.body));
-
 function tickerList(list: NoticeItem[]) {
-  list = list.filter(relevant);
   const now = Date.now();
   return list.filter((n) => n.pinned || now - new Date(n.created_at).getTime() < 14 * DAY).slice(0, 5);
 }
@@ -138,34 +139,30 @@ export function NoticeText({ text, onGo }: { text: string; onGo: (p: LobbyPage) 
   );
 }
 
-/* ---------- 위 메뉴 줄 아래 공지 줄 ---------- */
+/* ---------- 위 메뉴 줄 아래 공지 줄 ----------
+ * 움직이지 않는 한 줄 (조사: 계속 넘어가는 띠는 멈춤 버튼이 필요(WCAG 2.2.2)하고 위 시세 띠와 겹쳐 정신없음)
+ * 고정 공지 → 최신 순으로 맨 앞 하나 + '외 n개', 누르면 공지 창 */
 export function NoticeTicker() {
   const list = tickerList(useNoticeList());
-  const [i, setI] = useState(0);
-  const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    if (list.length < 2 || paused) return;
-    const t = setInterval(() => setI((x) => (x + 1) % list.length), 5000);
-    return () => clearInterval(t);
-  }, [list.length, paused]);
+  const [, force] = useState(0);
+  useEffect(() => onReadChange(() => force((x) => x + 1)), []);
   if (!list.length) return null;
-  const n = list[i % list.length];
-  const unread = new Date(n.created_at).getTime() > seenAt();
+  const n = list[0];
+  const read = readIds();
+  const unread = list.some((x) => !read.has(x.id));
   return (
-    <div className="nt-strip" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <button type="button" className="nt-bar" onClick={() => openNotice(n.id)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} aria-label={`공지: ${n.title}${list.length > 1 ? ` (${(i % list.length) + 1}/${list.length})` : ''}`}>
+    <div className="nt-strip">
+      <button type="button" className="nt-bar" onClick={() => openNotice(n.id)} aria-label={`공지: ${n.title}${list.length > 1 ? ` 외 ${list.length - 1}개` : ''}`}>
         <span className="nt-tag">
           <Icon name="megaphone" size={14} /> 공지
           {unread && <i className="nt-dot" aria-hidden />}
         </span>
         <span className="nt-win" aria-hidden>
-          <span key={n.id} className="nt-title">
-            {n.title}
-          </span>
+          <span className="nt-title">{n.title}</span>
         </span>
         {list.length > 1 && (
           <small className="nt-count" aria-hidden>
-            {(i % list.length) + 1}/{list.length}
+            외 {list.length - 1}개
           </small>
         )}
         <Icon name="right" size={14} />
@@ -173,56 +170,73 @@ export function NoticeTicker() {
     </div>
   );
 }
+const readSubs = new Set<() => void>();
+const onReadChange = (f: () => void) => {
+  readSubs.add(f);
+  return () => void readSubs.delete(f);
+};
 
 /* ---------- 공지 창 ---------- */
 function NoticeModal({ list, startId, onClose, onGo }: { list: NoticeItem[]; startId: string; onClose: () => void; onGo: (p: LobbyPage) => void }) {
   const box = useDialogFocus<HTMLDivElement>();
   useEscape(onClose, true, true);
   const [id, setId] = useState(startId);
-  const idx = Math.max(0, list.findIndex((n) => n.id === id));
-  const n = list[idx];
+  // 휴대폰: 목록 ↔ 본문 (PC 는 둘 다 보임)
+  const [listView, setListView] = useState(false);
+  const [read, setRead] = useState(readIds);
+  const n = list.find((x) => x.id === id) ?? list[0];
+  useEffect(() => {
+    if (!n) return;
+    markRead(n.id);
+    setRead(readIds());
+    readSubs.forEach((f) => f());
+  }, [n?.id]);
   if (!n) return null;
   return (
     <div className="modal-bg nt-modal-bg" onClick={onClose}>
-      <div ref={box} tabIndex={-1} className="modal has-x nt-modal" role="dialog" aria-modal aria-labelledby="nt-title" onClick={(e) => e.stopPropagation()}>
-        <div className="nt-head">
-          <span className="nt-kicker">
-            <Icon name="megaphone" size={14} /> 공지 {list.length > 1 ? `${idx + 1}/${list.length}` : ''}
-          </span>
-          <button type="button" className="icon-btn sm modal-x" aria-label="닫기" onClick={onClose}>
+      <div ref={box} tabIndex={-1} className={'modal nt-center' + (listView ? ' show-list' : '')} role="dialog" aria-modal aria-labelledby="nt-title" onClick={(e) => e.stopPropagation()}>
+        <header className="ntc-head">
+          <b>
+            <Icon name="megaphone" size={16} /> 공지사항
+          </b>
+          <button type="button" className="icon-btn sm" aria-label="닫기" onClick={onClose}>
             <Icon name="x" size={16} />
           </button>
+        </header>
+        <div className="ntc-body">
+          <nav className="ntc-list" aria-label="공지 목록">
+            {list.map((x) => (
+              <button key={x.id} type="button" className={'ntc-item' + (x.id === n.id ? ' on' : '')} aria-current={x.id === n.id ? 'true' : undefined} onClick={() => (setId(x.id), setListView(false))}>
+                <span className="ntc-item-top">
+                  {x.pinned && <span className="notice-pin">고정</span>}
+                  {!read.has(x.id) && <i className="ntc-dot" aria-label="안 읽음" />}
+                  <small>{fmt(x.created_at)}</small>
+                </span>
+                <span className="ntc-item-title">{x.title}</span>
+              </button>
+            ))}
+          </nav>
+          <article key={n.id} className="ntc-detail">
+            {list.length > 1 && (
+              <button type="button" className="ntc-back" onClick={() => setListView(true)}>
+                <Icon name="left" size={14} /> 목록 ({list.length})
+              </button>
+            )}
+            <h3 id="nt-title">
+              {n.pinned && <span className="notice-pin">고정</span>} {n.title}
+            </h3>
+            <small className="muted">{fmt(n.created_at)}</small>
+            <NoticeText text={n.body} onGo={(p) => (onClose(), onGo(p))} />
+          </article>
         </div>
-        <article key={n.id} className="nt-article">
-          <h3 id="nt-title">
-            {n.pinned && <span className="notice-pin">고정</span>} {n.title}
-          </h3>
-          <small className="muted">{fmt(n.created_at)}</small>
-          <NoticeText text={n.body} onGo={(p) => (onClose(), onGo(p))} />
-        </article>
-        {list.length > 1 && (
-          <div className="nt-nav">
-            <button type="button" className="btn sm ghost" disabled={idx === 0} onClick={() => setId(list[idx - 1].id)}>
-              <Icon name="left" size={14} /> 이전
-            </button>
-            <span className="nt-dots" aria-hidden>
-              {list.map((x) => (
-                <i key={x.id} className={x.id === n.id ? 'on' : ''} />
-              ))}
-            </span>
-            <button type="button" className="btn sm ghost" disabled={idx === list.length - 1} onClick={() => setId(list[idx + 1].id)}>
-              다음 <Icon name="right" size={14} />
-            </button>
-          </div>
-        )}
-        <div className="modal-actions">
-          <button type="button" className="btn ghost" onClick={() => (onClose(), onGo('notices'))}>
-            공지 모두 보기
+        <footer className="ntc-foot">
+          <button type="button" className="btn ghost sm" onClick={() => (onClose(), onGo('notices'))}>
+            공지사항 페이지
           </button>
           <button type="button" className="btn primary" onClick={onClose}>
             확인
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
@@ -243,7 +257,7 @@ export function NoticeCenter({ onGo, quiet }: { onGo: (p: LobbyPage) => void; /*
     } catch {
       return;
     }
-    const fresh = list.filter(relevant).filter((n) => new Date(n.created_at).getTime() > Math.max(popped, seenAt()) && Date.now() - new Date(n.created_at).getTime() < 30 * DAY);
+    const fresh = list.filter((n) => new Date(n.created_at).getTime() > Math.max(popped, seenAt()) && Date.now() - new Date(n.created_at).getTime() < 30 * DAY);
     if (!fresh.length) return;
     // 다른 창이 떠 있으면 그게 닫힌 뒤에 (2초마다 다시 봄)
     const t = setInterval(() => {
@@ -256,7 +270,7 @@ export function NoticeCenter({ onGo, quiet }: { onGo: (p: LobbyPage) => void; /*
   const show = opened ?? auto;
   if (!show || !list.length) return null;
   // 창 안에서 넘겨 볼 순서: 고정 → 최신
-  const ordered = list.filter(relevant).sort((a, b) => Number(b.pinned) - Number(a.pinned) || +new Date(b.created_at) - +new Date(a.created_at));
+  const ordered = [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || +new Date(b.created_at) - +new Date(a.created_at));
   const close = () => {
     markAllSeen(list);
     setAuto(null);
