@@ -87,7 +87,16 @@ const audit = () => {
       if (e.closest('label')) continue;
       if (!vis(e)) continue;
       const r = e.getBoundingClientRect();
-      if (r.width < 24 || r.height < 24) {
+      // 보이지 않게 넓힌 누르는 범위(::before/::after, position:absolute + 음수 inset)까지 셈
+      let w = r.width, h = r.height;
+      for (const pe of ['::before', '::after']) {
+        const cs = getComputedStyle(e, pe);
+        if (cs.position !== 'absolute' || cs.content === 'none') continue;
+        const n = (v) => (v.endsWith('px') ? -Math.min(0, parseFloat(v)) : 0);
+        w = Math.max(w, r.width + n(cs.left) + n(cs.right));
+        h = Math.max(h, r.height + n(cs.top) + n(cs.bottom));
+      }
+      if (w < 24 || h < 24) {
         // 글 안의 링크는 제외
         if (e.tagName === 'A' && getComputedStyle(e).display === 'inline') continue;
         out.push(['작은 누를 곳 ' + Math.round(r.width) + '×' + Math.round(r.height), desc(e)]);

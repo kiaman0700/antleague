@@ -1536,7 +1536,8 @@ button.tag:hover,
   .rel-chip,
   .mh-cmp,
   .es-btn,
-  .rb-sec {
+  .rb-sec,
+  button.tag {
     position: relative;
   }
   .star::after,
@@ -1548,7 +1549,8 @@ button.tag:hover,
   .rel-chip::after,
   .mh-cmp::after,
   .es-btn::after,
-  .rb-sec::after {
+  .rb-sec::after,
+  button.tag::after {
     content: '';
     position: absolute;
     inset: -8px -4px;
