@@ -691,9 +691,12 @@ export function ProChart({
               y2={y(v)}
               className="grid"
             />
-            <text x={W - padR + 8} y={y(v) + 4} className="axis">
-              {fmt(v)}
-            </text>
+            {/* 지금 가격 표와 겹치는 눈금 글자는 숨김 (차트 앱들처럼) */}
+            {Math.abs(y(v) - y(lastPrice)) >= 14 && (
+              <text x={W - padR + 8} y={y(v) + 4} className="axis">
+                {fmt(v)}
+              </text>
+            )}
           </g>
         ))}
         {Array.from({ length: totalDays }, (_, d) => d)
