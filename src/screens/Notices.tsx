@@ -7,7 +7,7 @@ import { api } from '../net/api';
 import { Icon } from '../components/Icon';
 import { ask } from '../components/ConfirmHost';
 import { EmptyState, ErrorState, Loading, Toast } from '../components/ui';
-import { NoticeText, refreshNotices } from '../components/NoticeBar';
+import { markNoticeRead, NoticeText, refreshNotices } from '../components/NoticeBar';
 import type { LobbyPage } from './Lobby';
 
 export interface Notice {
@@ -57,6 +57,10 @@ export function NoticesPage({ onBack, onGo }: { onBack: () => void; onGo: (p: Lo
   const [n, setN] = useState(0);
   const [admin, setAdmin] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  // 펼쳐 본 공지는 공지 창과 같은 기준으로 읽음 (위 공지 줄·설정 점이 함께 꺼짐)
+  useEffect(() => {
+    if (open) markNoticeRead(open);
+  }, [open]);
   // 운영자: 쓰는 중인 글 (id 가 있으면 고치기)
   const [draft, setDraft] = useState<{ id?: string; title: string; body: string; pinned: boolean } | null>(null);
   const [busy, setBusy] = useState(false);

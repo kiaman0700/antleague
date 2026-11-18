@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
-import { NoticeCenter, NoticeTicker } from '../components/NoticeBar';
+import { NoticeCenter, NoticeTicker, useHasUnreadNotice } from '../components/NoticeBar';
 import { InAppBanner } from '../components/InAppBanner';
-import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
+import { NoticesPage } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
@@ -566,13 +566,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     // 환영 창·다른 창이 닫힐 때 다시 확인
   }, [account.status, chapter, modal, gate.el === null]);
   // 설정·더보기의 공지사항 줄: 이 기기에서 아직 안 본 공지가 있으면 점 (공지 목록은 공개라 로그인 없이도)
-  const [newNotice, setNewNotice] = useState(false);
-  useEffect(() => {
-    if (tab !== 'more' || !online) return;
-    api<Notice[]>('notices')
-      .then((r) => setNewNotice(r.some((x) => new Date(x.created_at).getTime() > noticeSeenAt())))
-      .catch(() => {});
-  }, [tab]);
+  const newNotice = useHasUnreadNotice() && online;
   const [roomList, setRoomList] = useState<RoomInfo[] | null>(null);
   const openRooms = roomList ? roomList.filter((x) => !x.joined).length : null;
   const invite = useMemo(() => new URLSearchParams(location.search).get('room')?.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) ?? '', []);

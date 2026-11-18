@@ -175,6 +175,19 @@ const onReadChange = (f: () => void) => {
   readSubs.add(f);
   return () => void readSubs.delete(f);
 };
+/** 공지 하나를 읽음으로 (공지 창·공지사항 화면 같은 기준) */
+export function markNoticeRead(id: string) {
+  markRead(id);
+  readSubs.forEach((f) => f());
+}
+/** 이 기기에서 아직 안 읽은 공지가 있는지 (설정·더보기 '공지사항' 점) */
+export function useHasUnreadNotice(): boolean {
+  const list = useNoticeList();
+  const [, force] = useState(0);
+  useEffect(() => onReadChange(() => force((x) => x + 1)), []);
+  const read = readIds();
+  return list.some((x) => !read.has(x.id));
+}
 
 /* ---------- 공지 창 ---------- */
 function NoticeModal({ list, startId, onClose, onGo }: { list: NoticeItem[]; startId: string; onClose: () => void; onGo: (p: LobbyPage) => void }) {
@@ -187,9 +200,8 @@ function NoticeModal({ list, startId, onClose, onGo }: { list: NoticeItem[]; sta
   const n = list.find((x) => x.id === id) ?? list[0];
   useEffect(() => {
     if (!n) return;
-    markRead(n.id);
+    markNoticeRead(n.id);
     setRead(readIds());
-    readSubs.forEach((f) => f());
   }, [n?.id]);
   if (!n) return null;
   return (
