@@ -41,8 +41,38 @@ fs.mkdirSync('scripts/e2e/.shots', { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const shot = (p, name) => p.screenshot({ path: `scripts/e2e/.shots/${name.replace(/\s+/g, '_')}.png` });
 
+// 로그인 전(둘러보기)이면 연습이 '시작 방법 고르기' 창으로 막히므로, 게스트를 한 번만 만들어 모든 기기 시험에서 같이 씀 (손님 계정 생성 제한)
+const STATE = 'scripts/e2e/.shots/guest-state.json';
+{
+  const c0 = await browser.newContext();
+  await c0.addInitScript(() => {
+    try {
+      localStorage.setItem('stockduel.welcomed', '1');
+      localStorage.setItem('stockduel.tourSkipped', '1');
+      localStorage.setItem('stockduel.tutorial', '1');
+    } catch {}
+  });
+  const p0 = await c0.newPage();
+  await p0.goto(BASE + '/more', { waitUntil: 'domcontentloaded' });
+  await p0.waitForTimeout(1500);
+  await p0.locator('button', { hasText: '시작하기' }).first().click();
+  await p0.waitForTimeout(400);
+  const d0 = p0.locator('[role=dialog]').last();
+  await d0.locator('button', { hasText: '게스트로 시작' }).click();
+  await p0.waitForTimeout(300);
+  await d0.locator('input').fill('기기개미' + Math.floor(Math.random() * 900));
+  await p0.waitForTimeout(1200);
+  await d0.locator('button[type=submit]').click();
+  await p0.waitForTimeout(2500);
+  // 로그인 정보만 옮김 — 기기 종류 기억값(stockduel.ff)은 기기마다 달라야 함
+  const st = await c0.storageState();
+  for (const o of st.origins) o.localStorage = o.localStorage.filter((x) => x.name !== 'stockduel.ff');
+  fs.writeFileSync(STATE, JSON.stringify(st));
+  await c0.close();
+}
+
 for (const [name, opts, wantDevice, wantGame, allowW] of DEVICES) {
-  const ctx = await browser.newContext(opts);
+  const ctx = await browser.newContext({ ...opts, storageState: STATE });
   // 아이패드처럼 터치 지점 수를 실제 기기와 같게 (시험용 크롬은 1개로 흉내 냄)
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }));
   // 진짜 기기처럼 '기기 종류'도 흉내: 크롬 계열(안드로이드·윈도우)은 알려 주고, 사파리(아이폰·아이패드·Mac)는 안 알려 줌

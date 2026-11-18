@@ -891,7 +891,8 @@ export function ProChart({
                 const diff = lastPrice ? (v - lastPrice) / lastPrice : 0;
                 const when = unit ? (unit.when ?? unit.axis)(i) : `${i + 1}일`;
                 const shown = fmt(v);
-                const label = `${shown}${shown.startsWith("$") ? "" : "원"} (${diff > 0 ? "+" : ""}${(diff * 100).toFixed(2)}%, ${when})`;
+                // 처음 하는 사람도 바로 알게 '최고'·'최저' 글자를 앞에 (차트 앱 조사 2026-11-18: 가격만 쓰는 게 보통, 우리는 말로)
+                const label = `${top ? "최고" : "최저"} ${shown}${shown.startsWith("$") ? "" : "원"} (${diff > 0 ? "+" : ""}${(diff * 100).toFixed(2)}%, ${when})`;
                 // 휴대폰처럼 차트가 줄어들면 화면 기준 11.5px, 커지면 다른 눈금 글자처럼 함께 커짐
                 const fz = Math.max(12, 11.5 * unitPerPx);
                 const tw = [...label].reduce((a, c) => a + (/[가-힣]/.test(c) ? 1 : 0.58), 0) * fz;
