@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
-import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
@@ -1852,6 +1852,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
       <Reconnect onWaiting={onWaiting} onGame={onGame} quiet={resolved === 'login' || resolved === 'signup'} />
       <FlashNote />
+      <OfflineBanner />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {(modal === 'privacy' || modal === 'terms') && <LegalSheet kind={modal} onClose={() => setModal(null)} />}

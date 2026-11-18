@@ -1,7 +1,7 @@
 import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/bots';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
-import { EmptyState, IconList, Loading, SectionTitle } from '../components/ui';
+import { EmptyState, IconList, Loading, OfflineBanner, SectionTitle } from '../components/ui';
 import { ask } from '../components/ConfirmHost';
 import { api, useLiveView } from '../net/api';
 import { estimateMinutes, graceSentence, loadUi, saveUi, turnLabel as labelOfTurn, type Session, type UiMode } from '../session';
@@ -171,6 +171,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
 
   return (
     <div className="waiting wr-client">
+      <OfflineBanner />
       <header className="wr-top">
         <button className="icon-btn" onClick={leave} aria-label="방에서 나가기" title="나가기">
           <Icon name="back" size={18} />

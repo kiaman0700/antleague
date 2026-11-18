@@ -9,6 +9,7 @@
  * 모양은 styles-kit.css
  */
 import { useEffect, useRef, useState, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
 
 /** 불러오는 중 — inline 이면 줄 안에 작게, 아니면 칸 가운데 */
@@ -295,5 +296,34 @@ export function PwInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type
         <Icon name={show ? 'eyeOff' : 'eye'} size={18} />
       </button>
     </span>
+  );
+}
+
+/** 인터넷 연결 상태 (브라우저 online/offline 신호) */
+export function useNetOnline() {
+  const [on, setOn] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  useEffect(() => {
+    const up = () => setOn(true);
+    const down = () => setOn(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, []);
+  return on;
+}
+
+/** 로비·대기실: 인터넷이 끊기면 위에 띠 (게임 화면의 끊김 띠와 같은 모양) — 예전엔 아무 표시 없이 버튼이 실패했음 */
+export function OfflineBanner() {
+  const on = useNetOnline();
+  if (on || typeof document === 'undefined') return null;
+  // body 에 바로 그림 — 로비 틀의 '자식은 모두 relative' 규칙에 걸려 화면 아래로 밀려났었음
+  return createPortal(
+    <div className="net-banner" role="alert">
+      <Icon name="warn" size={14} /> 인터넷이 끊겼어요. 연결되면 다시 쓸 수 있어요
+    </div>,
+    document.body,
   );
 }
