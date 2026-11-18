@@ -138,16 +138,23 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     }
   };
 
+  // 휴대폰·태블릿은 공유 창, PC 는 바로 복사 (PC 에서 윈도 공유 창이 뜨던 것). 복사가 안 되면 방 코드를 알려 줌
   const copy = async () => {
-    try {
-      if (navigator.share) await navigator.share({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
-      else {
-        await navigator.clipboard.writeText(link);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+    const touch = document.documentElement.dataset.device !== 'pc';
+    if (touch && navigator.share) {
+      try {
+        await navigator.share({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
+        return;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return; // 공유 취소
       }
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* 공유 취소 */
+      setErr(`링크를 복사하지 못했어요. 친구에게 방 코드 ${room.code} 를 알려 주세요.`);
     }
   };
 
