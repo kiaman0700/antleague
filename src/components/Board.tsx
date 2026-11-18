@@ -352,7 +352,7 @@ export function MarketGridPinnable({ market, day, closed, pins, onTogglePin }: {
             </div>
             <b>{t.value}</b>
             <span className={t.ch === null || Math.abs(t.ch) < 1e-9 ? 'flat' : tone(t.ch)}>{t.chText}</span>
-            <em>{t.hint}</em>
+            <em>{t.hint.replace(/ ([↑↓])/g, " $1")}</em>
           </div>
         );
       })}
