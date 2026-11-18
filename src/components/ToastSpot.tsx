@@ -4,7 +4,7 @@
  * (x=0 이면 왼쪽 끝에 붙고 x=1 이면 오른쪽 끝에 붙도록 자기 크기만큼 당겨 둠)
  * 끌 때 왼쪽·가운데·오른쪽 / 위·가운데·아래 근처에 오면 보조선을 보여 주고 그 자리에 딱 붙음 (발표 프로그램의 맞춤 기능처럼)
  */
-import { useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from './Icon';
 
 export type XY = { x: number; y: number };
@@ -44,6 +44,30 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
   const vRef = useRef<HTMLElement>(null);
   const hRef = useRef<HTMLElement>(null);
   const cls = (xy ? ' free' : pos === 'bottom' ? ' at-bottom' : '');
+  // 보통 알림이 장중 속보 카드와 겹치면(사용자가 둘을 가까이 옮겨 둔 경우) 속보 아래·위로 비켜 감
+  const alertRef = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
+  const alertOn = slot === 'alert' && !!toast && toast.kind !== 'news';
+  useEffect(() => {
+    if (!alertOn) return setShift(0);
+    const check = () => {
+      const me = alertRef.current;
+      const news = document.querySelector<HTMLElement>('.toast.news');
+      if (!me || !news) return setShift((v) => (v ? 0 : v));
+      const a = me.getBoundingClientRect();
+      const n = news.getBoundingClientRect();
+      const top = a.top - shift;
+      const bottom = a.bottom - shift;
+      const overlap = top < n.bottom && bottom > n.top && a.left < n.right && a.right > n.left;
+      if (!overlap) return setShift((v) => (v ? 0 : v));
+      // 아래쪽에 자리가 있으면 속보 아래로, 아니면 위로
+      const next = n.bottom + 8 + (bottom - top) < window.innerHeight ? n.bottom + 8 - top : n.top - 8 - bottom;
+      setShift((v) => (Math.abs(v - next) > 1 ? next : v));
+    };
+    check();
+    const id = setInterval(check, 400);
+    return () => clearInterval(id);
+  }, [alertOn, toast?.text, shift]);
   if (toast?.kind === 'news')
     return (
       <button type="button" className={'toast news ' + (toast.tone ?? 'good') + cls} style={toastStyle(xy)} onClick={() => toast.symbol && onPick?.(toast.symbol)}>
@@ -56,7 +80,7 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
     );
   if (toast)
     return (
-      <div className={'toast ' + toast.kind + cls + (onDismiss ? ' dismiss' : '')} style={toastStyle(xy)} title={onDismiss ? '누르면 닫혀요' : undefined} onClick={onDismiss}>
+      <div ref={alertRef} className={'toast ' + toast.kind + cls + (onDismiss ? ' dismiss' : '')} style={shift ? { ...toastStyle(xy), marginTop: shift } : toastStyle(xy)} title={onDismiss ? '누르면 닫혀요' : undefined} onClick={onDismiss}>
         <Icon name={toast.kind === 'err' ? 'warn' : toast.kind === 'warn' ? 'bell' : 'check'} size={16} />
         <span>{toast.text}</span>
       </div>
