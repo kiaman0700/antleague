@@ -1086,6 +1086,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'dailyStart': {
       // 하루에 계정마다 한 번: 기록 줄(날짜·계정 기본키)을 먼저 넣어 자리를 차지한 뒤 방을 만듦
       rateLimit(uid + ':dailyStart', 6, 60_000);
+      // 회원만 (2026-11-18 사용자 결정) — 모두 같은 시장이라 손님(시크릿 창)으로 먼저 해 보고 가격을 안 뒤 회원으로 다시 하는 걸 막음
+      const member = !!(await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data;
+      if (!member) throw new GameError('오늘의 도전은 회원만 할 수 있어요. 회원가입하면 바로 할 수 있어요.', 403);
       const day = kstDay();
       const nickname = await nickFor(uid, b.nickname);
       const mode = cleanMode(b.mode);
@@ -1093,7 +1096,6 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (ex.error && /daily_runs/.test(ex.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
       if (ex.data) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);
       await ensureFree(uid);
-      const member = !!(await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data;
       const claim = await sb.from('daily_runs').insert({ day, user_id: uid, nickname, member });
       if (claim.error) {
         if (/duplicate|unique/i.test(claim.error.message)) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);

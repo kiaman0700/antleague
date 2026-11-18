@@ -379,6 +379,24 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
 }
 
 /** 오늘의 도전: 모두 같은 시장으로 하루 한 번 (10일 · 하루 1분), 회원 점수표 */
+/** 오늘의 도전은 회원만 (2026-11-18) — 손님에게는 안내와 가입·로그인 버튼만 (서버에 묻지 않아 손님 계정도 안 만듦) */
+function DailyMembersOnly({ onClose, onSignup, onLogin }: { onClose: () => void; onSignup: () => void; onLogin: () => void }) {
+  return (
+    <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
+      <p className="muted small">오늘 하루, 모든 회원이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작하고 점수표에 순위가 올라가요.</p>
+      <p className="small warn-msg">오늘의 도전은 회원만 할 수 있어요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+      <div className="modal-actions">
+        <button className="btn ghost" onClick={onLogin}>
+          로그인
+        </button>
+        <button className="btn primary" onClick={onSignup}>
+          회원가입
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: (s: Session) => void; member: boolean }) {
   const { info, err, reload } = useDailyInfo();
   const [busy, setBusy] = useState(false);
@@ -400,7 +418,6 @@ function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: 
   return (
     <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
       <p className="muted small">오늘 하루, 모든 사람이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작해요. 기회는 하루에 한 번이고, 중간에 나가면 그때 재산으로 기록돼요.</p>
-      {!member && <p className="small warn-msg">게스트도 할 수 있지만 점수표에는 회원 기록만 올라가요.</p>}
       {err ? (
         <ErrorState what="오늘의 도전" onRetry={reload} compact />
       ) : !info ? (
@@ -540,7 +557,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   // 연습 메뉴 '오늘의 도전' 칸: 오늘 했는지·순위 (로그인 전이면 서버에 안 물음)
-  const dailyTile = useDailyInfo(online && tab === 'practice').info;
+  const dailyTile = useDailyInfo(online && member && tab === 'practice').info;
   const head = TAB_HEAD[tab];
   // 처음 온 사람에게 튜토리얼 권하기 (한 번 닫거나 해 보면 다시 안 나옴)
   const [nudge, setNudge] = useState(() => !tutorialSeen());
@@ -570,11 +587,11 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <small>기다림 없이 바로</small>
         </span>
       </button>
-      <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
+      <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
         <i className="q-daily"><Icon name="daily" size={22} /></i>
         <span>
           <b>오늘의 도전</b>
-          <small>모두 같은 시장에서</small>
+          <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && go('tutorial')}>
@@ -790,10 +807,10 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {tab === 'practice' && (
         <nav className={'home-actions' + (online ? ' six' : '')}>
           {online && (
-            <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && gate.guard(() => setModal('daily'))}>
+            <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
-              <small>{dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : '모두 같은 시장, 하루 한 번'}</small>
+              <small>{!member ? '회원만 · 모두 같은 시장, 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && setModal('bots')}>
@@ -916,7 +933,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'bots' && <BotStart onStart={startBots} onClose={() => setModal(null)} />}
-      {modal === 'daily' && <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} />}
+      {modal === 'daily' && (member ? <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} /> : <DailyMembersOnly onClose={() => setModal(null)} onSignup={() => (setModal(null), go('signup'))} onLogin={() => (setModal(null), go('login'))} />)}
       {gate.el}
     </div>
   );

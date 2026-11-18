@@ -1,7 +1,40 @@
-// 오늘의 도전 (설계서 design/bots-daily.md 3단계): 하루 한 번, 모두 같은 시장, 비밀값 안 샘, 재대결 불가, 나가도 기록, 게스트는 점수표 제외
-import { user, ok, done } from './lib.mjs';
+// 오늘의 도전 (설계서 design/bots-daily.md 3단계): 하루 한 번, 모두 같은 시장, 비밀값 안 샘, 재대결 불가, 나가도 기록, 회원만(손님 403), 시험 회원은 점수표 제외
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs';
+import { user, ok, done, BASE, TEST_KEY, env } from './lib.mjs';
 
-const [A, B] = await Promise.all([user(), user()]);
+// 오늘의 도전은 회원만 (2026-11-18) — 시험 회원(.members.json 의 dailyA·dailyB, 깃에 안 올라감)을 만들어 두고 다시 씀
+const post = async (body, tok) => {
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  return { s: r.status, b: await r.json().catch(() => null) };
+};
+const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;
+const SAVE = 'scripts/e2e/.members.json';
+const saved = fs.existsSync(SAVE) ? JSON.parse(fs.readFileSync(SAVE, 'utf8')) : {};
+async function member(tag) {
+  tag = (process.env.DAILY_TAG ?? '') + tag; // 같은 날 다시 끝까지 시험하려면 DAILY_TAG=x 로 다른 시험 회원
+  let m = saved['daily' + tag];
+  let data = null;
+  if (m) data = (await client().auth.signInWithPassword({ email: await loginEmail(m.u), password: m.pw })).data;
+  if (!data?.session) {
+    const G = await user();
+    const r5 = Math.random().toString(36).slice(2, 7);
+    m = { u: 'e2edy' + tag.toLowerCase() + r5, pw: 'pw' + r5 + '123', nick: 'D' + tag + r5 };
+    const r = await G({ action: 'signup', username: m.u, password: m.pw, nickname: m.nick, agree14: true, agreePrivacy: true, agreeTerms: true });
+    if (r.s !== 200) throw new Error('signup ' + JSON.stringify(r.b));
+    data = (await client().auth.signInWithPassword({ email: await loginEmail(m.u), password: m.pw })).data;
+    saved['daily' + tag] = m;
+    fs.writeFileSync(SAVE, JSON.stringify(saved));
+  }
+  const tok = data.session.access_token;
+  return (body) => post(body, tok);
+}
+
+const G0 = await user();
+const g0 = await G0({ action: 'dailyStart', nickname: '손님', mode: 'easy' });
+ok('손님은 오늘의 도전을 못 함 (403)', g0.s === 403, g0.b?.error);
+const [A, B] = [await member('A'), await member('B')];
 
 const i0 = await A({ action: 'dailyInfo' });
 ok('오늘의 도전 정보', i0.s === 200 && i0.b?.ready === true && /^\d{4}-\d{2}-\d{2}$/.test(i0.b?.day ?? ''), i0.b?.error ?? i0.b?.day);
@@ -40,14 +73,17 @@ if (sa.s === 200 && sb.s === 200) {
 
   // A: 끝까지
   let s = va;
-  for (let i = 0; i < 40 && s.room.status !== 'finished'; i++) {
+  for (let i = 0; i < 60 && s.room.status !== 'finished'; i++) {
+    // 날마다 장 전 시간(혼자 판은 6시간)이 있어 먼저 '장 시작'(준비 완료) → 장 마감. 요청 제한(20초 40번)에 안 걸리게 천천히
+    if (s.room.preUntil) await A({ action: 'preReady', roomId: sa.b.roomId });
     await A({ action: 'endTurn', roomId: sa.b.roomId });
+    await new Promise((r) => setTimeout(r, 700));
     s = (await A({ action: 'state', roomId: sa.b.roomId })).b;
   }
   ok('혼자 끝까지 진행', s.room.status === 'finished', `day=${s.room.day}`);
   const ia = (await A({ action: 'dailyInfo' })).b;
   ok('끝나면 점수 기록', ia.finished === true && typeof ia.myRet === 'number', JSON.stringify({ f: ia.finished, r: ia.myRet }));
-  ok('게스트 기록은 점수표에 안 오름', !(ia.top ?? []).some((r) => r.me) && ia.myRank === null);
+  ok('시험 회원 기록은 공개 점수표에 안 오름', !(ia.top ?? []).some((r) => r.me) && ia.myRank === null);
   const re = await A({ action: 'rematch', roomId: sa.b.roomId });
   ok('오늘의 도전은 한 판 더 불가 (409)', re.s === 409, re.b?.error);
 } else {
