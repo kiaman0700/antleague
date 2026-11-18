@@ -126,8 +126,13 @@ const TPL: Record<Platform, { good: string[]; bad: string[] }> = {
 };
 /** 검증된 사람은 말투가 조심스러움 */
 const TPL_VERIFIED = {
-  good: ['{w} 관련해 {t} 좋은 소식을 전해 드릴 수 있을 것 같습니다.', '{t} {w} 쪽에서 의미 있는 발표가 예상됩니다. 지켜보시죠.', '{w}, {t} 시장 기대를 웃도는 내용이 나올 가능성이 높다고 봅니다.'],
+  good: ['{w}, {t} 좋은 소식이 나올 거라는 얘기가 업계에서 들립니다.', '{t} {w} 쪽에서 의미 있는 발표가 예상됩니다. 지켜보시죠.', '{w}, {t} 시장 기대를 웃도는 내용이 나올 가능성이 높다고 봅니다.'],
   bad: ['{w} 관련해 {t} 아쉬운 소식이 있을 수 있습니다. 신중하세요.', '{t} {w} 쪽에서 부담스러운 발표가 예상됩니다.', '{w}, {t} 시장 기대에 못 미치는 내용이 나올 가능성이 있습니다.'],
+};
+/** 회사 사람(대표·임원·IR)은 자기 회사 얘기라 '저희' 말투 — 바깥 사람 틀과 개수를 같게 (난수 쓰는 횟수 그대로) */
+const TPL_INSIDER = {
+  good: ['저희 {w}, {t} 좋은 소식 전해 드릴 수 있을 것 같습니다.', '{t} 저희 쪽에서 의미 있는 발표가 있을 예정입니다. 지켜봐 주세요.', '{t} 발표를 준비하고 있습니다. 기대하셔도 좋습니다.'],
+  bad: ['{t} 저희 {w} 관련해 아쉬운 소식이 있을 수 있습니다. 미리 양해 부탁드립니다.', '솔직히 말씀드리면 {t} 쉽지 않은 소식이 나올 수 있습니다.', '{t} 나올 발표가 기대에 못 미칠 수 있습니다. 신중하게 봐 주세요.'],
 };
 
 const cache = new Map<string, Post[]>();
@@ -195,7 +200,8 @@ export function communityPosts(m: Market, day: number, key: string): Post[] {
     }
     const platform = verified ? pick<Platform>(['chirp', 'feedgram', 'live']) : pick(PLATFORM_IDS);
     const w = symbol ? name : `${name} 업종`;
-    const tpl = verified ? pick(TPL_VERIFIED[tone]) : pick(TPL[platform][tone]);
+    const insider = verified && (verified.role === 'ceo' || verified.role === 'exec' || verified.role === 'ir');
+    const tpl = verified ? pick((insider ? TPL_INSIDER : TPL_VERIFIED)[tone]) : pick(TPL[platform][tone]);
     const text = tpl
       .replace(/\{w\}/g, w)
       .replace(/\{t\}/g, whenText(when, at))
