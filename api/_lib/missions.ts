@@ -10,6 +10,7 @@ import { finalResults, GameError, marketFor, portfolioOf, PREMARKET_VERSION, typ
 import { BADGE_XP, DAILY_XP_CAP, levelNeed, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
 import { KR_INDEX_BASE } from '../../src/game/market.js';
 import { preRumors } from '../../src/game/rumors.js';
+import { COMMUNITY_VERSION, communityPosts } from '../../src/game/community.js';
 import { STOCK_MAP } from '../../src/game/stocks.js';
 import { earnedBadges } from './accounts.js';
 
@@ -211,10 +212,15 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       boughtKr: trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.currency !== 'USD' && !STOCK_MAP[t.symbol]?.etf),
       boughtUs: trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.currency === 'USD'),
       boughtEtf: trades.some((t) => t.side === 'buy' && !!STOCK_MAP[t.symbol]?.etf),
-      // 그날 장 전 찌라시(진짜·헛소문 모두)에 나온 업종의 종목을 그날 삼
+      // 그날 장 전 커뮤니티 글(진짜·헛소문 모두)이나 (v20+) 그날 장중 커뮤니티 글에 나온 업종의 종목을 그날 삼
       boughtRumorSector:
         (d.room.version ?? 1) >= PREMARKET_VERSION &&
-        trades.some((t) => t.side === 'buy' && preRumors(m, t.day, d.room.salt ?? String(d.room.seed)).some((r) => r.sector === STOCK_MAP[t.symbol]?.sector)),
+        trades.some((t) => {
+          if (t.side !== 'buy') return false;
+          const sec = STOCK_MAP[t.symbol]?.sector;
+          if (preRumors(m, t.day, d.room.salt ?? String(d.room.seed)).some((r) => r.sector === sec)) return true;
+          return (d.room.version ?? 1) >= COMMUNITY_VERSION && !!d.room.salt && communityPosts(m, t.day, d.room.salt).some((p) => p.sector === sec);
+        }),
       indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
       ...gameExtras(d, p.id, trades, uses.map((i) => i.kind)),
     };

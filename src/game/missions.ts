@@ -34,7 +34,7 @@ export const MISSIONS: MissionDef[] = [
   { id: 'bot1', title: '봇전 1판 끝까지 하기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ['bot'] },
   { id: 'match1', title: '일반전·랭킹전 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['match'] },
   { id: 'custom1', title: '커스텀 방에서 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['custom'] },
-  { id: 'rumorbuy', title: '찌라시에 나온 업종 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'rumorbuy', title: '커뮤니티 소문에 나온 업종 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'krus', title: '한 판에서 국내·미국 종목 둘 다 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'etf1', title: 'ETF 사 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'sell3', title: '한 판에서 3번 넘게 팔기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },

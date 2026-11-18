@@ -1122,7 +1122,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {intro && room && (
         <MatchIntro
           title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : room.kind === 'bot' ? '봇전' : '대결 시작'}
-          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 전 시간이에요 · 찌라시를 보고 준비하세요' : '장이 열렸어요'}`}
+          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 전 시간이에요 · 커뮤니티 글을 보고 준비하세요' : '장이 열렸어요'}`}
           players={players.filter((p) => p.status !== 'left')}
           meId={me}
           onClose={() => setIntro(false)}
