@@ -34,6 +34,10 @@ export function Welcome({
   visitor: boolean;
 }) {
   const [step, setStep] = useState<WelcomeStep>(initial);
+  const [inviteCode] = useState(() => {
+    const c = new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '';
+    return /^[A-Z0-9]{6}$/.test(c) ? c : '';
+  });
   const [nick, setNick] = useState(loadNick());
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,6 +85,8 @@ export function Welcome({
             <h3>
               <Icon name="userPlus" size={18} /> 어떻게 시작할까요?
             </h3>
+            {/* 친구가 보낸 초대 링크(?room=코드)로 왔으면: 왜 이 창이 떴는지 먼저 */}
+            {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작 방법을 골라 주세요. 고르면 그 방 입장 창이 열려요.</p>}
             <p className="muted small">회원가입은 무료예요. 아이디·비밀번호·닉네임만 받고 이메일·전화번호는 받지 않아요.</p>
             <table className="gs-compare">
               <thead>
