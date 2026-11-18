@@ -1796,3 +1796,5 @@ p { text-wrap: pretty; }
 @media (min-width: 861px) and (max-width: 1179px) { .nt-bar { padding: 0 20px; } }
 @media (min-width: 1440px) { .nt-bar { max-width: 1180px; padding: 0 40px; } }
 @media (max-width: 860px) { .nt-bar { max-width: 640px; padding: 0 16px; } }
+/* '봇전은 바로 시작' 글자 링크: 보이는 크기는 그대로, 누르는 자리만 위아래로 넓힘 (작은 휴대폰에서 15px 높이였음) */
+.st-status .st-bots { padding: 6px 2px; margin: -6px -2px; }
