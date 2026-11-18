@@ -13,7 +13,7 @@ const SIZES = [
   ['tablet', { viewport: { width: 820, height: 1180 }, screen: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: UA_IPAD }],
   ['pc', { viewport: { width: 1440, height: 900 }, screen: { width: 1920, height: 1080 } }],
 ].filter(([n]) => !only || n === only);
-const ROUTES = (process.env.ROUTES ?? 'casual ranked learn custom more ranking records companies rooms create login signup notices tutorial customize practice').split(' ');
+const ROUTES = (process.env.ROUTES ?? 'casual ranked learn custom more ranking records companies rooms create login signup notices league install tutorial customize practice').split(' ');
 
 const audit = () => {
   const out = [];

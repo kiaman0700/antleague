@@ -1565,7 +1565,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 .ig-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .ig-chips .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line, #2e2e2e); background: var(--surface-2, #242424); color: var(--text-2, #c8c8c8); font-size: 13px; font-weight: 700; cursor: pointer; }
 .ig-chips .chip.on { background: #6b58ee; border-color: #6b58ee; color: #fff; }
-.ig-chips .chip em { font-style: normal; font-weight: 500; opacity: 0.85; }
+.ig-chips .chip em { font-style: normal; font-weight: 500; }
 .ig-pulse { transform-box: fill-box; transform-origin: center; animation: igPulse 1.6s ease-out infinite; }
 @keyframes igPulse { from { transform: scale(0.8); opacity: 0.7; } to { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ig-pulse { animation: none; } }
