@@ -17,7 +17,7 @@ import { pct, tone, won, wonShort } from '../lib/format';
 import { SPEED_PRESET } from '../engine/matching';
 import { play } from '../lib/sound';
 import type { Session } from '../session';
-import { DailyResult } from '../components/Daily';
+import { DailyResult, useDailyInfo } from '../components/Daily';
 import { useIsMobile } from '../components/Extras';
 import { MissionsPanel } from '../components/Missions';
 import { useAccount } from '../net/account';
@@ -591,6 +591,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         {ratingEl}
         <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />
         {restEl}
+        {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
         {actionsEl}
       </div>
     );
@@ -614,6 +615,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
                 ret={me.ret}
                 days={market.totalDays}
                 daily={me.hist.slice(1).map((v, d) => v - me.hist[d])}
+                isDaily={matchKind === 'daily'}
               />
             ),
           },
@@ -720,10 +722,19 @@ function ResultSlides({ slides }: { slides: { key: string; label: string; body: 
 }
 
 /** 공유 카드: 결과만 (종목·보유는 안 나옴 — 다른 사람에게 판 내용이 새지 않게). 날마다 오르면 🟥 내리면 🟦 */
-function ShareCard({ kind, rank, players, ret, days, daily }: { kind: string; rank: number | null; players: number; ret: number; days: number; daily: number[] }) {
+/**
+ * 결과 나누기 카드 (워들처럼 — 종목·가격 없이 날마다 오름 빨강·내림 파랑 칸만).
+ * 오늘의 도전은 모두 같은 시장이라 '상위 n%'·연속 기록을 함께 (서버가 준 내 순위·전체 수만)
+ */
+function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: { kind: string; rank: number | null; players: number; ret: number; days: number; daily: number[]; isDaily?: boolean }) {
+  const { info } = useDailyInfo(isDaily);
+  const top = isDaily && info?.myRank && info.total ? Math.max(1, Math.ceil((info.myRank / info.total) * 100)) : null;
+  const streak = isDaily && info?.streak && info.streak.streak > 1 ? info.streak.streak : 0;
+  const md = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.\s?/g, '/').replace(/\/$/, '');
   const bar = daily.map((v) => (v > 0 ? '🟥' : v < 0 ? '🟦' : '⬜')).join('');
   const slang = ret >= 0.2 ? '떡상' : ret >= 0.05 ? '익절' : ret > -0.05 ? '존버' : ret > -0.2 ? '물림' : '손절각';
-  const text = `개미리그 ${kind}${rank ? ` ${rank}위/${players}명` : ''} · ${days}일 · 수익률 ${pct(ret)} (${slang})\n${bar}\n${location.origin}`;
+  const head = isDaily ? `개미리그 오늘의 도전 ${md}${top ? ` · 상위 ${top}%` : ''}${streak ? ` · ${streak}일 연속` : ''}` : `개미리그 ${kind}${rank ? ` ${rank}위/${players}명` : ''} · ${days}일`;
+  const text = [head, `수익률 ${pct(ret)} (${slang})`, bar, location.origin].join('\n');
   const [done, setDone] = useState('');
   const share = async () => {
     try {
@@ -742,7 +753,8 @@ function ShareCard({ kind, rank, players, ret, days, daily }: { kind: string; ra
       <h3><Icon name="share" /> 결과 공유</h3>
       <div className="sc-card">
         <b className="sc-kind">개미리그 · {kind}</b>
-        {rank ? <strong className="sc-rank">{rank}위<small> / {players}명</small></strong> : null}
+        {top ? <strong className="sc-rank">상위 {top}%<small> · 오늘 {info?.total}명</small></strong> : rank ? <strong className="sc-rank">{rank}위<small> / {players}명</small></strong> : null}
+        {streak ? <span className="sc-slang">{streak}일 연속 도전 중</span> : null}
         <span className={'sc-ret ' + tone(ret)}>{pct(ret)}</span>
         <span className="sc-slang">{slang}</span>
         <span className="sc-bar" aria-label="날마다 재산이 오르면 빨강, 내리면 파랑">{bar}</span>
