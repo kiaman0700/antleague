@@ -70,7 +70,7 @@ describe('예상 대기 시간', () => {
   });
   it('1대1: 아무도 없고 최근 매칭도 없으면 모름', () => {
     expect(estimateWaitSec({ size: 'duel', similar: 0, nearestGap: null, arrivalsPerMin: 0, waitedMs: 0 })).toBeNull();
-    expect(waitLabel(null)).toBe('예상하기 어려워요');
+    expect(waitLabel(null)).toBe('알 수 없어요');
   });
   it('1대1: 분당 2명 들어오면 약 30초', () => {
     expect(estimateWaitSec({ size: 'duel', similar: 0, nearestGap: null, arrivalsPerMin: 2, waitedMs: 0 })).toBe(30);

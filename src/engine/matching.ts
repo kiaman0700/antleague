@@ -174,7 +174,7 @@ export function estimateWaitSec(i: WaitInput): number | null {
 
 /** 화면 표시: 약 30초 · 약 2분 · 10분 넘게 */
 export function waitLabel(sec: number | null): string {
-  if (sec === null) return '예상하기 어려워요';
+  if (sec === null) return '알 수 없어요';
   if (sec <= 10) return '곧 잡혀요';
   if (sec < 60) return `약 ${sec}초`;
   if (sec >= 900) return '10분 넘게';

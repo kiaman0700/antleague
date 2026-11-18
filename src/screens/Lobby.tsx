@@ -904,7 +904,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <button className="tile" onClick={() => go('companies')}>
             <i><Icon name="book" size={24} /></i>
             <b>공부</b>
-            <small>종목·업종 알아보기</small>
+            <small>투자 기초와 기업 살펴보기</small>
           </button>
         </nav>
       )}
