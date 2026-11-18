@@ -145,6 +145,18 @@ ok('B 에게 1대1 신청이 보임', !!duelInv && duelInv.from === nA && duelIn
 await B({ action: 'inviteRespond', id: duelInv.id, accept: false });
 const ia = (await A({ action: 'invites' })).b;
 ok('거절하면 A 에게 거절로 보임', ia.duel?.status === 'declined', JSON.stringify(ia.duel));
+// 보낸 사람이 취소: 받는 사람 목록에서 사라지고 수락도 안 됨. 남(받는 사람)은 취소 못 함
+await A({ action: 'challenge', friendId: abId, speed: 'quick' });
+const pend = (await B({ action: 'invites' })).b.incoming.find((x) => x.kind === 'duel');
+const outId = (await A({ action: 'invites' })).b.duel?.id ?? pend?.id;
+await B({ action: 'inviteCancel', id: pend?.id });
+ok('받는 사람은 남의 신청을 취소 못 함 (그대로 남음)', !!(await B({ action: 'invites' })).b.incoming.find((x) => x.id === pend?.id));
+const cc = await A({ action: 'inviteCancel', id: outId });
+ok('보낸 사람은 신청을 취소할 수 있음', cc.s === 200, cc.b?.error);
+ok('취소한 신청은 받는 사람 목록에서 사라짐', !(await B({ action: 'invites' })).b.incoming.some((x) => x.id === pend?.id));
+const lateAcc = await B({ action: 'inviteRespond', id: pend?.id, accept: true });
+ok('취소된 신청은 수락할 수 없음', lateAcc.s !== 200, `${lateAcc.s} ${lateAcc.b?.error ?? ''}`);
+ok('이상한 신청 번호 취소는 거절', [400, 404].includes((await A({ action: 'inviteCancel', id: '<x>' })).s));
 await A({ action: 'challenge', friendId: abId, speed: 'normal' });
 const duelInv2 = (await B({ action: 'invites' })).b.incoming.find((x) => x.kind === 'duel');
 const accDuel = await B({ action: 'inviteRespond', id: duelInv2.id, accept: true, mode: 'pro' });
