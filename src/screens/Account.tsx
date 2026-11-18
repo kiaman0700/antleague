@@ -13,7 +13,7 @@ import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover, matchKindName } from '../net/account';
-import { BADGE_TIER_AT, BADGES, badgeTier, badgeTiered, givesTitle, parseTiered, tierPrefix, titleLabel, titleOf } from '../game/achievements';
+import { BADGE_TIER_AT, BADGES, badgeTier, badgeTiered, givesTitle, parseTiered, tierName, titleLabel, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
 import { Sheet } from '../components/PrefsPanel';
 import { BadgeIcon, Icon } from '../components/Icon';
@@ -797,12 +797,12 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
     const max = badgeTier(b.id, n);
     const on = cur?.id === b.id;
     const pickTier = on ? cur!.tier : max;
-    const name = tierPrefix(b.id, pickTier) + b.name;
+    const name = tierName(b.id, pickTier);
     const val = (t: number) => (t > 1 ? `${b.id}:${t}` : b.id);
     const next = badgeTiered(b.id) && max < 4 ? (BADGE_TIER_AT as readonly number[])[max] - n : 0;
     return (
       <div key={b.id} className="deco-wrap">
-        <button className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (max > 1 ? ' t' + max : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : val(max), tierPrefix(b.id, max) + b.name)}>
+        <button className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (max > 1 ? ' t' + max : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : val(max), tierName(b.id, max))}>
           <i>
             <BadgeIcon id={b.id} size={22} />
           </i>
@@ -815,7 +815,7 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
         {on && max > 1 && (
           <span className="deco-tiers" role="group" aria-label="칭호 단계">
             {Array.from({ length: max }, (_, k) => k + 1).map((t) => (
-              <button key={t} className={'chip sm' + (t === pickTier ? ' on' : '')} aria-pressed={t === pickTier} onClick={() => t !== pickTier && onPick(val(t), tierPrefix(b.id, t) + b.name)}>
+              <button key={t} className={'chip sm' + (t === pickTier ? ' on' : '')} aria-pressed={t === pickTier} onClick={() => t !== pickTier && onPick(val(t), tierName(b.id, t))}>
                 {t}단계
               </button>
             ))}

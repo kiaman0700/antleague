@@ -96,6 +96,53 @@ export function tierPrefix(id: string, tier: number) {
   if (tier === 3) return funny ? '명예 ' : '전설의 ';
   return funny ? '영원한 ' : '신화의 ';
 }
+/**
+ * 꾸밈말을 앞에 붙이면 어색한 이름(사람을 가리키지 않는 이름 등)은 단계마다 이름을 따로 (2·3·4단계).
+ * 여기 없는 업적은 꾸밈말 + 원래 이름 ('노련한 투자왕')
+ */
+const TIER_NAMES: Record<string, [string, string, string]> = {
+  ret30: ['대박 행진', '대박 제조기', '대박의 신'],
+  streak7: ['연승 행진', '연승 기계', '불패의 개미'],
+  flawless: ['무결점 장인', '완벽주의 개미', '무결점의 전설'],
+  comeback: ['역전의 명수', '역전의 제왕', '역전의 신'],
+  zen: ['존버 장인', '존버의 달인', '존버의 신'],
+  escape: ['탈출 장인', '탈출의 달인', '탈출의 신'],
+  sniper: ['명사수', '백발백중', '저격의 신'],
+  big_win: ['한 방 장인', '한 방의 제왕', '한 방의 신'],
+  shield: ['철벽 수비수', '난공불락', '철벽의 신'],
+  podium: ['시상대 단골', '시상대 주인', '시상대의 전설'],
+  plus: ['플러스 장인', '플러스 제조기', '플러스의 신'],
+  all_in: ['몰빵 장인', '몰빵의 제왕', '몰빵의 신'],
+  diversify: ['분산 투자의 달인', '분산의 제왕', '분산의 신'],
+  leverage: ['레버리지 애호가', '레버리지 장인', '레버리지의 신'],
+  dividend: ['배당 갑부', '배당 재벌', '배당의 신'],
+  limit_order: ['예약의 고수', '예약의 제왕', '예약의 신'],
+  card_master: ['카드 그랜드마스터', '카드의 제왕', '카드의 신'],
+  bear_proof: ['하락장 사냥꾼', '하락장의 제왕', '하락장의 신'],
+  specialist: ['업종 박사', '업종의 제왕', '업종의 신'],
+  crash_winner: ['폭락장 사냥꾼', '폭락장의 제왕', '폭락장의 신'],
+  diamond: ['강철 손', '티타늄 핸드', '불멸의 손'],
+  bottom: ['노련한 저점 사냥꾼', '저점의 지배자', '바닥의 신'],
+  multi_win: ['다인전의 황제', '다인전의 패왕', '다인전의 신'],
+  beat_market: ['시장을 꺾은 자', '시장을 지배하는 자', '시장의 신'],
+  limit_up: ['상한가 수집가', '상한가의 제왕', '상한가의 신'],
+  news_jump: ['노련한 사건 해결사', '전설의 사건 해결사', '사건의 신'],
+  // 웃픈 업적
+  buy_high: ['꼭지 단골 개미', '명예 꼭지 개미', '영원한 꼭지 개미'],
+  fooled: ['찌라시 단골 개미', '명예 찌라시 개미', '영원한 찌라시 개미'],
+  last_place: ['바닥 단골', '바닥 전문가', '바닥의 주인'],
+  limit_down: ['하한가 단골', '하한가 수집가', '하한가의 주인'],
+  paper_hands: ['팔면 오르는 개미', '저주받은 손', '팔면 오르는 전설'],
+  lev_burn: ['레버리지 단골 손님', '레버리지 명예 피해자', '영원한 레버리지 피해자'],
+  choke: ['아깝다 장인', '아깝다의 달인', '영원한 2등'],
+};
+/** 단계에 맞는 칭호 이름 (1단계는 원래 이름) */
+export function tierName(id: string, tier: number): string {
+  const b = BADGE_MAP[id];
+  if (!b) return id;
+  if (tier <= 1 || !badgeTiered(id)) return b.name;
+  return TIER_NAMES[id]?.[Math.min(4, tier) - 2] ?? tierPrefix(id, tier) + b.name;
+}
 /** 저장 값('winner' · 'winner:2' · 'sprout:3') → 업적(사진) id 와 단계 */
 export function parseTiered(v: string | null | undefined): { id: string; tier: 1 | 2 | 3 | 4 } | null {
   if (!v || typeof v !== 'string') return null;
@@ -109,7 +156,7 @@ export function titleLabel(v: string | null | undefined): { id: string; tier: nu
   const b = t ? BADGE_MAP[t.id] : undefined;
   if (!t || !b) return null;
   const tier = badgeTiered(t.id) ? t.tier : 1;
-  return { id: t.id, tier, name: tierPrefix(t.id, tier) + b.name, badge: b };
+  return { id: t.id, tier, name: tierName(t.id, tier), badge: b };
 }
 
 /** 획득한 배지 중 가장 귀한 것이 칭호 */

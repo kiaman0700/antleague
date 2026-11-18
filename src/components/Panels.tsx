@@ -12,7 +12,7 @@ import { num, pct, tone, won, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
 import { EmptyState, useDialogFocus, useEscape } from './ui';
-import { CommunityFeed } from './CommunityFeed';
+import { CommunityFeed, PrePosts } from './CommunityFeed';
 import type { PublicPost } from '../game/community';
 
 /* ------------------------------ 뉴스 ------------------------------ */
@@ -325,6 +325,9 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
             {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
             <small className="muted">{rumorCheck ? '루머 감별기를 쓴 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
+          {posts ? (
+            <PrePosts rumors={rumors} day={day} onSelect={onSelect} onSelectSector={onSelectSector} />
+          ) : (
           <ul className="rb-list">
             {rumors
               .map((r) => ({ r, f: snsFace(day + ':' + r.text) }))
@@ -360,6 +363,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
               );
             })}
           </ul>
+          )}
         </section>
       )}
       {showRumors && rumorToday.length > 0 && (

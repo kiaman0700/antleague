@@ -69,7 +69,7 @@ export function PlatformIcon({ id, size = 30 }: { id: Platform; size?: number })
   );
 }
 
-function Post({ p, onSelect, onSelectSector, past }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean }) {
+export function Post({ p, onSelect, onSelectSector, past, time }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean; /** 시각 대신 보일 글 ('장 전') */ time?: string }) {
   const pf = PLATFORMS[p.platform];
   const target = p.symbol && STOCK_MAP[p.symbol] ? STOCK_MAP[p.symbol].name : (SECTOR_MAP[p.sector]?.name ?? p.sector);
   return (
@@ -90,7 +90,7 @@ function Post({ p, onSelect, onSelectSector, past }: { p: PublicPost; onSelect: 
           </b>
           <span className="cf-meta">
             {pf.name} · {past ? `${p.day + 1}일차 ` : ''}
-            {clockOf(p.at)}
+            {time ?? clockOf(p.at)}
           </span>
         </div>
         <p className="cf-text">{p.text}</p>
@@ -147,5 +147,27 @@ export function CommunityFeed({ today, past, day, live, onSelect, onSelectSector
         </details>
       )}
     </section>
+  );
+}
+
+/** (v20+) 장 전 커뮤니티 글을 실시간 피드와 같은 모양으로 — 플랫폼·글쓴이는 글 내용으로만 정한 꾸밈(진위와 상관없음) */
+export function PrePosts({ rumors, day, onSelect, onSelectSector }: { rumors: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[]; day: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
+  const ids: Platform[] = ['square', 'board', 'chirp', 'feedgram', 'talk', 'live'];
+  const nicks = ['새벽시황', '눈팅만10년', '존버장인', '차트도사', '야수의심장', '퇴근후주식', '떡상기원', '익절요정'];
+  const h = (t: string) => {
+    let x = 2166136261;
+    for (let i = 0; i < t.length; i++) x = Math.imul(x ^ t.charCodeAt(i), 16777619);
+    return x >>> 0;
+  };
+  return (
+    <ul className="cf-list">
+      {rumors
+        .map((r, i) => ({ r, i, k: h(day + ':' + r.text) }))
+        .sort((a, b) => ((b.k >>> 21) % 49) - ((a.k >>> 21) % 49))
+        .map(({ r, i, k }) => {
+        const p: PublicPost = { id: 'pre-' + i, day, at: 0, platform: ids[k % ids.length], author: nicks[(k >>> 4) % nicks.length] + ((k >>> 9) % 2 ? String(10 + ((k >>> 11) % 90)) : ''), verified: null, text: r.text, symbol: r.symbol, sector: r.sector, tone: r.tone, likes: 20 + ((k >>> 13) % 600), replies: (k >>> 17) % 90, verdict: r.verdict };
+        return <Post key={i} p={p} time={`장 전 ${8}:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
+      })}
+    </ul>
   );
 }
