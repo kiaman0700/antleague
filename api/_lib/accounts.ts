@@ -6,7 +6,7 @@
  * - 랭킹: 회원끼리 붙은 멀티 대결만 점수(Elo, 시작 1000) 반영 — 게스트와의 판은 전적만
  * 모든 읽기·쓰기는 서버만 (profiles·match_players 는 브라우저 권한 없음)
  */
-import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
 import { givesTitle } from '../../src/game/achievements.js';
@@ -112,8 +112,9 @@ export async function loginEmail(sb: SupabaseClient, b: Body) {
   const fake = `u_${createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('login-email:' + u).digest('hex').slice(0, 24)}@${USER_DOMAIN}`;
   if (!USERNAME_RE.test(u)) return { email: fake };
   const p = (await sb.from('profiles').select('user_id').eq('username', u).maybeSingle()).data as { user_id: string } | null;
+  // 없는 아이디도 같은 조회를 한 번 해서(없는 id) 응답 시간으로 있는지 없는지 티 나지 않게
+  const g = await sb.auth.admin.getUserById(p ? p.user_id : randomUUID()).catch(() => ({ data: { user: null } }));
   if (!p) return { email: fake };
-  const g = await sb.auth.admin.getUserById(p.user_id);
   const email = g.data.user?.email;
   return { email: email && email.endsWith('@' + USER_DOMAIN) ? email : fake };
 }
@@ -143,7 +144,13 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     case 'signup': {
       rateLimit(uid + ':signup', 5, 600_000);
       if (user.app_metadata?.role === 'admin') throw new GameError('운영자 계정은 회원 가입을 할 수 없어요.');
-      if (await getProfile(sb, uid)) throw new GameError('이미 가입한 계정이에요.', 409);
+      if (await getProfile(sb, uid)) {
+        // 지난번 가입이 반쯤 끝난 경우(프로필은 넣었는데 계정 전환 전에 끊김): 로그인 주소가 회원 주소가 아니면 남은 프로필을 지우고 다시 가입
+        const cur = await sb.auth.admin.getUserById(uid);
+        const email = cur.data.user?.email ?? '';
+        if (cur.error || email.endsWith('@' + USER_DOMAIN)) throw new GameError('이미 가입한 계정이에요.', 409);
+        await sb.from('profiles').delete().eq('user_id', uid);
+      }
       // [필수] 세 가지: 만 14세 이상 · 이용약관 · 개인정보 수집·이용 (화면에서 칸을 지워 보내도 여기서 다시 확인)
       if (b.agree14 !== true || b.agreePrivacy !== true || b.agreeTerms !== true) throw new GameError('만 14세 이상 확인, 이용약관 동의, 개인정보 수집·이용 동의가 모두 필요해요.');
       const username = cleanUsername(b.username);
@@ -310,9 +317,15 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const mode = b.mode === 'merge' ? 'merge' : 'discard';
       let moved = 0;
       if (mode === 'merge' && seats.length) {
-        const mine = new Set((((await sb.from('players').select('room_id').eq('user_id', uid)).data ?? []) as { room_id: string }[]).map((x) => x.room_id));
+        const myRows = ((await sb.from('players').select('room_id, left_game, rooms!inner(status)').eq('user_id', uid)).data ?? []) as unknown as { room_id: string; left_game: boolean; rooms: { status: string } }[];
+        const mine = new Set(myRows.map((x) => x.room_id));
+        // 한 사람은 한 방에만: 회원 쪽에 이미 진행·대기 중 자리가 있으면 게스트의 진행·대기 자리는 가져오지 않음(아래에서 나가기 처리)
+        let busy = myRows.some((x) => x.rooms.status !== 'finished' && !x.left_game);
         for (const s of seats) {
           if (mine.has(s.room_id)) continue; // 같은 방에 이미 내 자리가 있으면 건너뜀
+          const active = s.rooms.status !== 'finished';
+          if (active && busy) continue;
+          if (active) busy = true;
           const r = await sb.from('players').update({ user_id: uid }).eq('id', s.id).eq('user_id', gu.id);
           if (!r.error) moved++;
         }

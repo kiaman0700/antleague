@@ -4,6 +4,7 @@
 // 키는 .env.local 에서 읽는다 (저장소에 키를 넣지 않음)
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
+import { createHmac } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +21,9 @@ export const env = Object.fromEntries(
     .filter((l) => l.includes('=') && !l.trim().startsWith('#'))
     .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
 );
+
+/** 시험 요청 표시 (서버가 비밀 키로 확인 — api/game.ts isTestKey) */
+export const TEST_KEY = createHmac('sha256', env.SUPABASE_SECRET_KEY ?? '').update('e2e-test').digest('hex').slice(0, 32);
 
 export const BASE = (process.env.BASE ?? 'http://localhost:5173').replace(/\/$/, '');
 
@@ -52,7 +56,7 @@ async function session() {
       return data.session.access_token;
     }
     // 익명 로그인이 막히면 게임과 같은 대체 경로(서버 손님 계정)로
-    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1' }, body: JSON.stringify({ action: 'guest' }) }).catch(() => null);
+    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY }, body: JSON.stringify({ action: 'guest' }) }).catch(() => null);
     if (r?.ok) {
       const g = await r.json();
       const { data: d2, error: e2 } = await sb.auth.signInWithPassword(g);
@@ -93,7 +97,7 @@ export async function user() {
   const raw = async (body) => {
     const r = await fetch(BASE + '/api/game', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-stockduel-test': '1', authorization: 'Bearer ' + tok },
+      headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, authorization: 'Bearer ' + tok },
       body: JSON.stringify(body),
     });
     return { s: r.status, b: await r.json().catch(() => null) };

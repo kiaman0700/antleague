@@ -1,5 +1,5 @@
 // 운영자 기능 보안: 일반 계정은 의견함을 볼 수 없고, 화면·API 로는 운영자 계정을 만들 방법이 아예 없음
-import { user, ok, done, BASE } from './lib.mjs';
+import { user, ok, done, BASE, TEST_KEY } from './lib.mjs';
 
 const U = await user();
 const me = await U({ action: 'me' });
@@ -10,7 +10,7 @@ const mark = await U({ action: 'adminMarkRead', ids: [1] });
 ok('일반 계정은 읽음 표시도 못 함 (403)', mark.s === 403);
 const ov = await U({ action: 'adminOverview' });
 ok('일반 계정은 운영 현황을 못 봄 (403, 숫자 없음)', ov.s === 403 && !ov.b?.now && !ov.b?.games, JSON.stringify(ov.b));
-const post = (body) => fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': '1' }, body: JSON.stringify(body) }).then(async (r) => ({ s: r.status, b: await r.json().catch(() => null) }));
+const post = (body) => fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY }, body: JSON.stringify(body) }).then(async (r) => ({ s: r.status, b: await r.json().catch(() => null) }));
 const old1 = await post({ action: 'adminSignup', email: 'admin@example.com', password: 'abcdefghijk', code: 'WRONGCODEWRONGCODE12' });
 ok('운영자 계정 만들기 요청은 없어짐 (로그인 없이 401)', old1.s === 401, String(old1.s));
 const old2 = await U({ action: 'adminSignup', email: 'someone@example.com', password: 'abcdefghijk', code: 'X' });

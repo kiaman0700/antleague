@@ -1,4 +1,13 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { handle } from './_lib/server.js';
+
+/** e2e 도구 표시 값 = HMAC(서버 비밀 키, 'e2e-test') 앞 32자 — 비밀 키를 가진 이 컴퓨터의 시험 도구만 만들 수 있음 */
+function isTestKey(v: string | null): boolean {
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!v || !key || v.length !== 32) return false;
+  const want = createHmac('sha256', key).update('e2e-test').digest('hex').slice(0, 32);
+  return timingSafeEqual(Buffer.from(v), Buffer.from(want));
+}
 
 const MAX_BODY = 8 * 1024;
 
@@ -36,8 +45,9 @@ export async function POST(request: Request): Promise<Response> {
   const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   // 손님 계정 만들기 제한용 접속 IP (Vercel 이 붙여 주는 값)
   const ip = (request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim().slice(0, 64);
-  // 자동 시험 도구(e2e) 표시 — 밸런스 통계에서 빼는 용도로만 (붙여도 자기 판이 통계에서 빠질 뿐)
-  const testRun = request.headers.get('x-stockduel-test') === '1';
+  // 자동 시험 도구(e2e) 표시 — 밸런스 통계에서 빼는 용도로만. 서버 비밀 키로 만든 값이어야 인정
+  // (예전엔 '1' 이면 누구나 붙일 수 있어 자기 판을 운영 통계에서 일부러 빼거나 섞을 수 있었음)
+  const testRun = isTestKey(request.headers.get('x-stockduel-test'));
   const res = await handle(body, token, ip, testRun);
   return json(res.status, res.body);
 }

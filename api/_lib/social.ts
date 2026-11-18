@@ -11,6 +11,11 @@ type Body = Record<string, unknown>;
 type RL = (k: string, n: number, ms: number) => void;
 
 export const FRIEND_MAX = 100;
+/** 그 사람의 친구가 이미 꽉 찼는지 (받는 쪽뿐 아니라 보낸 쪽도 확인) */
+async function friendsFull(sb: SupabaseClient, user: string) {
+  const r = await sb.from('friendships').select('id', { count: 'exact', head: true }).eq('status', 'accepted').or(`user_a.eq.${user},user_b.eq.${user}`);
+  return (r.count ?? 0) >= FRIEND_MAX;
+}
 export const PENDING_DAYS = 7;
 export const ONLINE_MS = 120_000;
 
@@ -126,6 +131,9 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       if (existing && existing.requested_by === uid) return { ok: true, status: 'pending' };
       if (existing && existing.status === 'declined') {
         // 내가 예전에 거절했던 사람에게 이번엔 내가 신청 → 상대 신청은 아직 살아 있으므로(상대 화면엔 '대기 중') 바로 친구
+        // 양쪽 모두 친구 수 상한 확인 (예전엔 이 길에서 상한을 안 봐 100명을 넘을 수 있었음)
+        if (rows.filter((r) => r.status === 'accepted').length >= FRIEND_MAX) throw new GameError(`친구는 ${FRIEND_MAX}명까지예요.`, 409);
+        if (await friendsFull(sb, other)) throw new GameError(`상대의 친구가 ${FRIEND_MAX}명으로 꽉 찼어요.`, 409);
         await sb.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', existing.id);
         return { ok: true, status: 'accepted' };
       }
@@ -137,6 +145,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
         const theyBlocked = await sb.from('blocks').select('id').eq('blocker', other).eq('blocked', uid).maybeSingle();
         if (theyBlocked.data) return { ok: true, status: 'pending' };
         if (rows.filter((r) => r.status === 'accepted').length >= FRIEND_MAX) throw new GameError(`친구는 ${FRIEND_MAX}명까지예요.`, 409);
+        if (await friendsFull(sb, other)) throw new GameError(`상대의 친구가 ${FRIEND_MAX}명으로 꽉 찼어요.`, 409);
         await sb.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', existing.id);
         return { ok: true, status: 'accepted' };
       }
@@ -157,6 +166,7 @@ export async function socialAct(sb: SupabaseClient, action: string, b: Body, uid
       if (b.accept === true) {
         const rows = await myRows(sb, uid);
         if (rows.filter((x) => x.status === 'accepted').length >= FRIEND_MAX) throw new GameError(`친구는 ${FRIEND_MAX}명까지예요.`, 409);
+        if (await friendsFull(sb, r.requested_by)) throw new GameError(`상대의 친구가 ${FRIEND_MAX}명으로 꽉 찼어요.`, 409);
         await sb.from('friendships').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', id).eq('status', 'pending');
         return { ok: true, status: 'accepted' };
       }
