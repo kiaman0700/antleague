@@ -112,7 +112,9 @@
 }
 
 /* 뉴스 보기 칩: 전체(고정) | 찌라시 · 1일 · 2일 … (넘치면 옆으로 밀어서) */
-.news-cats { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 2px 0 10px; margin-bottom: 4px; background: inherit; }
+.news-cats { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 2px 0 10px; margin-bottom: 4px; /* 위에 붙는 줄이라 배경이 투명하면 내린 글이 칩 뒤로 비쳐 겹쳐 보임 → 칸과 같은 색 */ background: var(--surface, #1c1c1c); }
+/* PC 소식 칸은 스크롤 칸 안쪽 여백(14px) 위로 붙여 그 틈으로 글이 비치지 않게 */
+.news-scroll .news-cats { top: -14px; padding-top: 16px; }
 .news-cats .nc-fixed { flex: 0 0 auto; }
 .news-cats .nc-scroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; mask-image: linear-gradient(90deg, transparent, #000 14px, #000 88%, transparent); padding-left: 6px; scroll-padding-left: 6px; }
 .news-cats .nc-scroll::-webkit-scrollbar { display: none; }
