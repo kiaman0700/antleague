@@ -39,7 +39,7 @@ const [A, B] = [await member('A'), await member('B')];
 const i0 = await A({ action: 'dailyInfo' });
 ok('오늘의 도전 정보', i0.s === 200 && i0.b?.ready === true && /^\d{4}-\d{2}-\d{2}$/.test(i0.b?.day ?? ''), i0.b?.error ?? i0.b?.day);
 const raw0 = JSON.stringify(i0.b);
-ok('점수표에 계정 id 없음', !/user_id|[0-9a-f]{8}-[0-9a-f]{4}-/.test(raw0));
+ok('점수표에 계정 id 없음 (내 이어하기 방 번호 resume 은 내 방이라 빼고 봄)', !/user_id|[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify({ ...i0.b, resume: null })), JSON.stringify(i0.b?.resume ?? null).slice(0, 60));
 
 // 이미 오늘 한 계정(다시 쓰는 시험 계정)은 409 — 그래도 아래 검사는 그 방이 있으면 진행
 let sa = await A({ action: 'dailyStart', nickname: '도전A', mode: 'easy' });
