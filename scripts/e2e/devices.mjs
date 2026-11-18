@@ -11,6 +11,8 @@ const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1
 const UA_FOLD = 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36';
 const UA_WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const UA_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+const UA_KAKAO_IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.0';
+const UA_KAKAO_AND = 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 KAKAOTALK 10.8.0';
 const UA_TAB = 'Mozilla/5.0 (Linux; Android 14; SM-X710N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const touch = (w, h, ua) => ({ viewport: { width: w, height: h }, screen: { width: w, height: h }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: ua });
 const pc = (w, h) => ({ viewport: { width: w, height: h }, screen: { width: 1920, height: 1080 } });
@@ -27,6 +29,9 @@ const DEVICES = [
   ['아이폰 15 가로', touch(852, 393, UA_IPHONE), 'phone', 'mobile', 0],
   ['아이폰 프로맥스 가로', touch(932, 430, UA_IPHONE), 'phone', 'mobile', 0],
   ['갤럭시', touch(360, 780, UA_ANDROID), 'phone', 'mobile', 0],
+  // 한국에선 카카오톡 링크로 많이 들어옴 — 앱 안 브라우저(Safari·Version 표시 없음)도 휴대폰 화면이어야 함
+  ['카카오톡 안(아이폰)', touch(390, 760, UA_KAKAO_IOS), 'phone', 'mobile', 0],
+  ['카카오톡 안(갤럭시)', touch(384, 740, UA_KAKAO_AND), 'phone', 'mobile', 0],
   ['아이패드 세로', touch(820, 1180, UA_IPAD), 'tablet', 'mobile', 0],
   ['아이패드 가로', touch(1180, 820, UA_IPAD), 'tablet', 'desk', 0],
   ['갤럭시 탭 세로', touch(800, 1280, UA_TAB), 'tablet', 'mobile', 0],
