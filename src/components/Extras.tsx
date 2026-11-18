@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Device } from '../lib/device';
 import { Icon } from './Icon';
-import { EmptyState, useEscape } from './ui';
+import { DialogBox, EmptyState, useEscape } from './ui';
 import type { OrderRow } from '../engine/engine';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
@@ -134,7 +134,7 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
   if (!open) return null;
   return (
     <div className="sheet-bg" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <DialogBox className="sheet" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grab" />
         <div className="sheet-head">
           <b>{title}</b>
@@ -143,7 +143,7 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
           </button>
         </div>
         <div className="sheet-body">{children}</div>
-      </div>
+      </DialogBox>
     </div>
   );
 }

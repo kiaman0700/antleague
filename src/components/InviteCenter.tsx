@@ -7,6 +7,7 @@ import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
 import { cancelMatch, getMatch } from '../net/matchStore';
 import { Icon } from './Icon';
+import { DialogBox } from './ui';
 import { SPEED_PRESET } from '../engine/matching';
 import { loadUi, type Session, type UiMode } from '../session';
 import { play } from '../lib/sound';
@@ -166,7 +167,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
     <>
       {inv && (
         <div className="modal-bg">
-          <div className="modal invite-pop" role="dialog" aria-modal aria-label="친구 초대">
+          <DialogBox className="modal invite-pop" aria-label="친구 초대">
             {/* 닫기(답하지 않고 이 창만 닫음)는 늘 쓰는 자리인 오른쪽 위에 — 거절·수락 사이에 있으면 헷갈림 */}
             <button className="icon-btn ip-close" aria-label="나중에 (이 창만 닫기)" title="나중에 (이 창만 닫기)" onClick={() => setDismissed((d) => new Set(d).add(inv.id))}>
               <Icon name="x" />
@@ -192,12 +193,12 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
                 {inv.kind === 'duel' ? '수락하고 시작' : inv.kind === 'party' ? '파티 들어가기' : '입장'}
               </button>
             </div>
-          </div>
+          </DialogBox>
         </div>
       )}
       {!inv && waitingDuel && (
         <div className="modal-bg">
-          <div className="modal invite-pop" role="dialog" aria-modal aria-label="1대1 신청 대기">
+          <DialogBox className="modal invite-pop" aria-label="1대1 신청 대기">
             <div className="mf-spin" aria-hidden />
             <h3>{waitingDuel.to} 님의 답을 기다려요</h3>
             <p className="muted small">
@@ -214,7 +215,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
             >
               신청 취소
             </button>
-          </div>
+          </DialogBox>
         </div>
       )}
       {note && (

@@ -287,7 +287,27 @@ export function useDialogFocus<T extends HTMLElement>() {
   useEffect(() => {
     const el = ref.current;
     if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    // 키보드 Tab 이 창 밖(뒤 화면)으로 빠져나가지 않게 처음 ↔ 마지막으로 돌림 (WAI-ARIA 대화상자 규칙)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !el) return;
+      const items = [...el.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(
+        (x) => x.offsetParent !== null || x.getClientRects().length > 0,
+      );
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || at === el)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && at === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    el?.addEventListener('keydown', onKey);
     return () => {
+      el?.removeEventListener('keydown', onKey);
       if (prev && prev !== document.body && prev.isConnected && typeof prev.focus === 'function') prev.focus({ preventScroll: true });
     };
   }, [prev]);
