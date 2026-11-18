@@ -70,6 +70,13 @@ export async function rerollMission(sb: SupabaseClient, uid: string, b: { kind?:
       ? await sb.from('mission_rerolls').insert({ user_id: uid, period, count: 1, slots }).select('period')
       : await sb.from('mission_rerolls').update({ count: cur.count + 1, slots }).eq('user_id', uid).eq('period', period).eq('count', cur.count).select('period');
   if (w.error || !(w.data ?? []).length) throw new GameError('잠시 뒤에 다시 해 주세요.', 409);
+  // 바꾸는 사이 판이 끝나 원래 미션이 완료됐으면 되돌림 (같은 칸에서 경험치를 두 번 받지 않게)
+  const again = await sb.from('mission_progress').select('done').eq('user_id', uid).eq('period', period).eq('mission', ids[slot]).maybeSingle();
+  if ((again.data as { done?: boolean } | null)?.done) {
+    if (cur.count === 0 && !Object.keys(cur.slots).length) await sb.from('mission_rerolls').delete().eq('user_id', uid).eq('period', period).eq('count', 1);
+    else await sb.from('mission_rerolls').update({ count: cur.count, slots: cur.slots }).eq('user_id', uid).eq('period', period).eq('count', cur.count + 1);
+    throw new GameError('이미 완료한 미션은 바꿀 수 없어요.', 409);
+  }
   return missionState(sb, uid, now);
 }
 

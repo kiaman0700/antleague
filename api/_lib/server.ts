@@ -211,7 +211,13 @@ async function broadcastReact(roomId: string, payload: Record<string, string>) {
 /** 예상 못 한 오류를 DB 에 짧게 남김 (036, 운영 점검용 — 행동 이름·문구만, 토큰·계정 id 없음). 실패해도 무시 */
 async function logServerError(action: string, message: string) {
   try {
-    const clean = (v: string, n: number) => v.replace(/[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[token]').replace(/[\u0000-\u001f]/g, ' ').slice(0, n);
+    // 토큰·계정/방 id(uuid)는 가림 — DB 오류 문구에 'Key (user_id)=(…)' 처럼 계정 id 가 섞여 운영자 화면에 보이지 않게
+    const clean = (v: string, n: number) =>
+      v
+        .replace(/[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[token]')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]')
+        .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+        .slice(0, n);
     await db().from('server_errors').insert({ action: clean(action, 40) || '-', message: clean(message, 300) || '-' });
     if (Math.random() < 0.05) await db().from('server_errors').delete().lt('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString());
   } catch {
