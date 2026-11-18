@@ -706,7 +706,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
     case 'state': {
       // (최적화) 내 자리 확인과 게임 불러오기를 동시에 — 자리가 없으면 불러온 것은 버리고 403 (남의 방 내용은 절대 안 나감)
-      const [mine, loaded] = await Promise.allSettled([myPlayerId(b.roomId, uid), loadGame(b.roomId as string)]);
+      // 방 번호 모양부터 확인 — 이상한 값이 DB 까지 가지 않게 (동시에 부르기 전에)
+      if (typeof b.roomId !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.roomId)) throw new GameError('잘못된 방이에요.');
+      const [mine, loaded] = await Promise.allSettled([myPlayerId(b.roomId, uid), loadGame(b.roomId)]);
       if (mine.status === 'rejected') throw mine.reason;
       const { roomId, playerId } = mine.value;
       let d = loaded.status === 'fulfilled' ? loaded.value : await loadGame(roomId);

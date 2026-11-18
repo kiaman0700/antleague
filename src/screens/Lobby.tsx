@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { League, LeagueResultNote } from './League';
-import { InstallGuide, InstallHint } from '../components/InstallGuide';
+import { LeagueResultNote } from './LeagueNote';
+import { InstallHint } from '../components/InstallHint';
 import { NoticesPage, noticeSeenAt, type Notice } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
@@ -22,6 +22,8 @@ import { markWelcomeSeen, welcomeSeen } from '../session';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, useNickCheck, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 // 가끔 여는 화면(공부·운영자·계정)은 열 때 받음 — 첫 화면을 가볍게
+const League = lazy(() => import('./League').then((m) => ({ default: m.League })));
+const InstallGuide = lazy(() => import('../components/InstallGuide').then((m) => ({ default: m.InstallGuide })));
 const Companies = lazy(() => import('./Companies').then((m) => ({ default: m.Companies })));
 const Admin = lazy(() => import('./Admin').then((m) => ({ default: m.Admin })));
 const LoginPage = lazy(() => import('./Account').then((m) => ({ default: m.LoginPage })));
@@ -1765,7 +1767,9 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = (
         <div className="lobby page league">
           <PageHead title="주간 리그" onBack={() => go('home')} top desc="매주 월요일 0시에 30명이 한 조 — 그 주 경험치 순으로 위는 승급, 아래는 강등" />
-          <League go={go} />
+          <Suspense fallback={<Loading />}>
+            <League go={go} />
+          </Suspense>
         </div>
       );
       break;
@@ -1805,7 +1809,9 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       body = (
         <div className="lobby page install">
           <PageHead title="앱처럼 쓰기" onBack={back} top desc="홈 화면에 추가하면 주소창 없이 앱처럼 열려요" />
-          <InstallGuide />
+          <Suspense fallback={<Loading />}>
+            <InstallGuide />
+          </Suspense>
         </div>
       );
       break;
