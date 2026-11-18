@@ -1449,3 +1449,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 업적 4단계(100번): 무지개 보석 테두리 */
 .pf-av.av-t4 { border: 2px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 2px #7ee0ff, 0 0 0 3px #b48cff, 0 0 10px rgba(180, 140, 255, 0.55), inset 0 -6px 12px rgba(0, 0, 0, 0.18); }
 .deco-cell.title.t4 b { color: #b9a2ff; }
+
+/* 화면 편집 탭 순서 화살표: 보이는 크기는 그대로, 누르는 영역만 넓힘 (문장 속 용어 단어는 styles-ui 의 터치 규칙에 이미 있음) */
+.nav-move i { position: relative; }
+.nav-move i::before { content: ''; position: absolute; inset: -7px 0; } /* 좌우는 옆 화살표와 겹치지 않게 */
