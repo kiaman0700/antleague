@@ -1445,3 +1445,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 /* 티어표 단계: 보석 1~3개 */
 .tier-ladder .tl-pips { display: inline-flex; gap: 1px; height: 12px; align-items: center; }
 .tier-ladder .tl-div { gap: 3px; min-width: 28px; }
+
+/* 업적 4단계(100번): 무지개 보석 테두리 */
+.pf-av.av-t4 { border: 2px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 2px #7ee0ff, 0 0 0 3px #b48cff, 0 0 10px rgba(180, 140, 255, 0.55), inset 0 -6px 12px rgba(0, 0, 0, 0.18); }
+.deco-cell.title.t4 b { color: #b9a2ff; }

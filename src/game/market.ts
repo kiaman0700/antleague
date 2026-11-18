@@ -666,6 +666,11 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         rOpen = g1 * S + 0.3 * N;
         rDay = (1 - g1) * S + 0.7 * N;
       }
+      // (v21) 배당락: 배당 기준일 다음 날 시가가 배당률만큼 낮게 출발 (실제 시장처럼 — 배당만 받고 바로 팔면 공짜 돈이던 빈틈)
+      if (version >= 21) {
+        const dv = dividends.find((x) => x.symbol === s.symbol && x.day === day - 1);
+        if (dv) rOpen += Math.log(1 - dv.yieldPct / 100);
+      }
       const vol = s.vol + SECTOR_MAP[s.sector].vol;
 
       if (s.currency === 'USD') {
@@ -734,7 +739,10 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         rd = members.reduce((a, m) => a + rDayK[m], 0) / members.length;
       }
       const prev = last[e.symbol];
-      const open = roundPrice(Math.max(100, prev * Math.exp(def.lev * ro)));
+      // (v21) 배당 ETF 도 배당락
+      // (담은 종목에서 계산하는 바스켓·지수 ETF 는 담은 종목의 배당락이 이미 들어 있어서 빼고)
+      const dvE = version >= 21 && def.track.type !== 'basket' && def.track.type !== 'index' ? dividends.find((x) => x.symbol === e.symbol && x.day === day - 1) : undefined;
+      const open = roundPrice(Math.max(100, prev * Math.exp(def.lev * ro) * (dvE ? 1 - dvE.yieldPct / 100 : 1)));
       const close = roundPrice(Math.max(100, open * Math.exp(def.lev * rd)));
       const path = intradayPath(rng, open, close, 0.004 * Math.abs(def.lev));
       bars[e.symbol].push({ open, close, high: Math.max(...path), low: Math.min(...path), path });
@@ -763,6 +771,20 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         }
       }
       n.rel = relationsFor(def, n.related, undefined, version);
+    }
+  }
+  if (version >= 21) {
+    // (v21) 배당락: 일정에 표시 + 그날 아침 기사 (가격 영향은 위 배당락 시가로 이미 반영)
+    const exDays = new Set<number>();
+    for (const dv of dividends) {
+      const d = dv.day + 1;
+      if (d >= totalDays) continue;
+      if (!exDays.has(d)) {
+        exDays.add(d);
+        events.push({ day: d, kind: 'dividend', title: '배당락', desc: '어제 배당 기준일이 지나 배당 종목이 배당률만큼 낮게 출발해요 (실제 시장처럼).' });
+      }
+      const def = STOCK_MAP[dv.symbol];
+      news.push({ day: d, kind: 'company', symbol: dv.symbol, sector: def.sector, headline: `${def.name} 배당락… 시가 ${dv.yieldPct.toFixed(1)}% 낮게 출발`, rumor: false, tone: 'bad', realTone: 'bad', related: [dv.symbol], label: '시황', ...(v17 ? { rel: relationsFor(def, [dv.symbol], undefined, version) } : {}) });
     }
   }
   return { seed, totalDays, version, ...(S ? { salt: S } : {}), base, bars, usd, baseUsd, index: indexBars, usIndex: usIndexBars, macro: macroByDay, macro0, news, events, dividends };

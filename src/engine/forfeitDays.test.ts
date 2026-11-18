@@ -62,3 +62,21 @@ describe('기권 뒤 자동으로 넘어간 날은 업적에서 뺌', () => {
     expect(computeAchievements({ market: m, seed: 11, items: [], players: p, endDay: 11 })).toEqual(computeAchievements({ market: m, seed: 11, items: [], players: p }));
   });
 });
+
+describe('기권으로 끝난 판의 재산·수익률은 기권한 날 가격으로 (사용자 결정 2026-11-18)', () => {
+  it('남은 사람의 재산 = 기권한 날 종가로 계산, 화면 데이터에 endDay', async () => {
+    const { buildView } = await import('./engine.js');
+    const { startCashFor } = await import('../game/portfolio.js');
+    const d = duel(2);
+    Object.assign(d.players[1], validateLeave(d, 'b'));
+    const done = { ...d, room: { ...d.room, day: 12, status: 'finished' as const } };
+    const m = marketFor(11, 12, 3);
+    const a = finalResults(done).results.find((r) => r.nickname === 'A')!;
+    // 예전처럼 끝까지 계산한 재산과 비교: 현금은 같고, 가진 1주의 값만 기권한 날(2일차) 종가 vs 마지막 날 종가
+    const old = { ...done, players: done.players.map((p) => ({ ...p, left_day: undefined })) };
+    const aOld = finalResults(old).results.find((r) => r.nickname === 'A')!;
+    expect(a.equity - aOld.equity).toBe(Math.round(m.bars.CORE[2].close - m.bars.CORE[11].close));
+    void startCashFor;
+    expect(buildView(done, 'a', Date.now()).final?.endDay).toBe(2);
+  });
+});

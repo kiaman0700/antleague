@@ -72,10 +72,10 @@ export const avatarOf = (v: string | null | undefined) => {
   const id = typeof v === 'string' ? v.split(':')[0] : '';
   return id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default;
 };
-/** 사진 단계 (1·2·3) — 2 은색 테두리·별, 3 금색 테두리·왕관 */
-export const avatarTier = (v: string | null | undefined): 1 | 2 | 3 => {
-  const m = typeof v === 'string' ? /:([23])$/.exec(v) : null;
-  return (m ? Number(m[1]) : 1) as 1 | 2 | 3;
+/** 사진 단계 (1~4) — 2 은색 테두리·별, 3 금색 테두리·왕관, 4 무지개 보석 테두리·보석 왕관 */
+export const avatarTier = (v: string | null | undefined): 1 | 2 | 3 | 4 => {
+  const m = typeof v === 'string' ? /:([234])$/.exec(v) : null;
+  return (m ? Number(m[1]) : 1) as 1 | 2 | 3 | 4;
 };
 /** 이 사람이 고를 수 있는 사진인지 (badges = 얻은 업적 id 목록) */
 export const canUseAvatar = (id: string, badges: Iterable<string>) => {

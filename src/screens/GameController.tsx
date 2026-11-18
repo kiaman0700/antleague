@@ -506,7 +506,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const seenBreaking = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!market) return;
-    const breaking = market.news.filter((n) => n.at != null);
+    // (v21) 장중 시황·소문 기사는 큰 속보 알림 없이 소식 칸에만
+    const breaking = market.news.filter((n) => n.at != null && n.label !== '시황' && !n.rumor);
     const key = (n: { day: number; headline: string }) => n.day + ':' + n.headline;
     if (seenBreaking.current === null) {
       seenBreaking.current = new Set(breaking.map(key));

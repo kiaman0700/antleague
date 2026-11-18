@@ -34,7 +34,7 @@ export const RESULT_STEPS: CoachStep[] = [
 
 export const GROWTH_STEPS: CoachStep[] = [
   { title: '미션과 경험치', text: '일일 미션 6개·주간 미션 3개가 있어요. 판을 끝내면 서버가 확인해 경험치를 줘요. 마음에 안 드는 미션은 바꾸기도 돼요. 방금 끝낸 튜토리얼도 \'튜토리얼 완료하기\' 미션이라 경험치 100(레벨 1 → 2)을 받았어요(회원).', target: '.msb .hpop-btn' },
-  { title: '업적과 칭호', text: '업적 화면에서 모은 업적과 최근 전적을 봐요. 튜토리얼에서 딴 첫 거래·첫 카드·철벽 방어도 진짜 업적이에요. 같은 업적을 5번·20번 따면 칭호가 노련한 → 전설의로, 사진 테두리가 은색 → 금색으로 바뀌어요.', target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
+  { title: '업적과 칭호', text: '업적 화면에서 모은 업적과 최근 전적을 봐요. 튜토리얼에서 딴 첫 거래·첫 카드·철벽 방어도 진짜 업적이에요. 같은 업적을 5번·20번·100번 따면 칭호가 노련한 → 전설의 → 신화의로, 사진 테두리가 은색 → 금색 → 무지개 보석으로 바뀌어요.', target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
   { title: '랭킹과 티어', text: '회원은 랭킹전으로 점수를 올려 브론즈부터 마스터까지 티어를 올려요. 처음 2판은 배치예요.', target: '.cl-subs .cl-sub:nth-child(1), .lobby-bottom button:first-child' },
   { title: '튜토리얼 끝!', text: "4단계를 모두 끝내서 업적 '개미 학교 졸업'(졸업모 개미 사진)을 받았어요. 이제 대결을 시작해 보세요. 튜토리얼은 연습 메뉴나 설정·더보기의 '튜토리얼'에서 단계별로 언제든 다시 볼 수 있어요." },
 ];

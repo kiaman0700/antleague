@@ -766,7 +766,7 @@ function DecoAvatars({ current, nickname, badges, onPick }: { current: string; n
           const tier = a.need && from ? badgeTier(a.need, badges[a.need] ?? 0) : 1;
           const value = tier > 1 ? `${a.id}:${tier}` : a.id;
           const on = current === value;
-          const next = from && tier < 3 && badgeTiered(from.id) ? (BADGE_TIER_AT as readonly number[])[tier] - (badges[from.id] ?? 0) : 0;
+          const next = from && tier < 4 && badgeTiered(from.id) ? (BADGE_TIER_AT as readonly number[])[tier] - (badges[from.id] ?? 0) : 0;
           return (
             <button key={a.id} className={'deco-cell' + (on ? ' on' : '')} aria-pressed={on} disabled={on} onClick={() => onPick(value, a.name)}>
               <Avatar id={value} name={nickname} size={56} />
@@ -799,7 +799,7 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
     const pickTier = on ? cur!.tier : max;
     const name = tierPrefix(b.id, pickTier) + b.name;
     const val = (t: number) => (t > 1 ? `${b.id}:${t}` : b.id);
-    const next = badgeTiered(b.id) && max < 3 ? (BADGE_TIER_AT as readonly number[])[max] - n : 0;
+    const next = badgeTiered(b.id) && max < 4 ? (BADGE_TIER_AT as readonly number[])[max] - n : 0;
     return (
       <div key={b.id} className="deco-wrap">
         <button className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (max > 1 ? ' t' + max : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : val(max), tierPrefix(b.id, max) + b.name)}>

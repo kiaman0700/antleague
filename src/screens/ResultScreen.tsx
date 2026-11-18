@@ -6,7 +6,7 @@ import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeIcon, CardIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
-import { BADGE_MAP, titleOf } from '../game/achievements';
+import { BADGE_MAP, cutMarket, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
 import { josa, type View } from '../engine/engine';
 import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
@@ -45,8 +45,10 @@ interface Props {
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
+export function ResultScreen({ session, market: fullMarket, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
   const wide = useIsMobile('(min-width: 900px)');
+  // 상대가 모두 기권해 바로 끝난 판: 기권한 날까지만 (재산·수익률·그래프·리플레이 모두)
+  const market = useMemo(() => (final.endDay != null && final.endDay < fullMarket.totalDays - 1 ? cutMarket(fullMarket, final.endDay) : fullMarket), [fullMarket, final.endDay]);
   // 랭킹전: 내 점수 변화 (회원만 — 서버가 반영한 값)
   const [rating, setRating] = useState<{ rated: boolean; rating_before: number | null; rating_after: number | null; ranked_games?: number } | null>(null);
   const [ratingGone, setRatingGone] = useState(false);

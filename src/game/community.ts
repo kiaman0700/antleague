@@ -220,6 +220,20 @@ export function communityPosts(m: Market, day: number, key: string): Post[] {
       hype: (tone === 'good' ? 1 : -1) * (0.005 + rng() * 0.015) * mult,
     });
   }
+  // (v21) 속보 직후 반응 글 — 이미 공개된 속보 얘기라 단서가 아님(분위기). 진짜·들썩임 없음. 전용 난수라 v20 글은 그대로
+  if ((m.version ?? 1) >= 21) {
+    const r2 = seeded(`${key}:sns21:${day}`);
+    for (const n of m.news.filter((x) => x.day === day && x.at != null && !x.rumor && !x.fake && x.symbol)) {
+      if (r2() > 0.7) continue;
+      const name = STOCK_MAP[n.symbol!].name;
+      const good = (n.realTone ?? n.tone) === 'good';
+      const pf: Platform = (['square', 'board', 'chirp', 'talk'] as Platform[])[Math.floor(r2() * 4)];
+      const lines = good
+        ? [`방금 속보 봤음? ${name} 바로 튀어 오름 ㄷㄷ`, `${name} 속보 떴다!! 늦은 건가…`, `와 ${name} 실화냐 속보 보자마자 들어갈걸`]
+        : [`방금 속보 봤음? ${name} 바로 고꾸라짐 ㅠㅠ`, `${name} 속보 떴다… 물린 사람 손`, `${name} 악재 속보 실화냐 손절각`];
+      out.push({ id: `${day}-r${out.length}`, day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0 });
+    }
+  }
   out.sort((a, b) => a.at - b.at);
   if (cache.size > 2000) cache.clear();
   cache.set(ck, out);

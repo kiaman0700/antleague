@@ -13,6 +13,7 @@ import { mulberry32, seeded } from '../lib/rng.js';
 import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
 import { COMMUNITY_VERSION, communityPosts, publicPosts, type PublicPost } from '../game/community.js';
 import { articleOf } from '../game/articles.js';
+import { LIVE_NEWS_VERSION, liveNews } from '../game/liveNews.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
@@ -164,7 +165,8 @@ export interface View {
     blackout: boolean;
   };
   /** 게임이 끝나면 모든 기록 공개 */
-  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean }[]; badges: Record<string, string[]> } | null;
+  /** endDay: 상대가 모두 기권해 바로 끝난 판이면 실제로 한 마지막 날 — 결과 화면은 그 날 가격으로 멈춤 (사용자 결정 2026-11-18) */
+  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean }[]; badges: Record<string, string[]>; endDay?: number | null } | null;
 }
 
 export interface LiveView {
@@ -296,7 +298,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 20;
+export const CURRENT_RULES_VERSION = 21;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -420,7 +422,7 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
       usIndex: m.usIndex.map(strip),
       seed: 0,
       salt: undefined,
-      news: m.news.map((n) => withArticle(m, n, publicNews(n, Infinity, false))).sort(newsOrder),
+      news: [...m.news, ...((m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: m.totalDays }, (_, d) => liveNews(m, d, m.salt!, opts.n!)).flat() : [])].map((n) => withArticle(m, n, publicNews(n, Infinity, false))).sort(newsOrder),
       ...((m.version ?? 1) >= COMMUNITY_VERSION && m.salt ? { community: Array.from({ length: m.totalDays }, (_, d) => publicPosts(communityPosts(m, d, m.salt!), Infinity, 1)).flat() } : {}),
     };
   }
@@ -432,7 +434,9 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
   };
   // 장중 속보는 공개 칸이 되기 전에는 내용·개수 모두 보내지 않음
   const released = (n: NewsEvent) => n.day < day || n.at == null || (opts.tick ?? 0) >= releaseTick(n.at, opts.n ?? 1);
-  const news = [...m.news.filter((n) => n.day <= day), ...opts.fakes]
+  // (v21) 장중 시황·소문 기사 (공개 칸이 된 것만 — 아래 released)
+  const live = (m.version ?? 1) >= LIVE_NEWS_VERSION && m.salt && opts.n ? Array.from({ length: day + 1 }, (_, d) => liveNews(m, d, m.salt!, opts.n!)).flat() : [];
+  const news = [...m.news.filter((n) => n.day <= day), ...live, ...opts.fakes]
     .filter(released)
     .filter((n) => !(opts.blackout && n.day === day))
     .map((n) => withArticle(m, n, publicNews(n, day, opts.rumorCheck, opts.pick)))
@@ -626,7 +630,8 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   if (!finished && (r.version ?? 1) >= COMMUNITY_VERSION && r.salt && !blackout) base.community = open ? publicPosts(communityPosts(m, day, r.salt), day, clock.tick / Math.max(1, clock.n), detectorPick).filter((p) => p.day === day) : [];
   // 공개된 장중 속보 수가 바뀌면 시장 데이터를 다시 보냄 (아직 안 뜬 속보는 키에도 영향 없음)
   // 정보 차단을 맞은 날엔 속보가 떠도 키가 안 바뀜 (키·다시 보내기로 속보 시각이 새지 않게)
-  const releasedNow = open && !blackout ? m.news.filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
+  const liveToday = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, day, r.salt, clock.n) : [];
+  const releasedNow = open && !blackout ? [...m.news, ...liveToday].filter((x) => x.day === day && x.at != null && clock.tick >= releaseTick(x.at, clock.n)).length : 0;
   // 가짜 뉴스·감별 여부는 키에 그대로 드러나지 않게 시드와 섞어 해시 (바뀌면 다시 보내는 용도로만)
   const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${detectorPick ?? ''}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
@@ -645,7 +650,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   }
 
   if (finished) {
-    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game })), badges: finalResults(d).badges };
+    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game })), badges: finalResults(d).badges, endDay: playedLastDay(d) };
   }
   return base;
 }
@@ -785,7 +790,8 @@ function visibleToday(d: GameData, meId: string, now: number): string[] {
   const blackout = activeEffects(items, meId, r.day).some((e) => e.kind === 'blackout');
   if (blackout) return [];
   const clock = dayClock(r, now);
-  const news = m.news.filter((n) => n.day === r.day && (n.at == null || clock.tick >= releaseTick(n.at, clock.n))).map((n) => n.headline);
+  const live = (r.version ?? 1) >= LIVE_NEWS_VERSION && r.salt ? liveNews(m, r.day, r.salt, clock.n) : [];
+  const news = [...m.news, ...live].filter((n) => n.day === r.day && (n.at == null || clock.tick >= releaseTick(n.at, clock.n))).map((n) => n.headline);
   const fakes = items.effects.filter((e) => e.to === meId && !e.blocked && e.kind === 'fake' && e.days[0] <= r.day).map(fakeNews).filter((n) => n.day === r.day).map((n) => n.headline);
   const rumors = (r.version ?? 1) >= PREMARKET_VERSION ? preRumors(m, r.day, r.salt ?? String(r.seed)).map((x) => x.text) : [];
   const posts = (r.version ?? 1) >= COMMUNITY_VERSION && r.salt ? communityPosts(m, r.day, r.salt).filter((p) => p.at <= clock.tick / Math.max(1, clock.n) && clock.tick > 0).map((p) => p.text) : [];
@@ -926,7 +932,9 @@ export function preAllReadyDeadline(d: GameData, now: number): number | null {
 
 export function finalResults(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
-  const prices = priceMap(m, d.room.total_days - 1, true);
+  // 상대가 모두 기권해 바로 끝난 판: 재산·수익률도 실제로 한 마지막 날(기권한 날) 종가로 (사용자 결정 2026-11-18)
+  const endDay = playedLastDay(d);
+  const prices = priceMap(m, endDay ?? d.room.total_days - 1, true);
   const players = sortedPlayers(d);
   // 매칭(랭킹전·일반전)에서 끝까지 거래를 한 번도 안 한 사람은 기권처럼 순위 맨 뒤 — 시장이 떨어지는 판에서
   // 아무것도 안 하고 1위·점수·업적을 받던 빈틈 (사용자 결정 2026-11-17). 봇전·연습·커스텀·친구 방은 그대로

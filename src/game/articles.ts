@@ -66,6 +66,11 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
     lead = `${when}, 온라인 ${PLATFORMS[pf].kind} '${PLATFORMS[pf].name}'에 ${jo(subject, '과', '와')} 관련해 "${title}"라는 글이 올라와 투자자들 사이에서 빠르게 퍼지고 있다.`;
     body.push(`글이 올라온 뒤 비슷한 내용의 글이 잇따르면서 ${jo(subject, '을', '를')} 찾는 사람이 크게 늘었다. 다만 회사 측은 아직 공식 입장을 내지 않았다.`);
     body.push(`시장에서는 "확인되지 않은 소문만 믿고 사고팔면 손해를 볼 수 있다"며 신중하라는 목소리가 나온다.`);
+  } else if (n.label === '시황' && n.at != null) {
+    // (v21) 장중 시황: 이미 지나간 움직임 정리 — 인터뷰 없음
+    lead = `${title.replace(/^\d{2}:\d{2} 기준 /, '')} — ${time} 기준 거래소 집계다.`;
+    body.push(`${subject}에는 장중 내내 매수·매도 주문이 몰렸다. 시장에서는 "${good ? '단기 과열을 조심해야 한다' : '저가 매수 기회를 노리는 움직임도 있다'}"는 말이 나온다.`);
+    body.push(`장 마감까지 흐름이 바뀔 수 있어 끝까지 지켜봐야 한다는 분석이다.`);
   } else if (n.kind === 'macro') {
     lead = `${when}, '${title}' 소식이 전해졌다. 금리·환율에 민감한 업종을 중심으로 영향이 예상된다.`;
     body.push(`시장 전문가들은 "${good ? '투자 심리가 살아날 수 있는 신호' : '당분간 변동성이 커질 수 있는 신호'}"라고 풀이했다.`);
@@ -82,7 +87,7 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   // 검증된 사람 인터뷰: 진위가 정해진 뒤 진위에 따라 (진짜 45% · 가짜 12%)
   let quote: Article['quote'];
   const qRoll = rng();
-  if (!n.rumor && n.kind !== 'macro' && qRoll < (fake ? 0.12 : 0.45)) {
+  if (!n.rumor && n.kind !== 'macro' && n.label !== '시황' && qRoll < (fake ? 0.12 : 0.45)) {
     const insider = co && rng() < 0.5;
     const who = insider ? `${co} ${pick(['대표', '전무', 'IR 담당 상무'])} ${person()}` : `${pick(FIRMS)} 애널리스트 ${person()}`;
     const said = good

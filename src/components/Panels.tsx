@@ -483,7 +483,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
 
       <h4 className="sec-title">
-        {day + 1}일차 아침 뉴스 <span className="count-badge">{today.length}</span>
+        {day + 1}일차 뉴스 <span className="count-badge">{today.length}</span>
       </h4>
       {today.length === 0 && !blackout && <p className="muted small news-empty">오늘 아침엔 새 뉴스가 없어요. 장중 속보가 뜨면 여기 맨 위에 나와요.</p>}
       {rumorCheck && !blackout && today.length > 0 && (
@@ -495,7 +495,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {[...today].sort((a, b) => Number(b.at !== undefined) - Number(a.at !== undefined) || (b.at ?? 0) - (a.at ?? 0) || Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
         <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
           <div className="news-meta">
-            {n.at !== undefined && <span className="breaking-badge"><Icon name="flame" size={11} /> 장중 속보</span>}
+            {n.at !== undefined && <span className="breaking-badge"><Icon name="flame" size={11} /> {n.label === '시황' ? '장중 시황' : n.rumor ? '장중 소문' : '장중 속보'}</span>}
             {isFresh(n) && <span className="new-badge">새 기사</span>}
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (

@@ -77,29 +77,31 @@ export const givesTitle = (id: string) => Object.prototype.hasOwnProperty.call(B
 export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
 
 /* ---------------- 업적 단계 (같은 업적을 여러 번 — 사용자 결정 2026-11-18, design/titles-tiers-v3.md) ---------------- */
-/** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 */
-export const BADGE_TIER_AT = [1, 5, 20] as const;
+/** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 · 100번 (100번은 사용자 요청 2026-11-18) */
+export const BADGE_TIER_AT = [1, 5, 20, 100] as const;
 /** 한 번만 의미 있는 업적(처음 해 봄·레벨·튜토리얼)은 단계 없음 */
 const NO_TIER = new Set(['first_trade', 'first_card', 'etf_fan', 'lv5', 'lv10', 'lv15', 'lv20', 'tut_first', 'tut_grad']);
 export const badgeTiered = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !NO_TIER.has(id);
 /** 딴 횟수 → 단계 (0 = 아직 못 땀) */
-export function badgeTier(id: string, count: number): 0 | 1 | 2 | 3 {
+export function badgeTier(id: string, count: number): 0 | 1 | 2 | 3 | 4 {
   if (!(count >= 1)) return 0;
   if (!badgeTiered(id)) return 1;
-  return count >= BADGE_TIER_AT[2] ? 3 : count >= BADGE_TIER_AT[1] ? 2 : 1;
+  return count >= BADGE_TIER_AT[3] ? 4 : count >= BADGE_TIER_AT[2] ? 3 : count >= BADGE_TIER_AT[1] ? 2 : 1;
 }
-/** 단계별 꾸밈말 — 웃픈 업적은 '단골 → 명예', 나머지는 '노련한 → 전설의' */
+/** 단계별 꾸밈말 — 웃픈 업적은 '단골 → 명예 → 영원한', 나머지는 '노련한 → 전설의 → 신화의' */
 export function tierPrefix(id: string, tier: number) {
   if (tier <= 1) return '';
   const funny = BADGE_MAP[id]?.funny;
-  return tier === 2 ? (funny ? '단골 ' : '노련한 ') : funny ? '명예 ' : '전설의 ';
+  if (tier === 2) return funny ? '단골 ' : '노련한 ';
+  if (tier === 3) return funny ? '명예 ' : '전설의 ';
+  return funny ? '영원한 ' : '신화의 ';
 }
 /** 저장 값('winner' · 'winner:2' · 'sprout:3') → 업적(사진) id 와 단계 */
-export function parseTiered(v: string | null | undefined): { id: string; tier: 1 | 2 | 3 } | null {
+export function parseTiered(v: string | null | undefined): { id: string; tier: 1 | 2 | 3 | 4 } | null {
   if (!v || typeof v !== 'string') return null;
-  const m = /^([a-z0-9_]{1,32})(?::([23]))?$/.exec(v);
+  const m = /^([a-z0-9_]{1,32})(?::([234]))?$/.exec(v);
   if (!m) return null;
-  return { id: m[1], tier: (m[2] ? Number(m[2]) : 1) as 1 | 2 | 3 };
+  return { id: m[1], tier: (m[2] ? Number(m[2]) : 1) as 1 | 2 | 3 | 4 };
 }
 /** 저장된 칭호 → 보여 줄 이름 ('노련한 투자왕') · 없으면 null */
 export function titleLabel(v: string | null | undefined): { id: string; tier: number; name: string; badge: Badge } | null {
