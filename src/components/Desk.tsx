@@ -8,6 +8,7 @@ import { STOCK_MAP } from '../game/stocks';
 import { pct, tone, wonShort } from '../lib/format';
 import type { UiMode } from '../session';
 import { Term } from './Term';
+import { useEscape } from './ui';
 
 /* ---------------- 재산 요약 (상단 고정) ---------------- */
 
@@ -209,12 +210,7 @@ export function CardTray({
 /* ---------------- 오른쪽 서랍 ---------------- */
 
 export function Drawer({ open, title, onClose, children }: { open: boolean; title: ReactNode; onClose: () => void; children: ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [open, onClose]);
+  useEscape(onClose, open);
   return (
     // 닫힌 서랍은 키보드(Tab)로도 들어가지 않게 inert
     <div className={'drawer-bg' + (open ? ' open' : '')} onClick={onClose} aria-hidden={!open} {...(!open ? { inert: '' } : {})}>

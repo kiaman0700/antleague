@@ -1280,3 +1280,8 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 @media (max-width: 520px) { .stock-rank.split { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }
 /* 상자 안 마지막 입력 칸은 아래 여백 없이 (친구 추가·대기실 화면 모드 상자 아래가 비어 보이던 것) */
 .panel .field:last-child, .panel form:last-child > .field:last-child { margin-bottom: 0; }
+/* PC 카드 손패: 키보드(Tab)로 카드에 가도 마우스를 올린 것처럼 펼치고, 고른 카드를 맨 앞으로 (가려진 카드에 초점이 가던 것) */
+@media (hover: hover) and (pointer: fine) {
+  .tray-cards.fan.many:focus-within .fan-slot { transform: translateX(calc(var(--i) * var(--gap, 62px))) translateY(calc(var(--i) * var(--i) * 3px)) rotate(calc(var(--i) * 7deg)); }
+  .tray-cards.fan .fan-slot:focus-within { z-index: 5; transform: translateX(calc(var(--i) * var(--gap, 62px))) translateY(-18px) rotate(0deg) scale(1.06); }
+}

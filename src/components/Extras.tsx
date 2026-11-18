@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Device } from '../lib/device';
 import { Icon } from './Icon';
-import { EmptyState } from './ui';
+import { EmptyState, useEscape } from './ui';
 import type { OrderRow } from '../engine/engine';
 import type { Market } from '../game/market';
 import type { PortfolioState } from '../game/portfolio';
@@ -122,17 +122,15 @@ export function OrdersAndDividends({
 /* ---------------- 모바일 바텀시트 ---------------- */
 
 export function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  useEscape(onClose, open);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="sheet-bg" onClick={onClose}>

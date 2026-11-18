@@ -6,6 +6,7 @@
  * - 누르면 고정해서 열림 (휴대폰·키보드), 다시 누르거나 바깥을 누르거나 Esc 로 닫힘
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEscape } from './ui';
 
 const OPEN_EVENT = 'stockduel:hpop';
 
@@ -83,14 +84,13 @@ export function HoverPop({
     const away = (e: PointerEvent) => {
       if (wrap.current && !wrap.current.contains(e.target as Node)) close();
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
     document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', esc);
     return () => {
       document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', esc);
     };
   }, [open]);
+  // Esc 는 겹친 창 순서대로 (팝업 위에 창이 떠 있으면 그 창이 먼저 닫힘)
+  useEscape(() => close(), open);
   return (
     <span
       className={'hpop' + (open ? ' open' : '') + (className ? ' ' + className : '')}

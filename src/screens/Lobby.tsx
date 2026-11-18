@@ -181,11 +181,7 @@ function useProfile() {
 
 function Modal({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
   const boxRef = useDialogFocus<HTMLDivElement>();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(onClose);
   return (
     <div className="modal-bg" onClick={onClose}>
       <div ref={boxRef} tabIndex={-1} className="modal" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
@@ -1569,7 +1565,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
     }
   };
   // 옆에서 나오는 친구·파티 패널: Esc 로 닫기 (열린 창이 따로 있으면 그 창이 먼저)
-  useEscape(() => !document.querySelector('.modal-bg, .sheet-bg') && setSocialOpen(false), socialOpen);
+  useEscape(() => setSocialOpen(false), socialOpen);
   // 운영자면 위 메뉴에 의견함 + 안 읽은 수 (30초마다, 운영자 확인은 서버가)
   const [adminUnread, setAdminUnread] = useState<number | undefined>(undefined);
   useEffect(() => {

@@ -1,14 +1,10 @@
 /** 내 화면 설정: 금액 단위 · 차트 기본 보기 · 자주 쓰는 업종(순서). 이 기기에 저장되어 다음 게임에도 그대로 */
-import { useEffect, useRef, type ReactNode } from 'react';
-import { useDialogFocus } from './ui';
+import { useRef, type ReactNode } from 'react';
+import { useDialogFocus, useEscape } from './ui';
 import { chartPrefSec, isCustom, resetPrefs, setPrefs, usePrefs } from '../prefs';
 import { manExact } from '../lib/format';
 import type { UiMode } from '../session';
 import { Icon } from './Icon';
-
-/** 열려 있는 창 순서 (Esc 는 맨 위 창만) */
-const sheetStack: number[] = [];
-let sheetSeq = 0;
 
 export function Sheet({ title, onClose, children, wide, guard }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; guard?: () => boolean | Promise<boolean> }) {
   // guard: 닫기 전에 확인 (예: 쓰던 글이 있으면 물어봄). 닫기 버튼(X)은 그대로 닫힘
@@ -18,23 +14,8 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   closeRef.current = onClose;
   const soft = async () => (!guardRef.current || (await guardRef.current())) && closeRef.current();
   const boxRef = useDialogFocus<HTMLDivElement>();
-  useEffect(() => {
-    // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘
-    const id = ++sheetSeq;
-    sheetStack.push(id);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented || sheetStack[sheetStack.length - 1] !== id) return;
-      e.preventDefault();
-      soft();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      const i = sheetStack.indexOf(id);
-      if (i >= 0) sheetStack.splice(i, 1);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 창이 겹쳐 있으면 맨 위 창만 Esc 로 닫힘 (ui.tsx 의 공용 순서)
+  useEscape(() => void soft());
   return (
     <div className="modal-bg" onClick={soft}>
       <div ref={boxRef} tabIndex={-1} className={'modal sheet-modal' + (wide ? ' wide' : '')} role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined} onClick={(e) => e.stopPropagation()}>

@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
-import { useDialogFocus } from './ui';
+import { useDialogFocus, useEscape } from './ui';
 import { TierBadge, tierText } from './TierBadge';
 import { HoverPop } from './HoverPop';
 import { LevelMeter } from './Missions';
@@ -256,11 +256,7 @@ function GuestStart({ onClose, onSignup, onLogin, onStart }: { onClose: () => vo
   const [nick, setNick] = useState(loadNick());
   const [check, setCheck] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
   const seq = useRef(0);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(onClose);
   // 입력할 때마다(잠깐 멈추면) 회원 닉네임과 겹치는지 확인
   useEffect(() => {
     if (step !== 'nick') return;

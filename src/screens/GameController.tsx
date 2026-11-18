@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markActiveGame } from '../lib/activeTab';
-import { Loading } from '../components/ui';
+import { hasOpenLayer, Loading } from '../components/ui';
 import { useAccount } from '../net/account';
 import { ask } from '../components/ConfirmHost';
 import { setDrawScope } from '../components/ProChart';
@@ -658,7 +658,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     setBubbles((b) => [...b.slice(-3), r]);
     setTimeout(() => setBubbles((b) => b.filter((x) => x.id !== r.id)), 3500);
   };
-  const sendReaction = useReactions(solo ? null : session.roomId, me, (r) => {
+  // 반응 채널은 서버 판(대결·봇전 등)에서만 — 튜토리얼·연습은 이 기기에서만 도는 판이라 열지 않음
+  const sendReaction = useReactions(session.mode === 'multi' ? session.roomId : null, me, (r) => {
     // 이 방 참가자가 보낸 것만 (방 ID 만 아는 외부인·다른 사람 사칭 무시)
     if (!view?.players.some((p) => p.id === r.from)) return;
     play('react');
@@ -693,13 +694,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     if (mobile) return;
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'SELECT';
+      // 창(사기 창·서랍·크게 보기 차트·확인 창 등)이 떠 있으면 단축키는 그 뒤 화면에 쓰지 않음
+      // (예전엔 크게 보기 차트에서 Enter → 사기 창이 차트 뒤에 열려 안 보였음, 방향키는 뒤에서 종목을 바꿨음)
+      const layered = hasOpenLayer() || !!document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open, .chart-full, .tut-layer');
+      if (layered && e.key !== 'Escape') return;
       if (e.key === '/' && !typing) {
         e.preventDefault();
         searchRef.current?.querySelector('input')?.focus();
       }
       if (typing) return;
       // 화면 편집 중 Esc = '완료' (열린 창이 있으면 그 창만 닫힘)
-      if (e.key === 'Escape' && editingRef.current && !session.demo && !document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open')) {
+      if (e.key === 'Escape' && editingRef.current && !session.demo && !e.defaultPrevented && !hasOpenLayer() && !document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open')) {
         setEditing(false);
         return;
       }
@@ -1135,7 +1140,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         />
       )}
       {/* 이모지 반응은 볼 사람(다른 사람)이 있을 때만 — 봇전·혼자 판엔 숨김 */}
-      {!solo && players.some((p) => p.id !== me && !p.bot) && (
+      {session.mode === 'multi' && players.some((p) => p.id !== me && !p.bot) && (
         <>
           <ReactionButton
             onSend={(r) => {

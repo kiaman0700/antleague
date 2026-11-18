@@ -125,17 +125,41 @@ export function Toast({ text, tone }: { text: string; tone?: 'error' }) {
 /** 카드를 나란히 놓을 칸 수: 마지막 줄에 하나만 남지 않게 (1~3 → 그대로, 4 → 2, 5 이상 → 3) */
 export const balancedCols = (n: number) => (n <= 3 ? Math.max(1, n) : n === 4 ? 2 : 3);
 
-/** 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만 */
+/**
+ * 열린 창(모달·바텀시트·서랍·팝업) 쌓임 순서. Esc 는 맨 위(가장 나중에 열린) 창 하나만 닫음
+ * (예전엔 창마다 따로 Esc 를 들어서, 서랍 위에 카드 창이 떠 있으면 Esc 한 번에 둘 다 닫혔음)
+ */
+const escStack: { current: () => void }[] = [];
+let escBound = false;
+function onEscKey(e: KeyboardEvent) {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  const top = escStack[escStack.length - 1];
+  if (!top) return;
+  e.preventDefault();
+  top.current();
+}
+
+/** 창(모달)을 Esc 키로 닫기 — 열려 있는 동안만, 겹쳐 있으면 맨 위 창만 */
 export function useEscape(onClose: () => void, on = true) {
   const ref = useRef(onClose);
   ref.current = onClose;
   useEffect(() => {
     if (!on) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && ref.current();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    if (!escBound && typeof window !== 'undefined') {
+      window.addEventListener('keydown', onEscKey);
+      escBound = true;
+    }
+    const entry = ref;
+    escStack.push(entry);
+    return () => {
+      const i = escStack.lastIndexOf(entry);
+      if (i >= 0) escStack.splice(i, 1);
+    };
   }, [on]);
 }
+
+/** 지금 Esc 로 닫힐 창이 있는지 (창이 없을 때만 하는 Esc 동작 — 예: 화면 편집 끝내기 — 이 겹치지 않게) */
+export const hasOpenLayer = () => escStack.length > 0;
 
 /**
  * 창(모달)이 열리면 키보드 초점을 창 안으로, 닫히면 원래 누른 버튼으로 돌려줌

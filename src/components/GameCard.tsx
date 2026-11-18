@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BONUS_TABLE, ITEM_MAP, itemDesc, type ItemKind, type ItemType } from '../game/items';
 import { CardIcon } from './Icon';
-import { DialogBox } from './ui';
+import { DialogBox, useEscape } from './ui';
 
 export const CARD_TYPE: Record<ItemType, string> = { info: '정보', attack: '방해', defense: '방어', bonus: '보너스' };
 const TYPE_TIP: Record<ItemType, string> = {
@@ -80,12 +80,7 @@ export function GameCard({
   ) : null;
   const [open, setOpen] = useState(false);
   // 카드 창은 다른 창처럼 Esc 로도 닫힘
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  useEscape(() => setOpen(false), open);
   // PC: 마우스를 올리면 카드 위(자리가 없으면 아래)에 설명 — 화면 맨 위 층에 그려서 칸 가장자리에 잘리지 않게
   const [pop, setPop] = useState<{ x: number; y: number; below: boolean } | null>(null);
   useEffect(() => {
