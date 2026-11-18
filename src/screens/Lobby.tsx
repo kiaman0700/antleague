@@ -36,7 +36,7 @@ import { waitLabel } from '../engine/matching';
 import { DailyBoard, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
-import { BADGE_MAP, BADGES, givesTitle, titleOf } from '../game/achievements';
+import { BADGE_MAP, BADGES, givesTitle, titleLabel, titleOf } from '../game/achievements';
 import { AVATARS } from '../game/avatars';
 import { pct, tone, wonShort } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -1409,7 +1409,7 @@ function Records({ go }: Pick<Props, 'go'>) {
     return count;
   }, [list]);
   // 회원이 고른 칭호가 있으면 그것 (마이프로필·프로필 팝업과 같게), 없으면 가장 귀한 것
-  const picked = acc.profile?.title ? BADGE_MAP[acc.profile.title] : undefined;
+  const picked = titleLabel(acc.profile?.title);
   const myTitle = picked && givesTitle(picked.id) ? picked : titleOf(Object.keys(myBadges));
 
   return (

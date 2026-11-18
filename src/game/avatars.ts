@@ -6,7 +6,7 @@
  */
 export interface AvatarLook {
   char: 'ant';
-  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap' | 'bandage';
+  hat?: 'crown' | 'silverCrown' | 'bigCrown' | 'headband' | 'sprout' | 'flower' | 'halo' | 'tophat' | 'helmet' | 'newsCap' | 'bandage' | 'gradCap';
   face?: 'happy' | 'cool' | 'zen' | 'star' | 'wink' | 'brave' | 'glasses' | 'sad' | 'dizzy' | 'sweat' | 'shock';
   outfit?: 'suit' | 'cape' | 'medal' | 'robe';
   prop?: 'trophy' | 'moneybag' | 'globe' | 'hourglass' | 'cards' | 'diamond' | 'target' | 'shield' | 'robot' | 'newspaper' | 'umbrella' | 'rocket' | 'phone' | 'wallet' | 'fakeNews';
@@ -58,6 +58,8 @@ export const AVATARS: AvatarDef[] = [
   { id: 'fooled', name: '찌라시에 속은 개미', look: ant({ face: 'shock', prop: 'fakeNews', back: 'news' }), bg: '#3f6b8a', need: 'fooled' },
   // 게임 안 봇 자리 그림 (고를 수 없음: need '__' 로 시작하는 건 어떤 업적으로도 안 열림)
   { id: '__bot', name: '봇', look: ant({ face: 'cool', hat: 'helmet', back: 'circuit' }), bg: '#4a4f5a', need: '__bot' },
+  // 튜토리얼을 모두 끝낸 개미 (design/titles-tiers-v3.md)
+  { id: 'graduate', name: '졸업한 개미', look: ant({ face: 'happy', hat: 'gradCap', back: 'confetti' }), bg: '#3d4f8a', need: 'tut_grad' },
   // 레벨 (경험치) — 개미가 자라남
   { id: 'sprout', name: '새싹 개미', look: ant({ hat: 'sprout' }), bg: '#4a9a3a', need: 'lv5' },
   { id: 'star', name: '꽃핀 개미', look: ant({ hat: 'flower', back: 'sparkles' }), bg: '#c9a020', need: 'lv10' },
@@ -65,7 +67,16 @@ export const AVATARS: AvatarDef[] = [
   { id: 'legend', name: '개미 전설', look: ant({ face: 'star', hat: 'bigCrown', outfit: 'cape', back: 'rays' }), bg: '#8a2f6b', need: 'lv20' },
 ];
 export const AVATAR_MAP: Record<string, AvatarDef> = Object.fromEntries(AVATARS.map((a) => [a.id, a]));
-export const avatarOf = (id: string | null | undefined) => (id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default);
+/** 저장 값('sprout' · 'sprout:2' · 'sprout:3') → 사진 (단계는 테두리만 바꿈) */
+export const avatarOf = (v: string | null | undefined) => {
+  const id = typeof v === 'string' ? v.split(':')[0] : '';
+  return id && Object.prototype.hasOwnProperty.call(AVATAR_MAP, id) ? AVATAR_MAP[id] : AVATAR_MAP.default;
+};
+/** 사진 단계 (1·2·3) — 2 은색 테두리·별, 3 금색 테두리·왕관 */
+export const avatarTier = (v: string | null | undefined): 1 | 2 | 3 => {
+  const m = typeof v === 'string' ? /:([23])$/.exec(v) : null;
+  return (m ? Number(m[1]) : 1) as 1 | 2 | 3;
+};
 /** 이 사람이 고를 수 있는 사진인지 (badges = 얻은 업적 id 목록) */
 export const canUseAvatar = (id: string, badges: Iterable<string>) => {
   if (!Object.prototype.hasOwnProperty.call(AVATAR_MAP, id)) return false;

@@ -34,6 +34,8 @@ export interface MissionInfo {
   thisGame?: { xp: number; detail: string; firstWin: number } | null;
   /** 남은 바꾸기 횟수 (회원만, 없으면 바꾸기 버튼 없음) */
   rerolls?: { day: number; week: number } | null;
+  /** (051) 튜토리얼 완료하기 — 일일·주간과 따로, 계정마다 한 번 */
+  tutorial?: { done: boolean; xp: number };
 }
 
 const EMPTY: MissionInfo = { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 };
@@ -204,6 +206,17 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
     );
   return (
     <section className="panel pad missions" aria-label="미션">
+      {/* 튜토리얼을 아직 안 한 사람에게만: 끝내면 레벨 1 → 2 경험치 (한 번) */}
+      {info.tutorial && !info.tutorial.done && !room && (
+        <div className="ms-tut">
+          <Icon name="play" size={16} />
+          <span>
+            <b>튜토리얼 완료하기</b>
+            <small className="muted">연습봇과 한 판(게임 기초)을 끝내면 · 한 번만</small>
+          </span>
+          <b className="ms-tut-xp">+{info.tutorial.xp}</b>
+        </div>
+      )}
       <div className="ms-head">
         <h3>
           일일 미션 <small className="muted">{doneN}/{info.today.list.length}</small>

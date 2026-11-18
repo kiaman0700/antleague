@@ -148,7 +148,7 @@ import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPas
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
-import { evaluateMissions, missionState, rerollMission } from './missions.js';
+import { evaluateMissions, grantTutorialXp, missionState, rerollMission, TUTORIAL_XP } from './missions.js';
 import { adminNotice, listNotices } from './notices.js';
 import { adminOverview } from './adminStats.js';
 import { guestCode, guestResume } from './guestCodes.js';
@@ -1836,7 +1836,9 @@ async function tutorialMark(uid: string, b: Body) {
   const done = new Set(row.done.filter((x) => TUT_CHAPTERS.includes(x)));
   if (ch && !skip) done.add(ch);
   await db().from('tutorial_progress').upsert({ user_id: uid, done: [...done], skipped: row.skipped || (skip && !ch), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-  return { ok: true };
+  // 게임 기초를 끝냈으면 튜토리얼 완료하기 미션 경험치 (회원만, 한 번)
+  const xp = ch === 'game' && !skip ? await grantTutorialXp(db(), uid) : false;
+  return { ok: true, xp: xp ? TUTORIAL_XP : 0 };
 }
 
 /** 토큰 속 세션 id (서명은 getUser 가 이미 확인함) */

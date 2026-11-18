@@ -10,7 +10,7 @@ import { dropGuestCode } from './guestCodes.js';
 import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cleanNickname, GameError } from '../../src/engine/engine.js';
-import { givesTitle } from '../../src/game/achievements.js';
+import { badgeTier, givesTitle, parseTiered } from '../../src/game/achievements.js';
 import { isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
 import { levelBadges } from '../../src/game/missions.js';
@@ -97,6 +97,12 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
   // 레벨 업적 (미션 경험치 — 서버가 올린 profiles.xp 로만)
   const pr = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
   if (!pr.error && pr.data) for (const id of levelBadges((pr.data as { xp?: number }).xp ?? 0)) out[id] = 1;
+  // (051) 튜토리얼: 게임 기초(②)에서 하는 첫 거래·첫 카드(감별기)·철벽 방어(연습봇의 수수료 폭탄을 방패가 막음)는 진짜 업적으로,
+  //   4단계를 모두 끝내면 '개미 학교 졸업' (사용자 결정 2026-11-18). 튜토리얼은 브라우저 판이라 서버는 끝낸 기록만 믿음 — 업적은 처음 한 번
+  const tut = await sb.from('tutorial_progress').select('done').eq('user_id', uid).maybeSingle();
+  const tdone = (!tut.error && (tut.data as { done?: string[] } | null)?.done) || [];
+  if (tdone.includes('game')) for (const id of ['first_trade', 'first_card', 'shield']) out[id] = (out[id] ?? 0) + 1;
+  if (['home', 'game', 'result', 'growth'].every((c) => tdone.includes(c))) out.tut_grad = 1;
   const mine = ((await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(300)).data ?? []) as { room_id: string; nickname: string }[];
   if (!mine.length) return out;
   const nick = new Map(mine.map((m) => [m.room_id, m.nickname]));
@@ -233,18 +239,25 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       }
       if (b.avatar !== undefined) {
         // 프로필 사진: 프리셋만, 업적으로 여는 사진은 그 업적을 깼을 때만 (서버가 다시 확인)
-        const id = typeof b.avatar === 'string' ? b.avatar : '';
-        if (!Object.prototype.hasOwnProperty.call(AVATAR_MAP, id)) throw new GameError('없는 사진이에요.');
-        if (!canUseAvatar(id, Object.keys(await earnedBadges(sb, uid)))) throw new GameError('아직 열리지 않은 사진이에요. 업적을 깨면 열려요.', 403);
-        patch.avatar = id;
+        // 'id' 또는 단계가 붙은 'id:2'·'id:3' (그 사진을 여는 업적을 5번·20번 넘게 땄을 때만 — 테두리·장식)
+        const pa = parseTiered(typeof b.avatar === 'string' ? b.avatar : '');
+        const id = pa?.id ?? '';
+        if (!pa || !Object.prototype.hasOwnProperty.call(AVATAR_MAP, id)) throw new GameError('없는 사진이에요.');
+        const earned = await earnedBadges(sb, uid);
+        if (!canUseAvatar(id, Object.keys(earned))) throw new GameError('아직 열리지 않은 사진이에요. 업적을 깨면 열려요.', 403);
+        const need = AVATAR_MAP[id].need;
+        if (pa.tier > 1 && (!need || badgeTier(need, earned[need] ?? 0) < pa.tier)) throw new GameError('그 단계는 업적을 더 따야 열려요.', 403);
+        patch.avatar = pa.tier > 1 ? `${id}:${pa.tier}` : id;
       }
       if (b.title !== undefined) {
         if (b.title === null) patch.title = null;
         else {
-          const t = typeof b.title === 'string' ? b.title : '';
+          // 'winner' 또는 단계가 붙은 'winner:2'·'winner:3' — 서버가 딴 횟수로 단계를 다시 확인
+          const pt = parseTiered(typeof b.title === 'string' ? b.title : '');
           const earned = await earnedBadges(sb, uid);
-          if (!givesTitle(t) || !earned[t]) throw new GameError('칭호를 주는 업적을 얻어야 고를 수 있어요.');
-          patch.title = t;
+          if (!pt || !givesTitle(pt.id) || !earned[pt.id]) throw new GameError('칭호를 주는 업적을 얻어야 고를 수 있어요.');
+          if (badgeTier(pt.id, earned[pt.id]) < pt.tier) throw new GameError('그 단계 칭호는 업적을 더 따야 열려요.', 403);
+          patch.title = pt.tier > 1 ? `${pt.id}:${pt.tier}` : pt.id;
         }
       }
       const r = await sb.from('profiles').update(patch).eq('user_id', uid);

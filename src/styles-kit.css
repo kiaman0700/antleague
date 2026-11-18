@@ -1386,3 +1386,23 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 @keyframes te-spin { to { transform: rotate(360deg); } }
 @keyframes te-sweep { 0%, 55% { transform: skewX(-18deg) translateX(0); } 100% { transform: skewX(-18deg) translateX(70px); } }
 @media (prefers-reduced-motion: reduce) { .tier-emblem .te-rays, .tier-emblem .te-sweep { animation: none; } }
+
+/* 업적 단계 사진: 2단계 은색·3단계 금색 테두리 + 위 가운데 별·왕관 */
+.pf-av { position: relative; }
+.pf-av.av-t2 { border: 2px solid #cfd6e0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), inset 0 -6px 12px rgba(0, 0, 0, 0.18); }
+.pf-av.av-t3 { border: 2px solid #f5c542; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 8px rgba(245, 197, 66, 0.45), inset 0 -6px 12px rgba(0, 0, 0, 0.18); }
+.pf-av .av-mark { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); pointer-events: none; }
+
+/* 칭호·사진 고르기: 단계 */
+.deco-wrap { display: grid; gap: 6px; align-content: start; }
+.deco-wrap > .deco-cell { width: 100%; }
+.deco-tiers { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.deco-next { color: var(--muted, #9a9a9a); font-size: 11px; }
+.deco-cell.title.t2 b { color: #e6ebf2; }
+.deco-cell.title.t3 b { color: #f5c542; }
+
+/* 미션: 튜토리얼 완료하기 (한 번) */
+.ms-tut { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; border: 1px solid rgba(107, 88, 238, 0.5); background: rgba(107, 88, 238, 0.12); }
+.ms-tut > span { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.ms-tut small { font-size: 12px; }
+.ms-tut-xp { color: #b3a8ff; font-variant-numeric: tabular-nums; }

@@ -57,6 +57,7 @@ export const BADGES: Badge[] = [
   { id: 'detective', emoji: '🔍', name: '루머 감별사', desc: '루머 감별기를 3번 이상 씀', rarity: 1 },
   { id: 'first_card', emoji: '🎴', name: '첫 카드', desc: '찬스 카드를 처음 씀', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
+  { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼 4단계(홈·게임·결과·미션)를 모두 끝냄', rarity: 1 },
   // 웃픈 업적 (2026-11-17 사용자 요청: 안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
   { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
   { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '그 종목의 게임 중 최고가 3% 안에서 매수', rarity: 1, funny: true },
@@ -74,6 +75,40 @@ export const BADGES: Badge[] = [
 export const AVATAR_ONLY = new Set(['lv5', 'lv10', 'lv15', 'dividend', 'global', 'limit_order']);
 export const givesTitle = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !AVATAR_ONLY.has(id);
 export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
+
+/* ---------------- 업적 단계 (같은 업적을 여러 번 — 사용자 결정 2026-11-18, design/titles-tiers-v3.md) ---------------- */
+/** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 */
+export const BADGE_TIER_AT = [1, 5, 20] as const;
+/** 한 번만 의미 있는 업적(처음 해 봄·레벨·튜토리얼)은 단계 없음 */
+const NO_TIER = new Set(['first_trade', 'first_card', 'etf_fan', 'lv5', 'lv10', 'lv15', 'lv20', 'tut_first', 'tut_grad']);
+export const badgeTiered = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !NO_TIER.has(id);
+/** 딴 횟수 → 단계 (0 = 아직 못 땀) */
+export function badgeTier(id: string, count: number): 0 | 1 | 2 | 3 {
+  if (!(count >= 1)) return 0;
+  if (!badgeTiered(id)) return 1;
+  return count >= BADGE_TIER_AT[2] ? 3 : count >= BADGE_TIER_AT[1] ? 2 : 1;
+}
+/** 단계별 꾸밈말 — 웃픈 업적은 '단골 → 명예', 나머지는 '노련한 → 전설의' */
+export function tierPrefix(id: string, tier: number) {
+  if (tier <= 1) return '';
+  const funny = BADGE_MAP[id]?.funny;
+  return tier === 2 ? (funny ? '단골 ' : '노련한 ') : funny ? '명예 ' : '전설의 ';
+}
+/** 저장 값('winner' · 'winner:2' · 'sprout:3') → 업적(사진) id 와 단계 */
+export function parseTiered(v: string | null | undefined): { id: string; tier: 1 | 2 | 3 } | null {
+  if (!v || typeof v !== 'string') return null;
+  const m = /^([a-z0-9_]{1,32})(?::([23]))?$/.exec(v);
+  if (!m) return null;
+  return { id: m[1], tier: (m[2] ? Number(m[2]) : 1) as 1 | 2 | 3 };
+}
+/** 저장된 칭호 → 보여 줄 이름 ('노련한 투자왕') · 없으면 null */
+export function titleLabel(v: string | null | undefined): { id: string; tier: number; name: string; badge: Badge } | null {
+  const t = parseTiered(v);
+  const b = t ? BADGE_MAP[t.id] : undefined;
+  if (!t || !b) return null;
+  const tier = badgeTiered(t.id) ? t.tier : 1;
+  return { id: t.id, tier, name: tierPrefix(t.id, tier) + b.name, badge: b };
+}
 
 /** 획득한 배지 중 가장 귀한 것이 칭호 */
 export function titleOf(ids: string[]): Badge | null {

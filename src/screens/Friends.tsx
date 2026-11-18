@@ -10,7 +10,7 @@ import { refreshAccount, useAccount } from '../net/account';
 import { Icon } from '../components/Icon';
 import { pokeInvites } from '../components/InviteCenter';
 import { okWhileMatching } from '../net/matchStore';
-import { BADGES } from '../game/achievements';
+import { titleLabel } from '../game/achievements';
 import { tierShort } from '../components/TierBadge';
 import { SPEED_PRESET } from '../engine/matching';
 import { Avatar } from '../components/Avatar';
@@ -105,7 +105,7 @@ const STATUS: Record<string, [string, string]> = {
   online: ['접속 중', 'st-online'],
   offline: ['오프라인', 'st-offline'],
 };
-const titleName = (t: string | null) => (t ? (BADGES.find((b) => b.id === t)?.name ?? null) : null);
+const titleName = (t: string | null) => titleLabel(t)?.name ?? null;
 
 export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLogin: () => void }) {
   const acc = useAccount();

@@ -7,7 +7,7 @@
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { finalResults, GameError, marketFor, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
-import { BADGE_XP, DAILY_XP_CAP, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
+import { BADGE_XP, DAILY_XP_CAP, levelNeed, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
 import { KR_INDEX_BASE } from '../../src/game/market.js';
 import { preRumors } from '../../src/game/rumors.js';
 import { STOCK_MAP } from '../../src/game/stocks.js';
@@ -97,7 +97,7 @@ async function gameXpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
   const since = new Date(dayEndsAt - 86_400_000).toISOString();
   const r = await sb.from('xp_log').select('key, xp').eq('user_id', uid).gte('created_at', since);
   if (r.error) return null;
-  return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:')).reduce((s, x) => s + (x.xp ?? 0), 0);
+  return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:') && x.key !== 'tutorial').reduce((s, x) => s + (x.xp ?? 0), 0);
 }
 /** 기록 한 줄을 먼저 넣고(이미 있으면 안 줌) 그만큼 경험치를 더함 */
 async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, detail: string) {
@@ -112,6 +112,24 @@ async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, d
   }
   return true;
 }
+/*
+ * (051) 튜토리얼 완료하기 미션 — 일일·주간과 따로, 계정마다 한 번 (사용자 결정 2026-11-18):
+ * 게임 기초(②)를 끝내면 레벨 1 → 2 에 필요한 경험치(levelNeed(1) = 100)만큼. 하루 상한 밖.
+ * 튜토리얼은 브라우저 판이라 서버는 '끝냈다'는 기록만 믿음 → 계정마다 한 번, 큰 보상 아님
+ */
+export const TUTORIAL_XP = levelNeed(1);
+async function tutorialDone(sb: SupabaseClient, uid: string) {
+  const t = await sb.from('tutorial_progress').select('done').eq('user_id', uid).maybeSingle();
+  return !t.error && !!(t.data as { done?: string[] } | null)?.done?.includes('game');
+}
+/** 회원이고 튜토리얼(게임 기초)을 끝냈으면 한 번 경험치 (게스트로 끝내고 나중에 가입해도 여기서 받음) */
+export async function grantTutorialXp(sb: SupabaseClient, uid: string) {
+  const prof = await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle();
+  if (prof.error || !prof.data) return false;
+  if (!(await tutorialDone(sb, uid))) return false;
+  return grant(sb, uid, 'tutorial', TUTORIAL_XP, '튜토리얼 완료');
+}
+
 /** 끝난 판 하나로 판 경험치·오늘 첫 승·새 업적 보너스 */
 async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game: MissionGame, day: string, dayEndsAt: number) {
   const used = await gameXpToday(sb, uid, dayEndsAt);
@@ -234,7 +252,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   const ms = await missionsForUser(sb, uid, now);
   const prof = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
   const member = !prof.error && !!prof.data;
-  const xp = member ? ((prof.data as { xp?: number }).xp ?? 0) : 0;
+  let xp = member ? ((prof.data as { xp?: number }).xp ?? 0) : 0;
   let rows: ProgressRow[] = [];
   if (member) {
     const r = await sb.from('mission_progress').select('period, mission, progress, goal, xp, done, done_at').eq('user_id', uid).in('period', [ms.day, ms.week]);
@@ -245,6 +263,17 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     const row = rows.find((x) => x.period === period && x.mission === id);
     return { id, title: def.title, tier: def.tier, xp: row?.done ? row.xp : def.xp, goal: def.goal, progress: row?.progress ?? 0, done: !!row?.done, modes: def.modes.map((m) => MODE_LABEL[m]) };
   };
+  // 튜토리얼 완료하기 미션: 끝냈는데 아직 못 받았으면(게스트 때 끝내고 가입 등) 지금 받음
+  const tutDone = await tutorialDone(sb, uid);
+  let tutGot = false;
+  if (member) {
+    const g = await sb.from('xp_log').select('key').eq('user_id', uid).eq('key', 'tutorial').maybeSingle();
+    tutGot = !g.error && !!g.data;
+    if (!tutGot && tutDone && (await grantTutorialXp(sb, uid))) {
+      tutGot = true;
+      xp += TUTORIAL_XP; // 방금 받은 만큼 (위에서 읽은 값은 받기 전)
+    }
+  }
   const todayXp = member ? await xpToday(sb, uid, ms.dayEndsAt) : 0;
   const gameToday = member ? ((await gameXpToday(sb, uid, ms.dayEndsAt)) ?? 0) : 0;
   // 결과 화면: 이 판에서 받은 판 경험치 (내 것만)
@@ -268,6 +297,8 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     gameToday,
     gameCap: GAME_XP_CAP,
     thisGame,
+    // 튜토리얼 완료하기 (한 번) — 회원은 받았는지, 게스트는 끝냈는지
+    tutorial: { done: member ? tutGot : tutDone, xp: TUTORIAL_XP },
     // 남은 바꾸기 횟수 (회원·041 적용 뒤에만)
     rerolls: member && ms.rerolls.ok ? { day: Math.max(0, REROLLS.day - ms.rerolls.day.count), week: Math.max(0, REROLLS.week - ms.rerolls.week.count) } : null,
   };

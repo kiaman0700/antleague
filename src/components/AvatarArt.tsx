@@ -450,6 +450,18 @@ function Hat({ hat }: { hat?: AvatarLook['hat'] }) {
         </g>
       );
       break;
+    case 'gradCap':
+      // 졸업모 (튜토리얼 '개미 학교 졸업')
+      el = (
+        <g stroke={INK} strokeWidth="1" strokeLinejoin="round">
+          <path d="M22 17 C22 21 42 21 42 17 V13 H22 Z" fill="#2b2b33" />
+          <path d="M10 11 L32 3 L54 11 L32 19 Z" fill="#33333d" />
+          <path d="M32 11 L46 15 V24" fill="none" stroke="#f5c542" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="46" cy="25.5" r="2" fill="#f5c542" />
+          <path d="M18 9.6 L32 5 L46 9.6" fill="none" stroke="#fff" strokeOpacity="0.25" strokeWidth="1.2" />
+        </g>
+      );
+      break;
     case 'helmet':
       el = (
         <g stroke={INK} strokeWidth="1" strokeLinejoin="round">

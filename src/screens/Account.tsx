@@ -13,7 +13,7 @@ import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover, matchKindName } from '../net/account';
-import { BADGES, givesTitle, titleOf } from '../game/achievements';
+import { BADGE_TIER_AT, BADGES, badgeTier, badgeTiered, givesTitle, parseTiered, tierPrefix, titleLabel, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
 import { Sheet } from '../components/PrefsPanel';
 import { BadgeIcon, Icon } from '../components/Icon';
@@ -421,7 +421,8 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
       setErr(e instanceof Error ? e.message : String(e));
     }
   };
-  const title = p.title ? BADGES.find((b) => b.id === p.title) : titleOf(Object.keys(acc.badges));
+  // 고른 칭호(단계 포함 '노련한 투자왕') 또는 가장 귀한 업적 칭호
+  const title = p.title ? titleLabel(p.title) : titleOf(Object.keys(acc.badges));
 
   if (recovery) return (
     <div className="lobby page">
@@ -722,7 +723,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
       {data && data.top.length > 0 && (
         <ol className="rank-board">
           {data.top.map((r) => {
-            const t = r.title ? BADGES.find((b) => b.id === r.title) : null;
+            const t = titleLabel(r.title);
             const mine = data.me && r.nickname === data.me.nickname;
             return (
               <li key={r.rank + r.nickname} className={mine ? 'me' : ''}>
@@ -760,13 +761,18 @@ function DecoAvatars({ current, nickname, badges, onPick }: { current: string; n
     <>
       <div className="deco-grid">
         {open.map((a) => {
-          const on = current === a.id;
           const from = a.need ? BADGES.find((b) => b.id === a.need) : null;
+          // 그 사진을 여는 업적을 5번·20번 넘게 땄으면 은색·금색 테두리 사진 (가장 높은 단계로)
+          const tier = a.need && from ? badgeTier(a.need, badges[a.need] ?? 0) : 1;
+          const value = tier > 1 ? `${a.id}:${tier}` : a.id;
+          const on = current === value;
+          const next = from && tier < 3 && badgeTiered(from.id) ? (BADGE_TIER_AT as readonly number[])[tier] - (badges[from.id] ?? 0) : 0;
           return (
-            <button key={a.id} className={'deco-cell' + (on ? ' on' : '')} aria-pressed={on} disabled={on} onClick={() => onPick(a.id, a.name)}>
-              <Avatar id={a.id} name={nickname} size={56} />
+            <button key={a.id} className={'deco-cell' + (on ? ' on' : '')} aria-pressed={on} disabled={on} onClick={() => onPick(value, a.name)}>
+              <Avatar id={value} name={nickname} size={56} />
               <b>{a.name}</b>
-              <small>{on ? '지금 사진' : from ? `업적 '${from.name}'` : '기본'}</small>
+              <small>{on ? '지금 사진' : from ? `업적 '${from.name}'${tier > 1 ? ` · ${tier}단계` : ''}` : '기본'}</small>
+              {next > 0 && <small className="deco-next">{tier + 1}단계 테두리까지 {next}번</small>}
             </button>
           );
         })}
@@ -785,18 +791,37 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
   const normal = got.filter((x) => !x.b.funny).sort(sortFn);
   const funny = got.filter((x) => x.b.funny).sort(sortFn);
   const total = BADGES.filter((b) => givesTitle(b.id)).length;
+  const cur = parseTiered(current);
   const cell = ({ b, n }: G) => {
-    const on = current === b.id;
+    // 같은 업적을 5번·20번 넘게 땄으면 칭호가 '노련한 …'·'전설의 …'로 (가장 높은 단계를 고름 · 고른 뒤엔 낮은 단계로도)
+    const max = badgeTier(b.id, n);
+    const on = cur?.id === b.id;
+    const pickTier = on ? cur!.tier : max;
+    const name = tierPrefix(b.id, pickTier) + b.name;
+    const val = (t: number) => (t > 1 ? `${b.id}:${t}` : b.id);
+    const next = badgeTiered(b.id) && max < 3 ? (BADGE_TIER_AT as readonly number[])[max] - n : 0;
     return (
-      <button key={b.id} className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : b.id, b.name)}>
-        <i>
-          <BadgeIcon id={b.id} size={22} />
-        </i>
-        <b>{b.name}</b>
-        <small>
-          {on ? '대표 칭호' : b.funny ? '웃픈 칭호' : RARITY_LABEL[b.rarity]} · ×{n}
-        </small>
-      </button>
+      <div key={b.id} className="deco-wrap">
+        <button className={'deco-cell title r' + b.rarity + (b.funny ? ' funny' : '') + (max > 1 ? ' t' + max : '') + (on ? ' on' : '')} aria-pressed={on} title={b.desc} onClick={() => onPick(on ? null : val(max), tierPrefix(b.id, max) + b.name)}>
+          <i>
+            <BadgeIcon id={b.id} size={22} />
+          </i>
+          <b>{name}</b>
+          <small>
+            {on ? '대표 칭호' : b.funny ? '웃픈 칭호' : RARITY_LABEL[b.rarity]} · ×{n}
+          </small>
+          {next > 0 && <small className="deco-next">{max + 1}단계까지 {next}번</small>}
+        </button>
+        {on && max > 1 && (
+          <span className="deco-tiers" role="group" aria-label="칭호 단계">
+            {Array.from({ length: max }, (_, k) => k + 1).map((t) => (
+              <button key={t} className={'chip sm' + (t === pickTier ? ' on' : '')} aria-pressed={t === pickTier} onClick={() => t !== pickTier && onPick(val(t), tierPrefix(b.id, t) + b.name)}>
+                {t}단계
+              </button>
+            ))}
+          </span>
+        )}
+      </div>
     );
   };
   if (!got.length) return <p className="muted small">아직 얻은 칭호가 없어요. 대결을 끝내면 업적과 함께 칭호가 생겨요.</p>;
