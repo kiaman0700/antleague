@@ -1053,7 +1053,7 @@ ul.mr-list li.mr-row.win::before { background: var(--accent); }
 .mr-pts { justify-self: end; font-size: 13px; text-align: right; }
 /* 업적 화면 전적: 줄을 누르면 상세가 펼쳐짐 */
 ul.mr-list li.mr-item { list-style: none; }
-ul.mr-list button.mr-row { position: relative; width: 100%; display: grid; grid-template-columns: minmax(88px, 1.1fr) minmax(76px, 1fr) minmax(56px, auto) minmax(64px, auto); align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2, #242424); color: inherit; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+ul.mr-list button.mr-row { position: relative; width: 100%; display: grid; grid-template-columns: minmax(92px, 1.2fr) minmax(64px, 1fr) minmax(52px, auto) minmax(24px, auto); align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2, #242424); color: inherit; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
 ul.mr-list button.mr-row::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: rgba(255, 255, 255, 0.18); }
 ul.mr-list button.mr-row.win::before { background: var(--accent); }
 ul.mr-list button.mr-row:hover { border-color: rgba(255, 255, 255, 0.1); }
@@ -1076,7 +1076,7 @@ ul.mr-list button.mr-row .mr-pts { display: inline-flex; align-items: center; ga
 ul.mr-list li.mr-item { display: block; padding: 0; border: 0; }
 ul.mr-list li.mr-row, ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto auto; gap: 8px; }
 ul.mr-list li.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 58px 48px; }
-ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 58px 66px; }
+ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 56px 46px; }
 .mr-more { border: 1px solid rgba(255,255,255,.14); cursor: pointer; font-weight: 700; color: var(--accent-text); } .mr-more:hover { border-color: var(--accent); }
 /* 전적 상세: '+n' 에 마우스를 올리거나 누르면 나머지 업적 팝업 */
 .mr-more-wrap { position: relative; display: inline-flex; }
@@ -1765,3 +1765,5 @@ p { text-wrap: pretty; }
 .lobby-main:focus { outline: none; }
 /* 휴대폰 방 만들기: 아래 고정 '방 만들기' 버튼을 '하던 게임 다시 보기' 알약이 가리지 않게 (이 화면에서만 숨김) */
 @media (max-width: 860px) { .lobby-shell:has(.create-bar) .rc-pill { display: none; } }
+/* 아주 좁은 휴대폰(360 미만): 전적 줄의 판 종류 이름은 잘리지 않고 두 줄로 */
+@media (max-width: 359px) { .mr-mode b { white-space: normal; overflow: visible; line-height: 1.25; } }
