@@ -42,6 +42,30 @@ const jo = (w: string, a: string, b: string) => {
   return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0 ? w + a : w + b;
 };
 
+/** 거시 뉴스 제목 → 쉬운 설명 (제목 글자만 봄, 난수 없음) */
+function macroWhy(t: string): { lead: string; body: string } | null {
+  if (/유가/.test(t)) {
+    const up = /급등|상승/.test(t);
+    return up
+      ? { lead: '기름값이 오르면 원료·연료를 많이 쓰는 업종의 비용이 늘어난다.', body: '항공·운송·화학처럼 기름을 많이 쓰는 회사는 부담이 커지고, 정유 회사는 오히려 이득을 볼 수 있다는 분석이 나온다.' }
+      : { lead: '기름값이 내리면 원료·연료를 많이 쓰는 업종의 비용이 줄어든다.', body: '항공·운송·화학처럼 기름을 많이 쓰는 회사에는 숨통이 트이지만, 정유 회사는 부담이 커질 수 있다는 분석이 나온다.' };
+  }
+  if (/환율|원화|달러/.test(t)) {
+    const weakWon = /급등|상승|약세|달러 강세/.test(t);
+    return weakWon
+      ? { lead: '원화 가치가 떨어지면 해외에 물건을 파는 기업의 벌이가 늘어난다.', body: '수출 비중이 큰 기업에는 유리하지만, 원료를 수입하는 기업과 외국인 투자자에게는 부담이 될 수 있다는 관측이 나온다.' }
+      : { lead: '원화 가치가 오르면 원료를 수입하는 기업의 비용이 줄어든다.', body: '수입 원료를 쓰는 기업과 여행·항공 업종엔 도움이 되지만, 수출 기업은 벌이가 줄 수 있다는 관측이 나온다.' };
+  }
+  if (/금리|연준|금통위/.test(t)) {
+    const us = /연준|미국/.test(t);
+    const who = us ? '미국' : '국내';
+    if (/동결/.test(t)) return { lead: `${who} 금리가 그대로 유지되면서 시장은 일단 숨을 고르는 분위기다.`, body: '시장 예상과 크게 다르지 않아 큰 충격은 없을 것이라는 의견이 많다. 다음 결정 때까지는 경기 지표에 관심이 쏠릴 전망이다.' };
+    if (/인하/.test(t)) return { lead: `${who} 금리가 내리면 돈을 빌리는 비용이 줄어 주식 시장에 힘이 될 수 있다.`, body: '빌린 돈이 많은 건설·성장 기업에는 부담이 줄어들지만, 이자로 버는 은행은 수익이 줄 수 있다는 분석이 나온다.' };
+    if (/인상/.test(t)) return { lead: `${who} 금리가 오르면 돈을 빌리는 비용이 늘어 주식 시장에는 부담이 될 수 있다.`, body: '빌린 돈이 많은 건설·성장 기업은 부담이 커지지만, 이자로 버는 은행은 수익이 늘 수 있다는 분석이 나온다.' };
+  }
+  return null;
+}
+
 export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
   const rng = seeded(`${key}:art20:${n.day}:${hash(n.headline)}`);
   const pick = <T,>(a: T[]) => a[Math.floor(rng() * a.length)];
@@ -83,8 +107,10 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean): Article {
     body.push(`${due ? `발표가 예정된 ${due}일차까지` : '발표 전까지'} 기대와 걱정이 엇갈릴 것으로 보인다. 결과에 따라 주가가 크게 움직일 수 있다.`);
     body.push(`발표 전에는 확인되지 않은 소문이 많이 돌 수 있어 주의가 필요하다는 지적도 나온다.`);
   } else if (n.kind === 'macro') {
-    lead = `${when}, '${title}' 소식이 전해졌다. 금리·환율에 민감한 업종을 중심으로 영향이 예상된다.`;
-    body.push(`시장 전문가들은 "${good ? '투자 심리가 살아날 수 있는 신호' : '당분간 변동성이 커질 수 있는 신호'}"라고 풀이했다.`);
+    // 제목에 맞는 설명 (난수를 더 쓰지 않음 — 진행 중인 판의 기사 그대로)
+    const why = macroWhy(title);
+    lead = `${when}, '${title}' 소식이 전해졌다. ${why ? why.lead : '시장 전체에 영향을 줄 수 있는 소식이다.'}`;
+    body.push(why ? why.body : `시장 전문가들은 "${good ? '투자 심리가 살아날 수 있는 신호' : '당분간 변동성이 커질 수 있는 신호'}"라고 풀이했다.`);
     body.push(`${pick(['외국인', '기관', '개인'])} 투자자의 움직임에 따라 하루 흐름이 크게 달라질 수 있다는 분석도 나왔다.`);
   } else {
     lead = `${when}, '${title}' 소식이 전해지면서 ${co ? jo(co, '이', '가') : `${subject}이`} 시장의 관심을 모으고 있다.`;
