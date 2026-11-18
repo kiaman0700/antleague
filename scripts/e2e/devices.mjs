@@ -91,13 +91,18 @@ for (const [name, opts, wantDevice, wantGame, allowW] of DEVICES) {
   for (const r of ROUTES) {
     await p.goto(BASE + '/' + r, { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(1200);
-    const m = await p.evaluate(() => ({ d: document.documentElement.dataset.device, sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth }));
+    // gap: 맨 위 머리줄(휴대폰 .lobby-topbar · PC .cl-top) 위에 빈 줄이 생기지 않았는지 (숨은 링크가 자리를 차지한 적 있음)
+    const m = await p.evaluate(() => {
+      const head = [document.querySelector('.cl-top'), document.querySelector('.lobby-topbar')].find((e) => e && e.getBoundingClientRect().height > 0);
+      return { d: document.documentElement.dataset.device, sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth, gap: head ? Math.round(head.getBoundingClientRect().top + scrollY) : 0 };
+    });
+    if (m.gap > 2) bad.push(`${r}: 맨 위 빈 줄 ${m.gap}px`);
     if (m.d !== wantDevice) bad.push(`${r}: 기기 ${m.d}`);
     const limit = Math.max(m.w, allowW);
     if (m.sw > limit + 1) bad.push(`${r}: 가로 넘침 ${m.sw}>${limit}`);
     if (r === 'casual') await shot(p, `${name}-로비`);
   }
-  ok(`${name}: 로비 ${ROUTES.length}화면 — 기기 ${wantDevice}, 가로 넘침 없음`, bad.length === 0, bad.slice(0, 3).join(' / '));
+  ok(`${name}: 로비 ${ROUTES.length}화면 — 기기 ${wantDevice}, 가로 넘침·위 빈 줄 없음`, bad.length === 0, bad.slice(0, 3).join(' / '));
   // PC 메뉴바 / 휴대폰 아래 탭 (로비)
   await p.goto(BASE + '/casual');
   await p.waitForTimeout(1200);
