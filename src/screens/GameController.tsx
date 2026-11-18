@@ -1134,7 +1134,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           }}
         />
       )}
-      {!solo && (
+      {/* 이모지 반응은 볼 사람(다른 사람)이 있을 때만 — 봇전·혼자 판엔 숨김 */}
+      {!solo && players.some((p) => p.id !== me && !p.bot) && (
         <>
           <ReactionButton
             onSend={(r) => {
