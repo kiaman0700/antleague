@@ -1318,3 +1318,6 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 /* 로비 창(모달·시트)이 휴대폰 아래 메뉴 밑에 깔리던 것: 창이 든 본문 칸(cl-body, 자체 쌓임 z1)을 창이 열린 동안만 메뉴(40)보다 위로
    — 창 아래쪽 버튼(봇전 '시작하기' 등)이 메뉴에 가려 안 눌리고, 창이 열린 채 메뉴가 눌리던 것 */
 .lobby-shell.client > .cl-body:has(.modal-bg, .sheet-bg, .confirm-bg) { z-index: 61 !important; }
+/* 휴대폰 위 순위 알약: 좁으면 끝을 '…'로 (예전엔 글자가 칸 끝에서 그냥 잘렸음) */
+.mh-cmp.btnlike { min-width: 0; max-width: 100%; overflow: hidden; }
+.mh-cmp.btnlike > span:not(.muted) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

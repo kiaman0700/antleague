@@ -1358,7 +1358,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   </strong>
                   <span className="muted">/ {rows.length}명</span>
                   <span className={myRank === 1 ? 'up' : 'down'}>
-                    · {tiedFirst ? '공동 선두' : myRank === 1 ? '선두!' : `1위 수익률 ${rows[0].band ? bandText(rows[0].band) : pct(rows[0].ret)}`}
+                    · {tiedFirst ? '공동 선두' : myRank === 1 ? '선두!' : `1위 ${rows[0].band ? bandText(rows[0].band) : pct(rows[0].ret)}`}
                   </span>
                   <i>›</i>
                 </button>
