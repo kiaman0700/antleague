@@ -52,7 +52,7 @@ const check = (v: string, stored: string | null) => {
 // 아이디가 없을 때도 같은 시간이 걸리게 비교할 가짜 해시
 const DUMMY_HASH = hash('dummy-recovery-code');
 /** 가입 때 동의받는 이용약관·개인정보처리방침 판(版) — 화면 src/components/Legal.tsx 의 LEGAL_VERSION 과 같게 */
-export const TERMS_VERSION = '2026-11-17';
+export const TERMS_VERSION = '2026-11-18';
 /** 이 계정의 모든 로그인(다른 기기 포함)을 끊음 — 028 함수가 없으면 조용히 넘어감 */
 const revokeSessions = async (sb: SupabaseClient, uid: string) => {
   await sb.rpc('revoke_user_sessions', { target: uid }).then(

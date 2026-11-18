@@ -13,6 +13,8 @@ export type WelcomeStep = 'intro' | 'nick' | 'code';
 const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10;
 
 /** 게스트 코드 책임 고지 (코드 보기·받기·불러오기 화면 모두 같은 말) */
+/** (052) 게스트 자동 삭제 안내 — 마지막 활동 날 뒤로 사흘 동안 활동이 없으면 그다음 날 0시(한국)에 삭제 */
+export const GUEST_EXPIRY_NOTICE = '게스트 계정은 마지막으로 게임한 날 뒤로 사흘 동안 활동이 없으면, 그다음 날 0시에 모든 기록과 함께 자동으로 지워져요. 기록을 계속 남기려면 회원가입해 주세요.';
 export const GUEST_CODE_NOTICE = '이 코드를 가진 사람은 누구나 이 게스트로 들어올 수 있어요. 코드 관리는 본인 책임이에요. 남에게 보여 주지 마세요.';
 
 export function Welcome({
@@ -109,6 +111,11 @@ export function Welcome({
                   <td className="n">다른 게스트와 겹칠 수 있어요</td>
                   <td className="y">나만 쓰는 닉네임 · 회원 표시</td>
                 </tr>
+                <tr>
+                  <td>기록 보관</td>
+                  <td className="n">사흘 동안 활동이 없으면 자동 삭제</td>
+                  <td className="y">탈퇴할 때까지 보관</td>
+                </tr>
               </tbody>
             </table>
             <div className="gs-actions">
@@ -122,7 +129,7 @@ export function Welcome({
                 게스트로 시작
               </button>
             </div>
-            <small className="muted">게스트로 하다가 나중에 가입해도 지금 기록이 그대로 이어져요.{visitor ? ' 고르기 전에는 둘러보기만 할 수 있어요.' : ''}</small>
+            <small className="muted">게스트로 하다가 나중에 가입해도 지금 기록이 그대로 이어져요. {GUEST_EXPIRY_NOTICE}{visitor ? ' 고르기 전에는 둘러보기만 할 수 있어요.' : ''}</small>
           </>
         ) : step === 'nick' ? (
           <form

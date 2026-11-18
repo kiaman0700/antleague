@@ -259,3 +259,4 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - `Market.halts`(HaltMark) — sliceMarket 은 그날까지만. 엔진 `haltOn`·`requireTradable`: 거래정지·폐지 종목 거래·예약 거절, 정리매매 날 예약 금지, 예약은 그런 날 취소. 지수는 그 종목을 빼고 계산. 화면 `HaltTag`·`HaltNote`(목록·상세), 공부·용어 설명
 - 예전 판(v13~v23) 가격·뉴스 그대로(지문 3,775개 비교), 테스트 `v24.test.ts`. 봇 시뮬: 쉬움 −24%·보통 +9%·어려움 +23% (사건 함정·징조 때문에 벌어짐)
 - 오늘의 도전 연속 기록(src/game/streak.ts): 날마다 +1, 7일마다 얼리기 1개(최대 2), 하루 놓치면 얼리기로 이어짐·없으면 0, 오늘 아직이면 안 끊김. 서버 dailyInfo 가 daily_runs 날짜(최근 120일)로 계산해 `streak` 로 보냄(화면 값 안 씀). 화면: 오늘의 도전 결과 `StreakChip`·안내, 연습 메뉴 칸 글. e2e daily
+- 게스트 자동 삭제(052, 사용자 요청 2026-11-18): 마지막 활동 날(한국) D 뒤 D+1~D+3 활동이 없으면 D+4 0시(pg_cron 'stockduel-guest-purge' 0 15 * * * UTC)에 `purge_inactive_guests()` 가 회원 프로필 없는 auth.users 삭제(cascade). 활동은 서버가 요청 때 하루 한 번 `touch_guest_day`(guest_activity). 처음 넣을 때 기존 게스트는 오늘로 채움. 안내: 시작 창 비교표 '기록 보관'·GUEST_EXPIRY_NOTICE(설정 내 계정·시작 창)·결과 가입 권유·개인정보처리방침(LEGAL_VERSION/TERMS_VERSION 2026-11-18)

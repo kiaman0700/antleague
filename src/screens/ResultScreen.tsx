@@ -791,7 +791,7 @@ function GuestSave({ won, badges }: { won: boolean; badges: number }) {
   return (
     <div className="panel pad guest-save">
       <b>{won ? '이번 승리' : '이번 업적'}, 계속 남기고 싶다면</b>
-      <p className="muted small">게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 기록을 지우면 사라져요. 회원가입하면 지금 기록 그대로 옮겨지고 랭킹전·친구·칭호도 쓸 수 있어요.</p>
+      <p className="muted small">게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 기록을 지우면 사라지고, 사흘 동안 활동이 없으면 자동으로 지워져요. 회원가입하면 지금 기록 그대로 옮겨지고 랭킹전·친구·칭호도 쓸 수 있어요.</p>
       <div className="row">
         <button className="btn primary sm" onClick={signup}>
           회원가입하고 지키기

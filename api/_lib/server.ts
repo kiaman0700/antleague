@@ -1863,6 +1863,8 @@ function sessionIdOf(token: string): string | null {
 /** 확인한 '지금 세션'은 10초 동안 기억 (요청마다 DB 를 부르지 않게) — 다른 곳에서 로그인하면 늦어도 10초 뒤 끊김 */
 const sessionCache = new Map<string, number>();
 /** 읽기만 하는 화면 갱신 요청 — 확인한 토큰을 잠깐 기억해도 되는 것 */
+/** (052) 오늘 활동을 이미 적은 계정 (서버 인스턴스 메모리) */
+const guestDayMarked = new Set<string>();
 const READ_ONLY_ACTIONS = new Set(['state', 'queueStatus', 'queueCounts', 'party', 'invites', 'missions']);
 const tokenCache = new Map<string, { user: User; until: number }>();
 /** 토큰에 적힌 만료 시각(ms) — 못 읽으면 지금(=기억 안 함) */
@@ -1964,6 +1966,15 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     // 운영자: 내가 운영자인지 / 의견함 — 운영자 계정이 아니면 내용은 절대 보내지 않음
     // 친구에게 보이는 접속 표시 (1분에 한 번만 씀, 회원만 의미 있음)
     touchSeen(db(), uid).catch(() => {});
+    // (052) 게스트 자동 삭제용 '오늘 활동함' — 하루 한 번만 적음 (마지막 활동 날 D 뒤 사흘 동안 없으면 D+4 0시에 삭제)
+    {
+      const dk = uid + ':' + kstDay();
+      if (!guestDayMarked.has(dk)) {
+        if (guestDayMarked.size > 20000) guestDayMarked.clear();
+        guestDayMarked.add(dk);
+        db().rpc('touch_guest_day', { p_user: uid, p_day: kstDay() }).then(() => {}, () => guestDayMarked.delete(dk));
+      }
+    }
     if (action === 'me') return { status: 200, body: { isAdmin: isAdminUser(data.user) } };
     // (051) 내 게스트 이어하기 코드 보기·새로 받기 (게스트만)
     if (action === 'guestCode') return { status: 200, body: await guestCode(db(), uid, b.renew === true) };

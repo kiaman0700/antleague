@@ -10,7 +10,7 @@ import { Loading } from './ui';
 import { ask } from './ConfirmHost';
 import { api } from '../net/api';
 import { logout, type AccountState } from '../net/account';
-import { GUEST_CODE_NOTICE, type WelcomeStep } from './Welcome';
+import { GUEST_CODE_NOTICE, GUEST_EXPIRY_NOTICE, type WelcomeStep } from './Welcome';
 import { setFlash } from '../lib/flash';
 
 export function GuestCodeBox() {
@@ -131,6 +131,7 @@ export function AccountSection({
   return (
     <>
       {nickField}
+      <p className="muted small guest-expiry">{GUEST_EXPIRY_NOTICE}</p>
       <div className="rg-actions">
         <button className="btn sm primary" onClick={() => go('signup')}>
           <Icon name="userPlus" /> 회원가입
