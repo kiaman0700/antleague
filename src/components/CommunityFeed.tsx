@@ -76,7 +76,7 @@ export function Post({ p, onSelect, onSelectSector, past, time }: { p: PublicPos
     <li className={'cf-post pf-' + p.platform + (p.verdict ? ' v-' + p.verdict : '')}>
       <PlatformIcon id={p.platform} size={34} />
       <div className="cf-main">
-        <div className="cf-head">
+        <div className="cp-head">
           <b className="cf-author">
             {p.author}
             {p.verified && (

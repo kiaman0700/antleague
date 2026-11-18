@@ -83,7 +83,11 @@ const audit = () => {
   // 5) 넘친 글 (잘리지도 않고 상자 밖으로)
   for (const e of document.querySelectorAll('body *')) {
     if (!vis(e) || !e.textContent.trim()) continue;
+    // 화면 읽기 전용 숨은 글은 넘쳐도 안 보임
+    if (e.closest('.sr-only')) continue;
     const s = getComputedStyle(e);
+    // 누르는 범위를 넓히려고 ::after 를 바깥으로 뺀 버튼은 글이 넘친 게 아님
+    if (getComputedStyle(e, '::after').position === 'absolute' && e.scrollWidth - e.clientWidth <= 8) continue;
     if (s.overflowX !== 'visible' || s.whiteSpace === 'normal' && e.scrollWidth <= e.clientWidth + 1) continue;
     if (e.scrollWidth > e.clientWidth + 2 && e.clientWidth > 0 && !['hidden', 'clip', 'auto', 'scroll'].includes(s.overflowX) && e.children.length === 0) out.overflow.push(`${name(e)} ${e.scrollWidth}>${e.clientWidth}`);
   }

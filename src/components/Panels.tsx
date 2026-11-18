@@ -316,7 +316,8 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
 
       {/* (v20) 장중 실시간 커뮤니티·SNS 글 */}
-      {showRumors && posts && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
+      {/* 장 전 시간엔 아직 실시간 글이 없으니 장 전 글을 먼저, 장이 열리면 실시간 글을 먼저 */}
+      {showRumors && posts && !pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
       {showRumors && !posts && !hasRumors && rumorToday.length === 0 && <EmptyState compact icon="news" title="오늘은 도는 소문이 없어요" desc="장이 열리기 전과 장중에 커뮤니티·SNS 글이 돌면 여기에 모여요." />}
       {showRumors && rumors && rumors.length > 0 && (
         <section className={'rumor-board' + (pre ? ' live' : '')} aria-label="장 전 커뮤니티 글">
@@ -366,6 +367,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           )}
         </section>
       )}
+      {showRumors && posts && pre && <CommunityFeed today={posts} past={pastPosts ?? []} day={day} live={!!marketOpen} onSelect={onSelect} onSelectSector={onSelectSector} />}
       {showRumors && rumorToday.length > 0 && (
         <>
           <h4 className="sec-title">

@@ -1418,7 +1418,7 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
 @media (prefers-reduced-motion: reduce) { .cf-post { animation: none; } }
 .pf-icon { display: block; border-radius: 8px; flex: none; }
 .cf-main { min-width: 0; display: grid; gap: 4px; }
-.cf-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.cp-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .cf-author { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; word-break: keep-all; }
 .cf-verified { display: inline-grid; place-items: center; }
 .cf-meta { color: var(--muted, #9a9a9a); font-size: 12px; font-variant-numeric: tabular-nums; }
