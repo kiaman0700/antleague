@@ -71,6 +71,8 @@ interface NewsOpts {
   verdict: boolean;
   skipRecap: boolean;
   rumorW: number;
+  /** (v17) 기사 아래 관계(거래처·경쟁사)를 읽음 — 경쟁사는 반대로, 거래처는 같은 쪽으로 (고수봇) */
+  rel?: boolean;
 }
 function scoreNews(news: NewsEvent[], o: NewsOpts): Record<string, number> {
   const s: Record<string, number> = {};
@@ -82,7 +84,10 @@ function scoreNews(news: NewsEvent[], o: NewsOpts): Record<string, number> {
     const dir = (n.tone === 'good' ? 1 : -1) * w;
     if (n.kind === 'company' && n.symbol && STOCK_MAP[n.symbol] && !STOCK_MAP[n.symbol].etf) {
       add(n.symbol, dir);
-      for (const p of COMPANIES) if (p.sector === n.sector && p.symbol !== n.symbol) add(p.symbol, 0.25 * dir);
+      if (o.rel && n.rel) {
+        // 화면에 보이는 관계 이름표만 씀 (고정 정보 + 기사 방향)
+        for (const [sym, r] of Object.entries(n.rel)) if (STOCK_MAP[sym] && !STOCK_MAP[sym].etf) add(sym, (r === 'rival' ? -0.45 : r === 'link' ? 0.4 : r === 'peer' ? 0.25 : 0.1) * dir);
+      } else for (const p of COMPANIES) if (p.sector === n.sector && p.symbol !== n.symbol) add(p.symbol, 0.25 * dir);
     } else if (n.kind === 'sector' && n.sector) {
       for (const p of COMPANIES) if (p.sector === n.sector) add(p.symbol, 0.6 * dir);
     } else if (n.kind === 'macro' && (n.macro === 'kr' || n.macro === 'us')) {
@@ -289,7 +294,7 @@ export const STRATEGY: Record<number, Strategy> = {
   2: newsBot({ news: { verdict: false, skipRecap: false, rumorW: 1 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: false, reserve: 0.2 }),
   // 시뮬(sim/levels.ts, 2026-11-17): 카드를 사는 봇은 카드 값 때문에 오히려 약했음 → 판단으로 강하게:
   // 시황·특징주(지난 정리 기사) 빼기 + 하루 10번 보기 + 수수료 폭탄 조심 + 사건 찌라시 따라 들고 가기 — 평균 +14% (보통 +8%, 쉬움 -8%)
-  3: newsBot({ news: { verdict: false, skipRecap: true, rumorW: 1 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: true, reserve: 0.2, storyHold: true }),
+  3: newsBot({ news: { verdict: false, skipRecap: true, rumorW: 1, rel: true }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: true, reserve: 0.2, storyHold: true }),
 };
 
 /* ---------------- 봇 움직이기 ---------------- */
