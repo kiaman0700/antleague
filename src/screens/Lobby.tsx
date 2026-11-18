@@ -13,7 +13,7 @@ import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPick
 import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { Avatar } from '../components/Avatar';
 import { TierBadge, TierLadder, tierText } from '../components/TierBadge';
-import { DIV_POINTS, isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
+import { DIV_POINTS, ELO_K, isPlaced, PLACEMENT_GAMES, PLACEMENT_MULT, tierOf } from '../game/tier';
 import { AccountSection } from '../components/AccountSection';
 import { setFlash } from '../lib/flash';
 import { CoachTour } from '../components/CoachTour';
@@ -38,7 +38,7 @@ import { matchKindName, useAccount } from '../net/account';
 import { DEFAULT_SOLO_DAY, loadSolo, saveSolo, SOLO_DAY_OPTIONS } from '../engine/soloStore';
 import { BOT_LEVELS, MAX_BOTS } from '../engine/botInfo';
 import { waitLabel } from '../engine/matching';
-import { DailyBoard, useDailyInfo } from '../components/Daily';
+import { DailyBoard, DailyFriends, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
 import { BADGE_MAP, BADGES, givesTitle, titleLabel, titleOf } from '../game/achievements';
@@ -473,6 +473,7 @@ function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: 
               <span>아직 오늘 도전을 안 했어요.</span>
             )}
           </div>
+          <DailyFriends info={info} />
           <h4 className="daily-h">오늘 점수표 {info.total ? <small className="muted">{info.total}명</small> : null}</h4>
           <DailyBoard info={info} />
         </>
@@ -751,6 +752,11 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                   : `랭킹전 ${Math.max(1, PLACEMENT_GAMES - (account.profile!.ranked_games ?? 0))}판 더 하면 티어가 정해져요`}
               </p>
 {isPlaced(account.profile!.ranked_games) && <TierProgress rating={account.profile!.rating} />}
+              {/* 판 전에 걸린 점수 미리 보기 (비슷한 점수 상대 기준 — 실제는 상대 점수에 따라 조금 달라요) */}
+              <p className="rk-stake small">
+                비슷한 상대에게 1위면 <b className="up">+{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}</b> · 꼴찌면 <b className="down">−{isPlaced(account.profile!.ranked_games) ? ELO_K / 2 : (ELO_K / 2) * PLACEMENT_MULT}</b>점쯤
+                {!isPlaced(account.profile!.ranked_games) && <span className="muted"> (배치라 크게)</span>}
+              </p>
               <details className="rk-help">
                 <summary>점수는 어떻게 바뀌나요?</summary>
                 <ul className="rk-rules muted small">

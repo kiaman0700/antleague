@@ -16,6 +16,8 @@ export interface DailyInfo {
   resume?: { roomId: string; playerId: string; code: string } | null;
   total?: number;
   top?: { rank: number; nickname: string; ret: number; me: boolean }[];
+  /** 친구들의 오늘 기록 (친구만, 닉네임·수익률) */
+  friends?: { nickname: string; ret: number | null; finished: boolean }[];
   /** 연속 기록 (서버 계산) */
   streak?: { streak: number; best: number; freezes: number; playedToday: boolean };
 }
@@ -73,6 +75,27 @@ export function DailyBoard({ info, limit = 10 }: { info: DailyInfo; limit?: numb
   );
 }
 
+/** 친구들의 오늘 기록 — 같은 시장이라 바로 비교 (끝낸 친구는 수익률, 하는 중이면 '도전 중') */
+export function DailyFriends({ info }: { info: DailyInfo }) {
+  const f = info.friends ?? [];
+  if (!f.length) return null;
+  return (
+    <div className="daily-friends">
+      <h4>
+        <Icon name="users" size={14} /> 오늘 친구들
+      </h4>
+      <ol className="daily-board">
+        {f.map((r, i) => (
+          <li key={i}>
+            <span className="db-name">{r.nickname}</span>
+            {r.finished && r.ret !== null ? <b className={r.ret > 0 ? 'up' : r.ret < 0 ? 'down' : ''}>{pct(r.ret, 1)}</b> : <small className="muted">도전 중</small>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 /** 결과 화면: 오늘의 도전 순위 */
 export function DailyResult() {
   const { info, err, reload } = useDailyInfo();
@@ -98,6 +121,7 @@ export function DailyResult() {
       <p className="muted small">
         {info.myRank ? `오늘 ${info.total}명 중 ${info.myRank}위예요.` : !info.finished ? '기록을 저장하는 중이에요.' : info.member ? '이 계정 기록은 점수표에 오르지 않아요.' : '게스트 기록은 점수표에 오르지 않아요. 회원으로 하면 순위에 올라가요.'} 내일 0시에 새 시장이 열려요.
       </p>
+      <DailyFriends info={info} />
       <DailyBoard info={info} />
     </div>
   );

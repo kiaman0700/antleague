@@ -1086,6 +1086,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const st = seat.data as { id: string; left_game: boolean | null; rooms: { code: string; status: string } } | null;
         if (st && !st.left_game && st.rooms.status === 'playing') resume = { roomId: my.room_id, playerId: st.id, code: st.rooms.code };
       }
+      // 친구들의 오늘 기록 (회원끼리 수락한 친구만, 닉네임·수익률·끝냈는지만 — 계정 id 는 안 보냄)
+      let friends: { nickname: string; ret: number | null; finished: boolean }[] = [];
+      const fr = await sb.from('friendships').select('user_a, user_b').eq('status', 'accepted').or(`user_a.eq.${uid},user_b.eq.${uid}`);
+      if (!fr.error && fr.data?.length) {
+        const fids = (fr.data as { user_a: string; user_b: string }[]).map((f) => (f.user_a === uid ? f.user_b : f.user_a)).slice(0, 100);
+        const fr2 = await sb.from('daily_runs').select('nickname, ret, finished').eq('day', day).in('user_id', fids);
+        if (!fr2.error) friends = ((fr2.data ?? []) as { nickname: string; ret: number | null; finished: boolean }[]).map((r) => ({ nickname: r.nickname, ret: r.finished && typeof r.ret === 'number' ? Math.round(r.ret * 10000) / 10000 : null, finished: !!r.finished })).sort((x, y) => (y.ret ?? -9) - (x.ret ?? -9));
+      }
       // 연속 기록 (최근 120일 기록 날짜로 서버가 계산)
       const since = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
       const hist = await sb.from('daily_runs').select('day').eq('user_id', uid).gte('day', since);
@@ -1102,6 +1110,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         resume,
         total: Math.max(board.length, myRank ?? 0),
         top,
+        friends,
       };
     }
 

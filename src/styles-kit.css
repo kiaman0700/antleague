@@ -1680,3 +1680,7 @@ button, a.btn, .srow, .chip, [role='button'] { touch-action: manipulation; }
 .km-fooled { border-left: 3px solid #f5b83d; } .km-fooled .km-icon { color: #f5b83d; }
 .km-missed { border-left: 3px solid #6b58ee; } .km-missed .km-icon { color: #b9adff; }
 @media (prefers-reduced-motion: reduce) { .km-card { animation: none; } }
+.rk-stake { margin: 8px 0 0; color: var(--text-2, #c8c8c8); font-variant-numeric: tabular-nums; }
+.rk-stake b { font-weight: 800; }
+.daily-friends { margin: 10px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #242424); }
+.daily-friends h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 13px; color: #b9adff; }
