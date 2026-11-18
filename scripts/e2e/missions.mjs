@@ -140,6 +140,7 @@ ok('거래 없이 끝낸 판은 미션에 안 셈', g2.s?.room?.status === 'fini
 // 6) 프로필에 경험치, 다른 사람 화면 데이터엔 없음
 const prof = (await A({ action: 'profile' })).b;
 ok('내 프로필에 경험치', typeof prof?.profile?.xp === 'number' && prof.profile.xp === after3.xp, String(prof?.profile?.xp));
+ok('나의 투자 감각: 끝낸 판이 기록되고 내 프로필에만 평균(숫자만)', prof?.skills?.all?.games >= 1 && typeof prof.skills.all.avgBeat === 'number' && !/user_id|room_id/.test(JSON.stringify(prof.skills)), JSON.stringify(prof?.skills?.all ?? null).slice(0, 120));
 const st = JSON.stringify((await A({ action: 'state', roomId: g2.roomId })).b);
 ok('게임 화면 데이터에 경험치·미션 없음', !/"xp"|mission/.test(st));
 

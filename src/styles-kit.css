@@ -1684,3 +1684,12 @@ button, a.btn, .srow, .chip, [role='button'] { touch-action: manipulation; }
 .rk-stake b { font-weight: 800; }
 .daily-friends { margin: 10px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #242424); }
 .daily-friends h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 13px; color: #b9adff; }
+/* 나의 투자 감각 (마이프로필) */
+.sk-list { list-style: none; margin: 10px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.sk-list li { display: grid; grid-template-columns: 76px 1fr 96px; align-items: center; gap: 4px 10px; }
+.sk-k { font-size: 13px; font-weight: 700; color: var(--text-2, #c8c8c8); }
+.sk-bar { height: 8px; border-radius: 4px; background: #2a2a2a; overflow: hidden; }
+.sk-bar i { display: block; height: 100%; border-radius: 4px; background: #6b58ee; transition: width 0.6s ease-out; }
+.sk-v { font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.sk-up, .sk-down { grid-column: 2 / -1; font-style: normal; font-size: 12px; }
+.sk-up { color: #2fb36b; } .sk-down { color: var(--text-3, #9a9a9a); }

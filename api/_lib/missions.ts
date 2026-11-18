@@ -7,7 +7,8 @@
 import { leagueAdd, leagueRank } from './league.js';
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { finalResults, GameError, marketFor, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
+import { finalResults, GameError, marketFor, playedLastDay, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
+import { gameSkill } from '../../src/game/skill.js';
 import { BADGE_XP, DAILY_XP_CAP, levelNeed, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
 import { KR_INDEX_BASE } from '../../src/game/market.js';
 import { preRumors } from '../../src/game/rumors.js';
@@ -226,6 +227,16 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
       ...gameExtras(d, p.id, trades, uses.map((i) => i.kind)),
     };
+    // '나의 투자 감각' 기록 (059) — 끝까지 하고 거래한 판만, 실패해도 미션엔 영향 없음
+    if (game.finished) {
+      try {
+        const sk = gameSkill(m, trades, res.ret, playedLastDay(d) ?? d.room.total_days - 1);
+        const ins = await sb.from('skill_log').insert({ user_id: uid, room_id: d.room.id, catches: sk.catches, news_buys: sk.newsBuys, news_true: sk.newsTrue, max_weight: Math.round(sk.maxWeight * 1000) / 1000, beat: Math.round(sk.beat * 10000) / 10000 });
+        if (ins.error && !/duplicate|unique|skill_log/i.test(ins.error.message)) console.error('[api] skill_log', ins.error.message);
+      } catch (e) {
+        console.error('[api] skill', e instanceof Error ? e.message : e);
+      }
+    }
     const ms = await missionsForUser(sb, uid, now);
     // 오늘 첫 승은 예전과 같은 날짜 열쇠 (미션 2판으로 기간 이름이 바뀌어도 하루 한 번)
     await grantGameXp(sb, uid, d.room.id, game, ms.day.replace(/^d2:/, 'd:'), ms.dayEndsAt);
@@ -361,3 +372,4 @@ function gameExtras(d: GameData, playerId: string, trades: GameData['trades'], u
     days: d.room.total_days,
   };
 }
+

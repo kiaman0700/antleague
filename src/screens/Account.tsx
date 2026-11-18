@@ -543,6 +543,8 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
         </div>
       </section>
 
+      {acc.skills && <SkillPanel s={acc.skills} />}
+
       {msg && <p className="ok-msg">{msg}</p>}
       {err && <p className="error">{err}</p>}
 
@@ -847,5 +849,44 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
       )}
       {total - got.length > 0 && <p className="muted small deco-hidden">아직 숨은 칭호 {total - got.length}개</p>}
     </>
+  );
+}
+
+/**
+ * '나의 투자 감각' (밤샘 조사 — 지는 날에도 나아지는 게 보이게): 서버가 판마다 계산한 숫자의 최근 평균.
+ * 막대 4개 + 최근 10판이 그 전 판들보다 나아졌으면 ▲. 돈 자랑이 아니라 '뉴스 읽기 실력'만
+ */
+function SkillPanel({ s }: { s: import('../net/account').SkillInfo }) {
+  const a = s.all;
+  const up = (now: number | null | undefined, before: number | null | undefined, higherBetter = true) => {
+    if (now == null || before == null || !s.older) return null;
+    const d = higherBetter ? now - before : before - now;
+    return Math.abs(d) < 0.02 ? null : d > 0 ? <em className="sk-up">▲ 나아졌어요</em> : <em className="sk-down">▼</em>;
+  };
+  const rows = [
+    { k: '속보 잡기', v: Math.min(1, a.catchesPerGame / 2), text: `한 판에 ${a.catchesPerGame.toFixed(1)}번`, tip: '진짜 호재 속보 종목을 그날 사서 번 횟수', trend: up(s.recent?.catchesPerGame, s.older?.catchesPerGame) },
+    { k: '소식 고르기', v: a.newsAccuracy ?? 0, text: a.newsAccuracy == null ? '아직 없음' : `${Math.round(a.newsAccuracy * 100)}% 진짜`, tip: '좋은 소식을 보고 산 것 중 그 소식이 진짜였던 비율', trend: up(s.recent?.newsAccuracy, s.older?.newsAccuracy) },
+    { k: '나눠 담기', v: a.avgMaxWeight > 0 ? 1 - Math.min(1, a.avgMaxWeight) : 0, text: a.avgMaxWeight <= 0 ? '아직 없음' : a.avgMaxWeight >= 0.6 ? '몰리는 편' : a.avgMaxWeight >= 0.35 ? '적당히 나눔' : '고루 나눔', tip: '가장 큰 한 종목이 재산에서 차지한 비율이 낮을수록 길어요', trend: up(s.recent?.avgMaxWeight, s.older?.avgMaxWeight, false) },
+    { k: '시장 대비', v: Math.max(0, Math.min(1, 0.5 + a.avgBeat * 5)), text: `${a.avgBeat >= 0 ? '+' : ''}${(a.avgBeat * 100).toFixed(1)}%p`, tip: '내 수익률 − 종합지수 수익률 (판 평균)', trend: up(s.recent?.avgBeat, s.older?.avgBeat) },
+  ];
+  return (
+    <section className="panel pad sk-panel" aria-label="나의 투자 감각">
+      <h3>
+        <Icon name="activity" /> 나의 투자 감각 <small className="muted">최근 {a.games}판</small>
+      </h3>
+      <ul className="sk-list">
+        {rows.map((r) => (
+          <li key={r.k} title={r.tip}>
+            <span className="sk-k">{r.k}</span>
+            <span className="sk-bar" aria-hidden>
+              <i style={{ width: `${Math.round(r.v * 100)}%` }} />
+            </span>
+            <b className="sk-v">{r.text}</b>
+            {r.trend}
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">나만 보여요. 랭킹 점수와 따로, 뉴스를 읽고 고르는 실력이에요.</p>
+    </section>
   );
 }

@@ -15,6 +15,7 @@ import { badgeTier, givesTitle, parseTiered } from '../../src/game/achievements.
 import { DIAMOND_MIN, ELO_K, ELO_SCALE, isPlaced, MASTER_MIN, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
 import { levelBadges } from '../../src/game/missions.js';
+import { mySkills } from './skills.js';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 const USERNAME_RE = /^[a-z0-9_]{4,16}$/;
@@ -241,7 +242,9 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         const bank = !db.error ? (db.data as { decay_bank: number | null } | null)?.decay_bank : undefined;
         if (bank !== undefined) decay = { days: bank ?? (p.rating >= MASTER_MIN ? 14 : 28), perDay: p.rating >= MASTER_MIN ? 75 : 50 };
       }
-      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}), ...(decay ? { decay } : {}) }, recent, badges };
+      // '나의 투자 감각' (059, 내 것만 평균)
+      const skills = await mySkills(sb, uid).catch(() => null);
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}), ...(decay ? { decay } : {}) }, recent, badges, ...(skills?.all ? { skills } : {}) };
     }
 
     case 'updateProfile': {
