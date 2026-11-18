@@ -3,7 +3,7 @@ import { LeagueResultNote } from './LeagueNote';
 import { NoticeCenter, NoticeTicker, useHasUnreadNotice } from '../components/NoticeBar';
 import { InAppBanner } from '../components/InAppBanner';
 import { gameOpenElsewhere } from '../lib/activeTab';
-import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
+import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner, PwInput } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
@@ -1223,7 +1223,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
             <p className="muted small">비밀방이에요. 방장에게 받은 비밀번호를 입력해 주세요.</p>
             <label className="field">
               <span>비밀번호</span>
-              <input type="password" autoFocus value={pwInput} maxLength={20} autoComplete="off" onChange={(e) => setPwInput(e.target.value)} />
+              <PwInput autoFocus value={pwInput} maxLength={20} autoComplete="off" onChange={(e) => setPwInput(e.target.value)} />
             </label>
             {pwErr && <p className="error">{pwErr}</p>}
             <div className="modal-actions">
@@ -1360,7 +1360,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         {isPrivate && (
           <label className="field pw-field">
             <span>비밀번호 (4~20자)</span>
-            <input type="password" value={password} maxLength={20} placeholder="비밀번호" autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
+            <PwInput value={password} maxLength={20} placeholder="비밀번호" autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
           </label>
         )}
       </section>
