@@ -305,7 +305,7 @@ export function InstallGuide() {
             <Icon name="check" size={14} /> 주소창 없이 <b>전체 화면</b>으로
           </li>
           <li>
-            <Icon name="check" size={14} /> {env.os === 'windows' || env.os === 'mac' || env.os === 'other' ? '바탕화면·작업 표시줄에서' : '홈 화면에서'} <b>한 번에</b> 열기
+            <Icon name="check" size={14} /> {env.os === 'mac' ? 'Dock·Launchpad에서' : env.os === 'windows' || env.os === 'other' ? '바탕화면·작업 표시줄에서' : '홈 화면에서'} <b>한 번에</b> 열기
           </li>
           <li>
             <Icon name="check" size={14} /> 따로 내려받을 것 없음 (용량 거의 없음)
