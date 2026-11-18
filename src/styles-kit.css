@@ -1270,3 +1270,8 @@ ul.mr-list button.mr-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr
 .movers > div { min-width: 0; }
 .mv span { min-width: 0; }
 .mv b { flex: none; }
+/* 휴대폰 대기실 아래 줄: 왜 기다리는지(한 명 더·누구 준비 대기) 안내를 숨기지 않고 작게 두 줄까지 */
+@media (max-width: 420px) {
+  .wr-status { min-width: 0; flex: 1 1 auto; }
+  .wr-status small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 1.35; word-break: keep-all; }
+}
