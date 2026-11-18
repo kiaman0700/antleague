@@ -662,7 +662,7 @@ export function ProChart({
           moved.current = false;
         }}
         role="img"
-        aria-label="가격 차트. 드래그로 이동, 휠이나 두 손가락으로 확대"
+        aria-label={`가격 차트. 지금 ${((v: number) => { const t = fmt(v); return t.startsWith("$") ? t : t + "원"; })(lastPrice)}${hiLo ? `, 보이는 구간 최고 ${((v: number) => { const t = fmt(v); return t.startsWith("$") ? t : t + "원"; })(hiLo.hiV)}·최저 ${((v: number) => { const t = fmt(v); return t.startsWith("$") ? t : t + "원"; })(hiLo.loV)}` : ""}. 드래그로 이동, 휠이나 두 손가락으로 확대`}
       >
         <defs>
           <clipPath id={clipId}>
