@@ -561,8 +561,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         </div>
       )}
     </>;
+  const dailyEl = matchKind === 'daily' ? <DailyResult /> : null;
   const restEl = <>
-      {matchKind === 'daily' && <DailyResult />}
       {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
       {session.mode === 'multi' && <MissionsPanel retry={2} room={session.roomId ?? undefined} />}
       {session.mode === 'multi' && <IdleExit onExit={onExit} />}
@@ -631,6 +631,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         {marketEl}
         {ratingEl}
         <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />
+        {dailyEl}
         {restEl}
         {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
         {actionsEl}
@@ -643,7 +644,8 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         slides={[
           { key: 'sum', label: '요약', body: <>{bannerEl}{ratingEl}{cardsEl}</> },
           { key: 'review', label: '복기', body: <>{highlightsEl}{replayEl}{marketEl}</> },
-          { key: 'rank', label: '순위', body: <>{chartEl}</> },
+          // 오늘의 도전은 점수표(순위·연속 기록)가 '순위' 칸에 (예전엔 '보상' 칸에 있었음)
+          { key: 'rank', label: '순위', body: <>{dailyEl}{chartEl}</> },
           { key: 'reward', label: '보상', body: <>{badgesEl}<GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />{restEl}</> },
           {
             key: 'share',
