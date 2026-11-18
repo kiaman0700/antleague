@@ -1354,3 +1354,5 @@ html[data-device='phone'] .search input, html[data-device='tablet'] .search inpu
   .m-game:has(.m-tradebar) .toast.at-bottom,
   .m-game:has(.m-tradebar) ~ .toast.at-bottom { bottom: calc(49px + 54px + 6px + env(safe-area-inset-bottom)); }
 }
+/* PC: 아래 알림이 가운데 칸의 사기/팔기 막대(trade-jump)를 가리던 것 — 막대가 보이면 그 위로 */
+.game.desk:has(.trade-jump.show) > .toast.at-bottom:not(.free):not(.movable) { bottom: 112px; }
