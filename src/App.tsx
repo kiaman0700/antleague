@@ -17,7 +17,8 @@ function GameController(props: React.ComponentProps<typeof GameControllerLazy>) 
   );
 }
 import { Lobby, type ResumeInfo } from './screens/Lobby';
-import { WaitingRoom } from './screens/WaitingRoom';
+// 대기실은 방에 들어갈 때만 받음 (첫 화면 파일 줄이기)
+const WaitingRoom = lazy(() => import('./screens/WaitingRoom').then((m) => ({ default: m.WaitingRoom })));
 import { loadNick, loadUi, type UiMode } from './session';
 
 /** 새로고침하거나 주소를 직접 열었을 때 서버/저장소 정보로 화면 복원 */
@@ -107,6 +108,7 @@ export default function App() {
       );
     case 'waiting':
       return (
+        <Suspense fallback={<div className="center-msg"><Loading /></div>}>
         <WaitingRoom
           key={route.roomId}
           roomId={route.roomId}
@@ -116,6 +118,7 @@ export default function App() {
           // 대기실 기록을 게임으로 바꿔서, 게임에서 뒤로 가면 로비로
           onStart={(session) => navigate({ kind: 'game', session }, { replace: true })}
         />
+        </Suspense>
       );
     case 'game':
       return (

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { LeagueResultNote } from './LeagueNote';
 import { NoticeCenter, NoticeTicker, useHasUnreadNotice } from '../components/NoticeBar';
 import { InAppBanner } from '../components/InAppBanner';
-import { NoticesPage } from './Notices';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner } from '../components/ui';
 import { flashLeft, peekFlash } from '../lib/flash';
@@ -23,6 +22,7 @@ import { markWelcomeSeen, welcomeSeen } from '../session';
 import { AccountChip, BottomNav, Brand, lastTab, rememberTab, useGuestGate, useNickCheck, type NavTab } from '../components/LobbyNav';
 import { AdminInboxButton, SocialPanel, TopBar } from '../components/ClientChrome';
 // 가끔 여는 화면(공부·운영자·계정)은 열 때 받음 — 첫 화면을 가볍게
+const NoticesPage = lazy(() => import('./Notices').then((m) => ({ default: m.NoticesPage })));
 const League = lazy(() => import('./League').then((m) => ({ default: m.League })));
 const InstallGuide = lazy(() => import('../components/InstallGuide').then((m) => ({ default: m.InstallGuide })));
 const Companies = lazy(() => import('./Companies').then((m) => ({ default: m.Companies })));
@@ -1817,7 +1817,11 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       );
       break;
     case 'notices':
-      body = <NoticesPage onBack={back} onGo={go} />;
+      body = (
+        <Suspense fallback={<Loading />}>
+          <NoticesPage onBack={back} onGo={go} />
+        </Suspense>
+      );
       break;
     case 'install':
       body = (
