@@ -600,7 +600,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         </div>
       </header>
 
-      {nudge && (tab === 'casual' || tab === 'ranked') && (
+      {/* 이미 대결 기록이 있는 계정(다른 기기에서 해 본 회원 등)에는 '처음이세요?' 를 띄우지 않음 */}
+      {nudge && (tab === 'casual' || tab === 'ranked') && !(account.profile?.games ?? 0) && account.recent.length === 0 && (
         <section className="panel pad hub-nudge" aria-label="처음이라면">
           <Icon name="book" size={22} />
           <div>
@@ -775,7 +776,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               <li key={m.room_id} className="hr-row static">
                 <span className={'hr-rank r' + m.rank}>{m.rank}위</span>
                 <small className="muted">
-                  {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                  {matchKindName(m.kind, m.ranked ?? m.rated, m.players)} · {m.players}명 · {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                 </small>
                 <span className={'hr-ret ' + tone(m.ret)}>{pct(m.ret, 1)}</span>
                 {m.rated && m.rating_before !== null && m.rating_after !== null && isPlaced(account.profile?.ranked_games) && (
