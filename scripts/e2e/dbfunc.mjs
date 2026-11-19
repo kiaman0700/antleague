@@ -62,6 +62,21 @@ if (!url) {
       ok('리그: 1위 보상 (100+30)×1.2 = 156, 3위 50×1.2 = 60', t[five[0]].last_reward === 156 && t[five[2]].last_reward === 60, `${t[five[0]].last_reward} ${t[five[2]].last_reward}`);
       ok('리그: 두 번 정산해도 경험치는 한 번만', xp1[five[0]] - xp0[five[0]] === 156 && xp1[five[2]] - xp0[five[2]] === 60, `${xp1[five[0]] - xp0[five[0]]} ${xp1[five[2]] - xp0[five[2]]}`);
     } else ok('리그 시험용 회원 5명', false, String(five.length));
+    // ── 게스트 자동 삭제(purge_inactive_guests): 4일 넘게 쉰 게스트만, 회원·최근 게스트는 절대 안 지움 ──
+    const guests = (await c.query('select u.id from auth.users u where not exists (select 1 from profiles p where p.user_id = u.id) order by u.created_at desc limit 2')).rows.map((r) => r.id);
+    if (guests.length === 2) {
+      const [oldG, newG] = guests;
+      const member = five[0];
+      const old = "((now() at time zone 'Asia/Seoul')::date - 10)";
+      await c.query(`insert into guest_activity (user_id, last_day) values ($1, ${old}) on conflict (user_id) do update set last_day = excluded.last_day`, [oldG]);
+      await c.query("insert into guest_activity (user_id, last_day) values ($1, (now() at time zone 'Asia/Seoul')::date) on conflict (user_id) do update set last_day = excluded.last_day", [newG]);
+      await c.query(`insert into guest_activity (user_id, last_day) values ($1, ${old}) on conflict (user_id) do update set last_day = excluded.last_day`, [member]);
+      await c.query('select public.purge_inactive_guests()');
+      const left = new Set((await c.query('select id from auth.users where id = any($1)', [[oldG, newG, member]])).rows.map((r) => r.id));
+      ok('게스트 삭제: 4일 넘게 쉰 게스트는 지워짐', !left.has(oldG));
+      ok('게스트 삭제: 오늘 활동한 게스트는 남음', left.has(newG));
+      ok('게스트 삭제: 오래 쉰 회원은 절대 안 지워짐', left.has(member));
+    } else ok('게스트 시험용 계정 2개', false, String(guests.length));
   } catch (e) {
     ok('DB 함수 시험 중 오류 없음', false, e instanceof Error ? e.message : String(e));
   } finally {
