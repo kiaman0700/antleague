@@ -385,7 +385,7 @@ function QuickJoin({ nickname, mode, onJoined, onCreate, onClose }: { nickname: 
 }
 
 function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: number) => void; onClose: () => void }) {
-  const [days, setDays] = useState(20);
+  const [days, setDays] = useState(10);
   const [daySec, setDaySec] = useState<number>(DEFAULT_SOLO_DAY);
   return (
     <Modal title={<>혼자 연습하기</>} onClose={onClose}>
