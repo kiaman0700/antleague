@@ -3,7 +3,6 @@
  * 대기는 로비 전체에서 하나(matchStore): 찾는 동안 다른 메뉴를 둘러봐도 되고, 위 '플레이' 버튼에 대기 시간이 흐름
  */
 import { useEffect, useRef, useState } from 'react';
-import { AugCrest, OrnCorners } from './AugFrame';
 import { api } from '../net/api';
 import { cancelMatch, clearMatchErr, getMatch, mmss, startMatch, useMatch, type Matched } from '../net/matchStore';
 import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
@@ -219,9 +218,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
 
   if (stage)
     return (
-      <section className={'mf-stage orn ' + (kind === 'ranked' ? 'orn-gold' : 'orn-amethyst') + (searching ? ' is-searching' : '')} aria-label={`${kind === 'ranked' ? '랭킹전' : '일반전'} 대결 찾기`}>
-        <OrnCorners tone={kind === 'ranked' ? 'gold' : 'amethyst'} />
-        <AugCrest tier={kind === 'ranked' ? 'gold' : 'amethyst'} className="st-crest" />
+      <section className={'mf-stage' + (searching ? ' is-searching' : '')} aria-label={`${kind === 'ranked' ? '랭킹전' : '일반전'} 대결 찾기`}>
         <StageChart />
         <div className={'st-copy' + (returning ? ' is-back' : '')}>
           <span className="st-eyebrow">{kind === 'ranked' ? '랭킹전 · 이기면 점수가 올라요' : '일반전 · 점수 없이 가볍게'}</span>
@@ -245,7 +242,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             {inParty ? (
               <p className="muted small mf-note">파티는 다인전으로 같이 찾아요 (4명, 1분 30초 뒤엔 3명도).</p>
             ) : (
-              <div className="st-seg seg-royal" role="radiogroup" aria-labelledby="st-size">
+              <div className="st-seg" role="radiogroup" aria-labelledby="st-size">
                 {([['duel', '1대1', '2명', nWaitOf('duel')], ['multi', '다인전', '3~4명', nWaitOf('multi')]] as [QueueSize, string, string, number][]).map(([v, l, who, n]) => (
                   <button key={v} role="radio" aria-checked={sizeEff === v} className={sizeEff === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, size: v })}>
                     <span>{l}</span>
@@ -260,7 +257,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           </div>
           <div className="st-field">
             <span className="st-label" id="st-speed">얼마나 빨리</span>
-            <div className="st-seg seg-royal" role="radiogroup" aria-labelledby="st-speed">
+            <div className="st-seg" role="radiogroup" aria-labelledby="st-speed">
               {(['quick', 'normal'] as QueueSpeed[]).map((v) => (
                 <button key={v} role="radio" aria-checked={pref.speed === v} className={pref.speed === v ? 'on' : ''} disabled={searching} onClick={() => save({ ...pref, speed: v })}>
                   <span>{SPEED_PRESET[v].label}</span>
@@ -305,7 +302,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             </div>
           ) : (
             <>
-              <button className="btn primary st-btn btn-royal" onClick={start} disabled={findDisabled}>
+              <button className="btn primary st-btn" onClick={start} disabled={findDisabled}>
                 {findLabel}
               </button>
               {online !== null && (
