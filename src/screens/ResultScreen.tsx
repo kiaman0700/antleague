@@ -1,3 +1,4 @@
+import { shareOrCopy } from '../lib/copy';
 import { api } from '../net/api';
 import { setFlash } from '../lib/flash';
 import { balancedCols } from '../components/ui';
@@ -780,16 +781,9 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
   const text = [head, `수익률 ${pct(ret)} (${slang})`, bar, location.origin].join('\n');
   const [done, setDone] = useState('');
   const share = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setDone('결과를 복사했어요');
-    } catch {
-      /* 취소 */
-    }
+    const r = await shareOrCopy({ text });
+    if (r === 'copied') setDone('결과를 복사했어요. 원하는 곳에 붙여 넣으세요.');
+    else if (r === 'fail') setDone('복사하지 못했어요. 이 브라우저에서는 공유가 막혀 있어요.');
   };
   return (
     <div className="panel pad share-card">

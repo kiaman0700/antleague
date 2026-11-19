@@ -1,3 +1,4 @@
+import { shareOrCopy } from '../lib/copy';
 import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/botInfo';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
@@ -138,24 +139,13 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
     }
   };
 
-  // 휴대폰·태블릿은 공유 창, PC 는 바로 복사 (PC 에서 윈도 공유 창이 뜨던 것). 복사가 안 되면 방 코드를 알려 줌
+  // 휴대폰·태블릿은 공유 창, PC 는 바로 복사. 복사가 안 되면 방 코드를 알려 줌
   const copy = async () => {
-    const touch = document.documentElement.dataset.device !== 'pc';
-    if (touch && navigator.share) {
-      try {
-        await navigator.share({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
-        return;
-      } catch (e) {
-        if (e instanceof Error && e.name === 'AbortError') return; // 공유 취소
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(link);
+    const r = await shareOrCopy({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
+    if (r === 'copied') {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setErr(`링크를 복사하지 못했어요. 친구에게 방 코드 ${room.code} 를 알려 주세요.`);
-    }
+    } else if (r === 'fail') setErr(`링크를 복사하지 못했어요. 친구에게 방 코드 ${room.code} 를 알려 주세요.`);
   };
 
   const changeUi = (m: UiMode) => {

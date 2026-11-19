@@ -2,6 +2,7 @@
  * 회원 화면: 로그인·회원가입·비밀번호 찾기 (/login), 마이프로필 (/me), 랭킹 (/ranking)
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
+import { copyText } from '../lib/copy';
 import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, Loading, PwInput } from '../components/ui';
@@ -38,7 +39,6 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
 
 const nickInvalidMsg = (n: string) => (reservedNickname(n) ? RESERVED_NICK_MSG : '1~10자, 꺾쇠(<>) 없이 써 주세요');
 
-const copy = (t: string) => navigator.clipboard?.writeText(t).catch(() => {});
 
 function AvailMsg({ st, what, invalid }: { st: Avail; what: string; invalid: string }) {
   if (st === 'checking') return <small className="muted">확인하는 중…</small>;
@@ -52,15 +52,19 @@ function AvailMsg({ st, what, invalid }: { st: Avail; what: string; invalid: str
 /** 가입·비밀번호 찾기 뒤에 한 번 보여 주는 복구 코드 */
 function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState<'' | 'ok' | 'fail'>('');
   return (
     <section className="panel pad acc-recovery">
       <h3>
         <Icon name="key" size={18} /> 복구 코드를 꼭 저장해 두세요
       </h3>
       <p className="muted small">비밀번호를 잊었을 때 이 코드로만 새 비밀번호를 정할 수 있어요. 지금 한 번만 보여 드려요. (마이프로필에서 새로 받을 수 있어요)</p>
-      <button className="code-big" onClick={() => copy(code)} title="눌러서 복사">
+      <button className="code-big" onClick={async () => setCopied((await copyText(code)) ? 'ok' : 'fail')} title="눌러서 복사">
         {code} <Icon name="copy" size={14} />
       </button>
+      <p className={'small ' + (copied === 'fail' ? 'error' : 'muted')} role="status">
+        {copied === 'ok' ? '복사했어요. 메모 앱 등 안전한 곳에 붙여 넣어 두세요.' : copied === 'fail' ? '복사하지 못했어요. 코드를 직접 적어 두세요.' : '코드를 누르면 복사돼요.'}
+      </p>
       <label className="check">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} /> 복구 코드를 따로 적어 두었어요
       </label>

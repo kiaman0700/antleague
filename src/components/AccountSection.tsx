@@ -4,6 +4,7 @@
  * - 게스트: 닉네임 · 이어하기 코드(언제든 보기·복사·새로 받기) · 다른 게스트 코드로 이어하기 · 게스트 그만하기
  * - 회원: 마이프로필 · 로그아웃
  */
+import { copyText } from '../lib/copy';
 import { useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { Loading } from './ui';
@@ -32,13 +33,10 @@ export function GuestCodeBox() {
   };
   const copy = async () => {
     if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
+    if (await copyText(code)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setErr('복사하지 못했어요. 코드를 직접 적어 두세요.');
-    }
+    } else setErr('복사하지 못했어요. 코드를 직접 적어 두세요.');
   };
   return (
     <div className="gc-box">
