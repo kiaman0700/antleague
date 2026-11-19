@@ -1,4 +1,5 @@
 import { ToonIcon } from '../components/ToonIcon';
+import { AugCoin, OrnCorners } from '../components/AugFrame';
 import { ThemeCard, themeName } from '../components/ThemeCard';
 import { readStored } from '../lib/stored';
 import { nickNotice, titleProblem } from '../game/nickname';
@@ -759,22 +760,31 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
   const quickRow = (
     <section className="st-quick" aria-label="기다리지 않고 하기">
-      <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
-        <i className="toon-i"><ToonIcon name="bot" size={36} /></i>
+      <button className="st-qbtn orn orn-silver orn-thin" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
+        <OrnCorners tone="silver" plain />
+        <AugCoin tier="silver" size={52}>
+          <ToonIcon name="bot" size={32} />
+        </AugCoin>
         <span>
           <b>봇전</b>
           <small>기다림 없이 바로</small>
         </span>
       </button>
-      <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
-        <i className="toon-i"><ToonIcon name="daily" size={36} /></i>
+      <button className="st-qbtn orn orn-silver orn-thin" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
+        <OrnCorners tone="silver" plain />
+        <AugCoin tier="silver" size={52}>
+          <ToonIcon name="daily" size={32} />
+        </AugCoin>
         <span>
           <b>오늘의 도전</b>
           <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
         </span>
       </button>
-      <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
-        <i className="toon-i"><ToonIcon name="tutorial" size={36} /></i>
+      <button className="st-qbtn orn orn-silver orn-thin" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
+        <OrnCorners tone="silver" plain />
+        <AugCoin tier="silver" size={52}>
+          <ToonIcon name="tutorial" size={32} />
+        </AugCoin>
         <span>
           <b>튜토리얼</b>
           <small>연습봇과 한 판 하며 규칙을 익혀요</small>

@@ -97,7 +97,7 @@ export function TopBar({
               // 누르면 바로 찾기, 마우스를 0.3초 올려 두면 모드 고르기 팝업
               <HoverPop
                 className="play-hpop"
-                btnClass="cl-play"
+                btnClass="cl-play btn-royal"
                 label={playLabel ? `플레이: ${playLabel}으로 바로 찾기 (마우스를 올리면 모드 바꾸기)` : '플레이'}
                 openDelay={300}
                 onButtonClick={onPlay}
@@ -111,7 +111,7 @@ export function TopBar({
                 {playPicker}
               </HoverPop>
             ) : (
-              <button className="cl-play" onClick={onPlay} title={playLabel ? `${playLabel}으로 바로 매칭 대기` : undefined}>
+              <button className="cl-play btn-royal" onClick={onPlay} title={playLabel ? `${playLabel}으로 바로 매칭 대기` : undefined}>
                 <span>플레이</span>
                 {playLabel && <small>{playLabel}</small>}
               </button>

@@ -9,19 +9,23 @@ import { useId } from 'react';
 import type { AugTier } from '../game/augments';
 
 type Stop = [number, string];
-const METAL: Record<AugTier, Stop[]> = {
+/** 재질: 증강 등급 셋 + 브랜드 보라(자수정) — 로비·게임 화면 틀에도 같은 부품을 씀 */
+export type Tone = AugTier | 'amethyst';
+const METAL: Record<Tone, Stop[]> = {
   silver: [[0, '#ffffff'], [0.14, '#e8ecf2'], [0.32, '#aeb6c3'], [0.45, '#f7f9fc'], [0.58, '#939cab'], [0.78, '#626a79'], [1, '#353a44']],
   gold: [[0, '#fffbe8'], [0.14, '#ffe08a'], [0.32, '#dca331'], [0.45, '#fff0b3'], [0.58, '#c4861b'], [0.8, '#83540e'], [1, '#4a2f07']],
   prism: [[0, '#ffffff'], [0.14, '#ffe6f4'], [0.3, '#d4c4ff'], [0.44, '#ffffff'], [0.58, '#a3dcff'], [0.76, '#a58cff'], [1, '#5a41c9']],
+  amethyst: [[0, '#ffffff'], [0.14, '#e4ddff'], [0.32, '#9d8cf5'], [0.45, '#f1edff'], [0.58, '#7462e8'], [0.8, '#4432b0'], [1, '#231a66']],
 };
-const GEM: Record<AugTier, Stop[]> = {
+const GEM: Record<Tone, Stop[]> = {
   silver: [[0, '#ffffff'], [0.35, '#cfe6ff'], [0.7, '#6fa4e8'], [1, '#2d5fae']],
   gold: [[0, '#fff6c8'], [0.3, '#ffcf3d'], [0.7, '#f08a0c'], [1, '#a34a00']],
   prism: [[0, '#ffffff'], [0.25, '#ffd1ec'], [0.5, '#c6b5ff'], [0.75, '#8fe3ff'], [1, '#6c4fe0']],
+  amethyst: [[0, '#ffffff'], [0.3, '#e0d4ff'], [0.7, '#8f6cff'], [1, '#4a26c4']],
 };
 
 /** 이 SVG 안에서 쓰는 금속·보석 색 (id 는 SVG 마다 따로 — 같은 화면에 여러 장이라도 섞이지 않게) */
-function Defs({ id, tier }: { id: string; tier: AugTier }) {
+function Defs({ id, tier }: { id: string; tier: Tone }) {
   return (
     <defs>
       <linearGradient id={`${id}m`} x1="0" y1="0" x2="0.25" y2="1">
@@ -39,7 +43,7 @@ function Defs({ id, tier }: { id: string; tier: AugTier }) {
         ))}
       </linearGradient>
       <radialGradient id={`${id}f`} cx="0.5" cy="0.38" r="0.62">
-        <stop offset="0" stopColor={tier === 'gold' ? '#4a3a18' : tier === 'prism' ? '#3a3160' : '#2f3540'} />
+        <stop offset="0" stopColor={tier === 'gold' ? '#4a3a18' : tier === 'prism' ? '#3a3160' : tier === 'amethyst' ? '#33295e' : '#2f3540'} />
         <stop offset="1" stopColor="#111114" />
       </radialGradient>
     </defs>
@@ -92,12 +96,12 @@ function Wing({ id, side, layers }: { id: string; side: 1 | -1; layers: number }
 }
 
 /** 카드 위 가운데 장식: 방패 + 보석, 등급이 오를수록 날개·왕관 */
-export function AugCrest({ tier }: { tier: AugTier }) {
+export function AugCrest({ tier, className }: { tier: Tone; className?: string }) {
   const id = useId().replace(/:/g, '');
   const m = `url(#${id}m)`;
-  const layers = tier === 'silver' ? 0 : tier === 'gold' ? 2 : 3;
+  const layers = tier === 'silver' ? 0 : tier === 'prism' ? 3 : 2;
   return (
-    <svg className={`aug-crest t-${tier}`} viewBox="0 0 200 92" aria-hidden focusable="false">
+    <svg className={className ?? `aug-crest t-${tier}`} viewBox="0 0 200 92" aria-hidden focusable="false">
       <Defs id={id} tier={tier} />
       {layers > 0 && <Wing id={id} side={-1} layers={layers} />}
       {layers > 0 && <Wing id={id} side={1} layers={layers} />}
@@ -125,7 +129,7 @@ export function AugCrest({ tier }: { tier: AugTier }) {
       <path d="M72 24c0-4 3-7 7-7h42c4 0 7 3 7 7v24c0 16-13 28-28 36C85 76 72 64 72 48z" fill={m} stroke="#121216" strokeWidth="1.6" strokeLinejoin="round" />
       <path d="M78 27c0-2.5 2-4.5 4.5-4.5h35c2.5 0 4.5 2 4.5 4.5v20.5c0 12.5-10 22-22 28.5-12-6.5-22-16-22-28.5z" fill={`url(#${id}f)`} stroke="#000" strokeOpacity="0.6" strokeWidth="1.2" />
       <path d="M80 26.5h40" stroke="#fff" strokeOpacity="0.18" strokeWidth="1" strokeLinecap="round" />
-      <Brilliant id={id} cx={100} cy={46} r={tier === 'prism' ? 15 : tier === 'gold' ? 13.5 : 12} />
+      <Brilliant id={id} cx={100} cy={46} r={tier === 'prism' ? 15 : tier === 'silver' ? 12 : 13.5} />
       {/* 금속 윗면 빛 한 줄 */}
       <path d="M77 21.5c1-1.5 2.4-2.3 4.2-2.3H100" fill="none" stroke="#fff" strokeOpacity="0.85" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
@@ -133,7 +137,7 @@ export function AugCrest({ tier }: { tier: AugTier }) {
 }
 
 /** 카드 모서리 장식 (왼쪽 위 기준 — 다른 모서리는 CSS 로 뒤집음) */
-export function AugCorner({ tier, pos }: { tier: AugTier; pos: 'tl' | 'tr' | 'bl' | 'br' }) {
+export function AugCorner({ tier, pos }: { tier: Tone; pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   const id = useId().replace(/:/g, '');
   const m = `url(#${id}m)`;
   return (
@@ -169,7 +173,7 @@ export function AugCorner({ tier, pos }: { tier: AugTier; pos: 'tl' | 'tr' | 'bl
 }
 
 /** 그림 뒤 둥근 메달 (금속 고리 + 새긴 눈금 + 안쪽 판). 프리즘은 고리에 보석 넷 */
-export function AugMedal({ tier, mini = false }: { tier: AugTier; mini?: boolean }) {
+export function AugMedal({ tier, mini = false }: { tier: Tone; mini?: boolean }) {
   const id = useId().replace(/:/g, '');
   const ticks = Array.from({ length: 36 }, (_, i) => (i * Math.PI * 2) / 36);
   return (
@@ -218,11 +222,24 @@ export function AugGems({ tier }: { tier: AugTier }) {
 }
 
 /** 작은 증강 동전: 메달 위에 그림 (게임 중 '내 증강' 줄·목록) — 고르기 카드와 같은 재질 */
-export function AugCoin({ tier, size, children }: { tier: AugTier; size: number; children: React.ReactNode }) {
+export function AugCoin({ tier, size, children }: { tier: Tone; size: number; children: React.ReactNode }) {
   return (
     <span className={`aug-coin t-${tier}`} style={{ width: size, height: size }}>
       <AugMedal tier={tier} mini />
       <span className="aug-coin-in">{children}</span>
     </span>
+  );
+}
+
+/**
+ * 어느 칸에나 두르는 금속 틀: 네 모서리 장식 + 안쪽 가는 선. 테두리 금속은 CSS(.orn + .orn-톤)가 그림.
+ * 부모에 className="orn orn-gold" 처럼 주고 맨 앞에 <OrnCorners tone="gold" /> 를 넣음
+ */
+export function OrnCorners({ tone, plain = false }: { tone: Tone; plain?: boolean }) {
+  return (
+    <>
+      <span className="orn-line" aria-hidden />
+      {!plain && (['tl', 'tr', 'bl', 'br'] as const).map((p) => <AugCorner key={p} tier={tone} pos={p} />)}
+    </>
   );
 }
