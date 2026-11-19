@@ -170,7 +170,7 @@ export function GameCard({
             <polyline points="0,32 12,28 22,30 34,20 46,24 58,14 70,18 82,8 100,12" />
           </svg>
           <span className="gc-orb">
-            <CardIcon kind={kind} size={size === 'sm' ? 22 : 30} />
+            <CardIcon kind={kind} size={size === 'sm' ? 30 : 40} />
           </span>
         </div>
         <div className="gc-name">{d.name}</div>

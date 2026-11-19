@@ -241,6 +241,125 @@ const ART: Record<string, (c: G) => ReactNode> = {
       <path d="M36 7.5v9M31.5 12h9" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
     </>
   ),
+  // 찬스 카드 12종 (card_ + 종류)
+  card_paper: (c) => (
+    <>
+      {shadow}
+      <rect x="4" y="7" width="34" height="34" rx="5" fill={c('w')} />
+      <path d="M4 15v-3a5 5 0 0 1 5-5h24a5 5 0 0 1 5 5v3z" fill={c('r')} />
+      <rect x="9" y="20" width="12" height="9" rx="2" fill="#b9c0cc" />
+      <path d="M25 21h8M25 26h8M9 34h16" stroke="#b9c0cc" strokeWidth="2.6" strokeLinecap="round" />
+      <circle cx="37" cy="35" r="9" fill={c('b')} />
+      <path d="M37 30v5.5l3.5 2" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  card_analyst: (c) => (
+    <>
+      {shadow}
+      <rect x="4" y="6" width="40" height="30" rx="6" fill={c('d')} />
+      <rect x="7.5" y="9.5" width="33" height="23" rx="3.5" fill={c('w')} />
+      <path d="M12 27l7-7 5 4 10-10" fill="none" stroke={c('r')} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M28 13.5h6.5V20" fill="none" stroke={c('r')} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="20" y="36" width="8" height="4" fill={c('d')} />
+      <rect x="14" y="39.5" width="20" height="3.5" rx="1.75" fill={c('d')} />
+    </>
+  ),
+  card_scout: (c) => (
+    <>
+      {shadow}
+      <rect x="5" y="24" width="8" height="18" rx="2.5" fill={c('v')} />
+      <rect x="16" y="15" width="8" height="27" rx="2.5" fill={c('b')} />
+      <rect x="27" y="29" width="8" height="13" rx="2.5" fill={c('v')} />
+      <circle cx="33" cy="15" r="8" fill="#d8ecff" />
+      <circle cx="33" cy="15" r="8" fill="none" stroke={c('d')} strokeWidth="3.4" />
+      <path d="M38.5 20.5l5 5" stroke={c('d')} strokeWidth="4.2" strokeLinecap="round" />
+    </>
+  ),
+  card_detector: (c) => (
+    <>
+      {shadow}
+      <circle cx="20" cy="20" r="14" fill="#d8ecff" />
+      <circle cx="20" cy="20" r="14" fill="none" stroke={c('b')} strokeWidth="4" />
+      <path d="M13.5 20.5l4.5 4.5 8.5-9" fill="none" stroke={c('n')} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M30.5 30.5l11 11" stroke={c('d')} strokeWidth="5.4" strokeLinecap="round" />
+      {shine('M12 13a10 10 0 0 1 5-3.5')}
+    </>
+  ),
+  card_spy: (c) => (
+    <>
+      {shadow}
+      <path d="M3 24C8 14 15.5 9 24 9s16 5 21 15c-5 10-12.5 15-21 15S8 34 3 24z" fill={c('w')} />
+      <circle cx="24" cy="24" r="10" fill={c('b')} />
+      <circle cx="24" cy="24" r="5" fill={c('d')} />
+      <circle cx="27.5" cy="20.5" r="2.4" fill="#fff" />
+    </>
+  ),
+  card_freeze: (c) => (
+    <>
+      {shadow}
+      <path d="M24 3l17 10v21L24 44 7 34V13z" fill={c('t')} />
+      <path d="M24 12v24M13.6 18l20.8 12M13.6 30l20.8-12" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+      <path d="M20.5 13.5L24 16.5l3.5-3M20.5 34.5l3.5-3 3.5 3" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {shine('M11 15.5l6-3.5')}
+    </>
+  ),
+  card_fake: (c) => (
+    <>
+      {shadow}
+      <path d="M7 19h6l17-10v30L13 29H7a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3z" fill={c('r')} />
+      <path d="M13 29l2.5 10h5L18 29z" fill={c('d')} />
+      <rect x="29" y="7" width="5" height="34" rx="2.5" fill={c('d')} />
+      <path d="M38 18c2 1.6 3 3.6 3 6s-1 4.4-3 6" fill="none" stroke={c('g')} strokeWidth="3" strokeLinecap="round" />
+      {shine('M8 22.5h5')}
+    </>
+  ),
+  card_fee: (c) => (
+    <>
+      {shadow}
+      <circle cx="21" cy="28" r="15" fill={c('d')} />
+      <rect x="26" y="9" width="8" height="7" rx="2" transform="rotate(35 30 12.5)" fill={c('d')} />
+      <path d="M33 9c2-3 5-3.5 7-2" fill="none" stroke="#b9c0cc" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M42 3.5l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill={c('g')} />
+      <path d="M14.5 23l2.5 10 4-7 4 7 2.5-10M13.5 28h15" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      {shine('M12 21a11 11 0 0 1 5-5')}
+    </>
+  ),
+  card_blackout: (c) => (
+    <>
+      {shadow}
+      <path d="M3 24C8 14 15.5 9 24 9s16 5 21 15c-5 10-12.5 15-21 15S8 34 3 24z" fill={c('k')} />
+      <circle cx="24" cy="24" r="8" fill={c('d')} />
+      <path d="M8 8l32 32" stroke={c('r')} strokeWidth="5" strokeLinecap="round" />
+    </>
+  ),
+  card_shield: (c) => (
+    <>
+      {shadow}
+      <path d="M24 4l16 6v11c0 11-7 17.5-16 21C15 38.5 8 32 8 21V10z" fill={c('n')} />
+      <path d="M17 23.5l5 5 10-10" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      {shine('M13 13l6-2.2')}
+    </>
+  ),
+  card_mirror: (c) => (
+    <>
+      {shadow}
+      <ellipse cx="24" cy="21" rx="13" ry="17" fill={c('g')} />
+      <ellipse cx="24" cy="21" rx="9.5" ry="13.5" fill="#cfeffd" />
+      <rect x="21.5" y="37" width="5" height="7" rx="1.5" fill={c('g')} />
+      <path d="M18 17.5h11M25.5 14l3.5 3.5-3.5 3.5" fill="none" stroke={c('b')} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M30 25.5H19M22.5 22l-3.5 3.5 3.5 3.5" fill="none" stroke={c('r')} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  card_bonus: (c) => (
+    <>
+      {shadow}
+      <rect x="6" y="10" width="36" height="30" rx="5" fill={c('r')} />
+      <path d="M6 15l18 12 18-12" fill="none" stroke="#c22e3c" strokeWidth="2.6" strokeLinejoin="round" />
+      <circle cx="24" cy="27" r="7.5" fill={c('g')} />
+      <path d="M21 25l1.5 5 1.5-3.5 1.5 3.5 1.5-5" fill="none" stroke="#a5650e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      {shine('M10 14.5h8')}
+    </>
+  ),
 };
 
 export type ToonName = keyof typeof ART;

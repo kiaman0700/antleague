@@ -2,6 +2,7 @@
  * 아이콘: 이모지 대신 Lucide(MIT) 선 아이콘 — 앱에 포함돼 외부 접속 없음.
  * 이름으로 골라 쓰고, 업종·카드는 전용 매핑을 쓴다
  */
+import { hasToon, ToonIcon } from './ToonIcon';
 import {
   Heart,
   MessageCircle,
@@ -234,6 +235,9 @@ const CARD_ICONS: Record<string, LucideIcon> = {
   bonus: Gift,
 };
 export function CardIcon({ kind, size = 18 }: { kind: string; size?: number }) {
+  // 12종은 토스식 그림, 모르는 종류만 선 아이콘
+  const toon = 'card_' + kind;
+  if (hasToon(toon)) return <ToonIcon name={toon} size={Math.round(size * 1.2)} className={'card-ico k-' + kind} />;
   const C = CARD_ICONS[kind] ?? Sparkles;
   return <C size={size} strokeWidth={2} className={'ico card-ico k-' + kind} aria-hidden />;
 }

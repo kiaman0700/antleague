@@ -1886,3 +1886,5 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .stk-flame .toon { display: inline-block; vertical-align: -3px; }
 .streak-chip .toon { display: inline-block; vertical-align: -3px; }
 .theme-card > .toon { margin-top: 2px; }
+/* 카드 그림 뒤 둥근 빛 번짐 판 없앰 — 토스식 그림만 */
+.gc-orb { background: none; box-shadow: none; }
