@@ -136,3 +136,32 @@ describe('매칭에서 거래 0회 = 꼴찌 (2026-11-17 사용자 결정)', () =
     expect(f.results[0].nickname).not.toBe('A');
   });
 });
+
+describe('봇전에서 거래 0회 = 업적 없음 (순위는 그대로)', () => {
+  const fin = (kind: 'bot' | 'custom') => {
+    const d = game3(10);
+    d.room = { ...d.room, day: 10, status: 'finished', kind };
+    d.players = d.players.map((p) => (p.id === 'a' ? p : { ...p, bot_level: 3 }));
+    // 봇들은 비싸게 사서 손해 → 거래 0회인 A 가 재산 1위 (예전엔 1위·마음 편한 투자 등 업적을 받았음)
+    for (const id of ['b', 'c']) d.trades.push({ player_id: id, day: 0, symbol: 'CORE', side: 'buy', qty: 1, price: 900_000, fee: 900 });
+    return finalResults(d);
+  };
+  it('봇전: 거래 안 한 사람은 업적이 비어 있고, idle 표시·순위 변화는 없음', () => {
+    const f = fin('bot');
+    const me = f.results.find((r) => r.nickname === 'A')!;
+    expect(me.badges).toEqual([]);
+    expect(me.idle).toBeUndefined();
+    expect(f.winner).toBe('A');
+  });
+  it('커스텀 방은 그대로 (같은 장면에서 업적 받음)', () => {
+    expect(fin('custom').results.find((r) => r.nickname === 'A')!.badges.length).toBeGreaterThan(0);
+  });
+  it('봇전: 거래한 사람은 그대로 업적 계산', () => {
+    const d = game3(10);
+    d.room = { ...d.room, day: 10, status: 'finished', kind: 'bot' };
+    d.players = d.players.map((p) => (p.id === 'a' ? p : { ...p, bot_level: 2 }));
+    d.trades.push({ player_id: 'a', day: 0, symbol: 'CORE', side: 'buy', qty: 1, price: 1000, fee: 1 });
+    const me = finalResults(d).results.find((r) => r.nickname === 'A')!;
+    expect(me.badges.length).toBeGreaterThan(0);
+  });
+});
