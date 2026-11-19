@@ -2695,3 +2695,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 
 /* PC 결과(두 칸): '한 판 더·홈으로'가 맨 아래(1,800px 쯤)라 한참 내려야 보였음 → 화면 아래에 늘 붙어 있게 (휴대폰 결과와 같게) */
 .result.rs-wide .center-actions { position: sticky; bottom: 0; z-index: 20; margin-top: 16px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--bg, #111); border-top: 1px solid var(--line, #242424); justify-content: center; }
+/* 아래 '다시 보기' 알약: '진행 중인 오늘의 도전 · 다시 보기'처럼 길어지면 두 줄로 꺾였음 → 한 줄, 넘치면 말줄임 */
+.rc-pill { white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
