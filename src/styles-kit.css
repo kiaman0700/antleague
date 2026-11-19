@@ -2622,3 +2622,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 증강 고르기 안내 글: 뒤 화면 글자(일정 칩·숫자)와 겹쳐 읽기 어려웠음 → 글 뒤에 바탕 */
 .aug-cap { text-wrap: balance; align-self: center; max-width: 100%; padding: 6px 12px; border-radius: 12px; background: rgba(17, 17, 17, 0.92); border: 1px solid #2e2e2e; text-shadow: none; }
 @media (max-width: 600px) { .aug-float { background: rgba(0, 0, 0, 0.66); } }
+/* 가진 주식 줄: 손익 글자에 오름·내림 색이 붙어 있는데 '.hold small' 회색이 덮어 늘 회색이었음 */
+.hold .r small.up { color: var(--up); }
+.hold .r small.down { color: var(--down); }
