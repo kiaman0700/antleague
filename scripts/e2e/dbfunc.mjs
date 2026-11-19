@@ -77,6 +77,21 @@ if (!url) {
       ok('게스트 삭제: 오늘 활동한 게스트는 남음', left.has(newG));
       ok('게스트 삭제: 오래 쉰 회원은 절대 안 지워짐', left.has(member));
     } else ok('게스트 시험용 계정 2개', false, String(guests.length));
+    // ── (v27) 증강 수수료(0·0.2%)가 DB 제한에 막히지 않음 (066) — 아무 거래 하나를 바꿔 보고 끝에 되돌림 ──
+    const anyTrade = (await c.query('select id from trades limit 1')).rows[0];
+    if (anyTrade) {
+      for (const fee of [0, 0.002]) {
+        await c.query('savepoint fee_try');
+        let okFee = true;
+        try {
+          await c.query('update trades set fee = $2 where id = $1', [anyTrade.id, fee]);
+        } catch {
+          okFee = false;
+        }
+        await c.query('rollback to savepoint fee_try');
+        ok(`거래 수수료 ${fee * 100}% 를 DB 가 받음 (증강 수수료)`, okFee);
+      }
+    }
   } catch (e) {
     ok('DB 함수 시험 중 오류 없음', false, e instanceof Error ? e.message : String(e));
   } finally {
