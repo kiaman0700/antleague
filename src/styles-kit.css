@@ -2699,3 +2699,8 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .rc-pill { white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
 /* 휴대폰 게임: 인터넷 끊김 안내가 맨 위 재산·장 마감 버튼을 가렸음 → 위 고정 줄 바로 아래에 */
 .m-game ~ .net-banner, body:has(.m-game) .net-banner { top: calc(var(--m-top-h, 64px) + 8px); }
+/* PC 공지사항: 기본 페이지 폭(약 390px)이라 넓은 화면에서 가운데 좁게 몰려 보였음 → 랭킹·방 목록처럼 넓게 */
+@media (min-width: 861px) {
+  .lobby-shell .lobby.page.notices-page { width: 100%; max-width: 880px; }
+  .notices-page .notice-text { max-width: 680px; }
+}
