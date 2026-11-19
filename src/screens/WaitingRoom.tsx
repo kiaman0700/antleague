@@ -217,11 +217,23 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                       ))}
                     </div>
                   ) : canAddBot ? (
-                    <button className="btn sm slot-add-bot" onClick={() => setBotSlot(i)}>
-                      <Icon name="bot" size={14} /> 봇 추가
+                    <span className="slot-acts">
+                      {member && (
+                        <button className="btn sm slot-invite" onClick={() => setInviteOpen(true)}>
+                          <Icon name="userPlus" size={14} /> 친구 초대
+                        </button>
+                      )}
+                      <button className="btn sm slot-add-bot" onClick={() => setBotSlot(i)}>
+                        <Icon name="bot" size={14} /> 봇 추가
+                      </button>
+                    </span>
+                  ) : member ? (
+                    // 빈자리 안에서 바로 친구를 부름 (옆 칸까지 찾아가지 않게)
+                    <button className="btn sm slot-invite" onClick={() => setInviteOpen(true)}>
+                      <Icon name="userPlus" size={14} /> 친구 초대
                     </button>
                   ) : (
-                    <small>초대를 기다리는 중</small>
+                    <small>빈자리</small>
                   )}
                 </div>
               );
@@ -324,11 +336,14 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <b>
             준비 {readyCount}/{view.players.length}
           </b>
+          <span className="wr-ready-bar" aria-hidden>
+            <i style={{ width: `${view.players.length ? (readyCount / view.players.length) * 100 : 0}%` }} />
+          </span>
           <small className="muted">{isHost ? (canStart ? (awayNames ? `${awayNames} 님이 자리에 없어요. 그래도 시작할 수 있어요` : '모두 준비됐어요. 게임을 시작해 주세요') : view.players.length < 2 ? '한 명 더 들어오면 시작할 수 있어요' : `${notReady.map((p) => p.nickname).join(', ')} 님이 준비하길 기다려요`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
           {(err || error) && <p className="error">{err || error}</p>}
         </div>
         {isHost ? (
-          <button className="wr-go" disabled={!canStart} onClick={() => run(() => api('start', { roomId }))}>
+          <button className={'wr-go' + (canStart ? ' all-ready' : '')} disabled={!canStart} onClick={() => run(() => api('start', { roomId }))}>
             {canStart ? `게임 시작 (${view.players.length}명)` : '기다리는 중'}
           </button>
         ) : (

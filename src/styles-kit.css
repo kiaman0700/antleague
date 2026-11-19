@@ -2510,3 +2510,19 @@ span.roll.roll span { font-size: inherit; font-weight: inherit; color: inherit; 
 @keyframes brkFlash { from { background: color-mix(in srgb, var(--danger) 16%, var(--surface-2)); } to { background: var(--surface-2); } }
 .art-more > summary { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .cf-post.cf-new, .news-card.breaking.fresh { animation: none; } }
+
+/* 대기실: 준비한 칸은 보라 실선, 기다리는 칸은 점선, 준비 막대, 모두 준비되면 시작 버튼 한 번 강조 */
+.wr-slots .slot:not(.empty):not(.ready) { border-style: dashed !important; }
+.wr-slots .slot.ready:not(.bot) { border-color: #6b58ee !important; }
+.wr-slots .slot.ready { animation: slotReady 0.35s ease-out; }
+@keyframes slotReady { from { transform: scale(0.98); } to { transform: none; } }
+.wr-ready-bar { display: block; width: 120px; height: 6px; border-radius: 3px; background: #2a2a2a; overflow: hidden; margin: 4px 0 2px; }
+.wr-ready-bar > i { display: block; height: 100%; background: #6b58ee; border-radius: 3px; transition: width 0.3s ease-out; }
+.wr-go.all-ready { animation: goReady 0.9s ease-out 1; }
+@keyframes goReady { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .wr-slots .slot.ready, .wr-go.all-ready { animation: none; } .wr-ready-bar > i { transition: none; } }
+.mf-tip { margin: 8px 0 0; font-size: 13px; color: #c8c8c8; line-height: 1.5; animation: fadeTip 0.3s ease-out; }
+.mf-tip b { color: #b9adff; margin-right: 4px; }
+@keyframes fadeTip { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mf-tip { animation: none; } }
+.slot-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }

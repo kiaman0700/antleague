@@ -3,6 +3,7 @@
  * 대기는 로비 전체에서 하나(matchStore): 찾는 동안 다른 메뉴를 둘러봐도 되고, 위 '플레이' 버튼에 대기 시간이 흐름
  */
 import { useEffect, useRef, useState } from 'react';
+import { LOADING_TIPS } from './ui';
 import { api } from '../net/api';
 import { cancelMatch, clearMatchErr, getMatch, mmss, startMatch, useMatch, type Matched } from '../net/matchStore';
 import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpeed } from '../engine/matching';
@@ -281,6 +282,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
                 예상 대기 {waitLabel(info?.etaSec ?? null)}
                 {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 지금은 나만 찾고 있어요') : ''}
               </small>
+              {/* 기다리는 동안 짧은 팁 하나 (8초마다 바뀜) — 기다림이 덜 길게 느껴지게 */}
+              <SearchTip />
               <div className="mf-live-act">
                 {alt && (
                   <button className="btn sm mf-alt" onClick={() => switchTo(alt)}>
@@ -500,5 +503,18 @@ function ProgressStrip() {
         </span>
       )}
     </div>
+  );
+}
+
+function SearchTip() {
+  const [i, setI] = useState(() => Math.floor(Math.random() * LOADING_TIPS.length));
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % LOADING_TIPS.length), 8000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <p className="mf-tip" key={i}>
+      <b>팁</b> {LOADING_TIPS[i]}
+    </p>
   );
 }
