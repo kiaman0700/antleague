@@ -134,7 +134,8 @@ function Row({ m, onReroll, busy }: { m: MissionItem; onReroll?: () => void; bus
           </span>
         )}
         <span className="sr-only">{m.done ? ' (완료)' : ' (아직)'}</span>
-        {m.modes && m.modes.length < ALL_MODES && <span className="ms-modes">{m.modes.join(' · ')}</span>}
+        {/* 이름에 이미 판 종류가 들어 있으면('커스텀 방에서 …') 아래 꼬리표는 빼서 같은 말이 두 번 나오지 않게 */}
+        {m.modes && m.modes.length < ALL_MODES && !m.modes.every((x) => m.title.includes(x)) && <span className="ms-modes">{m.modes.join(' · ')}</span>}
       </span>
       <b className="ms-xp">{m.done ? `+${m.xp} 받음` : `+${m.xp}`}</b>
       {onReroll && !m.done && (
