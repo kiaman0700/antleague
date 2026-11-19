@@ -1,5 +1,8 @@
 import { LEVERAGE_CAP } from "../engine/engine";
 import { useEffect, useState } from "react";
+
+/** 지난 날 장중 봉 (종목·날·간격마다 한 번만 만듦) */
+const pastBars = new Map<string, ReturnType<typeof intradayBars>>();
 import { chartPrefSec } from "../prefs";
 import { getEffective } from "../prefs";
 import { Icon, SectorIcon } from "./Icon";
@@ -256,9 +259,17 @@ export function StockDetail(props: Props) {
     const dayMarks: { day: number; tone: "good" | "bad" | "day" }[] = [];
     for (let d = 0; d < doneDays; d++) {
       const bar = series[d];
-      const path = seenPath(scope, isUS ? "$" + symbol : symbol, d, n) ?? synthPath(bar, n, `${symbol}:${d}`, round);
       if (d > 0) dayMarks.push({ day: all.length, tone: "day" });
-      all.push(...intradayBars(bar.open, path, k, `${symbol}:${d}`, round));
+      // 지난 날 봉은 바뀌지 않으니 한 번 만든 것을 다시 씀 (화면이 0.5~1초마다 다시 그려져도 다시 계산하지 않게)
+      const ck = `${scope}|${symbol}|${d}|${n}|${k}|${bar.open}|${bar.close}`;
+      let bars = pastBars.get(ck);
+      if (!bars) {
+        const path = seenPath(scope, isUS ? "$" + symbol : symbol, d, n) ?? synthPath(bar, n, `${symbol}:${d}`, round);
+        bars = intradayBars(bar.open, path, k, `${symbol}:${d}`, round);
+        if (pastBars.size > 400) pastBars.clear();
+        pastBars.set(ck, bars);
+      }
+      all.push(...bars);
     }
     const offset = live ? all.length : Math.max(0, all.length - perDay);
     if (live) {

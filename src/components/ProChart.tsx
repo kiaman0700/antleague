@@ -1081,7 +1081,7 @@ function NowRow({ now, x, padL, right, top, plotBottom, H }: { now: { tick: numb
   const [, setT] = useState(0);
   useEffect(() => setBase({ tick: now.tick, at: Date.now() }), [now.tick]);
   useEffect(() => {
-    const id = setInterval(() => setT((v) => v + 1), 200);
+    const id = setInterval(() => setT((v) => v + 1), 500);
     return () => clearInterval(id);
   }, []);
   // 장 시작 시각이 있으면 시계로 바로 계산 (서버·기기 시계 차이를 감안해 받은 칸 근처로만), 없으면 받은 칸에서 이어 흘림
