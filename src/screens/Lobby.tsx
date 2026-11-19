@@ -1804,7 +1804,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
             autoFocus
             onClick={() =>
               playing
-                ? onGame({ mode: 'multi', roomId: multi.roomId, code: multi.code, playerId: multi.playerId, nickname: multi.nickname, ui: multi.mode === 'pro' ? 'pro' : 'easy' })
+                ? onGame({ mode: 'multi', roomId: multi.roomId, code: multi.code, playerId: multi.playerId, nickname: multi.nickname, ui: loadUi() })
                 : onWaiting(multi.roomId, multi.playerId, multi.nickname, multi.code)
             }
           >

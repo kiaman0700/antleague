@@ -2370,3 +2370,4 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .aug-own.t-silver { --tc: #c9ced8; }
 .aug-own.t-gold { --tc: #e9bb4e; }
 .aug-own.t-prism { --tc: #b9a6ff; }
+.slot-away { color: #f5b83d; font-weight: 700; font-size: 12px; }

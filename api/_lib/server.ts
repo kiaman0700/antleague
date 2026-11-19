@@ -1126,7 +1126,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!room) throw new GameError('방을 만들지 못했어요.', 500);
         roomId = room.id;
         await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
-        const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
+        // 자리를 만든 시각을 '마지막으로 본 때'로 — 잡힌 뒤 한 번도 안 들어온 사람이 90초 뒤 자리 비움이 되게 (없으면 판 내내 접속 중으로 쳐서 남은 사람이 날마다 끝까지 기다림)
+        const seenNow = new Date().toISOString();
+        const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true, last_seen: seenNow }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
         const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
         const matchedAt = new Date().toISOString();
@@ -1459,6 +1461,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         // 같은 요청이 두 번 왔거나, 같은 차례를 동시에 두 번 고른 경우 — DB 유니크가 하나만 남김
         if ((ins.error as { code?: string }).code === '23505') return { ok: true, dup: true };
         must(ins, 'aug');
+      }
+      // 검증과 넣기 사이에 날이 넘어갔으면(그 차례는 이미 자동으로 정해져 화면에 나감) 방금 줄을 없던 일로
+      if (action !== 'useAug') {
+        const nowRoom = (await sb.from('rooms').select('day, status').eq('id', roomId).maybeSingle()).data as { day: number; status: string } | null;
+        if (nowRoom && (nowRoom.day !== row.day || nowRoom.status !== 'playing')) {
+          await sb.from('augments').delete().eq('player_id', playerId).eq('n', row.n).eq('action', row.action).eq('aug', row.aug).eq('day', row.day);
+          throw new GameError('오늘 장이 끝났어요. 증강은 자동으로 정해졌어요.', 409);
+        }
       }
       if (undo) {
         const ins = await sb.from('trades').insert({ room_id: roomId, ...undo });
@@ -1807,8 +1817,14 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         // 초대한 사람이 아직 그 방에 있어야
         const host = (await sb.from('players').select('id').eq('room_id', room.id).eq('user_id', inv.from_user).maybeSingle()).data;
         if (!host) throw new GameError('초대한 친구가 방에서 나갔어요.', 409);
-        const r = await addToRoom(room, uid, me.nickname, mode);
-        return { kind: 'room', ...r, nickname: me.nickname };
+        try {
+          const r = await addToRoom(room, uid, me.nickname, mode);
+          return { kind: 'room', ...r, nickname: me.nickname };
+        } catch (e) {
+          // 방이 가득 찼거나 내가 다른 대결 중이라 못 들어갔으면 초대를 다시 쓸 수 있게 되돌림 (만료 시간은 그대로)
+          await sb.from('invites').update({ status: 'pending' }).eq('id', id).eq('status', 'accepted');
+          throw e;
+        }
       }
       // 1대1: 둘 다 다른 게임이 없어야 (게임이 없으면 지난 매칭 결과 표는 정리)
       if (await busySeat(uid)) throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 수락해 주세요.', 409);
@@ -1833,8 +1849,8 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
         const fromNick = from.nickname;
         const ins = must(await sb.from('players').insert([
-          { room_id: room.id, user_id: inv.from_user, nickname: fromNick, mode: 'easy', ready: true },
-          { room_id: room.id, user_id: uid, nickname: me.nickname, mode, ready: true },
+          { room_id: room.id, user_id: inv.from_user, nickname: fromNick, mode: 'easy', ready: true, last_seen: new Date().toISOString() },
+          { room_id: room.id, user_id: uid, nickname: me.nickname, mode, ready: true, last_seen: new Date().toISOString() },
         ]).select('id, user_id'), 'duel players') as { id: string; user_id: string }[];
         const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'duel start');

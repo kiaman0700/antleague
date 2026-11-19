@@ -126,6 +126,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
   const notReady = others.filter((p) => !p.ready && p.id !== room.hostId);
   const link = `${location.origin}/room/${room.code}`;
   const canStart = isHost && view.players.length >= 2 && notReady.length === 0;
+  const awayNames = view.players.filter((p) => p.status === 'away' && p.id !== playerId && !p.bot).map((p) => p.nickname).join(', ');
   const turnLabel = labelOfTurn(room.turnSeconds);
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -252,6 +253,8 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                   {p.id === playerId && <em> (나)</em>}
                 </b>
                 <small className="slot-state">{host ? <><Icon name="crown" size={12} /> 방장</> : p.ready ? <><Icon name="check" size={12} /> 준비 완료</> : '대기 중'}</small>
+                {/* 창을 닫았거나 오래 응답이 없는 사람 — 준비 완료로 보여도 실제로는 없을 수 있음 */}
+                {p.status === 'away' && p.id !== playerId && <small className="slot-away">자리 비움</small>}
                 <small className="muted">{p.mode === 'easy' ? '초보 모드' : '일반 모드'}</small>
                 {isHost && p.id !== playerId && (
                   <button
@@ -321,7 +324,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <b>
             준비 {readyCount}/{view.players.length}
           </b>
-          <small className="muted">{isHost ? (canStart ? '모두 준비됐어요. 게임을 시작해 주세요' : view.players.length < 2 ? '한 명 더 들어오면 시작할 수 있어요' : `${notReady.map((p) => p.nickname).join(', ')} 님이 준비하길 기다려요`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
+          <small className="muted">{isHost ? (canStart ? (awayNames ? `${awayNames} 님이 자리에 없어요. 그래도 시작할 수 있어요` : '모두 준비됐어요. 게임을 시작해 주세요') : view.players.length < 2 ? '한 명 더 들어오면 시작할 수 있어요' : `${notReady.map((p) => p.nickname).join(', ')} 님이 준비하길 기다려요`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
           {(err || error) && <p className="error">{err || error}</p>}
         </div>
         {isHost ? (

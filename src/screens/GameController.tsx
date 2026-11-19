@@ -559,6 +559,23 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   }, [news, day]);
   const change = useCallback((sym: string) => (market ? quote(market, sym, displayDay, displayClosed).ch : 0), [market, displayDay, displayClosed]);
 
+  // (v27) 시간 안에 못 골라 증강이 자동으로 정해졌으면 한 번 알림 (창만 사라져 왜 정해졌는지 모르지 않게)
+  const autoSeen = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const mine = view?.aug?.mine;
+    if (!mine) return;
+    const autos = mine.filter((x) => x.auto);
+    if (autoSeen.current === null) {
+      autoSeen.current = new Set(autos.map((x) => x.n));
+      return;
+    }
+    for (const x of autos) {
+      if (autoSeen.current.has(x.n)) continue;
+      autoSeen.current.add(x.n);
+      showToast(`시간이 지나 증강이 자동으로 정해졌어요: ${AUG_MAP[x.id]?.name ?? ''}`, 'warn');
+    }
+  }, [view?.aug?.mine]);
+
   // (v27) 증강으로 돈이 들어온 날 한 번 알림 (처음 화면을 열 때 이미 있던 것은 조용히)
   const augSeen = useRef<Set<string> | null>(null);
   useEffect(() => {

@@ -19,7 +19,7 @@ function GameController(props: React.ComponentProps<typeof GameControllerLazy>) 
 import { Lobby, type ResumeInfo } from './screens/Lobby';
 // 대기실은 방에 들어갈 때만 받음 (첫 화면 파일 줄이기)
 const WaitingRoom = lazy(() => import('./screens/WaitingRoom').then((m) => ({ default: m.WaitingRoom })));
-import { loadNick, loadUi, type UiMode } from './session';
+import { loadNick, loadUi } from './session';
 import { setFlash } from './lib/flash';
 
 /** 새로고침하거나 주소를 직접 열었을 때 서버/저장소 정보로 화면 복원 */
@@ -42,7 +42,7 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
     const r = await api<ResumeInfo | null>('resume', m[1].toLowerCase() === 'game' ? { code } : {}).catch(() => null);
     if (r && r.code === code) {
       if (r.status === 'waiting') return { route: { kind: 'waiting', roomId: r.roomId, playerId: r.playerId, nickname: r.nickname, code } };
-      return { route: { kind: 'game', session: { mode: 'multi', roomId: r.roomId, code, playerId: r.playerId, nickname: r.nickname, ui: r.mode as UiMode } } };
+      return { route: { kind: 'game', session: { mode: 'multi', roomId: r.roomId, code, playerId: r.playerId, nickname: r.nickname, ui: loadUi() } } };
     }
   }
   // 내 방이 아니면 초대 링크로 보고 로비에서 코드를 채워 줌
