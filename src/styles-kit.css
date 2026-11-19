@@ -2697,3 +2697,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .result.rs-wide .center-actions { position: sticky; bottom: 0; z-index: 20; margin-top: 16px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--bg, #111); border-top: 1px solid var(--line, #242424); justify-content: center; }
 /* 아래 '다시 보기' 알약: '진행 중인 오늘의 도전 · 다시 보기'처럼 길어지면 두 줄로 꺾였음 → 한 줄, 넘치면 말줄임 */
 .rc-pill { white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+/* 휴대폰 게임: 인터넷 끊김 안내가 맨 위 재산·장 마감 버튼을 가렸음 → 위 고정 줄 바로 아래에 */
+.m-game ~ .net-banner, body:has(.m-game) .net-banner { top: calc(var(--m-top-h, 64px) + 8px); }
