@@ -822,17 +822,17 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 새로고침한 게임 주소(/game/코드): 그 방에 내 자리가 있으면 끝난 판이어도 돌려줌 → 결과 화면을 다시 봄 (내 자리만 찾음)
       const want = typeof b.code === 'string' && /^[A-Za-z0-9]{6}$/.test(b.code) ? b.code.toUpperCase() : null;
       if (want) {
-        const hit = (await sb.from('players').select('id, nickname, mode, room_id, left_game, rooms!inner(id, code, status)').eq('user_id', uid).eq('rooms.code', want).order('created_at', { ascending: false }).limit(1)).data as unknown as { id: string; nickname: string; mode: string; left_game: boolean; rooms: { id: string; code: string; status: string } }[] | null;
+        const hit = (await sb.from('players').select('id, nickname, mode, room_id, left_game, rooms!inner(id, code, status, kind)').eq('user_id', uid).eq('rooms.code', want).order('created_at', { ascending: false }).limit(1)).data as unknown as { id: string; nickname: string; mode: string; left_game: boolean; rooms: { id: string; code: string; status: string; kind?: string | null } }[] | null;
         const h = hit?.[0];
         // 기권한 사람은 진행 중인 판으로 다시 들이지 않음(끝난 판 결과는 볼 수 있음)
-        if (h && (h.rooms.status === 'finished' || !h.left_game)) return { roomId: h.rooms.id, code: h.rooms.code, status: h.rooms.status, playerId: h.id, nickname: h.nickname, mode: h.mode };
+        if (h && (h.rooms.status === 'finished' || !h.left_game)) return { roomId: h.rooms.id, code: h.rooms.code, status: h.rooms.status, kind: h.rooms.kind ?? null, playerId: h.id, nickname: h.nickname, mode: h.mode };
       }
       const rows = must(
-        await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status)').eq('user_id', uid).eq('left_game', false).neq('rooms.status', 'finished').order('created_at', { ascending: false }).limit(1),
+        await sb.from('players').select('id, nickname, mode, room_id, rooms!inner(id, code, status, kind)').eq('user_id', uid).eq('left_game', false).neq('rooms.status', 'finished').order('created_at', { ascending: false }).limit(1),
         'resume',
-      ) as unknown as { id: string; nickname: string; mode: string; rooms: { id: string; code: string; status: string } }[];
+      ) as unknown as { id: string; nickname: string; mode: string; rooms: { id: string; code: string; status: string; kind?: string | null } }[];
       const r = rows[0];
-      return r ? { roomId: r.rooms.id, code: r.rooms.code, status: r.rooms.status, playerId: r.id, nickname: r.nickname, mode: r.mode } : null;
+      return r ? { roomId: r.rooms.id, code: r.rooms.code, status: r.rooms.status, kind: r.rooms.kind ?? null, playerId: r.id, nickname: r.nickname, mode: r.mode } : null;
     }
 
     case 'history': {

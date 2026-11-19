@@ -63,6 +63,8 @@ export interface ResumeInfo {
   roomId: string;
   code: string;
   status: 'waiting' | 'playing';
+  /** 방 종류(내 방) — 오늘의 도전·봇전은 '대결·기권' 대신 맞는 말로 */
+  kind?: string | null;
   playerId: string;
   nickname: string;
   mode: string;
@@ -1791,11 +1793,13 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
   }
   if (multi) {
     const playing = multi.status === 'playing';
+    const what = multi.kind === 'daily' ? '오늘의 도전' : multi.kind === 'bot' ? '봇전' : '대결';
+    const solo = multi.kind === 'daily' || multi.kind === 'bot';
     return (
-      <Modal title={<>{playing ? '진행 중인 대결이 있어요' : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
+      <Modal title={<>{playing ? `진행 중인 ${what}이 있어요` : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
         <p className="muted small">
           {playing
-            ? '연결이 끊겼거나 창이 닫혀서 대결에서 빠져나왔어요. 대결은 계속되고 있어요. 다시 들어갈까요?'
+            ? `연결이 끊겼거나 창이 닫혀서 빠져나왔어요. ${what}은 계속되고 있어요. 다시 들어갈까요?`
             : '대기실에 자리가 남아 있어요. 돌아가거나, 방에서 나갈 수 있어요.'}
         </p>
         <p className="rc-room">
@@ -1807,12 +1811,12 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
             className="btn danger ghost"
             disabled={busy}
             onClick={async () => {
-              if (playing && !(await ask('기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?', { ok: '기권하기', danger: true }))) return;
+              if (playing && !(await ask(solo ? `그만두면 이 ${what}에 다시 들어갈 수 없어요. 그만둘까요?` : '기권하면 이 대결에 다시 들어갈 수 없어요. 기권할까요?', { ok: solo ? '그만두기' : '기권하기', danger: true }))) return;
               setBusy(true);
               setErr('');
               api('leave', { roomId: multi.roomId })
                 .then(() => {
-                  setDone(playing ? '기권했어요. 이 대결은 여기서 끝났어요.' : '방에서 나왔어요.');
+                  setDone(playing ? (solo ? `${what}을 그만뒀어요.` : '기권했어요. 이 대결은 여기서 끝났어요.') : '방에서 나왔어요.');
                   setMulti(null);
                   window.dispatchEvent(new Event('rooms-changed'));
                 })
@@ -1821,7 +1825,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
                 .finally(() => setBusy(false));
             }}
           >
-            {playing ? '기권하기' : '방에서 나가기'}
+            {playing ? (solo ? '그만두기' : '기권하기') : '방에서 나가기'}
           </button>
           <button
             className="btn primary"
