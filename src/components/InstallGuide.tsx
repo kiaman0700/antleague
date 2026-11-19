@@ -132,7 +132,7 @@ export function InstallGuide() {
             <Icon name="check" size={16} /> 설치했어요! 홈 화면(PC는 바탕화면)의 개미리그로 열어 주세요
           </p>
         ) : can ? (
-          <button className="btn primary ig-one ig-glow" onClick={() => promptInstall().then(setDone)}>
+          <button className="btn primary ig-one ig-glow" onClick={() => void promptInstall().then(setDone, () => {})}>
             앱으로 설치하기
           </button>
         ) : null}

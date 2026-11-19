@@ -2181,11 +2181,12 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         )}
       </div>
       <BottomNav active={active} online={online} onGo={goTab} badges={badges} />
-      <Reconnect onWaiting={onWaiting} onGame={onGame} quiet={resolved === 'login' || resolved === 'signup'} />
+      {/* 로그인·가입·게스트 바꾸기로 계정이 바뀌면 그 계정의 진행 중 자리를 다시 찾음 */}
+      <Reconnect key={account.status + ':' + (account.profile?.username ?? '')} onWaiting={onWaiting} onGame={onGame} quiet={resolved === 'login' || resolved === 'signup'} />
       <FlashNote />
       {online && <NoticeCenter onGo={go} quiet={resolved === 'login' || resolved === 'signup' || resolved === 'notices'} />}
       <OfflineBanner />
-      {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => go('casual')} />}
+      {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => { void reloadParty(); go('casual'); }} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
       {(modal === 'privacy' || modal === 'terms') && <LegalSheet kind={modal} onClose={() => setModal(null)} />}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}

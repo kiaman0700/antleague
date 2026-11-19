@@ -271,13 +271,13 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                     </button>
                     {menu === f.id && (
                       <span className="fr-menu" role="menu">
-                        <button role="menuitem" aria-disabled={f.status !== 'online'} data-off={f.status !== 'online' || undefined} onClick={() => (setMenu(null), f.status !== 'online' ? setMsg(f.status === 'playing' ? `${f.nickname} 님은 게임 중이에요. 끝나면 1대1을 신청할 수 있어요.` : `${f.nickname} 님이 접속 중일 때 1대1을 신청할 수 있어요.`) : okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites())))}>
+                        <button role="menuitem" disabled={busy} aria-disabled={f.status !== 'online'} data-off={f.status !== 'online' || undefined} onClick={() => (setMenu(null), f.status !== 'online' ? setMsg(f.status === 'playing' ? `${f.nickname} 님은 게임 중이에요. 끝나면 1대1을 신청할 수 있어요.` : `${f.nickname} 님이 접속 중일 때 1대1을 신청할 수 있어요.`) : okWhileMatching('1대1 신청은') && run(async () => (await api('challenge', { friendId: f.id, speed: 'normal' }), pokeInvites())))}>
                           1대1 신청 · 일반 ({SPEED_PRESET.normal.minutes})
                         </button>
-                        <button role="menuitem" onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>
+                        <button role="menuitem" disabled={busy} onClick={() => confirmThen(`${f.nickname} 님을 친구에서 뺄까요?`, () => api('friendRemove', { id: f.id }), '친구에서 뺐어요')}>
                           친구 끊기
                         </button>
-                        <button role="menuitem" className="danger" onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 친구에서도 빠지고, 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
+                        <button role="menuitem" className="danger" disabled={busy} onClick={() => confirmThen(`${f.nickname} 님을 차단할까요? 친구에서도 빠지고, 신청이 더 오지 않아요. (상대에게는 알리지 않아요)`, () => api('friendBlock', { id: f.id }), '차단했어요')}>
                           차단
                         </button>
                       </span>

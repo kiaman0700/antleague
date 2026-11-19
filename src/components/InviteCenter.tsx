@@ -126,8 +126,8 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
   // 거절·만료 결과는 한 번만 알림
   useEffect(() => {
     if (!duel || seen.current.has('d:' + duel.id)) return;
-    const expiredNow = duel.status === 'pending' && secsLeft(duel.expiresAt, now) === 0;
-    if (duel.status === 'declined' || duel.status === 'expired' || expiredNow) {
+    // 화면 시계가 0이 돼도 서버가 마지막 순간에 받아들였을 수 있어 서버의 '만료·거절'만 믿음
+    if (duel.status === 'declined' || duel.status === 'expired') {
       seen.current.add('d:' + duel.id);
       // 방금 보낸 신청에 대해서만 (예전 기록이면 조용히)
       if (Date.now() - new Date(duel.expiresAt).getTime() < 60_000) setNote(duel.status === 'declined' ? `${duel.to} 님이 거절했어요.` : `${duel.to} 님의 답이 없었어요.`);

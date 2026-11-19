@@ -74,9 +74,10 @@ export function onInstallChange(f: () => void) {
 export async function promptInstall(): Promise<boolean> {
   const e = deferred;
   if (!e) return false;
-  await e.prompt();
+  // 설치 창은 한 번만 띄울 수 있음 — 닫아도 버리고, 아직 설치할 수 있으면 브라우저가 새로 알려 줌
+  deferred = null;
+  await e.prompt().catch(() => {});
   const r = await e.userChoice.catch(() => ({ outcome: 'dismissed' as const }));
-  if (r.outcome === 'accepted') deferred = null;
   subs.forEach((f) => f());
   return r.outcome === 'accepted';
 }

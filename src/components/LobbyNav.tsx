@@ -239,6 +239,8 @@ export function useGuestGate(account: AccountState, online: boolean, onSignup: (
   const visitor = online && (account.status === 'visitor' || account.status === 'loading');
   const guard = (fn: () => void) => {
     if (!online || account.status === 'member') return fn();
+    // 계정을 아직 불러오는 중이면 손님 안내를 띄우지 않음 (회원이 잠깐 손님 창을 보고 잘못 고르지 않게)
+    if (account.status === 'loading') return;
     if (account.status === 'guest' && nickValid(loadNick())) return fn();
     setPending({ fn, step: account.status === 'guest' ? 'nick' : 'intro' });
   };
@@ -253,6 +255,8 @@ export function useGuestGate(account: AccountState, online: boolean, onSignup: (
       onLogin={() => (setPending(null), onLogin())}
       onStart={() => {
         const fn = pending.fn;
+        // 게스트 코드로 불러온 계정은 이 기기에 닉네임이 없을 수 있음 → 닉네임부터 (빈 이름으로 방 입장 등이 실패하지 않게)
+        if (!nickValid(loadNick())) return setPending({ fn, step: 'nick' });
         setPending(null);
         fn();
       }}
