@@ -1,4 +1,5 @@
 import { ThemeCard } from '../components/ThemeCard';
+import { AugCrest, OrnCorners } from '../components/AugFrame';
 import { copyText, shareOrCopy } from '../lib/copy';
 import { api } from '../net/api';
 import { setFlash } from '../lib/flash';
@@ -268,8 +269,12 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   }, []);
 
   // 화면 조각 (PC 는 한 줄로, 휴대폰은 칩 + 좌우로 넘기는 5칸 — 설계서 design/v24-big-update.md B)
+  // 결과 띠 재질: 이겼으면 금(날개), 그 밖엔 은 — 진 사람도 같은 품격으로 (색만 차분하게)
+  const bannerTone: 'gold' | 'silver' | 'amethyst' = solo ? (soloWin ? 'gold' : 'amethyst') : winner && iWon ? 'gold' : 'silver';
   const bannerEl = <>
-      <div className={'banner ' + (solo ? (soloWin ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
+      <div className={'banner orn orn-' + bannerTone + ' ' + (solo ? (soloWin ? 'win' : '') : winner ? (iWon ? 'win' : 'lose') : 'draw')}>
+        <OrnCorners tone={bannerTone} />
+        <AugCrest tier={bannerTone} className="rs-crest" />
         {solo ? (
           <>
             <div className="crown"><Icon name={soloWin ? 'trophy' : 'activity'} size={40} /></div>
@@ -326,7 +331,8 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const myAug = final.augIncome?.[me.id] ?? [];
   const tradeDeltas = me.hist.slice(1).map((v, d) => v - me.hist[d] - myAug.filter((x) => x.day === d).reduce((sum, x) => sum + x.amount, 0));
   const heroEl = (
-    <div className="panel rs-hero">
+    <div className="panel rs-hero orn orn-amethyst orn-thin">
+      <OrnCorners tone="amethyst" plain />
       <span className="rh-rank">{solo ? (matchKind === 'daily' ? '오늘의 도전' : '연습') + ' · 내 수익률' : `${myRank0 + 1}위 · ${results.length}명 중`}</span>
       <b className={'rh-ret ' + tone(me.ret)}>{pct(me.ret)}</b>
       <span className="rh-won">

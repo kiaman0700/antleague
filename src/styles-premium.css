@@ -206,3 +206,18 @@
 .badge-grid .bg-cell { border: 2px solid transparent !important; background: linear-gradient(180deg, #1c1c21, #141417) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1px #08080a, 0 6px 14px rgba(0, 0, 0, 0.4) !important; }
 .badge-grid .bg-cell.hidden > i { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; color: #6a6a74; border: 2px solid transparent; background: radial-gradient(circle at 50% 38%, #24242a, #0e0e11 72%) padding-box, var(--metal-dark) border-box; box-shadow: 0 0 0 1px #08080a, inset 0 0 0 1px rgba(0, 0, 0, 0.7); }
 .badge-grid .bg-cell.hidden > b { color: #6a6a74; }
+
+/* ════════ 결과 화면 ════════ */
+.result .banner.orn { margin-top: 50px !important; padding: 62px 24px 26px !important; text-align: center; overflow: visible !important; }
+.result .banner.orn .crown { display: none; }
+.result .banner.orn h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+.result .banner.orn.orn-gold h1 { color: #ffe08a; }
+.rs-crest { position: absolute !important; top: -46px; left: 50%; width: 220px; height: 101px; transform: translateX(-50%); z-index: 4; pointer-events: none; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.7)); }
+.result .rs-hero.orn { overflow: visible; }
+.result .panel:not(.orn) { border: 2px solid transparent !important; background: linear-gradient(180deg, #1c1c21 0%, #161619 40%, #121215 100%) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1px #08080a, 0 12px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important; }
+.result .again-btn:not(:disabled) { border: 3px solid transparent !important; background: linear-gradient(#6b58ee, #6b58ee) padding-box, var(--metal-gold) border-box !important; color: #fff !important; box-shadow: 0 0 0 1.5px #0a0a0c, 0 10px 22px rgba(0, 0, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.28), inset 0 -6px 0 rgba(30, 18, 110, 0.55) !important; }
+@media (max-width: 860px) {
+  .result .banner.orn { margin-top: 38px !important; padding: 46px 16px 20px !important; }
+  .result .banner.orn h1 { font-size: 26px; }
+  .rs-crest { width: 160px; height: 74px; top: -34px; }
+}
