@@ -5,7 +5,7 @@
  * 쫓겨난 기기는 '확인'을 누를 때까지 안내를 보여 주고, 확인하면 다시 로그인하는 곳으로.
  */
 import { useState } from 'react';
-import { api } from '../net/api';
+import { api, isGuestUser } from '../net/api';
 import { useAccount } from '../net/account';
 import { goSignIn, setConcurrent, useConcurrent, wasGuest } from '../net/concurrent';
 import { supabase } from '../lib/supabase';
@@ -34,7 +34,7 @@ export function ConcurrentHost() {
     setBusy(true);
     // 묻는 동안엔 서버 요청이 막혀 계정 상태(회원/손님)를 아직 모를 수 있음 → 로그인 정보로 직접 확인
     const sess = (await supabase?.auth.getSession().catch(() => null))?.data.session;
-    const guest = sess ? !!sess.user?.is_anonymous : acc.status === 'guest';
+    const guest = sess ? isGuestUser(sess.user) : acc.status === 'guest';
     await supabase?.auth.signOut({ scope: 'local' }).catch(() => {});
     setBusy(false);
     setConcurrent(null);

@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { foldWidth, nickNotice } from '../game/nickname.js';
+import { foldWidth, hasHiddenChars, nickNotice } from '../game/nickname.js';
 import { activeEffects, BONUS_TABLE, INFO_ONE_PER_DAY_VERSION, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
@@ -301,6 +301,7 @@ export function cleanNickname(v: unknown): string {
 /** 새로 정하는 닉네임(가입·바꾸기·게스트) — 운영자 흉내 이름도 막음. 이미 쓰던 이름은 그대로 둠 */
 export function newNickname(v: unknown): string {
   const s = cleanNickname(v);
+  if (hasHiddenChars(s)) throw new GameError('닉네임에 보이지 않는 글자는 쓸 수 없어요.');
   const bad = nickNotice(s);
   if (bad) throw new GameError(bad);
   return s;

@@ -31,7 +31,8 @@ async function member(tag) {
   if (r.s !== 200) throw new Error('signup ' + JSON.stringify(r.b));
   const { data } = await client().auth.signInWithPassword({ email: await loginEmail(u), password: pw });
   const tok = data.session.access_token;
-  return (body) => post(body, tok);
+  // 탈퇴는 지금 비밀번호가 필요 → 시험에서는 알아서 붙임
+  return (body) => post(body?.action === 'forgetMe' ? { ...body, current: pw } : body, tok);
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function pollAll(us, max = 15) {

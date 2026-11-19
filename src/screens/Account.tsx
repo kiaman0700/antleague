@@ -349,8 +349,9 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
               run(async () => {
                 const r = await api<{ recoveryCode: string }>('signup', { username: username.trim().toLowerCase(), password, nickname: nickname.trim(), agree14, agreePrivacy, agreeTerms });
                 // 비밀번호를 정하면 예전 세션이 끝나므로 새 아이디로 바로 로그인
-                await loginWith(username, password);
+                // 복구 코드를 먼저 보여 줌 — 바로 로그인이 인터넷 문제로 실패해도 코드는 놓치지 않게
                 setRecovery(r.recoveryCode);
+                await loginWith(username, password);
               })
             }
           >
@@ -367,8 +368,9 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
                 const r = await fetch('/api/game', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'resetPassword', username: username.trim().toLowerCase(), code, password }) });
                 const j = (await r.json()) as { error?: string; recoveryCode?: string };
                 if (!r.ok) throw new Error(j.error ?? '바꾸지 못했어요.');
-                await loginWith(username, password);
+                // 서버가 이미 복구 코드를 새것으로 바꿨으므로 먼저 보여 줌 (로그인이 실패해도 새 코드를 놓치지 않게)
                 setRecovery(j.recoveryCode ?? null);
+                await loginWith(username, password);
               })
             }
           >

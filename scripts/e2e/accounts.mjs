@@ -177,6 +177,8 @@ ok('쓴 복구 코드는 다시 못 씀', reuse.s === 403);
 // ---- 정리: 탈퇴 ----
 // 비밀번호를 바꾸면 예전 세션이 끝나므로 새 비밀번호로 로그인해서 탈퇴
 const A3 = (body) => post(body, neu.data.session.access_token);
-ok('A 탈퇴', (await A3({ action: 'forgetMe' })).s === 200);
-ok('B 탈퇴', (await B({ action: 'forgetMe' })).s === 200);
+ok('회원 탈퇴는 지금 비밀번호 없이는 거절 (403)', (await A3({ action: 'forgetMe' })).s === 403);
+ok('틀린 비밀번호로도 거절 (403)', (await A3({ action: 'forgetMe', current: 'wrong-pass-123' })).s === 403);
+ok('A 탈퇴', (await A3({ action: 'forgetMe', current: pw2 })).s === 200);
+ok('B 탈퇴', (await B({ action: 'forgetMe', current: pw })).s === 200);
 done();

@@ -5,7 +5,7 @@
  */
 import { leagueInfo } from './league.js';
 import { myStreak } from './streaks.js';
-import { nickNotice, randomGuestName, titleProblem } from '../../src/game/nickname.js';
+import { hasHiddenChars, nickNotice, randomGuestName, titleProblem } from '../../src/game/nickname.js';
 import { THEME_VERSION, themeForDay } from '../../src/game/themes.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -32,6 +32,7 @@ function cleanTitle(v: unknown, fallback: string) {
   if (typeof v !== 'string') throw new GameError('방 제목을 확인해 주세요.');
   const t = v.normalize('NFC').trim().replace(/\s+/g, ' ');
   if (!/^[^\p{C}<>]{1,20}$/u.test(t)) throw new GameError('방 제목은 1~20자로, 특수 제어문자 없이 입력해 주세요.');
+  if (hasHiddenChars(t)) throw new GameError('방 제목에 보이지 않는 글자는 쓸 수 없어요.');
   const bad = titleProblem(t);
   if (bad) throw new GameError(bad);
   return t;
@@ -164,7 +165,7 @@ import {
 import type { AugRow } from '../../src/engine/augs.js';
 import type { ItemRow } from '../../src/game/items.js';
 import { SOCIAL_ACTIONS, socialAct, touchSeen } from './social.js';
-import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
+import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword, verifyPassword } from './accounts.js';
 import { CASUAL_MAX_WINDOW, compatible, estimateWaitSec, PARTY_MAX, parseQueue, pickGroup, queueName, rankedMax, ratingWindow, SPEED_PRESET } from '../../src/engine/matching.js';
 import { startCashFor, type Trade } from '../../src/game/portfolio.js';
 import { botInfo, MAX_BOTS, runBots } from '../../src/engine/bots.js';
@@ -814,7 +815,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     }
 
     case 'history': {
-      const mine = must(await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(200), 'my rooms') as { room_id: string; nickname: string }[];
+      const mine = must(await sb.from('players').select('room_id, nickname').eq('user_id', uid).order('created_at', { ascending: false }).limit(200), 'my rooms') as { room_id: string; nickname: string }[];
       if (!mine.length) return [];
       const nickOf = new Map(mine.map((m) => [m.room_id, m.nickname]));
       const rows = must(
@@ -924,6 +925,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 내 데이터 모두 지우기: 익명 계정을 지우면 내 참가 기록·거래·카드가 함께 지워짐(cascade).
       // 진행·대기 중인 방이 있으면 다른 사람 게임이 깨지므로 먼저 나가게 함
       rateLimit(uid + ':forget', 3, 600_000);
+      // 회원 탈퇴는 지금 비밀번호 확인 (비밀번호 바꾸기와 같게) — 로그인된 채 잠깐 비운 기기에서 남이 계정을 지우지 못하게
+      if ((await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data) await verifyPassword(sb, uid, b.current);
       const mine = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid), 'my rooms') as unknown as { id: string; left_game: boolean; rooms: { status: string } }[];
       if (mine.some((p) => p.rooms.status === 'waiting' || (p.rooms.status === 'playing' && !p.left_game)))
         throw new GameError('대기 중이거나 진행 중인 방이 있어요. 먼저 그 방에서 나간(기권한) 뒤에 지울 수 있어요.', 409);
@@ -1858,7 +1861,11 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
         }
       }
       // 1대1: 둘 다 다른 게임이 없어야 (게임이 없으면 지난 매칭 결과 표는 정리)
-      if (await busySeat(uid)) throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 수락해 주세요.', 409);
+      if (await busySeat(uid)) {
+        // 수락은 못 했지만 초대는 살려 둠 — 나간 뒤 다시 누를 수 있게 (만료 시간은 그대로)
+        await sb.from('invites').update({ status: 'pending' }).eq('id', id).eq('status', 'accepted');
+        throw new GameError('진행 중인 대결이나 대기실이 있어요. 먼저 끝내거나 나간 뒤에 수락해 주세요.', 409);
+      }
       await sb.from('match_tickets').delete().eq('user_id', uid).not('room_id', 'is', null);
       const fromT = (await sb.from('match_tickets').select('claim, room_id').eq('user_id', inv.from_user).maybeSingle()).data as { claim: string | null; room_id: string | null } | null;
       if ((await busySeat(inv.from_user)) || (fromT && fromT.claim && !fromT.room_id)) {

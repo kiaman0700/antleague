@@ -115,7 +115,7 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
     if (best_tier >= 5) out.league_gold = 1;
     if (firsts > 0) out.league_win = firsts;
   }
-  const mine = ((await sb.from('players').select('room_id, nickname').eq('user_id', uid).limit(300)).data ?? []) as { room_id: string; nickname: string }[];
+  const mine = ((await sb.from('players').select('room_id, nickname').eq('user_id', uid).order('created_at', { ascending: false }).limit(1000)).data ?? []) as { room_id: string; nickname: string }[];
   if (!mine.length) return out;
   const nick = new Map(mine.map((m) => [m.room_id, m.nickname]));
   const hist = ((await sb.from('match_history').select('room_id, results').in('room_id', mine.map((m) => m.room_id))).data ?? []) as { room_id: string; results: { nickname: string; badges?: string[] }[] }[];
@@ -139,7 +139,7 @@ export async function loginEmail(sb: SupabaseClient, b: Body) {
 }
 
 /** 지금 비밀번호 확인 (따로 만든 클라이언트로 로그인해 보고, 만든 세션은 바로 끝냄) */
-async function verifyPassword(sb: SupabaseClient, uid: string, password: unknown) {
+export async function verifyPassword(sb: SupabaseClient, uid: string, password: unknown) {
   const bad = () => new GameError('지금 비밀번호가 맞지 않아요.', 403);
   if (typeof password !== 'string' || !password || password.length > 72) throw bad();
   const g = await sb.auth.admin.getUserById(uid);

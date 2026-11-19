@@ -44,3 +44,19 @@ describe('손님 무작위 이름', () => {
     }
   });
 });
+
+describe('보이지 않는 글자', () => {
+  it('한글 채움·점자 빈칸·결합 부호가 낀 이름은 숨은 글자로 잡힘, 그림 글자(변형 선택자)는 괜찮음', async () => {
+    const { hasHiddenChars } = await import('./nickname');
+    expect(hasHiddenChars('홍길동ㅤ')).toBe(true);
+    expect(hasHiddenChars('ㅤㅤ')).toBe(true);
+    expect(hasHiddenChars('운́영자')).toBe(true);
+    expect(hasHiddenChars('a⠀b')).toBe(true);
+    expect(hasHiddenChars('개미❤️')).toBe(false);
+    expect(hasHiddenChars('주식왕개미')).toBe(false);
+  });
+  it('숨은 글자를 끼워도 운영자 흉내는 걸림', () => {
+    expect(reservedNickname('운영ㅤ자')).toBe(true);
+    expect(reservedNickname('운︁영자')).toBe(true);
+  });
+});

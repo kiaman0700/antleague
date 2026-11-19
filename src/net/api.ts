@@ -22,6 +22,12 @@ export class ApiError extends Error {
  *   (검색 로봇·잠깐 들른 사람마다 계정이 쌓이고, 같은 IP 익명 가입 제한도 빨리 닳음)
  * 계정은 대결 찾기·방 만들기·입장처럼 실제 온라인 기능을 쓸 때 만들어짐
  */
+/**
+ * 손님인지: 회원 로그인 주소(@u.stockduel.invalid)가 아니면 모두 손님 —
+ * 익명 계정뿐 아니라 서버가 만든 손님 계정·코드로 이어 쓴 손님도 (이들은 is_anonymous 가 false 라 회원으로 잘못 보던 것)
+ */
+export const isGuestUser = (u: { email?: string | null } | null | undefined) => !u?.email?.endsWith('@u.stockduel.invalid');
+
 const PEEK_EMPTY: Record<string, () => unknown> = {
   league: () => ({ ready: true, member: false }),
   profile: () => ({ profile: null }),
@@ -66,7 +72,7 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
       throw e;
     }
     if (e instanceof ApiError && e.status === 401 && e.code === 'replaced' && supabase) {
-      noteGuest(!!(await supabase.auth.getSession().catch(() => null))?.data.session?.user?.is_anonymous);
+      noteGuest(isGuestUser((await supabase.auth.getSession().catch(() => null))?.data.session?.user));
       setConcurrent('kicked');
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       try {
@@ -77,7 +83,7 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
       throw e;
     }
     if (!retried && e instanceof ApiError && e.status === 401 && supabase) {
-      const anon = (await supabase.auth.getSession()).data.session?.user?.is_anonymous ?? true;
+      const anon = isGuestUser((await supabase.auth.getSession()).data.session?.user);
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       if (anon) return api<T>(action, payload, true);
       throw new ApiError('로그인이 풀렸어요. 다시 로그인해 주세요.', 401);

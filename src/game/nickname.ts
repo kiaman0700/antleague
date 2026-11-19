@@ -11,11 +11,17 @@ const EXACT = ['운영', '관리', 'gm', 'mod'];
 // 숫자로 영어를 흉내 낸 것 (adm1n, 0fficial)
 const LEET: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't' };
 
+/** 눈에 안 보이는 채움 글자(한글 채움·점자 빈칸) — 남의 닉네임과 똑같아 보이는 이름·빈 이름을 만드는 데 쓰임 */
+export const INVISIBLE = /[ㅤᅟᅠﾠ⠀]/u;
+/** 결합 부호(변형 선택자 FE0F 는 그림 글자에 쓰이므로 빼고) — 글자 사이에 숨겨 금지어를 피하는 데 쓰임 */
+export const HIDDEN_MARK = /(?![︎️])\p{M}/u;
+export const hasHiddenChars = (n: string) => INVISIBLE.test(n) || HIDDEN_MARK.test(n);
+
 function squash(n: string): string {
   return n
     .normalize('NFKC')
     .toLowerCase()
-    .replace(/[\s\p{P}\p{S}]/gu, '');
+    .replace(/[\s\p{P}\p{S}\p{M}ㅤᅟᅠﾠ⠀]/gu, '');
 }
 
 export function reservedNickname(n: string, words: string[] = CONTAINS): boolean {
