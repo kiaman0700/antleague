@@ -732,13 +732,17 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
     <div className="lobby page ranking">
       <PageHead title="랭킹" onBack={onBack} top desc="랭킹전 점수 순위와 티어" />
       <p className="muted small">랭킹전 결과로 점수가 바뀌어요. 1,000점에서 시작해 배치 2판 뒤 티어가 보이고, 강한 상대를 이기면 더 많이 올라요.</p>
-      {acc.status === 'guest' && (
-        <section className="panel pad guest-cta">
-          <span>게스트는 랭킹에 올라가지 않아요.</span>
-          <button className="btn sm primary" onClick={onLogin}>
-            로그인 · 회원가입
-          </button>
-        </section>
+      {acc.status !== 'member' && acc.status !== 'loading' && (
+        <EmptyState
+          icon="lock"
+          title="랭킹은 회원만 올라가요"
+          desc="회원가입하고 랭킹전 배치 2판을 마치면 순위에 이름이 올라가요."
+          action={
+            <button className="btn primary" onClick={onLogin}>
+              로그인 · 회원가입
+            </button>
+          }
+        />
       )}
       {data?.me && (
         <section className="panel pad my-rank">
@@ -754,7 +758,7 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
       )}
       {err && <ErrorState what="랭킹" onRetry={() => setTryN((n) => n + 1)} />}
       {!data && !err && <Loading />}
-      {data && data.top.length === 0 && <EmptyState icon="trophy" title="아직 랭킹이 비어 있어요" desc={`랭킹전 배치 ${PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.`} />}
+      {data && data.top.length === 0 && acc.status === 'member' && <EmptyState icon="trophy" title="아직 랭킹이 비어 있어요" desc={`랭킹전 배치 ${PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.`} />}
       {data && data.top.length > 0 && (
         <ol className="rank-board">
           {data.top.map((r) => {

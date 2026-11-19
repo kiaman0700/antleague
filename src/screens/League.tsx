@@ -80,17 +80,21 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
       ) : !info.ready ? (
         <EmptyState icon="trophy" title="리그를 준비하고 있어요" desc="조금 뒤에 다시 와 주세요." />
       ) : !info.member ? (
-        <section className="lg-guest">
-          <EmptyState icon="trophy" title="주간 리그는 회원만 들어가요" desc="회원은 매주 30명과 경험치로 겨루고, 순위대로 보상을 받아요." />
-          <div className="row center">
-            <button className="btn primary" onClick={() => go('signup')}>
-              회원가입
-            </button>
-            <button className="btn" onClick={() => go('login')}>
-              로그인
-            </button>
-          </div>
-        </section>
+        <EmptyState
+          icon="lock"
+          title="주간 리그는 회원만 들어가요"
+          desc="회원은 매주 30명과 경험치로 겨루고, 순위대로 보상을 받아요."
+          action={
+            <>
+              <button className="btn primary" onClick={() => go('signup')}>
+                회원가입
+              </button>
+              <button className="btn" onClick={() => go('login')}>
+                로그인
+              </button>
+            </>
+          }
+        />
       ) : (
         <>
           {info.last && showLast && (

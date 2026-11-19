@@ -1600,7 +1600,16 @@ function Records({ go }: Pick<Props, 'go'>) {
         (histErr ? (
           <ErrorState what="기록" onRetry={() => (setHistory(null), setHistTry((n) => n + 1))} />
         ) : (
-          <EmptyState icon="trophy" title="아직 끝낸 게임이 없어요" desc="대결을 한 판 끝내면 전적과 업적이 여기에 쌓여요." />
+          <EmptyState
+            icon="trophy"
+            title="아직 끝낸 게임이 없어요"
+            desc="대결을 한 판 끝내면 여기에 전적이 쌓여요."
+            action={
+              <button className="btn primary" onClick={() => go('casual')}>
+                대결 찾기
+              </button>
+            }
+          />
         ))}
       {list.length > 0 && (
         <section className="panel pad">
