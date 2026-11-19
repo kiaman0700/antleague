@@ -6,6 +6,8 @@ import ReactDOM from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+// 글꼴은 우리 서버에서 (바깥 주소에 새로 연결하느라 첫 화면이 늦던 것). 라이선스: SIL OFL 1.1
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './styles.css';
 import './styles-extra.css';
 import './styles-v4.css';
