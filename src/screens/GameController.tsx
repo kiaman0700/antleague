@@ -1615,8 +1615,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           {/* 시장 줄을 숨겨도 설정 버튼은 남김 */}
           </div>
 
-        <main className={'m-page p-' + tab + (tablet && (tab === 'list' || tab === 'detail') ? ' split' : '')}>
-          {tablet && (tab === 'list' || tab === 'detail') ? (
+        {/* 태블릿: '종목'은 목록+차트 나란히, '차트'는 차트를 넓게 (두 탭이 같은 화면이 되지 않게) */}
+        <main className={'m-page p-' + tab + (tablet && tab === 'list' ? ' split' : '')}>
+          {tablet && tab === 'list' ? (
             <div className="tab-split">
               <section className="ts-list">{browser}</section>
               <section className="ts-detail">{detail}</section>

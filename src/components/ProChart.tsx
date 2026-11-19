@@ -1063,9 +1063,14 @@ export function ProChart({
       )}
       {!cross && (
         <div className="pc-help muted">
-          {tall
-            ? "드래그로 이동 · 두 손가락이나 휠로 확대 · 두 번 눌러 원래대로"
-            : "드래그 이동 · 휠/두 손가락 확대 · 탭하면 상세"}
+          {/* 터치 기기엔 '휠'이 없으니 손가락 말만, PC 엔 휠 말만 */}
+          {document.documentElement.dataset.device === "pc"
+            ? tall
+              ? "드래그로 이동 · 휠로 확대 · 두 번 눌러 원래대로"
+              : "드래그 이동 · 휠로 확대 · 누르면 상세"
+            : tall
+              ? "끌어서 이동 · 두 손가락으로 확대 · 두 번 눌러 원래대로"
+              : "끌어서 이동 · 두 손가락으로 확대 · 누르면 상세"}
         </div>
       )}
     </div>
