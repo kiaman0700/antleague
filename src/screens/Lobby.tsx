@@ -1617,7 +1617,7 @@ function Records({ go }: Pick<Props, 'go'>) {
           />
         ))}
       {list.length > 0 && (
-        <section className="panel pad">
+        <section className="panel pad rec-hist">
           <h3>최근 전적</h3>
           <div className="rec-sum">
             <div><b>{sum.games}</b><small>대결</small></div>
@@ -1703,7 +1703,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       )}
       {/* 기록을 못 받았으면 업적도 숨김 (딴 업적이 모두 잠긴 것처럼 보이지 않게) */}
       {history !== null && !histErr && (
-        <section className="panel pad">
+        <section className="panel pad rec-badges">
           <h3>
             업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{liveBadges(myBadges).length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>

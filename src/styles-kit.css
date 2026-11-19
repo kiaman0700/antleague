@@ -2585,3 +2585,10 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .hud-time.low > i { background: #f5b83d; }
 .game.desk .desk-score > .btn.end-turn.hurry:not(.waiting):not(:disabled) { background: #6b58ee !important; box-shadow: none !important; }
 @media (prefers-reduced-motion: reduce) { .hud-time > i { transition: none; } }
+
+/* 업적 화면 넓은 PC: 최근 전적(왼쪽)과 업적(오른쪽)을 나란히 — 한 줄로 길게 늘이면 순위와 수익률 사이가 휑했음 */
+@media (min-width: 1180px) {
+  .lobby-shell .lobby.page.records:has(.rec-hist):has(.rec-badges) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; align-items: start; }
+  .lobby.page.records > :not(.rec-hist):not(.rec-badges) { grid-column: 1 / -1; }
+  .lobby.page.records > .rec-hist, .lobby.page.records > .rec-badges { margin-top: 0; }
+}
