@@ -921,7 +921,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               <i className="toon-i"><ToonIcon name="rooms" size={40} /></i>
               <b>방 찾기</b>
-              <small>{openRooms === null ? '방 둘러보기' : openRooms > 0 ? `${openRooms}개 방이 사람을 기다려요` : '공개방·비밀방 둘러보기'}</small>
+              <small>{openRooms === null ? '방 둘러보기' : openRooms > 0 ? `대기 중인 방 ${openRooms}개` : '공개방·비밀방 둘러보기'}</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('코드로 들어가기는') && gate.guard(() => setModal('code'))}>
               <i className="toon-i"><ToonIcon name="code" size={40} /></i>
@@ -936,14 +936,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-rooms">
           <div className="hr-head">
             <h3>
-              들어갈 수 있는 방
+              대기 중인 방
             </h3>
             <button className="btn sm ghost" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               전체 보기 <Icon name="right" size={14} />
             </button>
           </div>
           {roomList === null && <Loading inline />}
-          {roomList !== null && roomList.length === 0 && <p className="muted small">들어갈 수 있는 방이 없어요. 방을 만들어 친구를 불러 보세요.</p>}
+          {roomList !== null && roomList.length === 0 && <p className="muted small">기다리는 방이 없어요. 방을 만들어 친구를 불러 보세요.</p>}
           {roomList !== null && roomList.length > 0 && (
             <ul className="hr-list">
               {roomList.slice(0, 6).map((r) => (
@@ -1291,7 +1291,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <EmptyState
             icon={loadErr ? 'warn' : 'door'}
             tone={loadErr ? 'error' : undefined}
-            title={loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '들어갈 수 있는 방이 없어요' : '조건에 맞는 방이 없어요'}
+            title={loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '기다리는 방이 없어요' : '조건에 맞는 방이 없어요'}
             desc={loadErr ? '인터넷 연결을 확인해 주세요. 잠시 뒤 저절로 다시 불러와요.' : '직접 방을 만들고 친구를 불러 보세요.'}
             action={
               <button className="btn primary" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
