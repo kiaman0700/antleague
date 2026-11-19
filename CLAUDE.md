@@ -322,7 +322,7 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 
 ## 2026-11-20 점검에서 정한 것
 - 화면 갱신(`src/net/api.ts` useGame): 장 전(`room.preUntil > serverNow`)엔 1초 갱신 안 함(장 전에도 live 가 와서 1초마다 물었음) — 여럿 판 2.5초, 혼자 판(사람 1명: 봇전·오늘의 도전) 장 전 8초(`calmRef`). 장이 열리면 1초
-- 튜토리얼 단계 기록(`tutorialStep`)은 개발 서버(import.meta.env.DEV)에선 안 보냄 — 같은 DB 라 점검 도구가 /tutorial 을 열 때마다 1단계가 쌓였음. 그 전에 쌓인 기록(대부분 점검)은 지우지 않았음(사용자 답 대기)
+- 튜토리얼 단계 기록(`tutorialStep`)은 개발 서버(import.meta.env.DEV)에선 안 보냄 — 같은 DB 라 점검 도구가 /tutorial 을 열 때마다 1단계가 쌓였음. 그 전에 쌓인 기록(거의 모두 점검)은 070 으로 지움(사용자 결정 2026-11-20 — 점검·시험 기록은 따로 보관할 필요 없음)
 - 서버 `must()` 오류는 `db <조회 이름> <DB 오류 번호>` 로 server_errors 에 남음(DB 문구는 값이 섞일 수 있어 안 남김)
 - 혼자 하는 판(오늘의 도전·봇전)은 '대결·기권' 대신 그 이름·'그만두기': 재입장 안내(resume 응답에 내 방 `kind`), 게임 안 나가기 창, `ensureFree` 409 문구, 아래 알약
 - `ask(text, { notice: true })` = 알리기만 하는 창(취소 버튼 없음)
