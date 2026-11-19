@@ -316,6 +316,7 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
             icon={region === 'watch' ? 'star' : region === 'held' ? 'briefcase' : 'search'}
             title={region === 'watch' ? '관심 종목이 없어요' : region === 'held' ? '아직 가진 종목이 없어요' : '찾는 종목이 없어요'}
             desc={region === 'watch' ? '종목 옆 별을 누르면 여기에 모여요.' : region === 'held' ? undefined : '이름이나 업종을 다르게 써 보세요.'}
+            action={q ? <button className="btn sm" onClick={() => setQ('')}>검색 지우기</button> : undefined}
           />
         )}
         {rows.map(({ s, krw, usd, ch }, i) => {
