@@ -784,7 +784,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <i className="toon-i"><ToonIcon name="daily" size={36} /></i>
         <span>
           <b>오늘의 도전 {recTag('daily')}</b>
-          <small>{member ? (dailyTile?.theme ? '오늘의 시장 열렸어요' : '모두 같은 시장에서') : '회원만 · 같은 시장'}</small>
+          {/* 연습 메뉴 칸과 같은 상태 글 — 오늘 이미 했는데도 '오늘의 시장 열렸어요'로 하라고 권했음 */}
+          <small>{!member ? '회원만 · 같은 시장' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : dailyTile?.played ? '오늘은 이미 했어요' : dailyTile?.theme ? '오늘의 시장 열렸어요' : '모두 같은 시장에서'}</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
