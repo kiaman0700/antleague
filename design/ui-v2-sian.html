@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>개미리그 UI 2판 시안</title>
+<style>
+  :root {
+    --bg: #0c0c0e; --bg2: #121215; --panel: #18181c; --panel2: #1f1f24; --line: #2c2c33; --line2: #3a3a44;
+    --text: #f4f4f6; --text2: #c3c3cb; --text3: #8e8e99;
+    --accent: #6b58ee; --accent-hi: #8b7bff; --accent-lo: #4a3cc0;
+    --gold: #e9bb4e; --gold-lo: #a67c1e; --up: #f2495c; --down: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050506; color: var(--text); font-family: Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; letter-spacing: -0.01em; word-break: keep-all; }
+  h1, h2, h3, p { margin: 0; }
+  .doc { max-width: 1320px; margin: 0 auto; padding: 28px 20px 80px; }
+  .doc > h1 { font-size: 26px; font-weight: 800; }
+  .doc > p.lead { color: var(--text2); margin: 8px 0 28px; line-height: 1.6; max-width: 760px; }
+  .sec-title { font-size: 15px; font-weight: 700; color: var(--text2); margin: 36px 0 12px; }
+  .note { color: var(--text3); font-size: 13px; margin-top: 10px; line-height: 1.6; }
+
+  /* ── 재질: 패널은 바깥 선 + 위쪽 밝은 선 + 모서리 한쪽을 깎음 ── */
+  .panel { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.35); }
+  .cut { clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); border-radius: 6px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 800; }
+  .disp { font-weight: 900; letter-spacing: -0.03em; }
+
+  /* ── 버튼 ── */
+  .btn { border: 0; cursor: pointer; font: inherit; font-weight: 800; color: #fff; border-radius: 12px; padding: 0 20px; height: 46px; display: inline-flex; align-items: center; gap: 8px; }
+  .btn.play { height: 68px; padding: 0 44px; font-size: 22px; background: var(--accent); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -5px 0 var(--accent-lo), 0 8px 22px rgba(0,0,0,.5); text-shadow: 0 1px 0 rgba(0,0,0,.25); transition: transform .12s, box-shadow .12s; }
+  .btn.play:hover { background: #7765f2; }
+  .btn.play:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 0 var(--accent-lo), 0 4px 10px rgba(0,0,0,.5); }
+  .btn.sub { background: var(--panel2); border: 1px solid var(--line2); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -3px 0 rgba(0,0,0,.35); }
+  .btn.gold { background: var(--gold); color: #1c1503; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -4px 0 var(--gold-lo); }
+  .btn.ghost { background: none; color: var(--text2); height: 40px; }
+
+  /* ── PC 로비 ── */
+  .pc { border: 1px solid #26262c; border-radius: 16px; overflow: hidden; background: var(--bg); }
+  .top { display: flex; align-items: center; gap: 22px; height: 64px; padding: 0 22px; background: #101013; border-bottom: 1px solid var(--line); }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; }
+  .logo i { width: 30px; height: 30px; border-radius: 8px; background: #1c1c1c; border: 1px solid var(--line2); display: grid; place-items: center; }
+  .tabs { display: flex; gap: 4px; height: 100%; }
+  .tabs a { position: relative; display: flex; align-items: center; padding: 0 16px; color: var(--text3); font-weight: 700; font-size: 15px; }
+  .tabs a.on { color: #fff; }
+  .tabs a.on::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 3px; background: var(--accent-hi); clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 100%, 0 100%); }
+  .top .sp { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font-weight: 700; font-size: 14px; color: var(--text2); }
+  .chip b { color: #fff; }
+  .ring { width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(var(--gold) 66%, #33333a 0); display: grid; place-items: center; }
+  .ring::after { content: ''; width: 14px; height: 14px; border-radius: 50%; background: var(--panel); }
+  .av { width: 32px; height: 32px; border-radius: 50%; background: #2a2540; border: 2px solid var(--gold); }
+  .body { display: grid; grid-template-columns: 1fr 300px; gap: 18px; padding: 20px 22px 24px; }
+
+  .hero { position: relative; overflow: hidden; padding: 34px 36px 30px; min-height: 380px; background: #141418; }
+  .hero svg.art { position: absolute; right: 0; bottom: 0; width: 62%; height: 100%; opacity: .9; }
+  .hero .kicker { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); font-weight: 800; font-size: 14px; }
+  .hero .kicker i { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
+  .hero h2 { font-size: 52px; line-height: 1.08; margin: 12px 0 10px; }
+  .hero p { color: var(--text2); font-size: 16px; line-height: 1.55; max-width: 420px; }
+  .picks { display: flex; gap: 10px; margin: 24px 0 22px; position: relative; }
+  .pick { min-width: 132px; padding: 12px 16px; border-radius: 12px; background: rgba(12,12,14,.72); border: 1px solid var(--line2); cursor: pointer; }
+  .pick small { display: block; color: var(--text3); font-size: 12px; margin-bottom: 3px; }
+  .pick b { font-size: 17px; }
+  .pick.on { border-color: var(--accent-hi); box-shadow: inset 0 0 0 1px var(--accent-hi); background: rgba(107,88,238,.16); }
+  .go { display: flex; align-items: center; gap: 18px; position: relative; }
+  .live { color: var(--text2); font-size: 14px; line-height: 1.5; }
+  .live b { color: #fff; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; margin-right: 6px; }
+
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+  .tile { padding: 18px; display: flex; gap: 14px; align-items: center; cursor: pointer; }
+  .emb { width: 46px; height: 46px; flex: none; transform: rotate(45deg); border-radius: 11px; border: 2px solid var(--accent-hi); background: #111113; display: grid; place-items: center; }
+  .emb span { transform: rotate(-45deg); font-size: 18px; font-weight: 900; color: var(--accent-hi); }
+  .emb.g { border-color: var(--gold); } .emb.g span { color: var(--gold); }
+  .emb.r { border-color: var(--up); } .emb.r span { color: var(--up); }
+  .tile b { display: block; font-size: 16px; }
+  .tile small { color: var(--text3); font-size: 13px; }
+
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .side .panel { padding: 16px; }
+  .side h3 { font-size: 14px; color: var(--text2); display: flex; justify-content: space-between; margin-bottom: 12px; }
+  .rank { display: flex; align-items: center; gap: 14px; }
+  .tier { width: 56px; height: 62px; background: var(--gold); clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%); display: grid; place-items: center; }
+  .tier::after { content: ''; width: 44px; height: 50px; background: #17130a; clip-path: polygon(50% 0, 100% 18%, 100% 62%, 50% 100%, 0 62%, 0 18%); }
+  .bar { height: 8px; border-radius: 4px; background: #2a2a31; overflow: hidden; margin-top: 8px; }
+  .bar i { display: block; height: 100%; background: var(--gold); }
+  .mis { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .mis:first-of-type { border-top: 0; }
+  .mis .xp { margin-left: auto; color: var(--gold); font-weight: 800; font-size: 13px; }
+  .ck { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--line2); flex: none; }
+  .ck.on { background: var(--accent); border-color: var(--accent); }
+  .fr { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; }
+  .fr i { width: 30px; height: 30px; border-radius: 50%; background: #26262d; }
+  .fr small { display: block; color: #3ddc84; font-size: 12px; }
+
+  /* ── 휴대폰 ── */
+  .phones { display: flex; gap: 24px; flex-wrap: wrap; }
+  .ph { width: 360px; border: 1px solid #26262c; border-radius: 28px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+  .ph .top { height: 54px; padding: 0 14px; gap: 10px; }
+  .ph .hero { margin: 12px; padding: 20px 18px; min-height: 0; }
+  .ph .hero h2 { font-size: 32px; }
+  .ph .hero p { font-size: 14px; }
+  .ph .picks { flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  .ph .pick { min-width: 0; flex: 1 1 45%; padding: 10px 12px; }
+  .ph .btn.play { width: 100%; justify-content: center; height: 60px; font-size: 20px; }
+  .ph .row3 { grid-template-columns: 1fr; margin: 0 12px 12px; gap: 10px; }
+  .nav { display: grid; grid-template-columns: repeat(5, 1fr); background: #101013; border-top: 1px solid var(--line); margin-top: auto; }
+  .nav a { padding: 10px 0 12px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); position: relative; }
+  .nav a i { display: block; width: 22px; height: 22px; margin: 0 auto 4px; border-radius: 6px; background: #33333b; }
+  .nav a.on { color: #fff; } .nav a.on i { background: var(--accent-hi); }
+  .nav a.on::before { content: ''; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; background: var(--accent-hi); }
+
+  /* 게임 화면 윗부분 */
+  .hud { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .hud .me { display: flex; align-items: flex-end; justify-content: space-between; }
+  .hud .eq { font-size: 30px; }
+  .hud .eq small { font-size: 14px; color: var(--up); margin-left: 6px; }
+  .timer { height: 10px; border-radius: 5px; background: #24242a; overflow: hidden; border: 1px solid var(--line); }
+  .timer i { display: block; width: 62%; height: 100%; background: var(--gold); }
+  .srow { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .srow .ic { width: 36px; height: 36px; border-radius: 10px; background: #22222a; border: 1px solid var(--line2); flex: none; }
+  .srow b { display: block; font-size: 15px; } .srow small { color: var(--text3); font-size: 12px; }
+  .srow .p { margin-left: auto; text-align: right; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .kit { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1>개미리그 UI 2판 시안 — '야간 장내(場內)'</h1>
+  <p class="lead">밤의 거래소 전광판 느낌. 지금의 어두운 회색·보라는 유지하되 ① 패널에 재질(위쪽 밝은 선·그림자·깎인 모서리)을 주고 ② 가장 중요한 버튼 하나를 두껍고 눌리는 버튼으로 ③ 빈 검정 대신 살아 있는 차트 그림을 깔고 ④ 증강 카드의 마름모 문양·금색을 보상·순위·메뉴 아이콘까지 같은 언어로 씁니다. 그림·글꼴은 모두 우리 것.</p>
+
+  <div class="sec-title">1. 로비 (PC)</div>
+  <div class="pc">
+    <div class="top">
+      <div class="logo"><i>🐜</i> 개미리그</div>
+      <div class="tabs"><a>랭킹전</a><a class="on">일반전</a><a>커스텀</a><a>연습</a><a>랭킹</a><a>리그</a><a>업적</a></div>
+      <div class="sp"></div>
+      <div class="chip"><span class="ring"></span> 미션 <b class="num">4/6</b></div>
+      <div class="chip"><span class="av"></span> <b>시험개미</b> <span style="color:var(--gold)">골드 2</span></div>
+    </div>
+    <div class="body">
+      <div>
+        <div class="panel cut hero">
+          <svg class="art" viewBox="0 0 600 380" preserveAspectRatio="xMaxYMax slice" aria-hidden="true">
+            <g stroke="#26262e" stroke-width="1"><path d="M0 76h600M0 152h600M0 228h600M0 304h600M120 0v380M240 0v380M360 0v380M480 0v380"/></g>
+            <g>
+              <g stroke="#3b82f6" fill="#3b82f6"><path d="M70 250v60" /><rect x="62" y="262" width="16" height="34"/><path d="M110 240v70"/><rect x="102" y="256" width="16" height="40"/><path d="M230 222v52"/><rect x="222" y="232" width="16" height="30"/></g>
+              <g stroke="#f2495c" fill="#f2495c"><path d="M150 214v70"/><rect x="142" y="226" width="16" height="44"/><path d="M190 196v64"/><rect x="182" y="208" width="16" height="40"/><path d="M270 180v70"/><rect x="262" y="192" width="16" height="46"/><path d="M310 150v72"/><rect x="302" y="162" width="16" height="48"/><path d="M350 128v62"/><rect x="342" y="138" width="16" height="40"/><path d="M430 92v70"/><rect x="422" y="104" width="16" height="46"/><path d="M470 60v72"/><rect x="462" y="72" width="16" height="48"/><path d="M510 30v64"/><rect x="502" y="40" width="16" height="42"/></g>
+              <g stroke="#3b82f6" fill="#3b82f6"><path d="M390 118v54"/><rect x="382" y="128" width="16" height="32"/></g>
+              <path d="M40 290 C160 270 210 230 300 196 S 450 110 560 50" fill="none" stroke="#8b7bff" stroke-width="3"/>
+            </g>
+          </svg>
+          <span class="kicker"><i></i> 일반전 · 점수 없이 가볍게</span>
+          <h2 class="disp">3~4명이 겨루는<br/>10분 한 판</h2>
+          <p>같은 시장, 같은 뉴스. 10일 동안 사고팔아 마지막 날 재산이 가장 많은 사람이 이겨요.</p>
+          <div class="picks">
+            <div class="pick"><small>몇 명이서</small><b>1대1</b></div>
+            <div class="pick on"><small>몇 명이서</small><b>다인전 3~4명</b></div>
+            <div class="pick on"><small>얼마나 빨리</small><b>신속 10~14분</b></div>
+            <div class="pick"><small>얼마나 빨리</small><b>일반 25~40분</b></div>
+          </div>
+          <div class="go">
+            <button class="btn play">대결 찾기</button>
+            <div class="live"><span class="dot"></span><b>12명</b> 접속 중<br/>예상 대기 약 20초</div>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="panel tile"><div class="emb"><span>봇</span></div><div><b>봇전</b><small>기다림 없이 바로</small></div></div>
+          <div class="panel tile"><div class="emb g"><span>日</span></div><div><b>오늘의 도전</b><small>모두 같은 시장 · 🔥 3일째</small></div></div>
+          <div class="panel tile"><div class="emb r"><span>?</span></div><div><b>튜토리얼</b><small>3분이면 규칙 끝</small></div></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <h3>내 랭크 <span style="color:var(--text3)">랭킹 보기 ›</span></h3>
+          <div class="rank"><div class="tier"></div><div style="flex:1"><b style="font-size:18px">골드 2</b> <span class="num" style="color:var(--text2)">1,468점</span><div class="bar"><i style="width:68%"></i></div><small style="color:var(--text3);font-size:12px">골드 3까지 32점</small></div></div>
+        </div>
+        <div class="panel">
+          <h3>오늘의 미션 <span class="num" style="color:var(--gold)">4/6</span></h3>
+          <div class="mis"><span class="ck on"></span> 대결 1판 끝까지 하기 <span class="xp">+30</span></div>
+          <div class="mis"><span class="ck on"></span> 미국 종목 사 보기 <span class="xp">+20</span></div>
+          <div class="mis"><span class="ck"></span> 증강 고르기·쓰기 1번 <span class="xp">+20</span></div>
+        </div>
+        <div class="panel">
+          <h3>친구 <span style="color:var(--text3)">접속 2</span></h3>
+          <div class="fr"><i></i><div>주식왕개미<small>게임 중</small></div></div>
+          <div class="fr"><i></i><div>단타개미<small>접속 중</small></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note">바뀌는 점: 위 메뉴는 고른 칸 아래 두꺼운 표시 · 대결 고르기는 한 화면에서 타일로 · '대결 찾기'는 두껍고 눌리는 버튼(다른 버튼과 확실히 다른 무게) · 빈 검정 대신 차트 그림 · 오른쪽에 내 랭크·미션·친구가 늘 보임 · 봇전·도전·튜토리얼은 증강 카드와 같은 마름모 문양.</p>
+
+  <div class="sec-title">2. 휴대폰 (로비 · 게임 화면)</div>
+  <div class="phones">
+    <div class="ph">
+      <div class="top"><div class="logo"><i>🐜</i></div><div class="sp"></div><div class="chip" style="height:34px"><span class="ring"></span><b class="num">4/6</b></div><div class="av"></div></div>
+      <div class="panel cut hero">
+        <span class="kicker"><i></i> 일반전</span>
+        <h2 class="disp">3~4명이 겨루는<br/>10분 한 판</h2>
+        <div class="picks">
+          <div class="pick"><small>인원</small><b>1대1</b></div><div class="pick on"><small>인원</small><b>다인전</b></div>
+          <div class="pick on"><small>빠르기</small><b>신속</b></div><div class="pick"><small>빠르기</small><b>일반</b></div>
+        </div>
+        <button class="btn play">대결 찾기</button>
+        <p class="live" style="margin-top:10px;text-align:center"><span class="dot"></span><b>12명</b> 접속 중 · 약 20초</p>
+      </div>
+      <div class="row3">
+        <div class="panel tile"><div class="emb"><span>봇</span></div><div><b>봇전</b><small>기다림 없이 바로</small></div></div>
+        <div class="panel tile"><div class="emb g"><span>日</span></div><div><b>오늘의 도전</b><small>🔥 3일째</small></div></div>
+      </div>
+      <div class="nav"><a class="on"><i></i>대결</a><a><i></i>연습</a><a><i></i>랭킹</a><a><i></i>친구</a><a><i></i>더보기</a></div>
+    </div>
+    <div class="ph">
+      <div class="hud">
+        <div class="me"><div><small style="color:var(--text3)">내 재산 · 2위</small><div class="eq num disp">1,084,200원<small>+8.42%</small></div></div><button class="btn gold" style="height:48px">장 마감</button></div>
+        <div class="timer"><i></i></div>
+        <div style="display:flex;justify-content:space-between;color:var(--text3);font-size:12px"><span>4일차 / 10일</span><span class="num" style="color:var(--gold)">0:37 남음</span></div>
+      </div>
+      <div class="panel" style="margin:0 12px 12px;border-radius:14px;overflow:hidden">
+        <div class="srow" style="border-top:0"><span class="ic"></span><div><b>코어반도체</b><small>반도체 · 보유 3주</small></div><div class="p"><b class="num up">88,400원</b><small class="up">▲ 2.31%</small></div></div>
+        <div class="srow"><span class="ic"></span><div><b>한빛바이오</b><small>바이오</small></div><div class="p"><b class="num down">36,150원</b><small class="down">▼ 1.08%</small></div></div>
+        <div class="srow"><span class="ic"></span><div><b>스트림리</b><small>미국 빅테크</small></div><div class="p"><b class="num up">$145.42</b><small class="up">▲ 5.29%</small></div></div>
+      </div>
+      <div class="nav"><a><i></i>소식</a><a class="on"><i></i>종목</a><a><i></i>차트</a><a><i></i>내 재산</a><a><i></i>증강</a></div>
+    </div>
+  </div>
+
+  <div class="sec-title">3. 부품 (버튼·패널)</div>
+  <div class="panel kit">
+    <button class="btn play">대결 찾기</button>
+    <button class="btn gold">장 마감</button>
+    <button class="btn sub">방 만들기</button>
+    <button class="btn ghost">홈으로</button>
+    <div class="chip"><span class="ring"></span> 미션 <b class="num">4/6</b></div>
+    <div class="emb"><span>증</span></div><div class="emb g"><span>金</span></div>
+  </div>
+  <p class="note">버튼 규칙은 지금과 같아요: 화면당 주 버튼 하나(보라), 시간이 걸린 것은 금색, 나머지는 회색. 달라지는 건 '두께와 눌림'입니다. 그라데이션·빛 번짐·흐림 효과는 쓰지 않았어요.</p>
+</div>
+</body>
+</html>
