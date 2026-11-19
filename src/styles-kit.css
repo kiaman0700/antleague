@@ -2458,6 +2458,11 @@ span.roll.roll { font-size: inherit; font-weight: inherit; color: inherit; line-
 .st-btn { display: inline-flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .st-btn .st-btn-sub { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0; }
 .st-rec { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #6b58ee; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; vertical-align: 2px; }
+/* 휴대폰 두 칸 줄: 이름 옆에 두면 칸이 좁아 '추천'이 다음 줄로 떨어져 옆 칸과 높이가 어긋남 → 칸 오른쪽 위 모서리에 */
+@media (max-width: 860px) {
+  .st-qbtn { position: relative; }
+  .st-qbtn .st-rec { position: absolute; top: -9px; right: 14px; margin: 0; }
+}
 @media (max-width: 860px) {
   .st-status { flex-direction: column; align-items: center; text-align: center; gap: 6px; }
   .st-status small { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; }
