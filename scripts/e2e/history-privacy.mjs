@@ -19,6 +19,11 @@ const { roomId, code } = made.b;
 await B({ action: 'join', code, nickname: nB, mode: 'easy' });
 await B({ action: 'ready', roomId, ready: true });
 await A({ action: 'start', roomId });
+// 진행 중 화면 데이터: 사람마다 자리 id·사진만 — 계정 id·로그인 주소 같은 값은 없음
+const sv = (await B({ action: 'state', roomId })).b;
+const keys = new Set(sv.players.flatMap((p) => Object.keys(p)));
+ok('화면 데이터 players 에 계정 id 칸이 없음', !['user_id', 'userId', 'uid', 'email'].some((k) => keys.has(k)), [...keys].join(','));
+ok('게스트 상대의 사진은 게스트 사진(회원 사진 id 아님)', sv.players.every((p) => p.avatar == null || typeof p.avatar === 'string'));
 // A 가 기권 → 1대1 이 끝나고 기록이 남음
 await A({ action: 'leave', roomId });
 await new Promise((r) => setTimeout(r, 1500));
