@@ -51,7 +51,7 @@ export const BADGES: Badge[] = [
   { id: 'dividend', emoji: '💰', name: '배당 부자', desc: '배당금을 시작 돈의 1% 넘게 받음', rarity: 1 },
   { id: 'global', emoji: '🌎', name: '글로벌 투자자', desc: '국내·미국 주식을 동시에 보유', rarity: 1 },
   { id: 'limit_order', emoji: '⏳', name: '예약의 달인', desc: '지정가 주문이 3번 이상 체결', rarity: 1 },
-  { id: 'card_master', emoji: '🃏', name: '증강 마스터', desc: '증강(예전 판은 찬스 카드)을 한 판에 4번 이상 고르거나 사용', rarity: 1 },
+  { id: 'card_master', emoji: '🃏', name: '증강 마스터', desc: '증강을 한 판에 4번 이상 고르거나 사용', rarity: 1 },
   { id: 'trader', emoji: '⚡', name: '단타왕', desc: '거래 20회 이상', rarity: 1 },
   { id: 'podium', emoji: '🥉', name: '시상대', desc: '4명 이상 판에서 3위 안', rarity: 1 },
   { id: 'plus', emoji: '➕', name: '플러스 마감', desc: '거래를 하고 수익률 플러스로 마감', rarity: 1 },
@@ -60,7 +60,7 @@ export const BADGES: Badge[] = [
   { id: 'leverage', emoji: '🎢', name: '레버리지 맛보기', desc: '레버리지 ETF를 들고 장 마감', rarity: 1 },
   { id: 'etf_fan', emoji: '📦', name: 'ETF 입문', desc: 'ETF를 사 봄', rarity: 1 },
   { id: 'detective', emoji: '🔍', name: '루머 감별사', desc: '루머 감별기를 3번 이상 씀', rarity: 1 },
-  { id: 'first_card', emoji: '🎴', name: '첫 증강', desc: '증강(예전 판은 찬스 카드)을 처음 고르거나 씀', rarity: 1 },
+  { id: 'first_card', emoji: '🎴', name: '첫 증강', desc: '증강을 처음 고르거나 사용', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
   { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼(게임·결과·미션)을 모두 끝냄', rarity: 1 },
   // 웃픈 업적 (안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤

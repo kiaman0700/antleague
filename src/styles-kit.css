@@ -2598,3 +2598,8 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .more-menus > .more-links > .more-h + .more-row + .more-row::before { display: none; }
   .more-menus > .more-links > .more-ver { grid-column: 1 / -1; margin: 4px 14px 0; }
 }
+
+/* 휴대폰 결과 화면: 자산 추이 그림이 절반 넘게 줄어 보여 눈금 글자가 7px 쯤이었음 → 줄어든 만큼 키움 */
+@media (max-width: 600px) {
+  .result .chart .axis, .result .chart .ref-label { font-size: 24px; }
+}
