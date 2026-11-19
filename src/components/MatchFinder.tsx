@@ -498,7 +498,8 @@ function ProgressStrip() {
       )}
       {last && (
         <span className="st-chip" aria-label={`지난 판 ${last.players}명 중 ${last.rank}위, 수익률 ${pct(last.ret, 1)}`}>
-          지난 판 {last.players > 1 ? `${last.rank}위 ` : ''}
+          {/* '지난 판 1위 0.0%'는 '1위 한 사람이 0.0%'로도 읽혀서 몇 명 중 몇 위인지와 수익률을 나눔 */}
+          지난 판 {last.players > 1 ? `${last.rank}위/${last.players}명 · ` : ''}
           <b className={tone(last.ret)}>{pct(last.ret, 1)}</b>
         </span>
       )}
