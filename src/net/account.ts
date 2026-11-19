@@ -7,7 +7,6 @@ import { accessToken, supabase } from '../lib/supabase';
 import { saveNick } from '../session';
 import { api } from './api';
 import { resetMatch } from './matchStore';
-import { setFlash } from '../lib/flash';
 
 export const USER_DOMAIN = 'u.stockduel.invalid';
 
@@ -125,7 +124,7 @@ if (supabase) {
 }
 if (typeof window !== 'undefined')
   window.addEventListener('session-replaced', () => {
-    setFlash('다른 곳에서 이 계정으로 접속해서 이 기기는 로그아웃됐어요.');
+    // 안내는 App 의 동시 접속 창('kicked')이 '확인'을 누를 때까지 보여 줌
     void refreshAccount();
   });
 

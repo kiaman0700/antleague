@@ -1814,3 +1814,7 @@ p { text-wrap: pretty; }
 .react-mute[aria-pressed="true"] { color: var(--warn, #f5b83d); }
 .react-mute:hover { color: var(--text, #f2f2f2); }
 .react-off { margin: 2px 2px 0; line-height: 1.5; }
+
+/* 동시 접속 창 (060) — 확인 창보다 위, 닫기 없음 */
+.cc-bg { z-index: 420; }
+.cc-modal h3 { margin: 0 0 8px; font-size: 18px; }

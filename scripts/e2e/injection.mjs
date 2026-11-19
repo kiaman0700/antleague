@@ -1,6 +1,6 @@
 // 주입 공격 점검: 모든 입력에 스크립트·SQL·필터·제어문자·아주 긴 값·이상한 JSON 을 넣어 봄
 // 기대: 서버 오류(500) 없이 거절(4xx)하거나, 저장돼도 그대로 '글자'로만 남음
-import { user, ok, done, BASE, TEST_KEY } from './lib.mjs';
+import { user, ok, done, BASE, TEST_KEY, VIS } from './lib.mjs';
 
 const PAYLOADS = [
   '<script>alert(1)</script>',
@@ -18,7 +18,7 @@ const PAYLOADS = [
 ];
 
 const raw = async (body, tok, headers = {}) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}), ...headers }, body });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}), ...headers }, body });
   return { s: r.status, t: await r.text() };
 };
 const U = await user();

@@ -1,3 +1,4 @@
+import { setConcurrent, concurrentCleared } from './concurrent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { View } from '../engine/engine';
 import type { Market } from '../game/market';
@@ -59,7 +60,13 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
     // 서버가 이 로그인을 모른다고 함(계정이 지워졌거나 서버를 옮김) → 이 기기의 로그인을 지우고
     //   손님이면 새 손님으로 한 번만 다시 시도. 회원이면 다시 로그인하라고 안내
     // (051) 다른 곳에서 더 나중에 로그인함 → 이 기기는 로그아웃하고 둘러보기로 (새 손님을 만들지 않음)
+    // (060) 다른 기기가 지금 접속 중 → '여기서 접속할까요?' 창 (요청은 실패로 둠 — 창에서 고른 뒤 다시)
+    if (e instanceof ApiError && e.status === 409 && e.code === 'concurrent') {
+      setConcurrent('ask');
+      throw e;
+    }
     if (e instanceof ApiError && e.status === 401 && e.code === 'replaced' && supabase) {
+      setConcurrent('kicked');
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       try {
         window.dispatchEvent(new CustomEvent('session-replaced'));
@@ -90,7 +97,8 @@ async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAu
   try {
     res = await fetch('/api/game', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      // (060) 화면이 보이는 상태의 요청인지 — 뒤에 숨은 창은 '접속 중'으로 치지 않음
+      headers: { 'content-type': 'application/json', 'x-stockduel-vis': document.visibilityState === 'hidden' ? '0' : '1', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ action, ...payload }),
     });
   } catch {
@@ -103,8 +111,20 @@ async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAu
     /* 빈 응답 */
   }
   if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status, (body as { code?: string } | null)?.code);
+  if (!noAuth) concurrentCleared();
   return body as T;
 }
+
+/** (060) 창을 닫을 때 '쉬는 중'으로 — 다른 기기에서 바로 접속해도 묻지 않게 (keepalive) */
+if (typeof window !== 'undefined')
+  window.addEventListener('pagehide', () => {
+    if (!lastToken) return;
+    try {
+      fetch('/api/game', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', authorization: `Bearer ${lastToken}` }, body: '{"action":"sessionIdle"}' }).catch(() => {});
+    } catch {
+      /* 무시 — 90초 뒤 저절로 쉬는 중 */
+    }
+  });
 
 /** 창을 닫을 때 매칭 대기에서 빠지기: 페이지가 사라져도 요청이 끝까지 가도록 keepalive */
 let lastToken: string | null = null;

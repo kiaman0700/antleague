@@ -1,3 +1,4 @@
+import { ConcurrentHost } from './components/ConcurrentHost';
 import React from 'react';
 import { ConfirmHost } from './components/ConfirmHost';
 import ReactDOM from 'react-dom/client';
@@ -46,6 +47,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <App />
       <ConfirmHost />
+      <ConcurrentHost />
       {/* Vercel 웹 분석: 주소 뒤 ?… (초대 방 코드 등)와 # 은 빼고 보냄 — 쿠키 없음 */}
       <Analytics beforeSend={(e) => ({ ...e, url: e.url.split(/[?#]/)[0] })} />
     </ErrorBoundary>

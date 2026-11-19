@@ -1,11 +1,11 @@
 // 오늘의 도전 (설계서 design/bots-daily.md 3단계): 하루 한 번, 모두 같은 시장, 비밀값 안 샘, 재대결 불가, 나가도 기록, 회원만(손님 403), 시험 회원은 점수표 제외
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
-import { user, ok, done, BASE, TEST_KEY, env } from './lib.mjs';
+import { user, ok, done, BASE, TEST_KEY, VIS, env } from './lib.mjs';
 
 // 오늘의 도전은 회원만 (2026-11-18) — 시험 회원(.members.json 의 dailyA·dailyB, 깃에 안 올라감)을 만들어 두고 다시 씀
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });

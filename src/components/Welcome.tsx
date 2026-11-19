@@ -200,7 +200,7 @@ export function Welcome({
                 onChange={(e) => (setCode(e.target.value.toUpperCase()), setErr(''))}
               />
             </label>
-            <small className="muted">불러오면 그 게스트가 원래 쓰던 기기는 로그아웃돼요 (한 계정은 한 곳에서만). {GUEST_CODE_NOTICE}</small>
+            <small className="muted">불러오면 그 게스트가 원래 쓰던 기기는 로그아웃돼요. {GUEST_CODE_NOTICE}</small>
             {err && (
               <p className="error" role="alert">
                 {err}

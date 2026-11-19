@@ -2,10 +2,10 @@
 // - 게임 기초를 끝내면 회원에게 경험치 100(한 번), 첫 거래·첫 카드·철벽 방어 업적, 4단계 모두 끝내면 '개미 학교 졸업'
 // - 칭호·사진 단계는 딴 횟수로 서버가 확인 (못 넘은 단계는 거절)
 import { createClient } from '@supabase/supabase-js';
-import { ok, done, BASE, TEST_KEY, env } from './lib.mjs';
+import { ok, done, BASE, TEST_KEY, VIS, env } from './lib.mjs';
 
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });

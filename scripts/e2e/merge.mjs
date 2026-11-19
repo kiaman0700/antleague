@@ -4,10 +4,10 @@
 // - 가져오고 나면 게스트 계정은 지워짐
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
-import { user, ok, done, BASE, TEST_KEY, env } from './lib.mjs';
+import { user, ok, done, BASE, TEST_KEY, VIS, env } from './lib.mjs';
 
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });

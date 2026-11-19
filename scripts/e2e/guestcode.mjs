@@ -1,12 +1,18 @@
 // 게스트 이어하기 코드 + 동시 접속 막기 (DB 051, design/onboarding.md) — 실제 서버
 // - 게스트만 코드를 받고, 같은 코드를 언제든 다시 봄, 새로 받으면 예전 코드는 못 씀
-// - 코드로 불러오면 같은 계정(같은 기록)이고, 예전 기기는 '다른 곳에서 접속' 401(replaced)
+// - 코드로 불러오면 같은 계정(같은 기록)
+// - (060) 동시 접속 FC온라인 방식: 쉬던 기기는 로그아웃 안 됨, 다른 기기가 접속 중이면 409 concurrent → takeOver 하면 그 기기는 401 replaced
 // - 틀린 코드는 늘 같은 문구, 회원 계정은 코드로 못 엶, 응답에 계정 id·해시 없음
 import { createClient } from '@supabase/supabase-js';
-import { ok, done, BASE, TEST_KEY, env } from './lib.mjs';
+import { ok, done, BASE, TEST_KEY, VIS, env } from './lib.mjs';
 
 const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
+  return { s: r.status, b: await r.json().catch(() => null) };
+};
+/** 화면이 보이는 요청(접속 중으로 침) */
+const seen = async (body, tok) => {
+  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': '1', authorization: 'Bearer ' + tok }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };
 };
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
@@ -52,10 +58,9 @@ const B = (b) => post(b, sb.access_token);
 const resumeB = (await B({ action: 'resume' })).b;
 ok('불러온 기기 B 에 A 의 대기실 자리가 그대로', resumeB?.roomId === made.b.roomId, JSON.stringify(resumeB));
 
-// 5) 동시 접속: 기기 A 는 이제 '다른 곳에서 접속' (서버가 같은 세션을 10초 기억하므로 기다림)
-await sleep(11_000);
+// 5) 이어하기 코드로 다른 기기에 옮기면 예전 기기 A 는 로그아웃 (설계대로 — design/v26-batch.md '게스트 코드로 불러오기는 다른 기기를 끊음')
 const old = await A({ action: 'profile' });
-ok('예전 기기 A 는 401 replaced', old.s === 401 && old.b?.code === 'replaced', JSON.stringify(old.b));
+ok('코드로 옮기면 예전 기기 A 는 401 replaced', old.s === 401 && old.b?.code === 'replaced', JSON.stringify(old.b));
 ok('기기 B 는 그대로 됨', (await B({ action: 'profile' })).s === 200);
 
 // 6) 새 코드로 바꾸면 예전 코드는 못 씀
@@ -71,13 +76,24 @@ if (SAVE.socialA) {
   const m = (await client().auth.signInWithPassword({ email: em, password: SAVE.socialA.pw })).data.session;
   const mc = await post({ action: 'guestCode' }, m.access_token);
   ok('회원은 게스트 코드를 못 받음 (403)', mc.s === 403, JSON.stringify(mc.b));
-  // 같은 회원이 다른 브라우저에서 또 로그인 → 먼저 로그인한 곳은 끊김
+  // (060) 같은 회원: 먼저 쓰던 브라우저 m 이 접속 중이면 새 로그인 m2 는 묻기(409). m 이 창을 닫으면(sessionIdle) 묻지 않고 바로 됨, m 은 로그아웃되지 않음
+  ok('브라우저 m 이 접속 중', (await seen({ action: 'profile' }, m.access_token)).s === 200);
   await sleep(1100);
   const m2 = (await client().auth.signInWithPassword({ email: em, password: SAVE.socialA.pw })).data.session;
-  ok('두 번째 브라우저 로그인은 됨', (await post({ action: 'profile' }, m2.access_token)).s === 200);
+  const q = await seen({ action: 'profile' }, m2.access_token);
+  ok('두 번째 브라우저는 409 concurrent (먼저 물음)', q.s === 409 && q.b?.code === 'concurrent', JSON.stringify(q.b));
+  ok('m 이 창을 닫음 (sessionIdle)', (await post({ action: 'sessionIdle' }, m.access_token)).s === 200);
+  ok('그러면 두 번째 브라우저는 묻지 않고 접속', (await seen({ action: 'profile' }, m2.access_token)).s === 200);
   await sleep(11_000);
-  const m1 = await post({ action: 'profile' }, m.access_token);
-  ok('먼저 로그인한 브라우저는 401 replaced (동시 접속 막기)', m1.s === 401 && m1.b?.code === 'replaced', JSON.stringify(m1.b));
+  const m1 = await seen({ action: 'profile' }, m.access_token);
+  ok('쉬던 m 은 로그아웃되지 않고, 다시 쓰려면 물음 (409 concurrent)', m1.s === 409 && m1.b?.code === 'concurrent', JSON.stringify(m1.b));
+  // m 이 '여기서 접속' → 접속 중이던 m2 는 동시 접속으로 로그아웃
+  ok('m 이 여기서 접속 (takeOver)', (await seen({ action: 'takeOver' }, m.access_token)).s === 200);
+  await sleep(11_000);
+  const k = await seen({ action: 'profile' }, m2.access_token);
+  ok('m2 는 동시 접속으로 로그아웃 (401 replaced)', k.s === 401 && k.b?.code === 'replaced' && /동시 접속/.test(k.b?.error ?? ''), JSON.stringify(k.b));
+  ok('m 은 그대로 됨', (await seen({ action: 'profile' }, m.access_token)).s === 200);
+  await post({ action: 'sessionIdle' }, m.access_token);
 }
 
 // 8) 시도 제한: 10분에 5번 틀리면 막힘 (맞는 코드도 잠깐 안 됨)

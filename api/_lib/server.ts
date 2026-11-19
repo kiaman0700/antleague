@@ -1904,24 +1904,34 @@ function tokenExpMs(token: string) {
   }
 }
 
-async function sessionOk(uid: string, token: string): Promise<boolean> {
+/**
+ * (060) 동시 접속 — FC온라인 방식 (사용자 결정 2026-11-19): 로그인은 여러 기기 가능.
+ * 다른 기기가 지금 접속 중(90초 안에 화면을 보며 씀)이면 'concurrent' → 화면이 '여기서 접속할까요?' 를 묻고 takeOver 로만 바꿈.
+ * 'gone' = 이 세션이 로그아웃됨(다른 기기가 여기서 접속을 고름·로그아웃·비밀번호 변경).
+ * 'ok' 만 10초 기억(그동안 DB 를 안 부름 — 접속 중 시각은 길어야 10초 늦게 적힘, 90초 기준이라 괜찮음)
+ */
+type SessionState = 'ok' | 'concurrent' | 'gone';
+async function sessionState(uid: string, token: string, active: boolean, take = false): Promise<SessionState> {
   const sid = sessionIdOf(token);
-  if (!sid) return true; // 세션 id 가 없는 토큰(예전 형식) — 막지 않음
-  const key = uid + ':' + sid;
+  if (!sid) return 'ok'; // 세션 id 가 없는 토큰(예전 형식) — 막지 않음
+  // 보이는 요청과 숨은 요청을 따로 기억 — 숨은 요청으로 기억된 '통과'가 접속 중 시각 쓰기를 막지 않게
+  const key = uid + ':' + sid + (active ? ':a' : ':b');
   const now = Date.now();
-  if ((sessionCache.get(key) ?? 0) > now) return true;
-  const r = await db().rpc('session_check', { p_user: uid, p_sid: sid });
-  // 051 적용 전이거나 DB 가 잠깐 막히면 막지 않음 (멀쩡한 사람을 로그아웃시키지 않게)
-  if (r.error) return true;
-  if (r.data === true) {
+  if (!take && (sessionCache.get(key) ?? 0) > now) return 'ok';
+  const r = await db().rpc('session_check2', { p_user: uid, p_sid: sid, p_active: active, p_take: take });
+  // 060 적용 전이거나 DB 가 잠깐 막히면 막지 않음 (멀쩡한 사람을 로그아웃시키지 않게)
+  if (r.error) return 'ok';
+  const st = r.data as SessionState;
+  if (st === 'ok') {
     if (sessionCache.size > 5000) sessionCache.clear();
     sessionCache.set(key, now + 10_000);
-    return true;
-  }
-  return false;
+  } else sessionCache.delete(key);
+  return st === 'concurrent' || st === 'gone' ? st : 'ok';
 }
+const REPLACED = { error: '다른 기기에서 접속해서 동시 접속으로 로그아웃됐어요. 본인이 아니라면 비밀번호를 바꿔 주세요.', code: 'replaced' };
+const CONCURRENT = { error: '다른 기기에서 접속 중이에요. 여기서 접속하면 그 기기는 동시 접속으로 로그아웃돼요.', code: 'concurrent' };
 
-export async function handle(body: unknown, token: string | null, ip = 'unknown', testRun = false): Promise<ApiResult> {
+export async function handle(body: unknown, token: string | null, ip = 'unknown', testRun = false, active = true): Promise<ApiResult> {
   try {
     if (body && typeof body === 'object' && (body as Body).action === 'guest') return { status: 200, body: await createGuest(ip) };
     if (body && typeof body === 'object' && (body as Body).action === 'loginEmail') {
@@ -1973,12 +1983,29 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
         return { status: 503, body: { error: '잠시 연결이 불안정해요. 다시 시도해 주세요.' } };
       }
       // (051) 세션이 끊겼음 = 다른 곳에서 더 나중에 로그인했거나 로그아웃·비밀번호 변경 → 화면은 새 손님을 만들지 않고 안내
-      if ((error as { code?: string } | null)?.code === 'session_not_found' || /session missing/i.test(error?.message ?? '')) return { status: 401, body: { error: '다른 곳에서 접속했거나 로그아웃돼서 이 기기는 로그아웃됐어요.', code: 'replaced' } };
+      if ((error as { code?: string } | null)?.code === 'session_not_found' || /session missing/i.test(error?.message ?? '')) return { status: 401, body: REPLACED };
       return { status: 401, body: { error: '로그인이 만료됐어요. 새로고침해 주세요.' } };
     }
     const uid = data.user.id;
-    // (051) 동시 접속 막기: 이 계정의 '지금 세션'이 아니면(다른 곳에서 더 나중에 로그인) 거절 — 화면은 새 손님을 만들지 않고 안내
-    if (!(await sessionOk(uid, token))) return { status: 401, body: { error: '다른 곳에서 접속해서 이 기기는 로그아웃됐어요.', code: 'replaced' } };
+    // (060) 동시 접속: '여기서 접속'(takeOver)·창 닫음(sessionIdle)은 먼저 처리. 그 밖엔 다른 기기가 접속 중이면 묻게(409 concurrent, 아무것도 안 함)
+    const act0 = body && typeof body === 'object' ? (body as Body).action : undefined;
+    if (act0 === 'takeOver') {
+      rateLimit(uid + ':takeOver', 10, 60_000);
+      const st = await sessionState(uid, token, true, true);
+      return st === 'gone' ? { status: 401, body: REPLACED } : { status: 200, body: { ok: true } };
+    }
+    if (act0 === 'sessionIdle') {
+      const sid = sessionIdOf(token);
+      if (sid) {
+        sessionCache.delete(uid + ':' + sid + ':a');
+        sessionCache.delete(uid + ':' + sid + ':b');
+        await db().rpc('session_idle', { p_user: uid, p_sid: sid }).then(() => {}, () => {});
+      }
+      return { status: 200, body: { ok: true } };
+    }
+    const sst = await sessionState(uid, token, active);
+    if (sst === 'gone') return { status: 401, body: REPLACED };
+    if (sst === 'concurrent') return { status: 409, body: CONCURRENT };
     // 자동 시험 도구가 보낸 요청이면 이 계정을 시험 계정으로 적어 둠 (밸런스용 판 기록에서 뺌, 046)
     if (testRun && !testMarked.has(uid)) {
       testMarked.add(uid);
