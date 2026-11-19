@@ -2,6 +2,7 @@
  * (v20) 커뮤니티·SNS 피드 (design/community-news-v20.md)
  * 플랫폼 아이콘은 이 게임에서 직접 그린 단색 그림 (실제 서비스 로고 아님)
  */
+import { useEffect, useRef, useState } from 'react';
 import { clockOf, gameTime, NICKS, PLATFORMS, type Platform, type PublicPost } from '../game/community';
 import { SECTOR_MAP, STOCK_MAP } from '../game/stocks';
 import { Icon, SectorIcon } from './Icon';
@@ -69,11 +70,11 @@ export function PlatformIcon({ id, size = 30 }: { id: Platform; size?: number })
   );
 }
 
-export function Post({ p, onSelect, onSelectSector, past, time, daySec }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean; /** 시각 대신 보일 글 ('장 전') */ time?: string; daySec?: number }) {
+export function Post({ p, onSelect, onSelectSector, past, time, daySec, fresh }: { p: PublicPost; onSelect: (s: string) => void; onSelectSector: (s: string) => void; past?: boolean; /** 시각 대신 보일 글 ('장 전') */ time?: string; daySec?: number; /** 방금 받은 글 (나타나는 움직임은 이 글에만) */ fresh?: boolean }) {
   const pf = PLATFORMS[p.platform];
   const target = p.symbol && STOCK_MAP[p.symbol] ? STOCK_MAP[p.symbol].name : (SECTOR_MAP[p.sector]?.name ?? p.sector);
   return (
-    <li className={'cf-post pf-' + p.platform + (p.verified ? ' is-verified' : '') + (p.verdict ? ' v-' + p.verdict : '')}>
+    <li className={'cf-post pf-' + p.platform + (p.verified ? ' is-verified' : '') + (p.verdict ? ' v-' + p.verdict : '') + (fresh ? ' cf-new' : '')}>
       <PlatformIcon id={p.platform} size={34} />
       <div className="cf-main">
         <div className="cp-head">
@@ -115,8 +116,38 @@ export function Post({ p, onSelect, onSelectSector, past, time, daySec }: { p: P
 
 /** 오늘 장중 피드(새 글이 위) + 지난 글(진위가 밝혀진 것) */
 export function CommunityFeed({ today, past, day, live, daySec, onSelect, onSelectSector }: { today: PublicPost[]; past: PublicPost[]; day: number; live: boolean; daySec?: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
-  const now = [...today].sort((a, b) => b.at - a.at);
+  const all = [...today].sort((a, b) => b.at - a.at);
   const old = past.filter((p) => p.day === day - 1).sort((a, b) => b.at - a.at);
+  // 처음 그릴 때 있던 글은 그대로, 그 뒤 받은 글만 '새 글' 움직임
+  const seen = useRef<Map<string, number> | null>(null);
+  if (seen.current === null) seen.current = new Map(all.map((p) => [p.id, 0]));
+  const isNew = (id: string) => {
+    const t = seen.current!.get(id);
+    return t === undefined || (t > 0 && Date.now() - t < 3000);
+  };
+  // 아래로 내려 읽는 중이면 새 글을 바로 끼워 넣지 않고 위에 '새 글 n개' — 읽던 글이 밀리지 않게
+  const listRef = useRef<HTMLUListElement>(null);
+  const [held, setHeld] = useState<Set<string> | null>(null);
+  const scrolled = () => {
+    let el: HTMLElement | null = listRef.current?.parentElement ?? null;
+    while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement;
+    const top = listRef.current?.getBoundingClientRect().top ?? 0;
+    return el ? el.scrollTop > 60 && top < (el.getBoundingClientRect?.().top ?? 0) : window.scrollY > 200 && top < 0;
+  };
+  const shownIds = held ?? new Set(all.map((p) => p.id));
+  const waiting = all.filter((p) => !shownIds.has(p.id)).length;
+  useEffect(() => {
+    if (held === null && all.some((p) => !seen.current!.has(p.id)) && scrolled()) setHeld(new Set(seen.current!.keys()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all.length]);
+  const now = all.filter((p) => shownIds.has(p.id) || held === null);
+  const release = () => {
+    setHeld(null);
+    listRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+  useEffect(() => {
+    if (held === null) for (const p of all) if (!seen.current!.has(p.id)) seen.current!.set(p.id, Date.now());
+  });
   return (
     <section className="cf" aria-label="커뮤니티·SNS 실시간 글">
       <header className="rb-head">
@@ -127,16 +158,23 @@ export function CommunityFeed({ today, past, day, live, daySec, onSelect, onSele
             지금 올라오는 글
           </span>
         )}
-        <small className="muted">보라색 '인증' 배지가 붙은 사람(대표·애널리스트 등)의 글은 더 잘 맞지만 틀릴 수도 있어요. 헛소문도 잠깐은 가격을 흔들어요.</small>
+        {all.length === 0 && <small className="muted">보라색 '인증' 배지가 붙은 사람(대표·애널리스트 등)의 글은 더 잘 맞지만 틀릴 수도 있어요. 헛소문도 잠깐은 가격을 흔들어요.</small>}
       </header>
       {now.length === 0 ? (
         <p className="muted small cf-empty">{live ? '아직 오늘 올라온 글이 없어요. 장중에 수시로 올라와요.' : '장이 열리면 글이 올라오기 시작해요.'}</p>
       ) : (
-        <ul className="cf-list">
-          {now.map((p) => (
-            <Post key={p.id} p={p} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />
-          ))}
-        </ul>
+        <>
+          {waiting > 0 && (
+            <button type="button" className="cf-more-pill" onClick={release}>
+              <Icon name="up" size={14} /> 새 글 {waiting}개
+            </button>
+          )}
+          <ul className="cf-list" ref={listRef}>
+            {now.map((p) => (
+              <Post key={p.id} p={p} daySec={daySec} fresh={isNew(p.id)} onSelect={onSelect} onSelectSector={onSelectSector} />
+            ))}
+          </ul>
+        </>
       )}
       {old.length > 0 && (
         <details className="cf-old">

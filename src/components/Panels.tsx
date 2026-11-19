@@ -1,4 +1,5 @@
 import { josa } from '../engine/engine';
+import { gameTime } from '../game/community';
 import { Avatar } from './Avatar';
 import { GameCard } from './GameCard';
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -126,9 +127,10 @@ function ArticleBody({ a }: { a: NonNullable<NewsEvent['article']> }) {
         {a.quote && <span className="art-q-badge" title="검증된 사람의 말이 들어간 기사 — 더 믿을 만하지만 100%는 아니에요">인터뷰</span>}
         {a.cite && <span className="art-c-badge" title="커뮤니티·SNS 글을 옮긴 기사">{a.cite.name} 인용</span>}
       </div>
-      <p className="art-lead">{a.lead}</p>
+      {/* 하루가 짧아 훑어 읽기가 먼저 — 첫 문단부터 접어 두고 누르면 펼침 */}
       <details className="art-more">
-        <summary>본문 펼치기</summary>
+        <summary>기사 더 보기</summary>
+        <p className="art-lead">{a.lead}</p>
         {a.body.map((t, i) => (
           <p key={i} className={a.quote && t.includes(a.quote.text) ? 'art-quote' : undefined}>
             {t}
@@ -505,7 +507,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {[...today].sort((a, b) => Number(b.at !== undefined) - Number(a.at !== undefined) || (b.at ?? 0) - (a.at ?? 0) || Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
         <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
           <div className="news-meta">
-            {n.at !== undefined && <span className="breaking-badge"><Icon name="flame" size={11} /> {n.label === '시황' ? '장중 시황' : n.rumor ? '장중 소문' : '장중 속보'}</span>}
+            {n.at !== undefined && <span className="breaking-badge">{n.label === '시황' ? '장중 시황' : n.rumor ? '장중 소문' : '장중 속보'}{daySec ? ` · ${gameTime(n.at, daySec)}` : ''}</span>}
             {isFresh(n) && <span className="new-badge">새 기사</span>}
             <span className={'kind k-' + n.kind}>{KIND_LABEL[n.kind]}</span>
             {n.sector && (

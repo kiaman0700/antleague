@@ -2499,3 +2499,14 @@ span.roll.roll span { font-size: inherit; font-weight: inherit; color: inherit; 
 .rating-spark.is-down .rs-line { stroke: #8a8a94; }
 .rating-spark .rs-dot { fill: #fff; }
 @media (max-width: 860px) { .rating-spark { width: 100%; } }
+
+/* 소식 칸: 움직임은 방금 받은 글에만, 위 '새 글 n개' 알약, 그라데이션·빛 번짐 대신 왼쪽 띠 */
+.cf-post { animation: none; }
+.cf-post.cf-new { animation: cf-in 0.3s ease-out, cfGlow 2.4s ease-out; }
+.cf-more-pill { position: sticky; top: 6px; z-index: 3; display: flex; align-items: center; gap: 4px; margin: 0 auto 6px; padding: 6px 14px; border-radius: 999px; border: 0; background: #6b58ee; color: #fff; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
+.cf-more-pill:hover { background: #5f4de3; }
+.news-card.good, .news-card.bad { background: var(--surface-2); }
+.news-card.breaking.fresh { box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 40%, transparent) inset; animation: brkFlash 0.6s ease-out; }
+@keyframes brkFlash { from { background: color-mix(in srgb, var(--danger) 16%, var(--surface-2)); } to { background: var(--surface-2); } }
+.art-more > summary { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .cf-post.cf-new, .news-card.breaking.fresh { animation: none; } }
