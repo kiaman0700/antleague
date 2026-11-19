@@ -18,7 +18,7 @@ import { LIVE_NEWS_VERSION, liveNews } from '../game/liveNews.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
-import { augEndDay, augOn, deriveAugs, ownedAugs, pendingSlot, type AugRow } from './augs.js';
+import { augEndDay, augOn, augSeatKey, deriveAugs, ownedAugs, pendingSlot, type AugRow } from './augs.js';
 import { AUG_INFO, augFeeRate, augIncomeAll, augInfoLeft, augLevCap, augMaxOrders, augOrderRange, ruleSector, type AugIncome } from './augEffects.js';
 import type { AugTier } from '../game/augments.js';
 
@@ -678,7 +678,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
         const truth = b.close >= b.open;
         // 70% 확률로 맞음 — 같은 날 같은 종목이면 항상 같은 답
         // (v27) 자리마다 다른 난수 — 정확도가 다른 두 사람이 답을 맞대 진짜를 알아내지 못하게
-        const rng = r.salt ? seeded(`${r.salt}:scout:${sym}:${r.day}${augOn(r.version) ? ':' + meId : ''}`) : mulberry32((r.seed ^ hashString(sym)) + r.day * 131);
+        const rng = r.salt ? seeded(`${r.salt}:scout:${sym}:${r.day}${augOn(r.version) ? ':' + augSeatKey(d, meId) : ''}`) : mulberry32((r.seed ^ hashString(sym)) + r.day * 131);
         base.reveals.scout = { symbol: sym, up: rng() < scoutAcc ? truth : !truth, acc: scoutAcc };
       }
     }

@@ -1259,7 +1259,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         myRank,
         member: !!my?.member,
         resume,
-        total: Math.max(board.length, myRank ?? 0),
+        // 점수표는 200명까지만 읽으므로 전체 인원은 따로 셈 ('200명 중 150위'처럼 틀리게 나오지 않게)
+        total: Math.max(board.length, myRank ?? 0, (await sb.from('daily_runs').select('user_id', { count: 'exact', head: true }).eq('day', day).eq('finished', true).eq('member', true)).count ?? 0),
         top,
         friends,
       };
@@ -1276,7 +1277,11 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const mode = cleanMode(b.mode);
       const ex = await sb.from('daily_runs').select('room_id, finished').eq('day', day).eq('user_id', uid).maybeSingle();
       if (ex.error && /daily_runs/.test(ex.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
-      if (ex.data) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);
+      // 시작하다 서버가 끊겨 방 없이 남은 줄(30초 넘음)은 지우고 다시 — 안 그러면 그날 하루 시작도 이어하기도 못 함
+      if (ex.data && !ex.data.room_id && !ex.data.finished) {
+        const stale = await sb.from('daily_runs').delete().eq('day', day).eq('user_id', uid).is('room_id', null).eq('finished', false).lt('created_at', new Date(Date.now() - 30_000).toISOString()).select('user_id');
+        if (!(stale.data ?? []).length) throw new GameError('오늘의 도전을 시작하는 중이에요. 잠시 뒤 다시 눌러 주세요.', 409);
+      } else if (ex.data) throw new GameError('오늘의 도전은 이미 했어요. 내일 0시에 새 시장이 열려요.', 409);
       await ensureFree(uid);
       const claim = await sb.from('daily_runs').insert({ day, user_id: uid, nickname, member });
       if (claim.error) {

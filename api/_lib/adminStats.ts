@@ -40,7 +40,7 @@ export async function adminOverview(sb: SupabaseClient) {
   const [members, members7, online, playing, playingAll, waiting, queue, unread, errors24] = await Promise.all([
     count(sb.from('profiles').select('user_id', head).eq('is_test', false)),
     count(sb.from('profiles').select('user_id', head).eq('is_test', false).gt('created_at', ago(7 * DAY))),
-    count(sb.from('profiles').select('user_id', head).gt('last_seen', ago(2 * 60_000))),
+    count(sb.from('profiles').select('user_id', head).eq('is_test', false).gt('last_seen', ago(2 * 60_000))),
     count(sb.from('rooms').select('id', head).eq('status', 'playing').or(live)),
     count(sb.from('rooms').select('id', head).eq('status', 'playing')),
     count(sb.from('rooms').select('id', head).eq('status', 'waiting')),
