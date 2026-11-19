@@ -94,7 +94,9 @@ ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin)
   await B({ action: 'join', code: m3.b.code, nickname: '카운트B', mode: 'easy' });
   await B({ action: 'ready', roomId: r3, ready: true });
   await A({ action: 'addBot', roomId: r3, level: 2 });
-  ok('사람 2 + 봇 1 시작', (await A({ action: 'start', roomId: r3 })).s === 200);
+  const st3 = await A({ action: 'start', roomId: r3 });
+  // 방 만들기가 시간당 제한(같은 계정 10개)에 걸리면 여기서 실패 — 이유를 같이 보여 줌
+  ok('사람 2 + 봇 1 시작', st3.s === 200, `방 만들기 ${m3.s} ${m3.b?.error ?? ''} / 시작 ${st3.s} ${st3.b?.error ?? ''}`);
   await A({ action: 'endTurn', roomId: r3 });
   let s3 = (await A({ action: 'state', roomId: r3 })).b;
   ok('3명 중 1명 마감은 아직 카운트다운 아님 (봇도 한 명으로 셈)', s3.room.countdown === false, `countdown=${s3.room.countdown}`);
