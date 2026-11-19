@@ -2692,3 +2692,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .more-menus > .more-links { grid-template-columns: minmax(0, 1fr) !important; }
   .more-menus > .more-links > .more-h + .more-row + .more-row::before { display: block; }
 }
+
+/* PC 결과(두 칸): '한 판 더·홈으로'가 맨 아래(1,800px 쯤)라 한참 내려야 보였음 → 화면 아래에 늘 붙어 있게 (휴대폰 결과와 같게) */
+.result.rs-wide .center-actions { position: sticky; bottom: 0; z-index: 20; margin-top: 16px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); background: var(--bg, #111); border-top: 1px solid var(--line, #242424); justify-content: center; }
