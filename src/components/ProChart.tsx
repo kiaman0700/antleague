@@ -440,7 +440,9 @@ export function ProChart({
     const d = drag.current;
     pointers.current.delete(e.pointerId);
     if (d?.pinch) {
-      if (pointers.current.size === 0) drag.current = null;
+      // 두 손가락 중 하나만 떼면 남은 손가락으로 이어서 끌기 (예전 시작점으로 끌면 확대가 풀리며 화면이 튐)
+      const rest = [...pointers.current.values()][0];
+      drag.current = rest ? { startX: rest.x, startView: view, moved: true } : null;
       return;
     }
     drag.current = null;

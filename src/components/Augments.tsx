@@ -7,7 +7,7 @@ import type { Trade } from '../game/portfolio';
 import { STOCK_MAP } from '../game/stocks';
 import { Icon, type IconName } from './Icon';
 import { AugArt } from './AugArt';
-import { AugCorner, AugCrest, AugGems, AugMedal } from './AugFrame';
+import { AugCoin, AugCorner, AugCrest, AugGems, AugMedal } from './AugFrame';
 import { DialogBox, useEscape } from './ui';
 import { won } from '../lib/format';
 
@@ -195,7 +195,9 @@ export function AugSlots({ aug, size = 30 }: { aug: AugView; size?: number }) {
         const a = m ? AUG_MAP[m.id] : null;
         return a ? (
           <span key={n} className="aug-slot" title={`${a.name} — ${a.desc}`}>
-            <AugArt id={m!.id} size={size} />
+            <AugCoin tier={a.tier} size={size + 8}>
+              <AugArt id={m!.id} size={Math.round(size * 0.72)} />
+            </AugCoin>
           </span>
         ) : (
           <span key={n} className="aug-slot empty" title={`${d + 1}일차에 골라요`}>
@@ -230,7 +232,9 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
           return (
             <li key={m.n} className={`aug-own t-${a.tier}`}>
               <span className="aug-badge" aria-hidden>
-                <AugArt id={m.id} size={36} />
+                <AugCoin tier={a.tier} size={46}>
+                  <AugArt id={m.id} size={30} />
+                </AugCoin>
               </span>
               <span className="aug-body">
                 <b className="aug-name">

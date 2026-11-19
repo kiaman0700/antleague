@@ -130,3 +130,9 @@
   .aug-stage .aug-row3 .aug-foot { padding: 10px 2px 2px; font-size: 10.5px; }
   .aug-stage .aug-row3 .aug-foot .aug-gems { bottom: -17px; transform: translateX(-50%) scale(0.75); }
 }
+
+/* 작은 증강 동전 (게임 중 내 증강) */
+.aug-coin { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.aug-coin .aug-medal { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); }
+.aug-coin-in { position: relative; display: flex; }
+.aug-slot.empty { width: calc(var(--s, 30px) + 8px); height: calc(var(--s, 30px) + 8px); }

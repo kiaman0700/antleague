@@ -373,11 +373,15 @@ export function premarketEnd(r: RoomRow, now: number) {
 export function marketFor(seed: number, days: number, version = 1, salt?: string | null, theme?: string | null): Market {
   const key = `${seed}:${days}:${version}:${salt ?? ''}:${theme ?? ''}`;
   let m = marketCache.get(key);
-  if (!m) {
-    m = generateMarket(seed, days, version, salt ?? undefined, theme);
+  if (m) {
+    // 최근에 쓴 것을 뒤로 (방이 많아도 자주 묻는 방은 다시 만들지 않게)
+    marketCache.delete(key);
     marketCache.set(key, m);
-    if (marketCache.size > 50) marketCache.delete(marketCache.keys().next().value!);
+    return m;
   }
+  m = generateMarket(seed, days, version, salt ?? undefined, theme);
+  marketCache.set(key, m);
+  if (marketCache.size > 120) marketCache.delete(marketCache.keys().next().value!);
   return m;
 }
 
@@ -1063,7 +1067,19 @@ export function preAllReadyDeadline(d: GameData, now: number): number | null {
   return now + r.turn_seconds * 1000;
 }
 
-export function finalResults(d: GameData) {
+/** 끝난 판의 결과는 바뀌지 않으므로 기억해 둠 (결과 화면이 8초마다 물을 때 업적 계산을 되풀이하지 않게). 줄 수까지 키에 넣어 늦게 들어온 줄이 있으면 다시 계산 */
+const finalCache = new Map<string, ReturnType<typeof computeFinalResults>>();
+export function finalResults(d: GameData): ReturnType<typeof computeFinalResults> {
+  if (d.room.status !== 'finished') return computeFinalResults(d);
+  const key = `${d.room.id}|${d.room.kind ?? ""}|${d.room.ranked ? 1 : 0}|${d.room.theme ?? ""}|${d.players.map((p) => p.bot_level ?? 0).join("")}|${d.room.seed}|${d.room.salt ?? ""}|${d.room.total_days}|${d.room.version ?? 1}|${d.trades.length}:${d.trades.reduce((a, t) => a + t.qty * t.price, 0)}|${d.items.length}|${d.orders.length}|${d.augs?.length ?? 0}|${d.players.map((p) => `${p.id}:${p.left_game ? 1 : 0}:${p.left_day ?? ''}`).join(',')}`;
+  const hit = finalCache.get(key);
+  if (hit) return hit;
+  const r = computeFinalResults(d);
+  finalCache.set(key, r);
+  if (finalCache.size > 200) finalCache.delete(finalCache.keys().next().value!);
+  return r;
+}
+function computeFinalResults(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
   // 상대가 모두 기권해 바로 끝난 판: 재산·수익률도 실제로 한 마지막 날(기권한 날) 종가로
   const endDay = playedLastDay(d);

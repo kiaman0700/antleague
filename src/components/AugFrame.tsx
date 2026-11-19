@@ -169,7 +169,7 @@ export function AugCorner({ tier, pos }: { tier: AugTier; pos: 'tl' | 'tr' | 'bl
 }
 
 /** 그림 뒤 둥근 메달 (금속 고리 + 새긴 눈금 + 안쪽 판). 프리즘은 고리에 보석 넷 */
-export function AugMedal({ tier }: { tier: AugTier }) {
+export function AugMedal({ tier, mini = false }: { tier: AugTier; mini?: boolean }) {
   const id = useId().replace(/:/g, '');
   const ticks = Array.from({ length: 36 }, (_, i) => (i * Math.PI * 2) / 36);
   return (
@@ -178,7 +178,7 @@ export function AugMedal({ tier }: { tier: AugTier }) {
       <circle cx="60" cy="60" r="56" fill="#0c0c0f" />
       <circle cx="60" cy="60" r="53" fill={`url(#${id}m)`} stroke="#121216" strokeWidth="1.4" />
       <circle cx="60" cy="60" r="45" fill={`url(#${id}d)`} />
-      {ticks.map((a, i) => (
+      {!mini && ticks.map((a, i) => (
         <path key={i} d={`M${60 + Math.cos(a) * 46.5} ${60 + Math.sin(a) * 46.5}L${60 + Math.cos(a) * (i % 3 === 0 ? 50.5 : 49)} ${60 + Math.sin(a) * (i % 3 === 0 ? 50.5 : 49)}`} stroke="#000" strokeOpacity="0.45" strokeWidth="1.2" strokeLinecap="round" />
       ))}
       <circle cx="60" cy="60" r="42" fill={`url(#${id}f)`} stroke="#000" strokeOpacity="0.7" strokeWidth="1.5" />
@@ -214,5 +214,15 @@ export function AugGems({ tier }: { tier: AugTier }) {
         <Brilliant key={i} id={id} cx={w / 2 + (i - (n - 1) / 2) * 20} cy={15} r={7} />
       ))}
     </svg>
+  );
+}
+
+/** 작은 증강 동전: 메달 위에 그림 (게임 중 '내 증강' 줄·목록) — 고르기 카드와 같은 재질 */
+export function AugCoin({ tier, size, children }: { tier: AugTier; size: number; children: React.ReactNode }) {
+  return (
+    <span className={`aug-coin t-${tier}`} style={{ width: size, height: size }}>
+      <AugMedal tier={tier} mini />
+      <span className="aug-coin-in">{children}</span>
+    </span>
   );
 }

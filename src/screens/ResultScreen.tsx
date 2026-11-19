@@ -64,11 +64,22 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   useEffect(() => {
     if (session.mode !== 'multi' || !session.roomId) return;
     let n = 0;
+    let alive = true;
+    let t: ReturnType<typeof setTimeout> | undefined;
     const load = () =>
       api<typeof rating>('myMatch', { roomId: session.roomId })
-        .then((r) => (r ? setRating(r) : n++ < 5 ? setTimeout(load, 1500) : setRatingGone(true)))
-        .catch(() => setRatingGone(true));
+        .then((r) => {
+          if (!alive) return;
+          if (r) setRating(r);
+          else if (n++ < 5) t = setTimeout(load, 1500);
+          else setRatingGone(true);
+        })
+        .catch(() => alive && setRatingGone(true));
     load();
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [rematching, setRematching] = useState(false);
@@ -156,11 +167,14 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const highlights = useMemo(() => {
     const out: { icon: string; title: string; text: string; day?: number; note?: string }[] = [];
     const days = market.totalDays;
+    // 1위 흐름은 끝까지 하고 거래도 한 사람끼리만 (기권·거래 0번은 재산이 높아도 우승이 아니라 위 결과와 말이 어긋남)
+    const pool = results.filter((r) => !r.left && !r.idle);
     if (results.length >= 2) {
+      const base = pool.length >= 2 ? pool : results;
       // 날마다 1위가 누구였는지
-      const leaderOn = (d: number) => results.reduce((a, r) => (r.hist[d + 1] > a.hist[d + 1] ? r : a), results[0]);
+      const leaderOn = (d: number) => base.reduce((a, r) => (r.hist[d + 1] > a.hist[d + 1] ? r : a), base[0]);
       const gapOn = (d: number) => {
-        const v = results.map((r) => r.hist[d + 1]).sort((x, y) => y - x);
+        const v = base.map((r) => r.hist[d + 1]).sort((x, y) => y - x);
         return v[0] - v[1];
       };
       let changes = 0;
@@ -169,7 +183,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       let takeDay = -1;
       for (let d = 1; d < days; d++) if (leaderOn(d).id === champ.id && leaderOn(d - 1).id !== champ.id) takeDay = d;
       // 재산 1위가 실제 우승자가 아니면(재산 1위가 기권) '끝까지 지켰어요'는 틀린 말 → 이 하이라이트는 건너뜀
-      const champLeft = !!results.find((r) => r.id === champ.id)?.left;
+      const champLeft = pool.length < 2;
       if (champLeft) {
         /* 기권한 사람의 하이라이트는 넣지 않음 */
       } else if (takeDay >= 0) {
@@ -186,7 +200,8 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       const stayers = results.filter((r) => !r.left);
       const byForfeit = stayers.length === 1 && !stayers[0].idle;
       const noContest = stayers.length > 0 && stayers.every((r) => r.idle);
-      out.push({
+      // 끝까지 거래한 사람이 한 명뿐이면(나머지는 거래 0번) 위 결과 띠가 이미 말해 줌 → 이 카드는 건너뜀
+      if (byForfeit || noContest || pool.length >= 2) out.push({
         icon: 'refresh',
         title: '1위 다툼',
         text: byForfeit
@@ -374,7 +389,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
               {!final.augs && (
                 <>
                   <dt>쓴 카드</dt>
-                  <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].name}${n > 1 ? '×' + n : ''}`).join(', ') : '-'}</dd>
+                  <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k]?.name ?? k}${n > 1 ? '×' + n : ''}`).join(', ') : '-'}</dd>
                 </>
               )}
               {r.pf.itemSpend > 0 && (
@@ -416,6 +431,8 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                 {(final.badges[r.id] ?? []).length === 0 && <span className="muted small">이번엔 없어요</span>}
                 {(final.badges[r.id] ?? []).map((id, k) => {
                   const b = BADGE_MAP[id];
+                  // 배포 중에 열어 둔 창이면 새 업적 id 를 모를 수 있음 → 그 칸만 건너뜀
+                  if (!b) return null;
                   return (
                     <span key={id} className={'badge r' + b.rarity} title={b.desc} style={{ ['--k' as string]: k }}>
                       <i><BadgeIcon id={b.id} /></i>

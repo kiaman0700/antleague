@@ -7,39 +7,58 @@
 const PREFIX = 'stockduel.ipath.';
 let scope = '';
 let mem: { paths: Record<string, number[]>; meta: { n: number; tickMs: number } | null } = { paths: {}, meta: null };
-let dirty = false;
+/** 바뀐 날만 저장 — 하루에 한 칸씩 따로 두어 지난 날(안 바뀜)을 매번 다시 쓰지 않음 */
+const dirtyDays = new Set<number>();
 let timer: ReturnType<typeof setTimeout> | null = null;
+const dayKey = (sc: string, day: number) => `${PREFIX}${sc}|${day}`;
 
 function pickScope(sc: string) {
   if (sc === scope) return;
+  if (scope) flushNow();
   scope = sc;
   mem = { paths: {}, meta: null };
   try {
-    const raw = localStorage.getItem(PREFIX + sc);
-    if (raw) {
-      const v = JSON.parse(raw);
-      if (v && typeof v === 'object') mem = { paths: v.paths ?? {}, meta: v.meta ?? null };
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith(PREFIX)) continue;
+      if (!k.startsWith(PREFIX + sc + '|')) {
+        // 다른 판·예전 모양으로 저장한 것은 지움 (저장 공간이 계속 쌓이지 않게)
+        localStorage.removeItem(k);
+        continue;
+      }
+      const v = JSON.parse(localStorage.getItem(k) ?? 'null');
+      const day = Number(k.slice(k.lastIndexOf('|') + 1));
+      if (!v || typeof v !== 'object' || !Number.isInteger(day)) continue;
+      for (const [sym, p] of Object.entries((v.paths ?? {}) as Record<string, number[]>)) if (Array.isArray(p)) mem.paths[`${sym}:${day}`] = p;
+      if (v.meta) mem.meta = v.meta;
     }
-    // 다른 판 것은 지움 (저장 공간이 계속 쌓이지 않게)
-    for (const k of Object.keys(localStorage)) if (k.startsWith(PREFIX) && k !== PREFIX + sc) localStorage.removeItem(k);
   } catch {
     /* 저장소 못 씀 — 이 화면 동안만 기억 */
   }
 }
 
-function flushSoon() {
-  dirty = true;
-  if (timer) return;
-  timer = setTimeout(() => {
-    timer = null;
-    if (!dirty) return;
-    dirty = false;
-    try {
-      localStorage.setItem(PREFIX + scope, JSON.stringify(mem));
-    } catch {
-      /* 가득 참 등 — 무시 */
+function flushNow() {
+  if (timer) clearTimeout(timer);
+  timer = null;
+  if (!dirtyDays.size || !scope) return;
+  try {
+    for (const day of dirtyDays) {
+      const paths: Record<string, number[]> = {};
+      for (const [k, p] of Object.entries(mem.paths)) {
+        const i = k.lastIndexOf(':');
+        if (Number(k.slice(i + 1)) === day) paths[k.slice(0, i)] = p;
+      }
+      localStorage.setItem(dayKey(scope, day), JSON.stringify({ paths, meta: mem.meta }));
     }
-  }, 4000);
+  } catch {
+    /* 가득 참 등 — 무시 */
+  }
+  dirtyDays.clear();
+}
+if (typeof window !== 'undefined') window.addEventListener('pagehide', flushNow);
+
+function flushSoon() {
+  if (timer) return;
+  timer = setTimeout(flushNow, 4000);
 }
 
 /** 오늘 받은 장중 가격을 기억 (더 길어졌을 때만) */
@@ -51,10 +70,10 @@ export function rememberDay(sc: string, day: number, paths: Record<string, numbe
     const key = `${sym}:${day}`;
     if ((mem.paths[key]?.length ?? 0) < p.length) {
       mem.paths[key] = p.slice();
-      dirty = true;
+      dirtyDays.add(day);
     }
   }
-  if (dirty) flushSoon();
+  if (dirtyDays.size) flushSoon();
 }
 
 export function dayMeta(sc: string) {

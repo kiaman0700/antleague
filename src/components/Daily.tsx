@@ -55,6 +55,15 @@ export function useDailyInfo(enabled = true, room?: string) {
     };
   }, [enabled, n, room]);
   const reload = useCallback(() => setN((x) => x + 1), []);
+  // 결과 화면(판을 넘김)에서는 마지막 날 기록이 막 저장되는 중일 수 있어 아직 '끝남'이 아니면 잠깐 뒤 다시 (3번까지)
+  const tries = useRef(0);
+  useEffect(() => {
+    if (room && info && !info.finished && tries.current < 3) {
+      tries.current += 1;
+      const t = setTimeout(reload, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [room, info, reload]);
   return { info, err, reload };
 }
 
@@ -108,15 +117,6 @@ export function DailyFriends({ info }: { info: DailyInfo }) {
 /** 결과 화면: 오늘의 도전 순위 */
 export function DailyResult({ room }: { room?: string }) {
   const { info, err, reload } = useDailyInfo(true, room);
-  // 마지막 날 기록이 막 저장되는 중일 수 있어서, 아직 '끝남'이 아니면 잠깐 뒤 다시 (3번까지)
-  const tries = useRef(0);
-  useEffect(() => {
-    if (info && !info.finished && tries.current < 3) {
-      tries.current += 1;
-      const t = setTimeout(reload, 2000);
-      return () => clearTimeout(t);
-    }
-  }, [info, reload]);
   if (err) return <ErrorState what="오늘의 순위" onRetry={reload} compact />;
   if (!info) return <Loading inline label="오늘의 순위를 불러오는 중…" />;
   return (
