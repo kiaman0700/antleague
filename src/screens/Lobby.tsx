@@ -1290,7 +1290,8 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           </button>
         ))}
         <span className="grow" />
-        <button className="chip on" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setQuickOpen(true))}>
+        {/* 행동 버튼이라 골라진 필터(흰 칩)와 같은 모양이면 '빠른 참가'가 켜진 필터처럼 보였음 */}
+        <button className="chip" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setQuickOpen(true))}>
           <Icon name="ff" /> 빠른 참가
         </button>
         <button className="chip" onClick={() => okWhileMatching('코드로 들어가기는') && gate.guard(() => setCodeOpen(true))}>
