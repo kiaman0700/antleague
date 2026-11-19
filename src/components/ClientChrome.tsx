@@ -2,7 +2,6 @@
  * PC 게임 클라이언트 틀: 위 메뉴바(로고 · 플레이 · 메뉴 · 내 계정) + 오른쪽 소셜 패널(파티 · 친구)
  * 1280px 이상은 소셜 패널이 늘 보이고, 861~1279px 은 위 메뉴의 친구 버튼으로 열고 닫음. 860px 이하는 모바일 틀(아래 탭바)
  */
-import { GameIcon, type GameIconName } from './GameIcon';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Loading } from './ui';
 import { Icon } from './Icon';
@@ -17,17 +16,18 @@ import { tierShort } from './TierBadge';
 import { Avatar } from './Avatar';
 import { HoverPop } from './HoverPop';
 
+type IconName = Parameters<typeof Icon>[0]['name'];
 const MAIN: [NavTab, string][] = [
   ['ranked', '랭킹전'],
   ['casual', '일반전'],
   ['custom', '커스텀'],
   ['practice', '연습'],
 ];
-const SUB: [NavTab, string, GameIconName][] = [
-  ['ranking', '랭킹', 'ranking'],
-  ['league', '리그', 'league'],
-  ['records', '업적', 'records'],
-  ['companies', '공부', 'study'],
+const SUB: [NavTab, string, IconName][] = [
+  ['ranking', '랭킹', 'crown'],
+  ['league', '리그', 'trophy'],
+  ['records', '업적', 'medal'],
+  ['companies', '공부', 'book'],
   ['more', '설정', 'settings'],
 ];
 
@@ -130,7 +130,7 @@ export function TopBar({
         <span className="cl-subs">
           {SUB.filter(([k]) => online || (k !== 'ranking' && k !== 'records' && k !== 'league')).map(([k, label, icon]) => (
             <button key={k} className={'cl-sub' + (active === k ? ' on' : '')} aria-current={active === k ? 'page' : undefined} onClick={() => onGo(k)} title={label}>
-              <GameIcon name={icon} size={18} />
+              <Icon name={icon} size={16} />
               <span>{label}</span>
             </button>
           ))}

@@ -1,4 +1,3 @@
-import { GameIconTile } from '../components/GameIcon';
 import { ThemeCard, themeName } from '../components/ThemeCard';
 import { readStored } from '../lib/stored';
 import { nickNotice, titleProblem } from '../game/nickname';
@@ -760,21 +759,21 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const quickRow = (
     <section className="st-quick" aria-label="기다리지 않고 하기">
       <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
-        <GameIconTile name="bot" />
+        <i className="q-bot"><Icon name="bot" size={22} /></i>
         <span>
           <b>봇전</b>
           <small>기다림 없이 바로</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
-        <GameIconTile name="daily" />
+        <i className="q-daily"><Icon name="daily" size={22} /></i>
         <span>
           <b>오늘의 도전</b>
           <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
-        <GameIconTile name="tutorial" />
+        <i className="q-tut"><Icon name="play" size={22} /></i>
         <span>
           <b>튜토리얼</b>
           <small>3분이면 규칙을 익혀요</small>
@@ -909,22 +908,22 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         (online ? (
           <nav className="home-actions">
             <button className="tile" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setModal('quick'))}>
-              <GameIconTile name="quick" />
+              <i><Icon name="ff" size={24} /></i>
               <b>빠른 참가</b>
               <small>조건에 맞는 열린 방에 바로 들어가요</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
-              <GameIconTile name="create" />
+              <i><Icon name="plus" size={24} /></i>
               <b>방 만들기</b>
               <small>인원·길이·시간을 직접 정해요(점수 없음)</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
-              <GameIconTile name="rooms" />
+              <i><Icon name="search" size={24} /></i>
               <b>방 찾기</b>
               <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '공개방·비밀방 둘러보기'}</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setModal('code'))}>
-              <GameIconTile name="code" />
+              <i><Icon name="key" size={24} /></i>
               <b>코드로 입장</b>
               <small>친구에게 받은 6자리 코드</small>
             </button>
@@ -999,33 +998,33 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <nav className={'home-actions' + (online ? ' six' : '')}>
           {online && (
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
-              <GameIconTile name="daily" />
+              <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
               <small>{!member ? '회원만 · 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : themeName(dailyTile?.theme) ? `오늘의 시장 · ${themeName(dailyTile?.theme)}` : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중` : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
-            <GameIconTile name="bot" />
+            <i><Icon name="bot" size={24} /></i>
             <b>봇전</b>
             <small>기다림 없이 봇과 한 판</small>
           </button>
           <button className="tile" onClick={() => okWhileMatching('혼자 연습은') && gate.guard(() => setModal('practice'))}>
-            <GameIconTile name="practice" />
+            <i><Icon name="target" size={24} /></i>
             <b>혼자 연습</b>
             <small>원하는 속도로 혼자 한 판</small>
           </button>
           <button className="tile" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
-            <GameIconTile name="tutorial" />
+            <i><Icon name="play" size={24} /></i>
             <b>튜토리얼</b>
             <small>연습봇과 한 단계씩</small>
           </button>
           <button className="tile" onClick={() => openModal('howto')}>
-            <GameIconTile name="howto" />
+            <i><Icon name="help" size={24} /></i>
             <b>게임 방법</b>
             <small>1분 만에 규칙 보기</small>
           </button>
           <button className="tile" onClick={() => go('companies')}>
-            <GameIconTile name="study" />
+            <i><Icon name="book" size={24} /></i>
             <b>공부</b>
             <small>투자 기초와 기업 살펴보기</small>
           </button>
