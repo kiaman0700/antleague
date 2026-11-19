@@ -5,6 +5,7 @@
  */
 import { leagueInfo } from './league.js';
 import { streakOf, togetherDays } from '../../src/game/streak.js';
+import { titleProblem } from '../../src/game/nickname.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -30,6 +31,8 @@ function cleanTitle(v: unknown, fallback: string) {
   if (typeof v !== 'string') throw new GameError('방 제목을 확인해 주세요.');
   const t = v.normalize('NFC').trim().replace(/\s+/g, ' ');
   if (!/^[^\p{C}<>]{1,20}$/u.test(t)) throw new GameError('방 제목은 1~20자로, 특수 제어문자 없이 입력해 주세요.');
+  const bad = titleProblem(t);
+  if (bad) throw new GameError(bad);
   return t;
 }
 function cleanMax(v: unknown) {

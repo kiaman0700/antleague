@@ -18,9 +18,22 @@ function squash(n: string): string {
     .replace(/[\s\p{P}\p{S}]/gu, '');
 }
 
-export function reservedNickname(n: string): boolean {
+export function reservedNickname(n: string, words: string[] = CONTAINS): boolean {
   const s = squash(n);
   if (!s) return false;
   const leet = s.replace(/[013457]/g, (c) => LEET[c] ?? c);
-  return CONTAINS.some((w) => s.includes(w) || leet.includes(w)) || EXACT.includes(s) || EXACT.includes(leet);
+  return words.some((w) => s.includes(w) || leet.includes(w)) || EXACT.includes(s) || EXACT.includes(leet);
+}
+
+// 방 제목은 '공식대로 투자' 같은 말이 흔해서 '공식' 은 빼고 봄
+const TITLE_WORDS = CONTAINS.filter((w) => w !== '공식');
+// 공개 방 목록에 올라가는 홍보·연락처 (주식 리딩방 사기에 흔한 모양)
+const PROMO = /(https?:|www\.|\.(?:com|net|org|kr|io|me|ly|gg|xyz|link|site|shop)(?![a-z])|openkakao|오픈채팅|오픈톡|리딩방|텔레그램|telegram|tme\/|t\.me|discord\.gg|01[016789]\d{7,8})/i;
+
+/** 방 제목 문제 (없으면 null) — 서버가 확인, 화면도 같은 말로 미리 보여 줌 */
+export function titleProblem(t: string): string | null {
+  if (reservedNickname(t, TITLE_WORDS)) return '운영자·공식 방으로 오해할 수 있는 제목은 쓸 수 없어요.';
+  const flat = t.normalize('NFKC').toLowerCase().replace(/[\s\-]/g, '');
+  if (PROMO.test(flat)) return '방 제목에는 링크·연락처·홍보 문구를 쓸 수 없어요.';
+  return null;
 }

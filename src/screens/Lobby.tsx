@@ -1,4 +1,4 @@
-import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname';
+import { reservedNickname, RESERVED_NICK_MSG, titleProblem } from '../game/nickname';
 import { parseRoomCode, hasConfusable } from '../lib/roomCode';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
@@ -1262,6 +1262,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const account = useAccount();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [title, setTitle] = useState('');
+  const titleBad = title.trim() ? titleProblem(title.trim()) : null;
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [days, setDays] = useState(20);
   const [turnSec, setTurnSec] = useState(180);
@@ -1303,9 +1304,10 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
       <section className="panel pad">
         <h3 className="sec-h">기본</h3>
-        <label className="field">
+        <label className={'field' + (titleBad ? ' invalid' : '')}>
           <span>방 제목</span>
-          <input value={title} maxLength={20} placeholder={`${account.profile?.nickname ?? ((account.status !== 'visitor' && profile.nick.trim()) || '나')}의 방`} onChange={(e) => setTitle(e.target.value)} />
+          <input value={title} maxLength={20} aria-invalid={!!titleBad} placeholder={`${account.profile?.nickname ?? ((account.status !== 'visitor' && profile.nick.trim()) || '나')}의 방`} onChange={(e) => setTitle(e.target.value)} />
+          {titleBad && <small className="error">{titleBad}</small>}
         </label>
         <div className="field">
           <span>인원 (방장 포함)</span>
@@ -1376,7 +1378,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           {maxPlayers}명 · {days}일 · 하루 {turnLabel(turnSec)} · 약 {est.typical}분 · {isPrivate ? '비밀방' : '공개방'}
         </p>
         {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn primary xl" disabled={busy || !online || !pwOk} onClick={create}>
+        <button className="btn primary xl" disabled={busy || !online || !pwOk || !!titleBad} onClick={create}>
           {busy ? '만드는 중…' : '방 만들기'}
         </button>
       </div>

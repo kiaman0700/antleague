@@ -74,6 +74,8 @@ const avR = (await G0({ action: 'checkAvailable', nickname: '개미리그 운영
 ok('운영자 흉내 닉네임은 invalid', avR.nickname === 'invalid', JSON.stringify(avR));
 const impR = await G0({ action: 'create', nickname: 'Adm1n', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '흉내' });
 ok('게스트가 운영자 흉내 닉네임으로 방 만들기 거절', impR.s === 400 && /운영자/.test(impR.b?.error ?? ''), impR.b?.error);
+const promo = await G0({ action: 'create', nickname: '제목시험' + rnd.slice(0, 3), mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '리딩방 open.kakao.com' });
+ok('방 제목에 링크·홍보 문구 거절', promo.s === 400 && /링크/.test(promo.b?.error ?? ''), promo.b?.error);
 const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
 ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
 const samePw = await G0({ action: 'signup', username: 'e2epw' + rnd, password: 'e2epw' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
