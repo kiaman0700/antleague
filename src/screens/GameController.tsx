@@ -1862,6 +1862,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         </div>
         <div className="hud-macro">{macroChips}</div>
         <div className="hud-right">{settings}</div>
+        {/* 오늘 장 남은 시간 막대 (한눈에 보이는 위 가장자리) — 마지막 20%는 호박색, 깜빡임 없이 */}
+        {remaining !== null && daySecs > 0 && !inPre && closing === null && (
+          <div className={'hud-time' + (remaining <= daySecs * 0.2 ? ' low' : '')} role="progressbar" aria-label="오늘 장 남은 시간" aria-valuemin={0} aria-valuemax={daySecs} aria-valuenow={Math.round(remaining)}>
+            <i style={{ width: `${Math.max(0, Math.min(1, remaining / daySecs)) * 100}%` }} />
+          </div>
+        )}
       </header>
 
       <section className="score desk-score">

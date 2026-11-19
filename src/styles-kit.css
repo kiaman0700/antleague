@@ -2571,3 +2571,11 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 @media (prefers-reduced-motion: reduce) { .tut-prog > i { transition: none; } }
 .more-ver { margin: 10px 4px 0; font-size: 12px; color: #9a9a9a; font-variant-numeric: tabular-nums; }
 .more-sound { display: grid; gap: 14px; } .more-sound .ms-row + .ms-row { padding-top: 14px; border-top: 1px solid #2a2a2a; }
+
+/* PC 게임: 위 가장자리 남은 시간 막대, 급할 때도 빨강(사기 색) 대신 호박색 글자만 */
+.game.desk > .hud { position: relative; }
+.hud-time { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.06); pointer-events: none; }
+.hud-time > i { display: block; height: 100%; background: #6b58ee; transition: width 1s linear; }
+.hud-time.low > i { background: #f5b83d; }
+.game.desk .desk-score > .btn.end-turn.hurry:not(.waiting):not(:disabled) { background: #6b58ee !important; box-shadow: none !important; }
+@media (prefers-reduced-motion: reduce) { .hud-time > i { transition: none; } }
