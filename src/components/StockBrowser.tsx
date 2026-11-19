@@ -413,7 +413,8 @@ const StockRow = memo(function StockRow({ symbol, krw, usd, ch, series, sel, new
           {heldQty > 0 && <span className="held"> · {num(heldQty)}주</span>}
         </small>
       </div>
-      <Sparkline values={series} up={(usd ?? krw) >= series[0]} width={44} />
+      {/* 색은 바로 옆 등락률(전날 대비)과 같게 — 그림 첫 값(오늘 시가) 기준이면 내린 종목이 빨갛게 보였음 */}
+      <Sparkline values={series} up={ch >= 0} width={44} />
       <div className="sprice">
         <b key={price} className={dir.trim() || undefined}>{usd !== null ? fmtUsd(usd) : num(krw)}</b>
         <small className={tone(ch)}>{pct(ch)}</small>

@@ -49,6 +49,8 @@ interface Props {
   /** 오늘 봉이 진행 중이면 시가만 */
   liveOpenOnly: boolean;
   refLine?: { value: number; label: string } | null;
+  /** 선 색(빨강·파랑)을 정하는 기준 값 — 없으면 보이는 첫 값. 위 가격 표시와 같은 기준(전날 종가)을 넘겨 색이 엇갈리지 않게 */
+  colorBase?: number;
   markers?: { day: number; tone: "good" | "bad" | "day" }[];
   fmt?: (v: number) => string;
   /** 전체 화면용 */
@@ -97,6 +99,7 @@ export function ProChart({
   totalDays,
   liveOpenOnly,
   refLine,
+  colorBase,
   markers = [],
   fmt = (v) => Math.round(v).toLocaleString("ko-KR"),
   tall = false,
@@ -503,7 +506,7 @@ export function ProChart({
   const visible = (i: number) => i >= view[0] - 1 && i <= view[1] + 1;
   // 봉 굵기: 칸의 72% — 봉이 적을 때도 사이가 너무 벌어져 보이지 않게 최대 굵기를 넉넉히
   const bw = Math.max(2, Math.min(34, slot * 0.72));
-  const up = lastIdx > 0 ? lastPrice >= closes[0] : true;
+  const up = colorBase !== undefined && colorBase > 0 ? lastPrice >= colorBase : lastIdx > 0 ? lastPrice >= closes[0] : true;
   const lineColor = up ? "var(--up)" : "var(--down)";
   const pathOf = (vals: (number | null)[]) => {
     let d = "";

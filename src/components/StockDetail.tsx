@@ -301,6 +301,7 @@ export function StockDetail(props: Props) {
           bars={all}
           totalDays={total}
           liveOpenOnly={false}
+          colorBase={prevNative}
           refLine={
             ref ?? {
               value: prevNative,
