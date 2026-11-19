@@ -95,21 +95,28 @@ async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAu
   const token = noAuth ? null : await accessToken();
   if (!noAuth) lastToken = token ?? null;
   let res: Response;
+  // 멈춘 요청 하나가 다음 확인을 모두 막지 않게 시간 제한 (읽기는 짧게, 거래 같은 행동은 넉넉히)
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), action === 'state' ? 6000 : 15000);
   try {
     res = await fetch('/api/game', {
+      signal: ctl.signal,
       method: 'POST',
       // (060) 화면이 보이는 상태의 요청인지 — 뒤에 숨은 창은 '접속 중'으로 치지 않음
       headers: { 'content-type': 'application/json', 'x-stockduel-vis': document.visibilityState === 'hidden' ? '0' : '1', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ action, ...payload }),
     });
   } catch {
-    throw new ApiError('인터넷 연결을 확인해 주세요.', 0);
+    clearTimeout(timer);
+    throw ctl.signal.aborted ? new ApiError('연결이 느려요. 잠시 뒤 다시 해 주세요.', 0, 'timeout') : new ApiError('인터넷 연결을 확인해 주세요.', 0);
   }
   let body: unknown = null;
   try {
     body = await res.json();
   } catch {
     /* 빈 응답 */
+  } finally {
+    clearTimeout(timer);
   }
   if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status, (body as { code?: string } | null)?.code);
   if (!noAuth) concurrentCleared();
@@ -166,6 +173,10 @@ export function useLiveView(roomId: string | null): LiveView {
   const keyRef = useRef<string | undefined>(undefined);
   const busy = useRef(false);
   const again = useRef(false);
+  /** 연속 실패 수 — 한 번 끊긴 걸로 띠를 띄우지 않고, 실패가 이어지면 간격을 늘림 */
+  const failRef = useRef(0);
+  /** 가장 짧았던 왕복 시간 — 느린 응답의 시계 차이로 카운트다운이 튀지 않게 */
+  const bestRtt = useRef(Infinity);
   /** 1초 가격 방에서 장이 열려 있는지 (빠르게 새로 받기) */
   const fastRef = useRef(false);
   /** 끝난 판: 결과 화면에선 '다시 하기 방' 소식만 기다리므로 천천히 */
@@ -210,7 +221,11 @@ export function useLiveView(roomId: string | null): LiveView {
         liveRef.current = v.live;
       } else liveRef.current = null;
       const t1 = Date.now();
-      setOffset(v.serverNow - (t0 + t1) / 2);
+      const rtt = t1 - t0;
+      if (rtt <= bestRtt.current * 1.5 + 30) {
+        bestRtt.current = Math.min(bestRtt.current, rtt);
+        setOffset(v.serverNow - (t0 + t1) / 2);
+      }
       if (v.market) {
         setMarket(v.market);
         keyRef.current = v.marketKey;
@@ -218,13 +233,16 @@ export function useLiveView(roomId: string | null): LiveView {
       setView(v);
       fastRef.current = !!v.live && (v.live.tickMs ?? 5000) <= 1000;
       doneRef.current = v.room.status === 'finished';
+      failRef.current = 0;
       setError(null);
     } catch (e) {
       // 요청이 많다고 하면 화면은 그대로 두고 10초 동안 천천히 받음 (오류 문구로 놀라게 하지 않음)
       if (e instanceof ApiError && (e.status === 429 || e.status === 503)) slowUntil.current = Date.now() + 10_000;
       else {
-        if (e instanceof ApiError && (e.status === 403 || e.status === 404)) goneRef.current = true;
-        setError(e instanceof Error ? e.message : String(e));
+        const gone = e instanceof ApiError && (e.status === 403 || e.status === 404);
+        if (gone) goneRef.current = true;
+        failRef.current += 1;
+        if (gone || failRef.current >= 2 || (e instanceof ApiError && e.code === 'timeout')) setError(e instanceof Error ? e.message : String(e));
       }
     } finally {
       busy.current = false;
@@ -238,6 +256,8 @@ export function useLiveView(roomId: string | null): LiveView {
   useEffect(() => {
     if (!roomId) return;
     keyRef.current = undefined;
+    failRef.current = 0;
+    bestRtt.current = Infinity;
     goneRef.current = false;
     refresh();
     // 1초 가격 방(v11)에서 장이 열려 있으면 1초마다, 아니면 2.5초마다 새로 받음
@@ -245,7 +265,10 @@ export function useLiveView(roomId: string | null): LiveView {
     const loop = () => {
       // 창이 뒤에 있으면 10초마다(자리 비움 판정 90초보다 짧게), 요청 제한에 걸렸으면 5초마다
       const hidden = document.visibilityState === 'hidden';
-      const ms = hidden ? 10_000 : doneRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
+      const base = hidden ? 10_000 : doneRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
+      // 실패가 이어지면 1→2→4→8초로 벌리고 그 안에서 섞음 (끊겼다 돌아온 사람들이 한꺼번에 몰리지 않게)
+      const f = failRef.current;
+      const ms = f > 0 ? Math.max(base, Math.random() * Math.min(8000, 1000 * 2 ** f)) : base;
       poll = window.setTimeout(() => {
         if (goneRef.current) return; // 방에서 빠졌으면 여기서 멈춤
         refresh();

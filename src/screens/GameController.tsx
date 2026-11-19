@@ -38,7 +38,7 @@ import { quote } from '../game/quote';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
-import { api, useLiveView, useReactions, type Reaction } from '../net/api';
+import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
 import { setFlash } from '../lib/flash';
@@ -88,7 +88,16 @@ function useGameSource(session: Session) {
       setBusy(true);
       try {
         if (multi) {
-          await api(action, { roomId: session.roomId, ...payload });
+          try {
+            await api(action, { roomId: session.roomId, ...payload });
+          } catch (e) {
+            // 보낸 뒤 응답만 끊겼으면 서버에선 처리됐을 수 있음 → '실패'라고 하면 다시 눌러 두 번 살 수 있어서 확인을 권함
+            if (e instanceof ApiError && e.status === 0 && action !== 'endTurn') {
+              live.refresh().catch(() => {});
+              throw new ApiError('연결이 끊겨 처리됐는지 모르겠어요. 내 재산에서 확인한 뒤 다시 해 주세요', 0, 'unsure');
+            }
+            throw e;
+          }
           await live.refresh();
         } else if (solo) {
           setSolo(soloAct(solo, action, payload));
@@ -561,6 +570,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       ok();
     } catch (e) {
       play('error');
+      if (e instanceof ApiError && e.code === 'unsure') {
+        showToast(e.message, 'warn');
+        return;
+      }
       showToast(e instanceof Error ? e.message : '실패했어요', 'err');
     }
   };

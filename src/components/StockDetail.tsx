@@ -627,6 +627,20 @@ export interface TradeProps {
   initialSide?: "buy" | "sell";
 }
 
+/** 휴대폰: 키보드가 다 올라온 뒤 그 칸이 시트 안에서 보이게 */
+function showAboveKeyboard(e: { currentTarget: HTMLElement }) {
+  const el = e.currentTarget;
+  if (document.documentElement.dataset.device === "pc") return;
+  window.setTimeout(() => el.scrollIntoView({ block: "nearest" }), 320);
+}
+
+/** 휴대폰 키보드의 '완료'는 키보드만 닫음 (실수로 바로 주문되지 않게). 처리했으면 true */
+function touchEnter(e: { currentTarget: HTMLElement }) {
+  if (document.documentElement.dataset.device === "pc") return false;
+  e.currentTarget.blur();
+  return true;
+}
+
 export function TradePanel({
   ui,
   symbol,
@@ -797,6 +811,9 @@ export function TradePanel({
             {isUS && <span>$</span>}
             <input
               inputMode={isUS ? "decimal" : "numeric"}
+              enterKeyHint="done"
+              onFocus={showAboveKeyboard}
+              onKeyDown={(e) => e.key === "Enter" && touchEnter(e)}
               value={isUS || !limitText ? limitText : Number(limitText).toLocaleString("ko-KR")}
               onChange={(e) =>
                 setLimitText(
@@ -842,7 +859,9 @@ export function TradePanel({
             onChange={(e) =>
               setQtyText(e.target.value.replace(/[^0-9]/g, "").slice(0, 7))
             }
-            onKeyDown={(e) => e.key === "Enter" && submit()}
+            enterKeyHint="done"
+            onFocus={showAboveKeyboard}
+            onKeyDown={(e) => e.key === "Enter" && (touchEnter(e) || submit())}
             disabled={!trade.allowed}
             aria-label="수량"
           />

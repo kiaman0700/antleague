@@ -1892,3 +1892,8 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .gcard:not(.dim):hover .gc-face { box-shadow: inset 0 0 0 3px #141414, inset 0 0 0 4px color-mix(in srgb, var(--tc) 40%, transparent), 0 10px 24px rgba(0,0,0,.45); }
 .news-card.breaking.fresh { box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 55%, transparent); }
 @keyframes revealFlash { 0%, 40% { box-shadow: 0 0 0 2px var(--accent-text); } 100% { box-shadow: none; } }
+
+/* 휴대폰·태블릿 바텀시트: 키보드가 떠도 보이는 영역 바닥에 붙고, 주문 버튼은 아래에 붙어 있음 */
+:root:not([data-device="pc"]) .sheet-bg { top: var(--vv-top, 0px); bottom: auto; height: var(--vv-h, 100%); }
+:root:not([data-device="pc"]) .sheet { max-height: calc(var(--vv-h, 100dvh) * 0.92); }
+:root:not([data-device="pc"]) .sheet-body .trade > .btn.xl { position: sticky; bottom: 4px; z-index: 1; box-shadow: 0 -12px 0 var(--surface), 0 40px 0 24px var(--surface); }

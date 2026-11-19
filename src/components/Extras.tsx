@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { Device } from '../lib/device';
 import { Icon } from './Icon';
 import { DialogBox, EmptyState, useEscape } from './ui';
@@ -131,9 +131,11 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
       document.body.style.overflow = prev;
     };
   }, [open]);
+  const bgRef = useRef<HTMLDivElement>(null);
+  useKeyboardFit(bgRef, open);
   if (!open) return null;
   return (
-    <div className="sheet-bg" onClick={onClose}>
+    <div className="sheet-bg" ref={bgRef} onClick={onClose}>
       <DialogBox className="sheet" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grab" />
         <div className="sheet-head">
@@ -146,6 +148,38 @@ export function BottomSheet({ open, onClose, title, children }: { open: boolean;
       </DialogBox>
     </div>
   );
+}
+
+/**
+ * 휴대폰 키보드가 뜨면 레이아웃은 그대로고 보이는 영역만 줄어듦 → 시트를 보이는 영역 바닥에 붙여
+ * 주문 버튼이 키보드에 가리지 않게. iOS 는 키보드를 닫은 뒤 offsetTop 을 늦게 되돌려 focusout 때도 다시 잼
+ */
+function useKeyboardFit(ref: RefObject<HTMLDivElement | null>, on: boolean) {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!on || !vv || document.documentElement.dataset.device === 'pc') return;
+    let t = 0;
+    const upd = () => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.setProperty('--vv-top', vv.offsetTop + 'px');
+      el.style.setProperty('--vv-h', vv.height + 'px');
+    };
+    const later = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(upd, 120);
+    };
+    upd();
+    vv.addEventListener('resize', upd);
+    vv.addEventListener('scroll', upd);
+    window.addEventListener('focusout', later);
+    return () => {
+      window.clearTimeout(t);
+      vv.removeEventListener('resize', upd);
+      vv.removeEventListener('scroll', upd);
+      window.removeEventListener('focusout', later);
+    };
+  }, [ref, on]);
 }
 
 /** 화면 폭으로 모바일/PC 구분 */
