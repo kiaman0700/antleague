@@ -320,8 +320,11 @@ export function StockBrowser({ market, day, closed, portfolio, watch, onToggleWa
         )}
         {rows.map(({ s, krw, usd, ch }, i) => {
           const showHeader = grouped && (i === 0 || groupKey(rows[i - 1].s) !== groupKey(s));
-          const series = (usd !== null ? market.usd[s.symbol] : market.bars[s.symbol]).slice(Math.max(0, day - 9), day).map((b) => b.close);
-          series.push(usd ?? krw);
+          // 장이 열려 있으면 오늘 장중 흐름(이미 받은 칸까지만), 아니면 지난 열흘 종가 — 하루가 짧아 사람들이 보는 건 오늘 흐름
+          const barsOf = usd !== null ? market.usd[s.symbol] : market.bars[s.symbol];
+          const todayPath = barsOf[day]?.path ?? [];
+          const series = todayPath.length >= 4 ? todayPath.slice(-60) : barsOf.slice(Math.max(0, day - 9), day).map((b) => b.close);
+          if (todayPath.length < 4) series.push(usd ?? krw);
           return (
             <div key={s.symbol}>
               {showHeader && <div className="group-head">{groupLabel(s)}</div>}

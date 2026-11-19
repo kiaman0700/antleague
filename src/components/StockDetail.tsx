@@ -687,8 +687,11 @@ export function TradePanel({
   const [qtyText, setQtyRaw] = useState("");
   // 금액 버튼(+1만원 등)으로 모은 돈. 직접 수량을 바꾸면 지움
   const [budget, setBudget] = useState<number | null>(null);
+  // '절반·최대' 같은 비율로 골랐으면 그 비율을 기억 — 1초마다 가격이 바뀌어도 수량이 따라가 '살 수 있는 수량 초과'로 버튼이 꺼지지 않게
+  const [frac, setFracState] = useState<number | null>(null);
   const setQtyText = (v: string) => {
     setBudget(null);
+    setFracState(null);
     setQtyRaw(v);
   };
   const [limitText, setLimitText] = useState("");
@@ -752,11 +755,20 @@ export function TradePanel({
   // 누른 금액을 모아서 그 돈으로 살 수 있는 만큼만 (1주씩 늘리면 10만원을 눌러도 12만원짜리 1주가 담기므로)
   const addMoney = (w: number) => {
     const nb = (budget ?? qty * unitKrw) + w;
+    setFracState(null);
     setBudget(nb);
     setQtyRaw(String(Math.min(maxQty, Math.floor(nb / unitKrw))));
   };
-  const setFrac = (f: number) =>
+  const setFrac = (f: number) => {
     setQtyText(String(Math.max(0, Math.floor(maxQty * f))));
+    setFracState(f);
+  };
+  // 가격·살 수 있는 수량이 바뀌면 고른 비율·금액대로 수량을 다시 맞춤 (직접 고친 수량은 그대로)
+  useEffect(() => {
+    if (frac !== null) setQtyRaw(String(Math.max(0, Math.floor(maxQty * frac))));
+    else if (budget !== null && unitKrw > 0) setQtyRaw(String(Math.min(maxQty, Math.floor(budget / unitKrw))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxQty, unitKrw]);
   const submit = () => {
     if (!valid) return;
     if (kind === "now") onTrade(symbol, side, qty);

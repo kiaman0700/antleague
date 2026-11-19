@@ -2459,3 +2459,9 @@ span.roll.roll { font-size: inherit; font-weight: inherit; color: inherit; line-
   .st-status { flex-direction: column; align-items: center; text-align: center; gap: 6px; }
   .st-status small { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; }
 }
+/* 주문·보유 숫자는 자리 폭을 같게 (값이 바뀌어도 옆으로 흔들리지 않게) */
+.my-holding b, .trade .sum b, .qty-meta, .price-line .chg, .trade .amount { font-variant-numeric: tabular-nums; }
+/* 휴대폰: 수량 ± 버튼을 손가락 크기로 */
+@media (max-width: 860px) { .trade .steppers button { min-width: 44px; min-height: 44px; } }
+/* 굴러가는 숫자 안의 모든 칸은 바깥 글자 크기를 그대로 (다른 곳의 'span' 규칙이 안 먹게) */
+span.roll.roll span { font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; }
