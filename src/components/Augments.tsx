@@ -201,7 +201,8 @@ export function AugSlots({ aug, size = 30 }: { aug: AugView; size?: number }) {
           </span>
         ) : (
           <span key={n} className="aug-slot empty" title={`${d + 1}일차에 골라요`}>
-            <span className="aug-slot-in">{d + 1}</span>
+            {/* 숫자만 있으면 무엇인지 몰랐음 → 고르는 날임을 '일'로 */}
+            <span className="aug-slot-in">{d + 1}일</span>
           </span>
         );
       })}
@@ -219,6 +220,9 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
   const tradeUse = (['timing', 'undo'] as const).filter((k) => aug.left[k] > 0);
   return (
     <div className="aug-panel">
+      <h4 className="aug-panel-h">
+        내 증강 <span className="muted small">{aug.mine.length}/{aug.days.length}</span>
+      </h4>
       <div className="aug-sec-head">
         <AugSlots aug={aug} size={38} />
         <span className="muted small">{next != null && next < totalDays ? `다음 고르기 ${next + 1}일차` : '이번 판 고르기 끝'}</span>

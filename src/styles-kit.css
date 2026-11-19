@@ -2660,3 +2660,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .close-held > small { display: block; margin-bottom: 6px; color: var(--muted, #9a9a9a); font-size: 12px; }
 .close-held > div { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
 .close-held .ch-item { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 내 증강 칸 제목, 빈 칸은 '4일'처럼 두 글자라 조금 작게 */
+.aug-panel-h { margin: 0 0 8px; font-size: 16px; font-weight: 800; }
+.aug-slot.empty .aug-slot-in { font-size: calc(var(--s, 30px) * 0.3); letter-spacing: -0.03em; }
