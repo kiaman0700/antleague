@@ -379,6 +379,12 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
           </button>
         )}
         {/* 탭을 못 본 사람도 바로 옮겨 가게 (design/onboarding.md) */}
+        {/* 로그인에 실패한 바로 그 자리에서 비밀번호 찾기로 (맨 위 탭만 있어 지나치기 쉬웠음) */}
+        {tab === 'login' && /맞지 않아요/.test(err) && (
+          <button type="button" className="linkish-soft acc-switch" onClick={() => switchTab('reset')}>
+            비밀번호를 잊었나요? 비밀번호 찾기
+          </button>
+        )}
         {tab === 'login' && (
           <button type="button" className="linkish-soft acc-switch" onClick={() => switchTab('signup')}>
             아직 회원이 아니에요? 회원가입
