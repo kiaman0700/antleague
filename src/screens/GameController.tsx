@@ -970,7 +970,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     return (
       <div className="center-msg">
         <Icon name="door" size={28} />
-        <p>이 기기에서는 더 이상 이 대결을 할 수 없어요</p>
+        <p>이 기기에서는 더 이상 이 판을 할 수 없어요</p>
         <p className="muted small">방이 사라졌거나 다른 계정으로 로그인했어요.</p>
         <button className="btn primary" onClick={onExit}>
           홈으로
