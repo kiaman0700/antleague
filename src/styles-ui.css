@@ -962,11 +962,14 @@ button.tag:hover,
   }
 }
 /* 홈 메뉴 타일 설명은 한 줄 */
+/* 설명은 두 줄까지 (한 줄로 자르면 '조건에 맞는 방에 바로 들어…'처럼 뜻이 끊김) */
 .tile small {
   max-width: 100%;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* 일정 종류별 아이콘 색 (날짜 줄·일정 칩·아이콘 뜻 공통) */
