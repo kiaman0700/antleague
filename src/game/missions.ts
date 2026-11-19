@@ -21,12 +21,14 @@ export interface MissionDef {
   scope: 'day' | 'week';
   /** 깰 수 있는 게임 종류 */
   modes: MissionMode[];
+  /** 더는 새로 뽑지 않음 (카드가 없어져 깰 수 없음) — 이미 받은 사람의 판정은 그대로 */
+  retired?: true;
 }
 
 export const MISSIONS: MissionDef[] = [
   // ---- 일일 · 쉬움 (25) ----
   { id: 'finish1', title: '대결 1판 끝까지 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: VERSUS },
-  { id: 'detector', title: '루머 감별기 1번 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'detector', title: '소식 진위 판정 1번 하기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'order', title: '예약 주문 1번 체결시키기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'breaking', title: '장중 속보가 뜬 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'daily', title: '오늘의 도전 하기', tier: 'easy', xp: 30, goal: 1, scope: 'day', modes: ['daily'] },
@@ -42,9 +44,9 @@ export const MISSIONS: MissionDef[] = [
   { id: 'sector3', title: '한 판에서 업종 3곳의 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'us1', title: '미국 종목 사 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'card1', title: '증강 고르기·쓰기 1번', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
-  { id: 'bonus1', title: '용돈 봉투 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
-  { id: 'analyst1', title: '애널리스트 콜 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
-  { id: 'scout1', title: '차트 분석 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'bonus1', title: '용돈 봉투 쓰기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL, retired: true },
+  { id: 'analyst1', title: '오늘 강한 업종 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
+  { id: 'scout1', title: '오를지 내릴지 보기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'bio1', title: '바이오 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'semi1', title: '반도체 종목 사기', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
   { id: 'profit1', title: '수익을 내고 팔기 1번', tier: 'easy', xp: 20, goal: 1, scope: 'day', modes: ALL },
@@ -65,8 +67,8 @@ export const MISSIONS: MissionDef[] = [
   { id: 'levplus', title: '레버리지 ETF를 사고 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
   { id: 'invplus', title: '인버스 ETF를 사고 플러스로 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
   { id: 'sector5', title: '한 판에서 업종 5곳의 종목 사기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
-  { id: 'attack1', title: '방해 카드 1장 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: VERSUS },
-  { id: 'paper1', title: '내일 신문 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
+  { id: 'attack1', title: '방해 카드 1장 쓰기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: VERSUS, retired: true },
+  { id: 'paper1', title: '내일 아침 헤드라인 보기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
   { id: 'duelwin', title: '1대1에서 이기기', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: VERSUS },
   { id: 'steady', title: '거래 10번 넘게 하고 손해 없이 마감', tier: 'normal', xp: 50, goal: 1, scope: 'day', modes: ALL },
   { id: 'hold5', title: '한 종목을 5일 넘게 들고 있기', tier: 'normal', xp: 40, goal: 1, scope: 'day', modes: ALL },
@@ -87,7 +89,7 @@ export const MISSIONS: MissionDef[] = [
   { id: 'w_custom3', title: '커스텀 방에서 3판 끝까지 하기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ['custom'] },
   { id: 'w_bio5', title: '바이오 종목 5번 사기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ALL },
   { id: 'w_us5', title: '미국 종목 5번 사기', tier: 'normal', xp: 120, goal: 5, scope: 'week', modes: ALL },
-  { id: 'w_detector3', title: '루머 감별기 3번 쓰기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ALL },
+  { id: 'w_detector3', title: '소식 진위 판정 3번 하기', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ALL },
   { id: 'w_plus3', title: '플러스로 3판 마감', tier: 'normal', xp: 120, goal: 3, scope: 'week', modes: ALL },
   // ---- 주간 · 어려움 (18) ----
   { id: 'win3', title: '일반전·랭킹전 3판 이기기', tier: 'hard', xp: 200, goal: 3, scope: 'week', modes: ['match'] },
@@ -156,7 +158,7 @@ export function pickMissions(hex: string, kind: 'day' | 'week'): string[] {
   const nums = (hex.match(/.{1,6}/g) ?? ['0']).map((h) => parseInt(h, 16));
   const out: string[] = [];
   SLOT_TIERS[kind].forEach((tier, slot) => {
-    const pool = MISSIONS.filter((m) => m.scope === kind && m.tier === tier && !out.includes(m.id)).map((m) => m.id);
+    const pool = MISSIONS.filter((m) => !m.retired && m.scope === kind && m.tier === tier && !out.includes(m.id)).map((m) => m.id);
     out.push(pool[(nums[(slot * 2) % nums.length] ?? slot) % pool.length]);
   });
   return out;
@@ -164,7 +166,7 @@ export function pickMissions(hex: string, kind: 'day' | 'week'): string[] {
 /** 미션 바꾸기: 같은 칸 등급·같은 목록에서 지금 목록에 없는 것 하나 (hex = 바꾼 횟수까지 넣은 HMAC) */
 export function rerollPick(hex: string, kind: 'day' | 'week', slot: number, current: string[]): string | null {
   const tier = SLOT_TIERS[kind][slot];
-  const pool = MISSIONS.filter((m) => m.scope === kind && m.tier === tier && !current.includes(m.id)).map((m) => m.id);
+  const pool = MISSIONS.filter((m) => !m.retired && m.scope === kind && m.tier === tier && !current.includes(m.id)).map((m) => m.id);
   if (!pool.length) return null;
   return pool[parseInt(hex.slice(0, 8), 16) % pool.length];
 }

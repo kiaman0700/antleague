@@ -96,7 +96,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     return people.map((p) => {
       const trades = final.trades.filter((t) => t.player_id === p.id);
       // (v27) 증강으로 받은 돈도 현금 변화로
-      const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id)).concat((final.augIncome?.[p.id] ?? []).map((x) => ({ day: x.day, cost: -x.amount })));
+      const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id)).concat((final.augIncome?.[p.id] ?? []).map((x) => ({ day: x.day, cost: -x.amount, aug: true })));
       const pf = computePortfolio(trades, spends, Infinity, [], START_CASH);
       const hist = equityHistory(trades, spends, market);
       const equity = hist[hist.length - 1];
@@ -363,8 +363,12 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                   '-'
                 )}
               </dd>
-              <dt>쓴 카드</dt>
-              <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].name}${n > 1 ? '×' + n : ''}`).join(', ') : '-'}</dd>
+              {!final.augs && (
+                <>
+                  <dt>쓴 카드</dt>
+                  <dd>{r.used.length ? r.used.map(([k, n]) => `${ITEM_MAP[k].name}${n > 1 ? '×' + n : ''}`).join(', ') : '-'}</dd>
+                </>
+              )}
               {r.pf.itemSpend > 0 && (
                 <>
                   <dt>카드 구입비</dt>

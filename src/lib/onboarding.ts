@@ -11,7 +11,7 @@ import { api } from '../net/api';
 export type Chapter = 'home' | 'game' | 'result' | 'growth';
 export const CHAPTERS: { id: Chapter; title: string; desc: string; time: string }[] = [
   { id: 'home', title: '홈 둘러보기', desc: '대결 고르기·빠른 메뉴·미션·친구·설정이 어디 있는지', time: '약 1분' },
-  { id: 'game', title: '게임 기초', desc: '연습봇과 한 판: 뉴스·커뮤니티·차트·사기·카드·장 마감', time: '약 3분' },
+  { id: 'game', title: '게임 기초', desc: '연습봇과 한 판: 뉴스·커뮤니티·차트·사기·증강·장 마감', time: '약 3분' },
   { id: 'result', title: '결과 보기', desc: '순위·수익률·이번 판 업적·리플레이·시장 성적', time: '약 30초' },
   { id: 'growth', title: '미션·업적·성장', desc: '미션과 경험치·레벨, 업적과 칭호, 랭킹', time: '약 40초' },
 ];

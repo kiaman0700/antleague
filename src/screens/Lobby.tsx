@@ -46,7 +46,7 @@ import { waitLabel } from '../engine/matching';
 import { DailyBoard, DailyFriends, useDailyInfo } from '../components/Daily';
 import { MissionsButton } from '../components/Missions';
 import { useIsMobile } from '../components/Extras';
-import { BADGE_MAP, BADGES, givesTitle, titleLabel, titleOf } from '../game/achievements';
+import { BADGE_MAP, BADGES, givesTitle, liveBadges, titleLabel, titleOf } from '../game/achievements';
 import { AVATARS } from '../game/avatars';
 import { pct, tone, wonShort } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
@@ -798,7 +798,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           <Icon name="book" size={22} />
           <div>
             <b>처음이라면 튜토리얼부터 해 보세요</b>
-            <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 대결이 훨씬 쉬워져요.</p>
+            <p className="muted small">연습 상대와 사고팔기·뉴스·증강을 직접 해 봐요. 대결이 훨씬 쉬워져요.</p>
           </div>
           <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('game')))}>
             튜토리얼 하기
@@ -1700,7 +1700,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history !== null && !histErr && (
         <section className="panel pad">
           <h3>
-            업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{BADGES.length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
+            업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{liveBadges(myBadges).length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>
           <BadgeShelf mine={myBadges} />
         </section>
@@ -2220,7 +2220,7 @@ function BadgeShelf({ mine }: { mine: Record<string, number> }) {
   const sortFn = (x: G, y: G) => y.b.rarity - x.b.rarity || y.n - x.n || x.i - y.i;
   const normal = got.filter((x) => !x.b.funny).sort(sortFn);
   const funny = got.filter((x) => x.b.funny).sort(sortFn);
-  const hidden = BADGES.length - got.length;
+  const hidden = liveBadges(mine).length - got.length;
   const reward = (id: string) => {
     const pic = AVATARS.some((a) => a.need === id);
     const title = givesTitle(id);

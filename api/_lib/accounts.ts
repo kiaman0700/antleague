@@ -104,7 +104,7 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
   //   4단계를 모두 끝내면 '개미 학교 졸업'. 튜토리얼은 브라우저 판이라 서버는 끝낸 기록만 믿음 — 업적은 처음 한 번
   const tut = await sb.from('tutorial_progress').select('done').eq('user_id', uid).maybeSingle();
   const tdone = (!tut.error && (tut.data as { done?: string[] } | null)?.done) || [];
-  if (tdone.includes('game')) for (const id of ['first_trade', 'first_card', 'shield']) out[id] = (out[id] ?? 0) + 1;
+  if (tdone.includes('game')) for (const id of ['first_trade', 'first_card']) out[id] = (out[id] ?? 0) + 1;
   // 홈 둘러보기는 메뉴에서 따로 보는 단계라 졸업 조건에 넣지 않음
   if (['game', 'result', 'growth'].every((c) => tdone.includes(c))) out.tut_grad = 1;
   // (055) 주간 리그: 올라가 본 가장 높은 단계 · 조 1위 횟수 (서버가 정산한 값만)

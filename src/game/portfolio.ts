@@ -60,6 +60,8 @@ export function maxBuyQty(cash: number, price: number, fee = FEE_RATE) {
 export interface Spend {
   day: number;
   cost: number;
+  /** (v27) 증강으로 받은(잃은) 돈 — 카드 구입비에 넣지 않음 */
+  aug?: boolean;
 }
 
 /** 확정된 배당 (perShare > 0 인 것만 지급) */
@@ -83,7 +85,7 @@ export function computePortfolio(trades: Trade[], spends: Spend[] = [], upToDay 
   for (const s of spends) {
     if (s.day > upToDay) continue;
     cash -= s.cost;
-    itemSpend += s.cost;
+    if (!s.aug) itemSpend += s.cost;
   }
   const sorted = [...trades].sort((a, b) => a.day - b.day || (a.created_at ?? '').localeCompare(b.created_at ?? ''));
   const divs = dividends.filter((d) => d.perShare > 0 && d.day <= upToDay).sort((a, b) => a.day - b.day);

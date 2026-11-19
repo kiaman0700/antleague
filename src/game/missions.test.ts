@@ -36,7 +36,7 @@ describe('미션 고르기 (2판: 일일 6 · 주간 3)', () => {
       expect(week.every((id) => MISSION_MAP[id].scope === 'week')).toBe(true);
     }
   });
-  it('같은 계정·같은 날은 같은 미션, 사람·날짜마다 여러 가지, 모든 미션이 나올 수 있음', () => {
+  it('같은 계정·같은 날은 같은 미션, 사람·날짜마다 여러 가지, (그만 뽑는 것 빼고) 모든 미션이 나올 수 있음', () => {
     expect(pickMissions(hex('a', 'd2:2026-11-17'), 'day')).toEqual(pickMissions(hex('a', 'd2:2026-11-17'), 'day'));
     const people = new Set<string>();
     for (let i = 0; i < 50; i++) people.add(pickMissions(hex('p' + i, 'd2:2026-11-17'), 'day').join());
@@ -46,7 +46,7 @@ describe('미션 고르기 (2판: 일일 6 · 주간 3)', () => {
       pickMissions(hex('x' + i, 'd2:2026-11-17'), 'day').forEach((id) => all.add(id));
       pickMissions(hex('x' + i, 'w2:2026-11-16'), 'week').forEach((id) => all.add(id));
     }
-    expect(all.size).toBe(MISSIONS.length);
+    expect(all.size).toBe(MISSIONS.filter((m) => !m.retired).length);
   });
   it('일일·주간 목록은 겹치지 않음, 모든 미션에 게임 종류가 있음', () => {
     const ids = MISSIONS.map((m) => m.id);

@@ -35,7 +35,7 @@ interface NewsProps {
   rumorCheck: boolean;
   bestSector: string | null;
   spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
-  scout?: { symbol: string; up: boolean } | null;
+  scout?: { symbol: string; up: boolean; acc?: number } | null;
   blackout?: boolean;
   prices: Record<string, number>;
   change: (symbol: string) => number;
@@ -328,7 +328,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
           <header className="rb-head">
             <b>장 전 커뮤니티</b>
             {pre && <span className="rb-live"><i aria-hidden />지금 도는 소문</span>}
-            <small className="muted">{rumorCheck ? '루머 감별기를 쓴 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
+            <small className="muted">{rumorCheck ? '진위를 확인한 날 — 고른 글에 판정이 붙어요' : '진짜 단서도, 헛소문도 섞여 있어요'}</small>
           </header>
           {posts ? (
             <PrePosts rumors={rumors} day={day} daySec={daySec} onSelect={onSelect} onSelectSector={onSelectSector} />
@@ -382,7 +382,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
               <CardIcon kind="detector" size={15} />{' '}
               {rumorToday.every((n) => n.verdict) ? (
                 <>
-                  루머 감별기: 소문 {rumorToday.length}개 중 <b className="up">가짜 {rumorToday.filter((n) => n.verdict === 'false').length}개</b>, 사실 {rumorToday.filter((n) => n.verdict === 'true').length}개
+                  진위 판정: 소문 {rumorToday.length}개 중 <b className="up">가짜 {rumorToday.filter((n) => n.verdict === 'false').length}개</b>, 사실 {rumorToday.filter((n) => n.verdict === 'true').length}개
                 </>
               ) : rumorToday.some((n) => n.verdict) ? (
                 // (v14) 고른 소문 하나만 판정
@@ -390,7 +390,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
                   진위를 확인한 소문: <b className={rumorToday.find((n) => n.verdict)!.verdict === 'false' ? 'up' : ''}>{rumorToday.find((n) => n.verdict)!.verdict === 'false' ? '가짜' : '사실'}</b>
                 </>
               ) : (
-                '오늘 루머 감별기는 다른 소식을 확인했어요'
+                '오늘 진위 판정은 다른 소식을 확인했어요'
               )}
             </div>
           )}
@@ -441,7 +441,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       <>
       {tomorrow && (
         <div className="reveal paper">
-          <div className="reveal-title"><CardIcon kind="paper" size={15} /> 내일 신문 (나만 보여요)</div>
+          <div className="reveal-title"><CardIcon kind="paper" size={15} /> 내일 아침 헤드라인 (나만 보여요)</div>
           {tomorrow.map((n, i) => (
             <div key={i} className="reveal-item">
               <div className={'reveal-line ' + n.tone}>{n.headline}</div>
@@ -452,7 +452,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       )}
       {bestSector && (
         <div className="reveal analyst">
-          <div className="reveal-title"><CardIcon kind="analyst" size={15} /> 애널리스트 콜</div>
+          <div className="reveal-title"><CardIcon kind="analyst" size={15} /> 오늘 강한 업종</div>
           <div className="reveal-line">
             오늘 장에서 가장 강할 업종은{' '}
             <button className="linkish" onClick={() => onSelectSector(bestSector)}>
@@ -466,7 +466,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {blackout && <div className="effect-banner"><CardIcon kind="blackout" size={15} /> 정보 차단 카드를 맞아서 오늘 뉴스·커뮤니티 글이 보이지 않아요</div>}
       {scout && (
         <div className="reveal scout">
-          <div className="reveal-title"><CardIcon kind="scout" size={15} /> 차트 분석 (정확도 약 70%)</div>
+          <div className="reveal-title"><CardIcon kind="scout" size={15} /> 오를지 내릴지 (맞을 확률 약 {Math.round((scout.acc ?? 0.7) * 100)}%)</div>
           <div className="reveal-line">
             <button className="linkish" onClick={() => onSelect(scout.symbol)}>
               {STOCK_MAP[scout.symbol].name}
@@ -498,7 +498,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {today.length === 0 && !blackout && <p className="muted small news-empty">오늘 아침엔 새 뉴스가 없어요. 장중 속보가 뜨면 여기 맨 위에 나와요.</p>}
       {rumorCheck && !blackout && today.length > 0 && (
         <div className="detector-sum">
-          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '진위를 확인한 기사예요 (아래 표시)' : '진위를 확인한 소식은 다른 칸(커뮤니티)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
+          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '진위를 확인한 기사예요 (아래 표시)' : '진위를 확인한 소식은 다른 칸(커뮤니티)에 있어요') : <>진위 판정: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
         </div>
       )}
       {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}

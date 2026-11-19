@@ -16,7 +16,7 @@ import { api } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { loadNick } from '../session';
 import { loginWith, logout, refreshAccount, resolveGuest, useAccount, type GuestLeftover, matchKindName } from '../net/account';
-import { BADGE_TIER_AT, BADGES, badgeTier, badgeTiered, givesTitle, parseTiered, tierName, titleLabel, titleOf } from '../game/achievements';
+import { BADGE_MAP, BADGE_TIER_AT, BADGES, badgeTier, badgeTiered, givesTitle, parseTiered, tierName, titleLabel, titleOf } from '../game/achievements';
 import { LevelMeter } from '../components/Missions';
 import { Sheet } from '../components/PrefsPanel';
 import { BadgeIcon, Icon } from '../components/Icon';
@@ -799,7 +799,8 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
 function DecoAvatars({ current, nickname, badges, onPick }: { current: string; nickname: string; badges: Record<string, number>; onPick: (id: string, name: string) => void }) {
   const mine = Object.keys(badges);
   const open = AVATARS.filter((a) => canUseAvatar(a.id, mine));
-  const hidden = AVATARS.filter((a) => !a.need?.startsWith('__')).length - open.length;
+  // 그만둔 업적(방해·방어 카드)으로만 받는 사진은 이미 가진 사람만 셈
+  const hidden = AVATARS.filter((a) => !a.need?.startsWith('__') && !(a.need && BADGE_MAP[a.need]?.retired && !mine.includes(a.need))).length - open.length;
   return (
     <>
       <div className="deco-grid">

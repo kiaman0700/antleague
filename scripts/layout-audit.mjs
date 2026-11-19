@@ -153,7 +153,12 @@ for (const r of routes) {
     await page.locator('button:not([disabled])', { hasText: /^장 시작/ }).first().click().catch(() => {});
     await page.waitForTimeout(1200);
   }
+  // (v27) 첫날 증강 고르기 창도 점검한 뒤, 접어서 게임 화면 탭을 봄
+  const augA = r === 'practice' && (await page.locator('.aug-pick').count()) ? await page.evaluate(audit) : null;
+  if (augA) await page.locator('.aug-hide').first().click().catch(() => {});
+  if (augA) await page.waitForTimeout(400);
   const a = await page.evaluate(audit);
+  if (augA) for (const k of ['align', 'btnH', 'icon', 'overflow']) a[k].push(...augA[k].map((x) => '[증강 창] ' + x));
   if (r === 'practice' && kind === 'phone') {
     const n = await page.locator('.m-game .bottom-nav > button').count();
     for (let i = 0; i < n; i++) {

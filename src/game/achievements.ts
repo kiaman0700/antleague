@@ -12,6 +12,8 @@ export interface Badge {
   rarity: 1 | 2 | 3;
   /** 웃픈 업적 (안 좋은 경험으로 받음, 설계서 design/achievements-v2.md) */
   funny?: true;
+  /** 더는 딸 수 없음 (방해·방어 카드가 없어짐) — 딴 사람에겐 그대로 보이고, 전체 개수·숨은 칸에서는 뺌 */
+  retired?: true;
 }
 
 export const BADGES: Badge[] = [
@@ -37,19 +39,19 @@ export const BADGES: Badge[] = [
   { id: 'multi_win', emoji: '👑', name: '다인전의 왕', desc: '3명 이상 판에서 1위', rarity: 2 },
   { id: 'bear_proof', emoji: '☂️', name: '하락장 생존자', desc: '지수가 3% 넘게 빠진 판에서 플러스로 마감', rarity: 2 },
   { id: 'specialist', emoji: '🔬', name: '업종 전문가', desc: '한 업종 종목만 6번 이상 거래', rarity: 2 },
-  { id: 'saboteur', emoji: '😈', name: '훼방꾼', desc: '방해 카드가 상대에게 2번 이상 통함', rarity: 2 },
+  { id: 'saboteur', emoji: '😈', name: '훼방꾼', desc: '방해 카드가 상대에게 2번 이상 통함', rarity: 2, retired: true },
   { id: 'crash_winner', emoji: '🐻', name: '폭락장의 승자', desc: '지수가 3% 넘게 빠진 날 인버스 ETF를 들고 있었음', rarity: 2 },
   { id: 'diamond', emoji: '💎', name: '다이아몬드 핸드', desc: '한 종목을 7일 이상 계속 보유', rarity: 2 },
   { id: 'bottom', emoji: '🎯', name: '저점 매수의 신', desc: '판 동안 10% 넘게 움직인 종목을 최저가 3% 안에서 매수', rarity: 2 },
   { id: 'big_win', emoji: '🎰', name: '한 방', desc: '한 종목으로 시작 돈의 10% 넘게 수익', rarity: 2 },
-  { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2 },
+  { id: 'shield', emoji: '🛡️', name: '철벽 방어', desc: '방패로 상대의 방해 카드를 막음', rarity: 2, retired: true },
   { id: 'lv5', emoji: '🌱', name: '새싹 개미', desc: '미션으로 레벨 5 달성', rarity: 1 },
   { id: 'winner', emoji: '🏆', name: '투자왕', desc: '대결에서 1위', rarity: 1 },
   { id: 'beat_market', emoji: '📈', name: '시장을 이긴 자', desc: '거래를 하고 종합지수보다 높은 수익률', rarity: 1 },
   { id: 'dividend', emoji: '💰', name: '배당 부자', desc: '배당금을 시작 돈의 1% 넘게 받음', rarity: 1 },
   { id: 'global', emoji: '🌎', name: '글로벌 투자자', desc: '국내·미국 주식을 동시에 보유', rarity: 1 },
   { id: 'limit_order', emoji: '⏳', name: '예약의 달인', desc: '지정가 주문이 3번 이상 체결', rarity: 1 },
-  { id: 'card_master', emoji: '🃏', name: '카드 마스터', desc: '찬스 카드·증강을 4번 이상 고르거나 사용', rarity: 1 },
+  { id: 'card_master', emoji: '🃏', name: '증강 마스터', desc: '증강(예전 판은 찬스 카드)을 한 판에 4번 이상 고르거나 사용', rarity: 1 },
   { id: 'trader', emoji: '⚡', name: '단타왕', desc: '거래 20회 이상', rarity: 1 },
   { id: 'podium', emoji: '🥉', name: '시상대', desc: '4명 이상 판에서 3위 안', rarity: 1 },
   { id: 'plus', emoji: '➕', name: '플러스 마감', desc: '거래를 하고 수익률 플러스로 마감', rarity: 1 },
@@ -58,13 +60,13 @@ export const BADGES: Badge[] = [
   { id: 'leverage', emoji: '🎢', name: '레버리지 맛보기', desc: '레버리지 ETF를 들고 장 마감', rarity: 1 },
   { id: 'etf_fan', emoji: '📦', name: 'ETF 입문', desc: 'ETF를 사 봄', rarity: 1 },
   { id: 'detective', emoji: '🔍', name: '루머 감별사', desc: '루머 감별기를 3번 이상 씀', rarity: 1 },
-  { id: 'first_card', emoji: '🎴', name: '첫 카드', desc: '찬스 카드나 증강을 처음 고르거나 씀', rarity: 1 },
+  { id: 'first_card', emoji: '🎴', name: '첫 증강', desc: '증강(예전 판은 찬스 카드)을 처음 고르거나 씀', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
   { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼(게임·결과·미션)을 모두 끝냄', rarity: 1 },
   // 웃픈 업적 (안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
   { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
   { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '판 동안 10% 넘게 움직인 종목을 최고가 3% 안에서 매수', rarity: 1, funny: true },
-  { id: 'punching_bag', emoji: '🩹', name: '동네북', desc: '한 판에 방해 카드를 3번 넘게 맞음', rarity: 2, funny: true },
+  { id: 'punching_bag', emoji: '🩹', name: '동네북', desc: '한 판에 방해 카드를 3번 넘게 맞음', rarity: 2, funny: true, retired: true },
   { id: 'fooled', emoji: '🙈', name: '찌라시에 속은 개미', desc: '거짓 호재 찌라시가 난 날 그 종목을 사서 손해', rarity: 1, funny: true },
   { id: 'last_place', emoji: '🕳️', name: '바닥 체험', desc: '3명 이상 판에서 꼴찌', rarity: 1, funny: true },
   { id: 'limit_down', emoji: '🧊', name: '하한가 직격', desc: '가진 종목이 하루에 −29% 넘게(하한가) 떨어짐', rarity: 2, funny: true },
@@ -120,7 +122,7 @@ const TIER_NAMES: Record<string, [string, string, string]> = {
   leverage: ['레버리지 애호가', '레버리지 장인', '레버리지의 신'],
   dividend: ['배당 갑부', '배당 재벌', '배당의 신'],
   limit_order: ['예약의 고수', '예약의 제왕', '예약의 신'],
-  card_master: ['카드 그랜드마스터', '카드의 제왕', '카드의 신'],
+  card_master: ['증강 그랜드마스터', '증강의 제왕', '증강의 신'],
   bear_proof: ['하락장 사냥꾼', '하락장의 제왕', '하락장의 신'],
   specialist: ['업종 박사', '업종의 제왕', '업종의 신'],
   crash_winner: ['폭락장 사냥꾼', '폭락장의 제왕', '폭락장의 신'],
@@ -170,7 +172,7 @@ export function titleOf(ids: string[]): Badge | null {
 export interface AchievementInput {
   market: Market;
   seed: number;
-  players: { id: string; trades: Trade[]; spends: Spend[]; filledOrders: number; /** (v27) 직접 고른 증강 + 쓴 증강 수 */ augActs?: number; /** 봇이면 난이도 */ bot?: number | null; /** 기권함 — 업적 없음, 순위는 맨 뒤 */ left?: boolean }[];
+  players: { id: string; trades: Trade[]; spends: Spend[]; filledOrders: number; /** (v27) 직접 고른 증강 + 쓴 증강 수 */ augActs?: number; /** (v27) 증강으로 한 진위 판정 수 */ augDetector?: number; /** 봇이면 난이도 */ bot?: number | null; /** 기권함 — 업적 없음, 순위는 맨 뒤 */ left?: boolean }[];
   items: ItemRow[];
   /** 실제로 한 마지막 날 (상대가 모두 기권해 바로 끝난 판) — 그 뒤 날은 업적 계산에서 뺌 */
   endDay?: number | null;
@@ -256,7 +258,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if (p.trades.length > 5 && sectors.size === 1 && !sectors.has('etf')) got.add('specialist');
     const usedBy = items.players[p.id]?.used ?? {};
     if (Object.values(usedBy).some((n) => (n ?? 0) > 0) || (p.augActs ?? 0) > 0) got.add('first_card');
-    if ((usedBy.detector ?? 0) >= 3) got.add('detective');
+    if ((usedBy.detector ?? 0) + (p.augDetector ?? 0) >= 3) got.add('detective');
     if (items.effects.filter((e) => e.from === p.id && e.to !== p.id && !e.blocked && !e.crowded && !e.reflected).length >= 2) got.add('saboteur');
     // 찌라시가 나온 종목을 그날·다음 날 사서 5% 넘게 (판 안에서 판 값 또는 마지막 날 종가 기준)
     const rumorDays = new Map<string, number[]>();
@@ -347,3 +349,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   }
   return out;
 }
+
+
+/** 지금 딸 수 있는 업적 + 이미 딴 그만둔 업적 (개수·??? 칸 계산용) */
+export const liveBadges = (mine: Record<string, number> | Set<string> = {}) => BADGES.filter((b) => !b.retired || (mine instanceof Set ? mine.has(b.id) : (mine[b.id] ?? 0) > 0));

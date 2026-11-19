@@ -93,6 +93,8 @@ export function makeDemo(nickname: string): SoloSave {
   const have = new Set(Object.entries(inv.inventory).filter(([, n]) => (n ?? 0) > 0).map(([k]) => k));
   let total = inv.total;
   for (const k of kinds) {
+    // (v27) 카드 대신 증강 — 견본 게임의 증강은 지난 고르는 날에 자동으로 정해진 것으로 보임
+    if ((d.room.version ?? 1) >= 27) break;
     if (have.has(k) || total >= 5) continue;
     d.items.push({ id: 'demo-c-' + k, player_id: 'me', day: 0, kind: k, action: 'buy', cost: 0, payload: null, created_at: new Date(frozenAt - 7200_000).toISOString() });
     total++;

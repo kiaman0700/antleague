@@ -34,7 +34,7 @@ export const RESULT_STEPS: CoachStep[] = [
 
 export const GROWTH_STEPS: CoachStep[] = [
   { title: '미션과 경험치', text: '미션을 눌러 오늘 할 일을 봐요. 판을 끝내면 경험치를 받아요.', target: '.msb .hpop-btn' },
-  { title: '업적과 칭호', text: "'업적'에서 모은 업적을 봐요. 방금 딴 첫 거래·첫 카드 업적도 여기 있어요.", target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
+  { title: '업적과 칭호', text: "'업적'에서 모은 업적을 봐요. 방금 딴 첫 거래·첫 증강 업적도 여기 있어요.", target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
   { title: '랭킹과 티어', text: '랭킹전에서 이기면 점수가 올라 티어가 바뀌어요. 처음 2판은 실력을 재는 판이에요.', target: '.cl-subs .cl-sub:nth-child(1), .lobby-bottom button:first-child' },
   { title: '튜토리얼 끝!', text: "'대결 찾기'를 눌러 첫 대결을 해 봐요. '개미 학교 졸업' 업적도 받았어요." },
 ];

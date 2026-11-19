@@ -172,7 +172,7 @@ export interface View {
     bestSector: string | null;
     rumorCheck: boolean;
     spy: { nickname: string; cash: number; holdings: Record<string, Holding> } | null;
-    scout: { symbol: string; up: boolean } | null;
+    scout: { symbol: string; up: boolean; /** 맞을 확률 */ acc?: number } | null;
     blackout: boolean;
   };
   /** (v27) 내 증강 — 상대 것은 판이 끝날 때 final.augs 로만 */
@@ -522,7 +522,7 @@ function itemsOf(d: GameData) {
 function spendsOf(d: GameData, pid: string) {
   const items = spendsFromRows(d.items.filter((r) => r.player_id === pid));
   if (!augOn(d.room.version)) return items;
-  return items.concat(augIncomeOf(d, pid).map((x) => ({ day: x.day, cost: -x.amount })));
+  return items.concat(augIncomeOf(d, pid).map((x) => ({ day: x.day, cost: -x.amount, aug: true })));
 }
 
 /** (v27) 증강으로 받은(잃은) 돈 — 지금 날까지 */
@@ -678,7 +678,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
         // 70% 확률로 맞음 — 같은 날 같은 종목이면 항상 같은 답
         // (v27) 자리마다 다른 난수 — 정확도가 다른 두 사람이 답을 맞대 진짜를 알아내지 못하게
         const rng = r.salt ? seeded(`${r.salt}:scout:${sym}:${r.day}${augOn(r.version) ? ':' + meId : ''}`) : mulberry32((r.seed ^ hashString(sym)) + r.day * 131);
-        base.reveals.scout = { symbol: sym, up: rng() < scoutAcc ? truth : !truth };
+        base.reveals.scout = { symbol: sym, up: rng() < scoutAcc ? truth : !truth, acc: scoutAcc };
       }
     }
     if (todayInfo.includes('spy')) {
@@ -1081,6 +1081,7 @@ export function finalResults(d: GameData) {
       spends: spendsOf(d, p.id),
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
       augActs: (d.augs ?? []).filter((x) => x.player_id === p.id && (x.action === 'pick' || x.action === 'use')).length,
+      augDetector: (d.augs ?? []).filter((x) => x.player_id === p.id && x.action === 'use' && x.aug === 'detector').length,
       bot: p.bot_level ?? null,
       // 거래 0회(매칭)도 업적 계산에선 기권처럼 (1위 업적 등을 받지 않게)
       left: !!p.left_game || isIdle(p) || noBadge(p),

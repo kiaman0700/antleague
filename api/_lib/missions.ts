@@ -240,7 +240,8 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
           return (d.room.version ?? 1) >= COMMUNITY_VERSION && !!d.room.salt && communityPosts(m, t.day, d.room.salt).some((p) => p.sector === sec);
         }),
       indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
-      ...gameExtras(d, p.id, trades, uses.map((i) => i.kind)),
+      // (v27) 정보 증강을 쓴 것도 같은 종류로 (내일 헤드라인·강한 업종·오를지 내릴지·진위 판정)
+      ...gameExtras(d, p.id, trades, [...uses.map((i) => i.kind), ...augActs.filter((x) => x.action === 'use').map((x) => x.aug)]),
     };
     // '나의 투자 감각' 기록 (059) — 끝까지 하고 거래한 판만, 실패해도 미션엔 영향 없음
     if (game.finished) {

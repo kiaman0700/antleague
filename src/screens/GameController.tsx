@@ -57,7 +57,7 @@ interface Props {
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
 const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
-const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '소식', assets: '내 재산', cards: '카드' };
+const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '소식', assets: '내 재산', cards: '증강' };
 const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'news', assets: 'wallet', cards: 'cards' };
 const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', schedule: '일정', assets: '내 재산 요약' };
 
@@ -98,7 +98,7 @@ function useGameSource(session: Session) {
 
   const act = useCallback(
     async (action: string, payload: Record<string, unknown> = {}) => {
-      if (session.demo) throw new Error('화면 편집 중에는 거래·카드를 쓸 수 없어요');
+      if (session.demo) throw new Error('화면 편집 중에는 거래·증강을 쓸 수 없어요');
       setBusy(true);
       try {
         if (multi) {
@@ -456,7 +456,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const myItemRows: ItemRow[] = view?.myItemRows ?? [];
   const augIncome = view?.aug?.income;
   // (v27) 증강으로 받은 돈은 서버가 계산해 보내 줌 — 카드 구매와 같은 자리(현금 변화)로 더함
-  const spends = useMemo(() => spendsFromRows(myItemRows).concat((augIncome ?? []).map((x) => ({ day: x.day, cost: -x.amount }))), [myItemRows, augIncome]);
+  const spends = useMemo(() => spendsFromRows(myItemRows).concat((augIncome ?? []).map((x) => ({ day: x.day, cost: -x.amount, aug: true }))), [myItemRows, augIncome]);
   const paidDivs = useMemo(() => (market?.dividends ?? []).filter((d) => d.perShare > 0), [market]);
   // 시작 돈: 방 규칙 버전마다 (v6 부터 100만원)
   const START_CASH = startCashFor(view?.room.rulesVersion);
