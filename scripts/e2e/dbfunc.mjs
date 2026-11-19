@@ -39,6 +39,29 @@ if (!url) {
     await c.query('select public.rank_decay()');
     const r4 = (await c.query('select rating from profiles where user_id = $1', [dia])).rows[0];
     ok('시험 회원은 점수 감소에서 빠짐', r4.rating === 2000, String(r4.rating));
+    // ── 주간 리그 정산(league_settle): 5명 조, 지난주 점수대로 승급·강등·보상, 두 번 불러도 한 번만 ──
+    const five = (await c.query('select user_id from profiles where username = any($1) order by username limit 5', [Object.values(members).map((m) => m.u)])).rows.map((r) => r.user_id);
+    if (five.length === 5) {
+      const W1 = '2020-01-06';
+      const W2 = '2020-01-13';
+      await c.query('delete from league_tiers where user_id = any($1)', [five]);
+      await c.query('delete from xp_log where user_id = any($1) and key = $2', [five, 'league:' + W1]);
+      const g = (await c.query('insert into league_groups (week, tier, size) values ($1, 1, 5) returning id', [W1])).rows[0].id;
+      for (const [i, id] of five.entries()) {
+        await c.query('insert into league_tiers (user_id, tier, updated_week) values ($1, 1, $2)', [id, W1]);
+        await c.query("insert into league_members (week, user_id, group_id, tier, score, joined_at) values ($1, $2, $3, 1, $4, now() - ($5 || ' minutes')::interval)", [W1, id, g, 50 - i * 10, String(10 - i)]);
+      }
+      const xp0 = Object.fromEntries((await c.query('select user_id, coalesce(xp,0) xp from profiles where user_id = any($1)', [five])).rows.map((r) => [r.user_id, Number(r.xp)]));
+      for (const id of five) await c.query('select public.league_settle($1, $2)', [id, W2]);
+      for (const id of five) await c.query('select public.league_settle($1, $2)', [id, W2]);
+      const t = Object.fromEntries((await c.query('select user_id, tier, last_rank, last_reward from league_tiers where user_id = any($1)', [five])).rows.map((r) => [r.user_id, r]));
+      const xp1 = Object.fromEntries((await c.query('select user_id, coalesce(xp,0) xp from profiles where user_id = any($1)', [five])).rows.map((r) => [r.user_id, Number(r.xp)]));
+      ok('리그: 1·2위는 승급(10명 미만 조)', t[five[0]].tier === 2 && t[five[1]].tier === 2, `${t[five[0]].tier} ${t[five[1]].tier}`);
+      ok('리그: 3·4위는 그대로', t[five[2]].tier === 1 && t[five[3]].tier === 1);
+      ok('리그: 꼴찌는 강등', t[five[4]].tier === 0, String(t[five[4]].tier));
+      ok('리그: 1위 보상 (100+30)×1.2 = 156, 3위 50×1.2 = 60', t[five[0]].last_reward === 156 && t[five[2]].last_reward === 60, `${t[five[0]].last_reward} ${t[five[2]].last_reward}`);
+      ok('리그: 두 번 정산해도 경험치는 한 번만', xp1[five[0]] - xp0[five[0]] === 156 && xp1[five[2]] - xp0[five[2]] === 60, `${xp1[five[0]] - xp0[five[0]]} ${xp1[five[2]] - xp0[five[2]]}`);
+    } else ok('리그 시험용 회원 5명', false, String(five.length));
   } catch (e) {
     ok('DB 함수 시험 중 오류 없음', false, e instanceof Error ? e.message : String(e));
   } finally {
