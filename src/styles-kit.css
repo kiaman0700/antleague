@@ -2566,3 +2566,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .ms-row.done .ms-xp { color: #8b7bff; font-size: 12px; }
 .ms-all-done { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(107, 88, 238, 0.12); color: #d4ccff; font-size: 13px; font-weight: 700; }
 @media (max-width: 860px) { .ms-reroll { min-width: 44px; min-height: 44px; } }
+.tut-prog { flex: none; width: 44px; height: 6px; border-radius: 3px; background: #3a3a3a; overflow: hidden; }
+.tut-prog > i { display: block; height: 100%; background: #8b7bff; border-radius: 3px; transition: width 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .tut-prog > i { transition: none; } }

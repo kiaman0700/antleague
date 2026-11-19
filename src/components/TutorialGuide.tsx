@@ -46,7 +46,7 @@ export interface TutorialStep {
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: '개미리그에 온 걸 환영해요',
-    text: () => '100만원으로 시작해 마지막 날 재산이 가장 많으면 이겨요. 시간이 멈춰 있으니 천천히 따라오세요.',
+    text: () => '100만원으로 시작해, 마지막 날 재산이 가장 많으면 이겨요.',
   },
   {
     title: '내 재산',
@@ -97,7 +97,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '증강 고르기',
-    text: () => '증강은 이번 판 내내 켜져 있는 내 능력이에요. 카드 3장 중 하나를 누르면 바로 정해져요. 처음이라면 "귀동냥"을 추천해요 — 소식 하나가 진짜인지 알려 줘요.',
+    text: () => '카드 하나를 눌러 골라요. 처음이면 "귀동냥"이 좋아요.',
     target: '.aug-stage',
     wait: (c) => c.augPicked,
     waitHint: '카드 하나를 누르면 바로 정해져요',
@@ -136,7 +136,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '내 증강',
-    text: () => "고른 증강과 그걸로 받은 돈은 '증강' 칸에서 볼 수 있어요. 실제 대결에서는 골드·프리즘 증강도 나와요.",
+    text: () => "고른 증강은 '증강' 칸에 있어요. 판 내내 켜져 있는 내 능력이에요.",
     target: '.aug-panel',
     tab: 'cards',
   },
@@ -273,8 +273,9 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
       )}
       <div className={'tut-bubble' + (compact ? ' compact' : '')} style={bubbleStyle} role="dialog" aria-label={`튜토리얼 ${step + 1}단계: ${s.title}`}>
         <div className="tut-head">
-          <span className="tut-step">
-            {step + 1} / {TUTORIAL_STEPS.length}
+          {/* '3 / 16' 같은 큰 숫자 대신 짧은 진행 막대 (남은 길이가 덜 길어 보이게) */}
+          <span className="tut-prog" role="progressbar" aria-valuemin={1} aria-valuemax={TUTORIAL_STEPS.length} aria-valuenow={step + 1} aria-label={`${step + 1}/${TUTORIAL_STEPS.length}단계`}>
+            <i style={{ width: `${((step + 1) / TUTORIAL_STEPS.length) * 100}%` }} />
           </span>
           <b>{s.title}</b>
           <button className="icon-btn sm" onClick={() => void ask('튜토리얼을 그만할까요? 연습 메뉴나 설정의 \'튜토리얼\'에서 단계별로 언제든 다시 볼 수 있어요.', { ok: '그만하기' }).then((yes) => yes && onExit())} aria-label="튜토리얼 끝내기" title="튜토리얼 끝내기">
