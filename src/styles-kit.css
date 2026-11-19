@@ -2526,3 +2526,28 @@ span.roll.roll span { font-size: inherit; font-weight: inherit; color: inherit; 
 @keyframes fadeTip { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .mf-tip { animation: none; } }
 .slot-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+/* 공부 · 투자 기초: 진행 막대, 묶음 제목, 접힌 카드 */
+.sb-progress { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+.sb-progress b { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.sb-bar { flex: 1; height: 8px; border-radius: 4px; background: #2a2a2a; overflow: hidden; }
+.sb-bar > i { display: block; height: 100%; border-radius: 4px; background: #6b58ee; transition: width 0.3s ease-out; }
+.sb-group { display: grid; gap: 8px; margin-bottom: 18px; }
+.sb-group-head { margin: 4px 0 2px; font-size: 15px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
+.sb-group-head small { font-size: 12px; font-weight: 600; color: #9a9a9a; }
+details.study-card { padding: 0 16px; }
+details.study-card > summary { list-style: none; cursor: pointer; padding: 14px 0; display: flex; align-items: center; gap: 8px; min-height: 48px; }
+details.study-card > summary::-webkit-details-marker { display: none; }
+details.study-card > summary h3 { margin: 0; flex: 1; font-size: 15px; }
+details.study-card[open] > summary { padding-bottom: 6px; }
+details.study-card > p:last-child { padding-bottom: 14px; }
+details.study-card .sc-done { color: #8b7bff; }
+details.study-card.is-read > summary h3 { color: #c8c8c8; }
+@media (prefers-reduced-motion: reduce) { .sb-bar > i { transition: none; } }
+.ag-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.ag-search { flex: 1 1 220px; min-height: 40px; padding: 8px 12px; border-radius: 12px; border: 1px solid #2e2e2e; background: #161616; color: #f2f2f2; font: inherit; }
+.ag-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.study-basics { display: block !important; }
+.sb-group { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
+.sb-group > .sb-group-head { grid-column: 1 / -1; }
+details.study-card { min-height: 0 !important; margin: 0 !important; }

@@ -3,6 +3,7 @@
  * 설명의 업종 예시는 실제 게임 데이터(업종 민감도)에서 뽑음 — 게임과 다른 말을 하지 않게
  */
 import { STOCK_SECTORS } from '../game/stocks';
+import { useState } from 'react';
 import { Icon } from '../components/Icon';
 
 type IconName = Parameters<typeof Icon>[0]['name'];
@@ -126,20 +127,76 @@ export function StudyBasics() {
       tip: '결과가 나오기 전엔 모두 기대 속에 있어요. 한 종목에 몰빵하면 실패 발표 한 번에 크게 잃어요.',
     },
   ];
+  return <StudyList lessons={lessons} />;
+}
+
+/** 묶음 (차례대로 4~5장씩) — 한 번에 다 펼치면 벽처럼 읽혀서 짧게 나눔 */
+const GROUPS: { name: string; from: number; to: number }[] = [
+  { name: '가격의 원리', from: 0, to: 3 },
+  { name: '금리 · 환율 · 유가', from: 3, to: 7 },
+  { name: '종목 담기', from: 7, to: 10 },
+  { name: '소식 읽기', from: 10, to: 14 },
+  { name: '큰 사건', from: 14, to: 99 },
+];
+const READ_KEY = 'stockduel.studyRead';
+function loadRead(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(READ_KEY) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+/** 접힌 카드 목록 + 읽음 표시(이 기기) + 묶음별·전체 진행. 처음엔 아직 안 읽은 첫 장만 펼쳐 둠 */
+function StudyList({ lessons }: { lessons: { icon: IconName; title: string; body: string; tip: string }[] }) {
+  const [read, setRead] = useState(loadRead);
+  const firstUnread = lessons.find((l) => !read.has(l.title))?.title;
+  const mark = (title: string) => {
+    if (read.has(title)) return;
+    const next = new Set(read).add(title);
+    setRead(next);
+    try {
+      localStorage.setItem(READ_KEY, JSON.stringify([...next]));
+    } catch {
+      /* 저장소를 못 쓰면 이 화면 동안만 */
+    }
+  };
+  const done = lessons.filter((l) => read.has(l.title)).length;
   return (
     <div className="study-basics">
-      {lessons.map((l) => (
-        <section key={l.title} className="panel pad study-card">
-          <div className="sc-head">
-            <Icon name={l.icon} size={18} />
-            <h3>{l.title}</h3>
-          </div>
-          <p>{l.body}</p>
-          <p className="sc-tip">
-            <Icon name="info" size={14} /> {l.tip}
-          </p>
-        </section>
-      ))}
+      <div className="sb-progress" aria-label={`투자 기초 ${done}/${lessons.length}장 읽음`}>
+        <b>
+          {done}/{lessons.length}장 읽음
+        </b>
+        <span className="sb-bar" aria-hidden>
+          <i style={{ width: `${(done / lessons.length) * 100}%` }} />
+        </span>
+      </div>
+      {GROUPS.map((g) => {
+        const list = lessons.slice(g.from, g.to);
+        if (!list.length) return null;
+        const n = list.filter((l) => read.has(l.title)).length;
+        return (
+          <section key={g.name} className="sb-group" aria-label={g.name}>
+            <h3 className="sb-group-head">
+              {g.name} <small>{n === list.length ? '다 읽었어요' : `${n}/${list.length}`}</small>
+            </h3>
+            {list.map((l) => (
+              <details key={l.title} className={'panel study-card' + (read.has(l.title) ? ' is-read' : '')} open={l.title === firstUnread} onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && mark(l.title)}>
+                <summary className="sc-head">
+                  <Icon name={l.icon} size={18} />
+                  <h3>{l.title}</h3>
+                  {read.has(l.title) && <Icon name="check" size={16} className="sc-done" />}
+                </summary>
+                <p>{l.body}</p>
+                <p className="sc-tip">
+                  <Icon name="info" size={14} /> {l.tip}
+                </p>
+              </details>
+            ))}
+          </section>
+        );
+      })}
     </div>
   );
 }

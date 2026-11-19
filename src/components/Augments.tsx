@@ -334,17 +334,39 @@ export const AUG_RULES_TEXT = '정해진 날(10일 판이면 1·4·7일차)마�
 /** 공부 화면: 등급별 증강 도감 */
 export function AugGuideBody() {
   const tiers: AugTier[] = ['silver', 'gold', 'prism'];
+  // 72개를 한 번에 훑기 어려워 이름·설명 검색과 종류 칩으로 좁힘
+  const [q, setQ] = useState('');
+  const [tag, setTag] = useState<AugTag | null>(null);
+  const norm = q.trim().toLowerCase();
+  const match = (a: (typeof AUG_MAP)[string]) => (!tag || a.tag === tag) && (!norm || (a.name + ' ' + a.desc).toLowerCase().includes(norm));
+  const total = Object.values(AUG_MAP).filter(match).length;
   return (
     <div className="aug-guide">
-      {tiers.map((t) => (
-        <section key={t} className="panel pad">
-          <h3>
-            <span className={`aug-tier t-${t}`}>{TIER_NAME[t]}</span> {Object.values(AUG_MAP).filter((a) => a.tier === t).length}개
-          </h3>
-          <ul className="aug-mine">
-            {Object.values(AUG_MAP)
-              .filter((a) => a.tier === t)
-              .map((a) => (
+      <div className="ag-filter">
+        <input className="ag-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="증강 이름·효과 찾기" aria-label="증강 찾기" />
+        <div className="ag-tags" role="group" aria-label="종류">
+          <button type="button" className={'chip' + (tag === null ? ' on' : '')} onClick={() => setTag(null)} aria-pressed={tag === null}>
+            모두
+          </button>
+          {(Object.keys(TAG_NAME) as AugTag[]).map((t) => (
+            <button key={t} type="button" className={'chip' + (tag === t ? ' on' : '')} onClick={() => setTag(tag === t ? null : t)} aria-pressed={tag === t}>
+              {TAG_NAME[t]}
+            </button>
+          ))}
+        </div>
+        <small className="muted">{total}개</small>
+      </div>
+      {total === 0 && <p className="muted small">찾는 증강이 없어요. 다른 말로 찾아보세요.</p>}
+      {tiers.map((t) => {
+        const list = Object.values(AUG_MAP).filter((a) => a.tier === t && match(a));
+        if (!list.length) return null;
+        return (
+          <section key={t} className="panel pad">
+            <h3>
+              <span className={`aug-tier t-${t}`}>{TIER_NAME[t]}</span> {list.length}개
+            </h3>
+            <ul className="aug-mine">
+              {list.map((a) => (
                 <li key={a.id}>
                   <AugBadge id={a.id} />
                   <span className="aug-body">
@@ -357,9 +379,10 @@ export function AugGuideBody() {
                   </span>
                 </li>
               ))}
-          </ul>
-        </section>
-      ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
