@@ -2287,6 +2287,8 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };
     if (INVITE_ACTIONS.includes(action)) return { status: 200, body: await inviteAct(action, b, uid) };
     if (PARTY_ACTIONS.includes(action)) return { status: 200, body: await partyAct(action, b, uid) };
+    // 아이디가 있는지 알아보는 데 쓰이지 않게 IP 로도 제한 (계정을 여러 개 만들어 훑는 것 막기)
+    if (action === 'checkAvailable') rateLimit('ip:' + ip + ':avail', 60, 60_000);
     if (['signup', 'checkAvailable', 'guestSummary', 'mergeGuest', 'profile', 'updateProfile', 'changePassword', 'newRecovery', 'ranking', 'myMatch'].includes(action)) return { status: 200, body: await accountAct(db(), action, b, data.user, rateLimit, leaveSeat) };
     if (action.startsWith('admin')) {
       if (!isAdminUser(data.user)) return { status: 403, body: { error: '운영자만 볼 수 있어요.' } };

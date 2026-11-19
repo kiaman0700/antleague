@@ -198,6 +198,14 @@ export async function resolveGuest(guestToken: string, mode: 'merge' | 'discard'
 /** 로그아웃 → 다음에 게임하면 새 게스트로 */
 export async function logout() {
   await resetMatch(); // 다른 계정으로 바뀌기 전에 이 계정의 매칭 대기를 멈춤
+  // 남겨 둔 자리 정리: 대기실은 나오고, 손님은 진행 중인 대결도 기권 (계정을 버리므로 — 안 하면 상대가 시간 초과까지 기다림).
+  // 회원의 진행 중 대결은 그대로 (다른 기기·다시 로그인으로 이어 할 수 있음)
+  try {
+    const seat = await api<{ roomId: string; status: string } | null>('resume');
+    if (seat && (seat.status === 'waiting' || state.status === 'guest')) await api('leave', { roomId: seat.roomId });
+  } catch {
+    /* 정리 실패는 로그아웃을 막지 않음 */
+  }
   // 이 기기만 로그아웃 (기본값은 모든 기기를 끊어 다른 기기에 '동시 접속' 경고가 떴음)
   await supabase?.auth.signOut({ scope: 'local' });
   // 회원 닉네임이 게스트 닉네임으로 남지 않게 (손님은 회원 닉네임을 못 써서 막힘) → 다음에 온라인 기능을 누르면 손님 닉네임을 새로 정함
