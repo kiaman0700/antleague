@@ -2667,3 +2667,9 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .drawer .aug-panel-h { display: none; }
 /* 빈 증강 칸: 다른 칸 규칙의 위아래 여백이 붙어 세로로 긴 타원이 됐음 → 동그라미 그대로 */
 .aug-slots .aug-slot.empty { padding: 0; }
+/* 게임 방법: 나머지 7가지는 접어 둠 */
+.howto-more { margin-top: 6px; border-top: 1px solid var(--line, #242424); padding-top: 10px; }
+.howto-more > summary { cursor: pointer; font-weight: 700; color: var(--accent-text, #b9adff); list-style: none; padding: 8px 0; }
+.howto-more > summary::-webkit-details-marker { display: none; }
+.howto-more > summary::after { content: ' ›'; }
+.howto-more[open] > summary::after { content: ' ⌄'; }
