@@ -1,3 +1,4 @@
+import { parseRoomCode, hasConfusable } from '../lib/roomCode';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
 import { NoticeCenter, NoticeTicker, useHasUnreadNotice } from '../components/NoticeBar';
@@ -272,18 +273,22 @@ function CodeJoin({
           className="code-input"
           autoFocus
           value={code}
-          maxLength={6}
           placeholder="6자리 방 코드"
+          aria-label="6자리 방 코드 (초대 링크를 붙여 넣어도 돼요)"
           inputMode="text"
           autoCapitalize="characters"
-          onChange={(e) => (setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)), setErr(''))}
+          autoComplete="off"
+          spellCheck={false}
+          // maxLength 를 두면 초대 링크를 붙여 넣을 때 앞 6자('https')만 남음 → 코드는 parseRoomCode 가 꺼냄
+          onChange={(e) => (setCode(parseRoomCode(e.target.value)), setErr(''))}
         />
         <button className="btn primary" disabled={busy || !online}>
           입장
         </button>
       </form>
       {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
-      {!err && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
+      {!err && hasConfusable(code) && <p className="muted small">방 코드에는 I·O·0·1 이 없어요. 비슷한 글자(J·Q·2·L 등)인지 다시 봐 주세요.</p>}
+      {!err && !hasConfusable(code) && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
       {err && <p className="error" role="alert">{err}</p>}
     </Modal>
   );
