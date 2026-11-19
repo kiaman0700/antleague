@@ -62,6 +62,17 @@ const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', sche
 const soloQuit = { current: false };
 
 /** 둘이서: 서버(/api/game) · 혼자: 브라우저 안의 같은 엔진 */
+/** 두 번 처리되면 안 되는 행동 (돈·카드·예약) */
+const ONCE_ACTIONS = new Set(['trade', 'buyItem', 'useItem', 'placeOrder']);
+function newReqId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 function useGameSource(session: Session) {
   const multi = session.mode === 'multi';
   const live = useLiveView(multi ? session.roomId : null);
@@ -88,15 +99,27 @@ function useGameSource(session: Session) {
       setBusy(true);
       try {
         if (multi) {
+          // 버튼 한 번 = 요청 번호 하나. 응답만 끊겨 다시 보내도 서버가 한 번만 처리함
+          const body = { roomId: session.roomId, ...payload, ...(ONCE_ACTIONS.has(action) ? { reqId: newReqId() } : {}) };
           try {
-            await api(action, { roomId: session.roomId, ...payload });
+            await api(action, body);
           } catch (e) {
-            // 보낸 뒤 응답만 끊겼으면 서버에선 처리됐을 수 있음 → '실패'라고 하면 다시 눌러 두 번 살 수 있어서 확인을 권함
-            if (e instanceof ApiError && e.status === 0 && action !== 'endTurn') {
+            if (!(e instanceof ApiError && e.status === 0 && action !== 'endTurn')) throw e;
+            // 같은 번호로 한 번 더 — 이미 처리됐으면 서버가 처음 결과를 돌려줌
+            if (!('reqId' in body)) {
               live.refresh().catch(() => {});
               throw new ApiError('연결이 끊겨 처리됐는지 모르겠어요. 내 재산에서 확인한 뒤 다시 해 주세요', 0, 'unsure');
             }
-            throw e;
+            await new Promise((r) => setTimeout(r, 1500));
+            try {
+              await api(action, body);
+            } catch (e2) {
+              if (e2 instanceof ApiError && e2.status === 0) {
+                live.refresh().catch(() => {});
+                throw new ApiError('연결이 끊겨 처리됐는지 모르겠어요. 내 재산에서 확인한 뒤 다시 해 주세요', 0, 'unsure');
+              }
+              throw e2;
+            }
           }
           await live.refresh();
         } else if (solo) {

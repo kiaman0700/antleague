@@ -339,6 +339,41 @@ async function bumpPlayer(d: GameData, playerId: string, patch: Record<string, u
   if (!must(res, 'bump').length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
 }
 
+/* ---- 요청 번호(063): 응답만 끊겨 다시 보내도 한 번만 처리 ---- */
+const REQ_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** 없으면 null (예전 화면), 모양이 틀리면 400 */
+export function cleanReqId(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== 'string' || !REQ_RE.test(v)) throw new GameError('잘못된 요청이에요.');
+  return v.toLowerCase();
+}
+/** 마이그레이션 전(칸 없음)이면 번호 없이 예전처럼 */
+let reqCols = true;
+const noReqCol = (e: { message: string } | null) => !!e && /req_id/.test(e.message);
+async function findByReq<T>(table: 'trades' | 'items' | 'orders', playerId: string, reqId: string | null, cols: string): Promise<T | null> {
+  if (!reqId || !reqCols) return null;
+  const res = await db().from(table).select(cols).eq('player_id', playerId).eq('req_id', reqId).maybeSingle();
+  if (noReqCol(res.error)) {
+    reqCols = false;
+    return null;
+  }
+  return must(res, 'req find') as T | null;
+}
+/** 넣기. 같은 번호가 이미 있으면(동시에 두 번 온 경우) true */
+async function insertOnce(table: 'trades' | 'items' | 'orders', row: Record<string, unknown>, reqId: string | null, what: string): Promise<boolean> {
+  if (reqId && reqCols) {
+    const res = await db().from(table).insert({ ...row, req_id: reqId });
+    if (!res.error) return false;
+    if ((res.error as { code?: string }).code === '23505') return true;
+    if (noReqCol(res.error)) reqCols = false;
+    else must(res, what);
+  }
+  must(await db().from(table).insert(row), what);
+  return false;
+}
+/** 같은 번호로 내용이 다른 요청 */
+const reqMismatch = () => new GameError('같은 요청 번호로 다른 주문을 보냈어요. 다시 해 주세요.', 422);
+
 const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() : null);
 
 /**
@@ -1342,30 +1377,63 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     }
 
     case 'trade': {
+      const reqId = cleanReqId(b.reqId);
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      type Done = { symbol: string; side: string; qty: number; price: number; fee: number };
+      const sameTrade = (x: Done) => {
+        if (x.symbol !== b.symbol || x.side !== b.side || Number(x.qty) !== b.qty) throw reqMismatch();
+        return { ok: true, price: Number(x.price), fee: Number(x.fee), dup: true };
+      };
+      const before = await findByReq<Done>('trades', playerId, reqId, 'symbol, side, qty, price, fee');
+      if (before) return sameTrade(before);
       const d = await loadGame(roomId);
       const t = validateTrade(d, playerId, Date.now(), b);
       await bumpPlayer(d, playerId);
-      must(await sb.from('trades').insert({ room_id: roomId, ...t }), 'trade');
+      if (await insertOnce('trades', { room_id: roomId, ...t }, reqId, 'trade')) {
+        const won = await findByReq<Done>('trades', playerId, reqId, 'symbol, side, qty, price, fee');
+        if (won) return sameTrade(won);
+      }
       return { ok: true, price: t.price, fee: t.fee };
     }
 
     case 'buyItem':
     case 'useItem': {
+      const reqId = cleanReqId(b.reqId);
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const act = action === 'buyItem' ? 'buy' : 'use';
+      const sameItem = (x: { kind: string; action: string }) => {
+        if (x.kind !== b.kind || x.action !== act) throw reqMismatch();
+        return { ok: true, dup: true };
+      };
+      const before = await findByReq<{ kind: string; action: string }>('items', playerId, reqId, 'kind, action');
+      if (before) return sameItem(before);
       const d = await loadGame(roomId);
       const row = action === 'buyItem' ? validateBuyItem(d, playerId, Date.now(), b) : validateUseItem(d, playerId, Date.now(), b);
       await bumpPlayer(d, playerId);
-      must(await sb.from('items').insert({ room_id: roomId, ...row }), 'item');
+      if (await insertOnce('items', { room_id: roomId, ...row }, reqId, 'item')) {
+        const won = await findByReq<{ kind: string; action: string }>('items', playerId, reqId, 'kind, action');
+        if (won) return sameItem(won);
+      }
       return { ok: true };
     }
 
     case 'placeOrder': {
+      const reqId = cleanReqId(b.reqId);
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      type Placed = { symbol: string; side: string; qty: number };
+      const sameOrder = (x: Placed) => {
+        if (x.symbol !== b.symbol || x.side !== b.side || Number(x.qty) !== b.qty) throw reqMismatch();
+        return { ok: true, dup: true };
+      };
+      const before = await findByReq<Placed>('orders', playerId, reqId, 'symbol, side, qty');
+      if (before) return sameOrder(before);
       const d = await loadGame(roomId);
       const o = validatePlaceOrder(d, playerId, Date.now(), b);
       await bumpPlayer(d, playerId);
-      must(await sb.from('orders').insert({ room_id: roomId, ...o }), 'order');
+      if (await insertOnce('orders', { room_id: roomId, ...o }, reqId, 'order')) {
+        const won = await findByReq<Placed>('orders', playerId, reqId, 'symbol, side, qty');
+        if (won) return sameOrder(won);
+      }
       return { ok: true };
     }
 
