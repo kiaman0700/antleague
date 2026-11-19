@@ -955,7 +955,19 @@ export function TradePanel({
           {budget === null
             ? " "
             : qty === 0
-            ? `고른 금액 ${won(budget)} · 1주에 ${won(unitKrw)}이라 아직 1주도 못 사요`
+            ? (
+                <>
+                  고른 금액 {won(budget)} · 1주에 {won(unitKrw)}이라 아직 1주도 못 사요
+                  {maxQty >= 1 && (
+                    <>
+                      {" "}
+                      <button type="button" className="linkish" onClick={() => setQtyText("1")}>
+                        1주로 하기
+                      </button>
+                    </>
+                  )}
+                </>
+              )
             : `고른 금액 ${won(budget)} → ${qty}주 (남는 돈은 그대로 있어요)`}
         </p>
       )}

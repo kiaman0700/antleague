@@ -777,7 +777,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <i className="toon-i"><ToonIcon name="tutorial" size={36} /></i>
         <span>
           <b>튜토리얼</b>
-          <small>3분이면 규칙을 익혀요</small>
+          <small>연습봇과 한 판 하며 규칙을 익혀요</small>
         </span>
       </button>
     </section>
@@ -797,7 +797,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-nudge" aria-label="처음이라면">
           <Icon name="book" size={22} />
           <div>
-            <b>처음이라면 3분 튜토리얼부터 해 보세요</b>
+            <b>처음이라면 튜토리얼부터 해 보세요</b>
             <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 대결이 훨씬 쉬워져요.</p>
           </div>
           <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('home')))}>

@@ -42,9 +42,12 @@ export function CoachTour({
     if (!s?.target) return setRect(null);
     const pick = () => s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0) ?? null;
     const first = pick();
-    first?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // 휴대폰 결과 화면처럼 옆으로 넘기는 칸 안에 있으면 그 칸까지 옆으로도 옮김
+    first?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
     const find = () => {
-      const r = pick()?.getBoundingClientRect() ?? null;
+      const got = pick()?.getBoundingClientRect() ?? null;
+      // 화면 밖에 있으면(아직 안 보이는 칸) 비추지 않고 말풍선을 가운데에 — 말풍선이 화면 밖에 그려져 막히지 않게
+      const r = got && got.bottom > 0 && got.right > 0 && got.top < window.innerHeight && got.left < window.innerWidth ? got : null;
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
     };
     find();
