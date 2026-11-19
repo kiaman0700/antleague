@@ -24,6 +24,7 @@ import './styles-aug.css';
 import './styles-premium.css';
 import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';
+import { startRadioKeys } from './lib/radioKeys';
 
 // UI 2판 미리 보기: 주소에 ?ui=v2 를 붙이면 이 창에서만 새 디자인 (?ui=v1 로 되돌림). 기본 화면은 그대로
 try {
@@ -35,6 +36,7 @@ try {
 }
 
 startInstallWatch();
+startRadioKeys();
 // 아이폰 사파리는 문서에 touchstart 가 있어야 버튼의 :active(누름 효과)가 보임
 document.addEventListener('touchstart', () => {}, { passive: true });
 
