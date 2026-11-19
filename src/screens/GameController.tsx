@@ -1,3 +1,4 @@
+import { THEMES } from '../game/themes';
 import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
 import { RollNum } from '../components/RollNum';
 import { CoachTour } from '../components/CoachTour';
@@ -1738,6 +1739,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </div>
             <span className="mp-left">{total - day - 1 > 0 ? `${total - day - 1}일 남음` : '마지막 날'}</span>
           </div>
+          {/* 오늘의 도전은 연습 판과 똑같아 보여 어떤 판인지 몰랐음 (PC 는 재산 옆에 표시) → 판 이름과 오늘의 시장 */}
+          {room?.kind === 'daily' && (
+            <div className="m-kind-tag">
+              <Icon name="daily" size={13} /> 오늘의 도전{room.theme && THEMES.find((t) => t.id === room.theme) ? ` · ${THEMES.find((t) => t.id === room.theme)!.name}` : ''}
+            </div>
+          )}
         </header>
         {/* 시장·일정·재산 줄: 위 막대 바로 아래에 고정 (접혔다 펴지는 움직임 없음). 가로로 눕힌 휴대폰은 높이가 낮아 내용과 함께 스크롤 */}
           <div ref={mFlowRef} className={'m-top-more m-top-flow' + (!editing && tab === 'detail' && !tablet ? ' hidden-row' : '')}>

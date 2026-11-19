@@ -2711,3 +2711,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .old-body .old-verdict { align-self: flex-start; margin-left: 0; }
 /* 나의 투자 감각: 판이 적을 땐 막대를 조금 흐리게 (아직 맛보기) */
 .sk-list.sk-early .sk-bar i { opacity: 0.55; }
+/* 휴대폰 오늘의 도전: 진행 줄 아래 판 이름 · 오늘의 시장 */
+.m-kind-tag { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--accent-text, #b9adff); }
