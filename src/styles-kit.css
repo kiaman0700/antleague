@@ -1980,3 +1980,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .ms-week { margin-top: 12px; padding-top: 16px; border-top: 1px solid var(--line-2); }
 .ms-week h4 { font-size: 15px; font-weight: 800; }
 .cg-group:not(:first-child) { margin-top: 24px; }
+
+/* 아래 메뉴바: 칸 사이 짧은 세로선으로 칸끼리 나눔 */
+.m-game .bottom-nav > button, .lobby-shell .lobby-bottom button { position: relative; }
+.m-game .bottom-nav > button + button:is(.on, :not(.on))::after, .lobby-shell .lobby-bottom button + button:is(.on, :not(.on))::after { content: ''; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px; background: var(--line-2); display: block !important; pointer-events: none; }
