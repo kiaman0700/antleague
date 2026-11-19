@@ -1,11 +1,12 @@
 import { ThemeCard } from '../components/ThemeCard';
+import { RatingBar } from '../components/RatingBar';
 import { AugCrest, OrnCorners } from '../components/AugFrame';
 import { copyText, shareOrCopy } from '../lib/copy';
 import { api } from '../net/api';
 import { setFlash } from '../lib/flash';
 import { balancedCols } from '../components/ui';
 import { TierBadge } from '../components/TierBadge';
-import { isPlaced, PLACEMENT_GAMES, tierOf } from '../game/tier';
+import { isPlaced, PLACEMENT_GAMES } from '../game/tier';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeIcon, CardIcon, Icon, SectorIcon, type IconName } from '../components/Icon';
 import { LineChart } from '../components/Chart';
@@ -612,16 +613,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                 <TierBadge rating={rating.rating_after} rankedGames={PLACEMENT_GAMES} size={40} />
               </>
             ) : (
-              <>
-                <TierBadge rating={rating.rating_after} rankedGames={PLACEMENT_GAMES} size={34} />
-                <em className={rating.rating_after >= rating.rating_before ? 'up' : 'down'}>
-                  {rating.rating_after >= rating.rating_before ? '+' : ''}
-                  {rating.rating_after - rating.rating_before}점
-                </em>
-                {tierOf(rating.rating_after).label !== tierOf(rating.rating_before).label && (
-                  <b className={rating.rating_after > rating.rating_before ? 'up' : 'down'}>{rating.rating_after > rating.rating_before ? '승급!' : '강등'}</b>
-                )}
-              </>
+              <RatingBar before={rating.rating_before} after={rating.rating_after} />
             )
           ) : rating ? (
             <span className="muted">이번 판은 랭킹 점수에 반영되지 않았어요</span>

@@ -1,10 +1,19 @@
 /** 개발 서버에서만: 증강 카드 세 등급·티어 엠블럼을 한 화면에 (?augpreview, ?augpreview&tiers) — 배포 묶음에는 안 들어감 */
 import { AugPick } from '../components/Augments';
 import { TierEmblem } from '../components/TierBadge';
+import { RatingBar } from '../components/RatingBar';
 import { AUGMENTS } from '../game/augments';
 
 export default function AugPreview() {
   const q = new URLSearchParams(location.search);
+  if (q.has('rbar'))
+    return (
+      <div style={{ minHeight: '100vh', background: '#111', padding: 40, display: 'grid', gap: 30, maxWidth: 520 }}>
+        <RatingBar before={1270} after={1318} />
+        <RatingBar before={1445} after={1420} />
+        <RatingBar before={2240} after={2275} />
+      </div>
+    );
   if (q.has('tiers'))
     return (
       <div style={{ minHeight: '100vh', background: '#111', display: 'flex', flexWrap: 'wrap', gap: 28, padding: 40, alignItems: 'flex-end' }}>
