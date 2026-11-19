@@ -4,6 +4,7 @@
  * - 모바일·태블릿 세로(860px 이하): 화면 아래 탭바 5칸
  * - 게스트가 온라인 기능을 처음 누르면: 게스트/회원 차이를 보여 주고, '게스트로 시작'일 때만 닉네임을 받음
  */
+import { GameIcon, type GameIconName } from './GameIcon';
 import { nickNotice } from '../game/nickname';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
@@ -20,13 +21,12 @@ import { Welcome, type WelcomeStep } from './Welcome';
 
 export type NavTab = 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'ranking' | 'records' | 'league' | 'companies' | 'more';
 
-type IconName = Parameters<typeof Icon>[0]['name'];
-const MAIN: [NavTab, string, IconName][] = [
-  ['ranked', '랭킹전', 'trophy'],
-  ['casual', '일반전', 'users'],
-  ['custom', '커스텀', 'door'],
-  ['friends', '친구', 'userPlus'],
-  ['practice', '연습', 'target'],
+const MAIN: [NavTab, string, GameIconName][] = [
+  ['ranked', '랭킹전', 'ranked'],
+  ['casual', '일반전', 'casual'],
+  ['custom', '커스텀', 'custom'],
+  ['friends', '친구', 'friends'],
+  ['practice', '연습', 'practice'],
 ];
 
 const LAST = 'stockduel.tab';
@@ -203,7 +203,7 @@ function ProfileCard({ p, badges, onProfile }: { p: MyProfile; badges?: Record<s
 /** 모바일·태블릿 세로: 아래 탭바 */
 export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'active' | 'onGo' | 'online' | 'badges'>) {
   // 아래 탭은 5칸: 연습은 온라인이면 '더보기' 안으로
-  const tabs: [NavTab, string, IconName][] = [...MAIN.filter(([k]) => (online ? k !== 'practice' : k === 'practice')), ['more', '더보기', 'grid']];
+  const tabs: [NavTab, string, GameIconName][] = [...MAIN.filter(([k]) => (online ? k !== 'practice' : k === 'practice')), ['more', '더보기', 'more']];
   const isSub = active !== null && !tabs.some(([k]) => k === active);
   return (
     <nav className="lobby-bottom" aria-label="메뉴">
@@ -212,7 +212,7 @@ export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'acti
         return (
           <button key={k} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined} onClick={() => onGo(k)}>
             <span className="ln-ic">
-              <Icon name={icon} size={20} />
+              <GameIcon name={icon} size={22} />
               <Badge n={badges?.[k]} />
             </span>
             <span>{label}</span>

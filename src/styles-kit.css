@@ -1850,3 +1850,25 @@ p { text-wrap: pretty; }
 .theme-card small { display: block; color: var(--text-3, #9a9a9a); font-size: 12px; }
 .theme-card b { display: block; font-size: 15px; }
 .theme-card .theme-text { display: block; margin-top: 2px; color: var(--text-2, #c8c8c8); font-size: 13px; }
+
+/* 메뉴·모드 두 톤 아이콘 (GameIcon.tsx): 진한 색(--gi) + 미리 섞은 옅은 면(--ic-2) + 칸 바탕(--gi-bg). 빨강·파랑은 오름·내림 전용이라 안 씀 */
+.gi-violet { --gi: #a99bff; --ic-2: #544f77; --gi-bg: #2a2838; }
+.gi-amber { --gi: #f5b83d; --ic-2: #735a29; --gi-bg: #362f20; }
+.gi-green { --gi: #4ade80; --ic-2: #2e6a44; --gi-bg: #223328; }
+.gi-teal { --gi: #2dd4bf; --ic-2: #23665d; --gi-bg: #1e3230; }
+.gi-slate { --gi: #a9b8cc; --ic-2: #545a62; --gi-bg: #2c2e31; }
+.gi-yellow { --gi: #facc15; --ic-2: #756219; --gi-bg: #37311b; }
+.gi-gray { --gi: #c8c8c8; --ic-2: #616161; --gi-bg: #2e2e2e; }
+i.gi-tile { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 13px; background: var(--gi-bg); font-style: normal; }
+i.gi-tile .gicon { color: var(--gi); display: block; }
+.st-qbtn i.gi-tile { width: 44px; height: 44px; border-radius: 12px; background: var(--gi-bg); }
+@media (max-width: 860px) {
+  i.gi-tile { width: 40px; height: 40px; border-radius: 11px; }
+  i.gi-tile .gicon { width: 24px; height: 24px; }
+  .st-qbtn i.gi-tile { width: 38px; height: 38px; }
+}
+/* 메뉴 줄 아이콘: 글자색 + 옅은 면은 칸 바탕에 맞춘 단색 */
+.cl-sub .gicon { --ic-2: #3a3a3a; flex: none; }
+.cl-sub.on .gicon, .cl-sub:hover .gicon { --ic-2: #4a4a4a; }
+.lobby-bottom .gicon { --ic-2: #333; }
+.lobby-bottom .on .gicon { --ic-2: #9a8ff2; }
