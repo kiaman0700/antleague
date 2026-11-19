@@ -115,27 +115,41 @@ function tickerList(list: NoticeItem[]) {
 /* ---------- 글 (링크는 사이트 안 화면만) ---------- */
 const LINK = /\[([^\]\n]{1,40})\]\((\/[a-z-]{0,20})\)/g;
 export function NoticeText({ text, onGo }: { text: string; onGo: (p: LobbyPage) => void }) {
-  const parts: ReactNode[] = [];
-  let last = 0;
-  for (const m of text.matchAll(LINK)) {
-    const page = lobbyPageOf(m[2]);
-    if (!page) continue;
-    parts.push(text.slice(last, m.index));
-    parts.push(
-      <button key={m.index} type="button" className="notice-link" onClick={() => onGo(page)}>
-        {m[1]}
-        <Icon name="right" size={12} />
-      </button>,
-    );
-    last = (m.index ?? 0) + m[0].length;
-  }
-  parts.push(text.slice(last));
+  // 한 줄 안의 [글자](/주소) 링크 (우리 화면 주소일 때만)
+  const inline = (line: string, base: number) => {
+    const parts: ReactNode[] = [];
+    let last = 0;
+    for (const m of line.matchAll(LINK)) {
+      const page = lobbyPageOf(m[2]);
+      if (!page) continue;
+      parts.push(line.slice(last, m.index));
+      parts.push(
+        <button key={base + (m.index ?? 0)} type="button" className="notice-link" onClick={() => onGo(page)}>
+          {m[1]}
+          <Icon name="right" size={12} />
+        </button>,
+      );
+      last = (m.index ?? 0) + m[0].length;
+    }
+    parts.push(line.slice(last));
+    return parts.map((x, i) => <Fragment key={i}>{x}</Fragment>);
+  };
+  // 줄마다: 빈 줄은 문단 사이, '·'·'-'·'•' 로 시작하는 줄은 목록 (길어서 넘어간 둘째 줄이 점 뒤 글자와 같은 자리에서 시작하게)
   return (
-    <p className="notice-text">
-      {parts.map((p, i) => (
-        <Fragment key={i}>{p}</Fragment>
-      ))}
-    </p>
+    <div className="notice-text">
+      {text.split(/\r?\n/).map((line, i) => {
+        if (!line.trim()) return <span key={i} className="nt-gap" aria-hidden />;
+        const li = /^\s*[·•-]\s+/.exec(line);
+        return li ? (
+          <span key={i} className="nt-li">
+            <span className="nt-bul" aria-hidden>·</span>
+            <span>{inline(line.slice(li[0].length), i * 1000)}</span>
+          </span>
+        ) : (
+          <span key={i} className="nt-line">{inline(line, i * 1000)}</span>
+        );
+      })}
+    </div>
   );
 }
 

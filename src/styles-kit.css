@@ -2649,3 +2649,9 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 }
 /* '쓸 수 있는 이름' 초록 테두리는 고치는 동안만 — 저장된 닉네임 칸이 늘 초록이면 성공 알림처럼 계속 눈에 띄었음 */
 .gn-field.good:not(:focus-within) input { border-color: var(--line-2, #2e2e2e) !important; box-shadow: none; }
+/* 공지 글: 줄마다 따로 — 목록 줄은 둘째 줄부터 점 뒤 글자에 맞춰 들여 씀 */
+.notice-text .nt-line { display: block; }
+.notice-text .nt-gap { display: block; height: 0.7em; }
+.notice-text .nt-li { display: flex; gap: 6px; }
+.notice-text .nt-li > .nt-bul { flex: none; color: var(--muted, #9a9a9a); }
+.notice-text .nt-li > span:last-child { min-width: 0; }
