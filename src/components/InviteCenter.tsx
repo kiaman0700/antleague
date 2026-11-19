@@ -7,7 +7,7 @@ import { api } from '../net/api';
 import { refreshAccount } from '../net/account';
 import { cancelMatch, getMatch } from '../net/matchStore';
 import { Icon } from './Icon';
-import { DialogBox } from './ui';
+import { DialogBox, useEscape } from './ui';
 import { SPEED_PRESET } from '../engine/matching';
 import { loadUi, type Session, type UiMode } from '../session';
 import { play } from '../lib/sound';
@@ -165,6 +165,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
 
   return (
     <>
+      {inv && <EscLayer onClose={() => setDismissed((d) => new Set(d).add(inv.id))} />}
       {inv && (
         <div className="modal-bg">
           <DialogBox className="modal invite-pop" aria-label="친구 초대">
@@ -196,6 +197,8 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
           </DialogBox>
         </div>
       )}
+      {/* 신청 대기 창은 Esc 로 닫지 않음(취소는 버튼으로) — 아래 창이 대신 닫히지 않게 맨 위 자리만 차지 */}
+      {!inv && waitingDuel && <EscLayer onClose={() => {}} />}
       {!inv && waitingDuel && (
         <div className="modal-bg">
           <DialogBox className="modal invite-pop" aria-label="1대1 신청 대기">
@@ -228,4 +231,10 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
       )}
     </>
   );
+}
+
+/** 이 알림 창이 맨 위 창이 되게 (Esc·뒤로 가기가 아래 창을 대신 닫지 않게) */
+function EscLayer({ onClose }: { onClose: () => void }) {
+  useEscape(onClose, true, false);
+  return null;
 }

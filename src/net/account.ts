@@ -231,6 +231,18 @@ export async function resumeGuestWithCode(code: string) {
   const b = (await r.json().catch(() => null)) as { email?: string; password?: string; error?: string } | null;
   if (!r.ok || !b?.email || !b.password) throw new Error(b?.error ?? '코드가 맞지 않아요. 다시 확인해 주세요.');
   await resetMatch();
+  // 지금 쓰던 손님과 다른 손님으로 바꾸는 거면, 버리는 손님의 대기실·진행 중 자리를 먼저 정리 (로그아웃과 같게 — 상대가 시간 초과까지 기다리지 않게)
+  if (state.status === 'guest') {
+    const cur = (await supabase.auth.getSession()).data.session?.user.email ?? null;
+    if (cur !== b.email) {
+      try {
+        const seat = await api<{ roomId: string; status: string } | null>('resume');
+        if (seat) await api('leave', { roomId: seat.roomId });
+      } catch {
+        /* 정리 실패는 불러오기를 막지 않음 */
+      }
+    }
+  }
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
   const { error } = await supabase.auth.signInWithPassword({ email: b.email, password: b.password });
   if (error) throw new Error('불러오지 못했어요. 잠시 뒤에 다시 해 주세요.');
