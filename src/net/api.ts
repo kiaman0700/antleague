@@ -113,6 +113,16 @@ async function apiOnce<T>(action: string, payload: Record<string, unknown>, noAu
   }
   if (!res.ok) throw new ApiError((body as { error?: string } | null)?.error ?? '서버 오류가 났어요.', res.status, (body as { code?: string } | null)?.code);
   if (!noAuth) concurrentCleared();
+  // 회원이 같은 닉네임을 등록해 손님 이름이 바뀜 → 이 기기 닉네임도 바꾸고 한 번 알림
+  const rn = (body as { guestRenamed?: { from?: unknown; to?: unknown } } | null)?.guestRenamed;
+  if (rn && typeof rn.to === 'string' && typeof rn.from === 'string') {
+    saveNick(rn.to);
+    try {
+      window.dispatchEvent(new CustomEvent('guest-renamed', { detail: { from: rn.from, to: rn.to } }));
+    } catch {
+      /* 무시 */
+    }
+  }
   return body as T;
 }
 

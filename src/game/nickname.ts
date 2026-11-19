@@ -56,3 +56,12 @@ export function nickNotice(n: string): string | null {
   if (mixedScript(s)) return MIXED_NICK_MSG;
   return null;
 }
+
+/**
+ * 회원이 같은 닉네임을 등록해 손님 이름을 바꿀 때 쓰는 무작위 이름: '형용사 + 개미 + 숫자 4자리' (예: 신중한개미4821).
+ * 형용사는 미리 고른 무난한 말만 (붙였을 때 이상한 뜻이 되지 않게), 모두 10자 안.
+ */
+export const GUEST_ADJ = ['신중한', '용감한', '느긋한', '꼼꼼한', '든든한', '재빠른', '차분한', '씩씩한', '성실한', '침착한', '활발한', '야무진', '유쾌한', '대담한', '현명한', '다정한', '단단한', '반짝인', '똑똑한', '날쌘'];
+export function randomGuestName(rand: (n: number) => number): string {
+  return GUEST_ADJ[rand(GUEST_ADJ.length)] + '개미' + String(1000 + rand(9000));
+}

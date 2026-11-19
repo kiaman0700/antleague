@@ -5,7 +5,7 @@
  */
 import { leagueInfo } from './league.js';
 import { myStreak } from './streaks.js';
-import { titleProblem } from '../../src/game/nickname.js';
+import { nickNotice, randomGuestName, titleProblem } from '../../src/game/nickname.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -370,12 +370,24 @@ async function roomsMadeSince(uid: string, since: string) {
   return ((r.data ?? []) as unknown as { id: string; rooms: { kind: string | null; host_id: string | null } }[]).filter((p) => (p.rooms.kind ?? 'custom') === 'custom' && p.rooms.host_id === p.id).length;
 }
 
+/**
+ * 손님 닉네임: 회원이 같은 닉네임을 쓰면(대소문자 무시) 회원 것이 우선 — 손님은 겹치지 않는 무작위 이름으로 바꾸고
+ * 이 요청의 응답에 guestRenamed 로 알림 (design/v26-batch.md C). 이미 하던 판의 이름은 그대로.
+ */
+const renameNotes = new Map<string, { from: string; to: string }>();
 async function nickFor(uid: string, raw: unknown) {
   const p = await getProfile(db(), uid);
   if (p) return p.nickname;
   const n = newNickname(raw);
-  if (!(await nicknameFree(db(), n))) throw new GameError('회원이 쓰는 닉네임이에요. 게스트 닉네임을 다른 것으로 바꿔 주세요.', 409);
-  return n;
+  if (await nicknameFree(db(), n)) return n;
+  for (let i = 0; i < 6; i++) {
+    const r = randomGuestName(randomInt);
+    if (!nickNotice(r) && (await nicknameFree(db(), r))) {
+      renameNotes.set(uid, { from: n, to: r });
+      return r;
+    }
+  }
+  throw new GameError('닉네임을 정하지 못했어요. 다른 닉네임으로 다시 해 주세요.', 409);
 }
 
 /**
@@ -2043,7 +2055,13 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       if (action === 'adminOverview') rateLimit(uid + ':adminOverview', 20, 60_000); // 여러 표를 한 번에 세는 무거운 요청
       return { status: 200, body: await adminAct(action, b) };
     }
+    renameNotes.delete(uid);
     const result = await act(action, b, uid);
+    const rn = renameNotes.get(uid);
+    if (rn) {
+      renameNotes.delete(uid);
+      if (result && typeof result === 'object' && !Array.isArray(result)) return { status: 200, body: { ...(result as Record<string, unknown>), guestRenamed: rn } };
+    }
     return { status: 200, body: result };
   } catch (e) {
     if (e instanceof GameError) return { status: e.status, body: { error: e.message } };

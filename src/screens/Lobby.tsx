@@ -230,6 +230,7 @@ function GuestNickField({ nick, setNick }: { nick: string; setNick: (v: string) 
       <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
       <input value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
       {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
+      {check !== 'taken' && check !== 'invalid' && <small className="muted">나중에 회원이 같은 닉네임을 등록하면 게스트 닉네임은 다른 이름으로 바뀌어요.</small>}
       {check === 'invalid' && <small className="error">{nickNotice(nick) ?? '1~10자, 글자·숫자로 정해 주세요.'}</small>}
     </label>
   );

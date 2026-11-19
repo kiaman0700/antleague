@@ -1,3 +1,4 @@
+import { RenameNotice } from './components/RenameNotice';
 import { ConcurrentHost } from './components/ConcurrentHost';
 import React from 'react';
 import { ConfirmHost } from './components/ConfirmHost';
@@ -48,6 +49,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <App />
       <ConfirmHost />
       <ConcurrentHost />
+      <RenameNotice />
       {/* Vercel 웹 분석: 주소 뒤 ?… (초대 방 코드 등)와 # 은 빼고 보냄 — 쿠키 없음 */}
       <Analytics beforeSend={(e) => ({ ...e, url: e.url.split(/[?#]/)[0] })} />
     </ErrorBoundary>

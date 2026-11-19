@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reservedNickname, titleProblem, foldWidth, mixedScript } from './nickname';
+import { reservedNickname, titleProblem, foldWidth, mixedScript, randomGuestName, GUEST_ADJ, nickNotice } from './nickname';
 
 describe('운영자 흉내 닉네임', () => {
   it('막는 이름', () => {
@@ -31,5 +31,16 @@ describe('닮은 글자', () => {
     expect(mixedScript('kiaman')).toBe(false);
     expect(mixedScript('Иван')).toBe(false);
     expect(mixedScript('개미ant')).toBe(false);
+  });
+});
+
+describe('손님 무작위 이름', () => {
+  it('형용사+개미+4자리, 10자 안, 막는 이름이 아님', () => {
+    for (let a = 0; a < GUEST_ADJ.length; a++) {
+      const n = randomGuestName((k) => (k === GUEST_ADJ.length ? a : k - 1));
+      expect(n).toMatch(/^[가-힣]{2,3}개미\d{4}$/);
+      expect([...n].length).toBeLessThanOrEqual(10);
+      expect(nickNotice(n)).toBeNull();
+    }
   });
 });

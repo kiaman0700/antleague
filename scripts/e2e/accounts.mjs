@@ -65,10 +65,20 @@ ok('이미 쓰는 아이디·닉네임은 taken', av.username === 'taken' && av.
 const av2 = (await G0({ action: 'checkAvailable', username: 'free' + rnd, nickname: '새' + rnd })).b;
 ok('빈 아이디·닉네임은 ok', av2.username === 'ok' && av2.nickname === 'ok', JSON.stringify(av2));
 // 게스트는 회원 닉네임을 못 씀 (사칭 방지) — 방 만들기·매칭 모두
-const impC = await G0({ action: 'create', nickname: 'A' + rnd, mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '사칭' });
-ok('게스트가 회원 닉네임으로 방 만들기 거절', impC.s === 409, impC.b?.error);
+// 회원 닉네임이 우선 — 같은 닉네임의 게스트는 거절 대신 겹치지 않는 무작위 이름으로 바뀌고 응답에 알림
+const impC = await G0({ action: 'create', nickname: 'A' + rnd, mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '이름 시험' });
+ok('게스트가 회원 닉네임으로 방 만들면 무작위 이름으로 바뀜 + 알림', impC.s === 200 && impC.b?.guestRenamed?.from === 'A' + rnd && /^[가-힣]{2,3}개미\d{4}$/.test(impC.b?.guestRenamed?.to ?? ''), JSON.stringify(impC.b?.guestRenamed ?? impC.b));
+if (impC.s === 200) {
+  const st = (await G0({ action: 'state', roomId: impC.b.roomId })).b;
+  ok('방에 들어간 이름도 바뀐 이름', st?.players?.[0]?.nickname === impC.b.guestRenamed?.to, st?.players?.[0]?.nickname);
+  await G0({ action: 'leave', roomId: impC.b.roomId });
+}
 const impQ = await G0({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: 'a' + rnd.toUpperCase(), mode: 'easy' });
-ok('게스트가 회원 닉네임(대소문자만 다름)으로 매칭 거절', impQ.s === 409, impQ.b?.error);
+ok('게스트가 회원 닉네임(대소문자만 다름)으로 매칭해도 바뀐 이름으로', impQ.s === 200 && !!impQ.b?.guestRenamed?.to, JSON.stringify(impQ.b?.guestRenamed ?? impQ.b));
+await G0({ action: 'queueLeave' });
+const okNick = await G0({ action: 'create', nickname: '평범개미' + rnd.slice(0, 2), mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '이름 시험2' });
+ok('겹치지 않으면 이름 그대로 (알림 없음)', okNick.s === 200 && !okNick.b?.guestRenamed, JSON.stringify(okNick.b?.guestRenamed));
+if (okNick.s === 200) await G0({ action: 'leave', roomId: okNick.b.roomId });
 // 운영자로 오해할 닉네임은 새로 못 정함 (가입 확인·게스트 방 만들기)
 const avR = (await G0({ action: 'checkAvailable', nickname: '개미리그 운영자' })).b;
 ok('운영자 흉내 닉네임은 invalid', avR.nickname === 'invalid', JSON.stringify(avR));
