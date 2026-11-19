@@ -1267,10 +1267,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       )}
       {exitAsk && (
         // 오늘의 도전은 혼자 하는 판 — '대결·기권·상대가 이겨요'는 틀린 안내라 따로
-        <Sheet title={view?.room.kind === 'daily' ? '오늘의 도전을 그만둘까요?' : '대결에서 나갈까요?'} onClose={() => setExitAsk(false)}>
+        <Sheet title={view?.room.kind === 'daily' ? '오늘의 도전을 그만둘까요?' : view?.room.kind === 'bot' ? '봇전을 그만둘까요?' : '대결에서 나갈까요?'} onClose={() => setExitAsk(false)}>
           <div className="exit-ask">
             {view?.room.kind === 'daily' ? (
               <p className="muted small">지금 그만두면 <b>오늘 도전은 여기까지</b>예요. 오늘은 다시 할 수 없어요. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어왔을 때 이어서 할지 물어봐요.</p>
+            ) : view?.room.kind === 'bot' ? (
+              <p className="muted small">지금 그만두면 <b>이 판은 여기서 끝나요</b>. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어왔을 때 이어서 할지 물어봐요.</p>
             ) : (
               <p className="muted small">대결 중에 나가면 <b>기권</b>이에요. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어왔을 때 이어서 할지 물어봐요.</p>
             )}
@@ -1284,14 +1286,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 setExitAsk(false);
                 api('leave', { roomId: session.roomId })
                   .then(() => {
-                    setFlash(view?.room.kind === 'daily' ? '오늘의 도전을 그만뒀어요' : '기권했어요. 이번 대결은 끝났어요');
+                    setFlash(view?.room.kind === 'daily' ? '오늘의 도전을 그만뒀어요' : view?.room.kind === 'bot' ? '봇전을 그만뒀어요' : '기권했어요. 이번 대결은 끝났어요');
                     onExit();
                   })
                   // 기권 요청이 실패하면 나가지 않고 알려 줌 (기권한 줄 알았는데 대결이 남아 막히지 않게)
                   .catch((e) => showToast(e instanceof Error ? `기권하지 못했어요: ${e.message}` : '기권하지 못했어요. 다시 눌러 주세요', 'err'));
               }}
             >
-              <Icon name="door" size={16} /> {view?.room.kind === 'daily' ? '그만두고 나가기' : '기권하고 나가기'}
+              <Icon name="door" size={16} /> {view?.room.kind === 'daily' || view?.room.kind === 'bot' ? '그만두고 나가기' : '기권하고 나가기'}
               <small>
                 {view?.room.kind === 'daily'
                   ? '그때까지의 수익률로 오늘 기록이 남아요'
