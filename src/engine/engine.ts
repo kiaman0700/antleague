@@ -18,6 +18,9 @@ import { LIVE_NEWS_VERSION, liveNews } from '../game/liveNews.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
+import { augOn, deriveAugs, ownedAugs, pendingSlot, type AugRow } from './augs.js';
+import { AUG_INFO, augFeeRate, augIncomeAll, augInfoLeft, augLevCap, augMaxOrders, augOrderRange, ruleSector, type AugIncome } from './augEffects.js';
+import type { AugTier } from '../game/augments.js';
 
 export type UiMode = 'easy' | 'pro';
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
@@ -98,6 +101,8 @@ export interface GameData {
   trades: Trade[];
   items: ItemRow[];
   orders: OrderRow[];
+  /** (v27) 증강 고르기·다시 뽑기·쓰기 줄 */
+  augs?: AugRow[];
 }
 
 export const MAX_OPEN_ORDERS = 5;
@@ -170,9 +175,25 @@ export interface View {
     scout: { symbol: string; up: boolean } | null;
     blackout: boolean;
   };
+  /** (v27) 내 증강 — 상대 것은 판이 끝날 때 final.augs 로만 */
+  aug?: AugView | null;
   /** 게임이 끝나면 모든 기록 공개 */
   /** endDay: 상대가 모두 기권해 바로 끝난 판이면 실제로 한 마지막 날 — 결과 화면은 그 날 가격으로 멈춤 */
-  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean; bot?: number }[]; badges: Record<string, string[]>; endDay?: number | null } | null;
+  final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean; bot?: number }[]; badges: Record<string, string[]>; endDay?: number | null; augs?: Record<string, { id: string; auto: boolean }[]>; augIncome?: Record<string, AugIncome[]> } | null;
+}
+
+export interface AugView {
+  /** 고르는 날 (0부터) */
+  days: number[];
+  mine: { id: string; n: number; auto: boolean }[];
+  /** 오늘 고를 차례면 내 보기 3개 */
+  offer: { n: number; tier: AugTier; ids: string[]; canReroll: boolean[] } | null;
+  /** 증강으로 받은(잃은) 돈 — 지금 날까지 */
+  income: AugIncome[];
+  /** 남은 쓰기 횟수 (진위 판정·오를지 내릴지·내일 헤드라인·강한 업종·타이밍·되돌리기) */
+  left: Record<'detector' | 'scout' | 'paper' | 'analyst' | 'timing' | 'undo', number>;
+  /** 오늘 이미 쓴 종류 (종류마다 하루 한 번) */
+  usedToday: string[];
 }
 
 export interface LiveView {
@@ -499,7 +520,32 @@ function itemsOf(d: GameData) {
 }
 
 function spendsOf(d: GameData, pid: string) {
-  return spendsFromRows(d.items.filter((r) => r.player_id === pid));
+  const items = spendsFromRows(d.items.filter((r) => r.player_id === pid));
+  if (!augOn(d.room.version)) return items;
+  return items.concat(augIncomeOf(d, pid).map((x) => ({ day: x.day, cost: -x.amount })));
+}
+
+/** (v27) 증강으로 받은(잃은) 돈 — 지금 날까지 */
+function augIncomeOf(d: GameData, pid: string): AugIncome[] {
+  if (!augOn(d.room.version)) return [];
+  const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
+  return augIncomeAll(d, m, m.dividends)[pid] ?? [];
+}
+
+/** (v27) 지금 가진 증강 */
+function augsOwned(d: GameData, pid: string): string[] {
+  return augOn(d.room.version) ? ownedAugs(deriveAugs(d), pid) : [];
+}
+
+/** (v27) 수수료율: 카드 효과(base) 위에 증강 */
+function tradeFee(d: GameData, m: Market, pid: string, symbol: string, side: 'buy' | 'sell', base: number, pf: ReturnType<typeof portfolioOf>): number {
+  const owned = augsOwned(d, pid);
+  if (!owned.length) return base;
+  const close = d.room.day > 0 ? priceMap(m, d.room.day - 1, true) : priceMap(m, 0, false);
+  const big = Object.entries(pf.holdings).sort((a, b) => b[1].qty * (close[b[0]] ?? 0) - a[1].qty * (close[a[0]] ?? 0))[0]?.[0] ?? null;
+  const boughtToday = d.trades.filter((t) => t.player_id === pid && t.day === d.room.day && t.symbol === symbol).reduce((a, t) => a + (t.side === 'buy' ? t.qty : -t.qty), 0);
+  const rs = owned.includes('rule') ? ruleSector(d, m, pid, deriveAugs(d).players[pid]?.find((x) => x.picked === 'rule')?.day ?? 0) : null;
+  return augFeeRate(owned, { symbol, side, held: pf.holdings[symbol]?.qty ?? 0, boughtToday, biggest: big, ruleSector: rs }, base);
 }
 
 export function portfolioOf(d: GameData, pid: string) {
@@ -545,7 +591,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const clock = dayClock(r, now);
   const prices = open ? livePriceMap(d, m, now) : priceMap(m, day, finished);
   const items = itemsOf(d);
-  const mine = items.players[meId] ?? base.myItems;
+  let mine = items.players[meId] ?? base.myItems;
+  let scoutAcc = SCOUT_ACCURACY;
+  if (augOn(r.version)) {
+    // 정보 증강을 쓴 줄을 카드 정보 사용과 같은 모양으로 — 보여 주는 범위는 카드와 똑같음
+    const info = augInfoLeft(d, deriveAugs(d), meId);
+    scoutAcc = info.acc;
+    mine = { ...mine, infoUses: info.uses.map((u) => ({ kind: u.aug as ItemKind, day: u.day, symbol: u.payload?.symbol, pick: u.payload?.pick })) };
+  }
 
   // 재산·수익률은 상대도 원 단위로 지금 가격 그대로 보여 줌.
   // 무엇을 샀는지(보유 종목·거래·카드·주문)와 오늘 거래 횟수는 여전히 안 보냄
@@ -623,7 +676,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
         const truth = b.close >= b.open;
         // 70% 확률로 맞음 — 같은 날 같은 종목이면 항상 같은 답
         const rng = r.salt ? seeded(`${r.salt}:scout:${sym}:${r.day}`) : mulberry32((r.seed ^ hashString(sym)) + r.day * 131);
-        base.reveals.scout = { symbol: sym, up: rng() < SCOUT_ACCURACY ? truth : !truth };
+        base.reveals.scout = { symbol: sym, up: rng() < scoutAcc ? truth : !truth };
       }
     }
     if (todayInfo.includes('spy')) {
@@ -678,7 +731,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
 
   if (finished) {
     base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game, ...(p.bot_level ? { bot: p.bot_level } : {}) })), badges: finalResults(d).badges, endDay: playedLastDay(d) };
+    if (augOn(r.version)) {
+      const st = deriveAugs(d);
+      const m2 = marketFor(r.seed, r.total_days, r.version ?? 1, r.salt, r.theme);
+      base.final.augIncome = augIncomeAll(d, m2, m2.dividends, st);
+      base.final.augs = Object.fromEntries(Object.entries(st.players).map(([pid, sl]) => [pid, sl.filter((x) => x.picked).map((x) => ({ id: x.picked!, auto: x.auto }))]));
+    }
   }
+  if (augOn(r.version)) base.aug = augViewOf(d, meId);
   return base;
 }
 
@@ -719,16 +779,16 @@ export function validateTrade(d: GameData, meId: string, now: number, input: { s
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
   if (fx.some((e) => e.kind === 'freeze')) throw new GameError('거래 정지 카드 때문에 오늘은 거래할 수 없어요.', 409);
-  const fee = fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE;
-
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
   const price = livePrice(d, m, symbol, now); // 가격은 오직 서버가 정한다 — 요청을 받은 순간의 칸
   const pf = portfolioOf(d, meId);
+  sleepyCheck(d, meId, now);
+  const fee = tradeFee(d, m, meId, symbol, side, fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE, pf);
   if (side === 'buy' && buyCost(qty, price, fee) > pf.cash) throw new GameError('현금이 모자라요. 수량을 줄여 보세요.');
   if (side === 'sell' && (pf.holdings[symbol]?.qty ?? 0) < qty) throw new GameError('가진 주식보다 많이 팔 수 없어요. 수량을 줄여 보세요.');
   if (side === 'buy') {
-    const cap = leveragedCap(d, m, pf, symbol, price, now);
-    if (cap !== null && qty > cap) throw new GameError(`레버리지·인버스 ETF는 합쳐서 총재산의 ${Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요` + (cap > 0 ? ` (지금 최대 ${cap}주)` : ''));
+    const cap = leveragedCap(d, m, pf, symbol, price, now, meId);
+    if (cap !== null && qty > cap) throw new GameError(levMsg(d, meId, cap));
   }
   return { player_id: meId, day: d.room.day, symbol, side, qty, price, fee };
 }
@@ -741,18 +801,41 @@ export const isLeveraged = (symbol: string) => {
 /** v4 규칙: 레버리지·인버스 ETF 는 합쳐서 총재산의 이만큼까지만 (몰빵 한 방으로 다인전을 이기는 걸 막음 — 실제로도 별도 제한이 있음) */
 export const LEVERAGE_CAP = 0.3;
 
+function levCapFor(d: GameData, pid: string) {
+  return augLevCap(augsOwned(d, pid), LEVERAGE_CAP);
+}
+function levMsg(d: GameData, pid: string, left: number, order = false) {
+  const c = levCapFor(d, pid);
+  if (c === 0) return '현금왕 증강이 있어서 레버리지·인버스 ETF는 살 수 없어요.';
+  return `레버리지·인버스 ETF는 ${order ? '예약 주문까지 ' : ''}합쳐서 총재산의 ${Math.round(c * 100)}%까지만 살 수 있어요` + (left > 0 ? ` (지금 최대 ${left}주)` : '');
+}
+
+/** (v27) 늦잠 개미: 고른 다음 날 장 첫 1/3 동안은 거래 못 함 */
+function sleepyCheck(d: GameData, pid: string, now: number) {
+  if (!augOn(d.room.version)) return;
+  const s = deriveAugs(d).players[pid]?.find((x) => x.picked === 'sleepy');
+  if (!s || d.room.day !== s.day + 1) return;
+  const c = dayClock(d.room, now);
+  if (c.tick < c.n / 3) throw new GameError('늦잠 개미 증강 때문에 오늘 장 처음 1/3 동안은 거래할 수 없어요.', 409);
+}
+
 /** 이 레버리지 ETF 를 지금 더 살 수 있는 최대 수량 (제한 없는 종목·예전 방이면 null) */
-export function leveragedCap(d: GameData, m: Market, pf: ReturnType<typeof portfolioOf>, symbol: string, price: number, now: number): number | null {
+export function leveragedCap(d: GameData, m: Market, pf: ReturnType<typeof portfolioOf>, symbol: string, price: number, now: number, pid = ''): number | null {
   if ((d.room.version ?? 1) < 4 || !isLeveraged(symbol)) return null;
   const prices = livePriceMap(d, m, now);
   const equity = equityWith(pf, prices);
   let held = 0;
   for (const [sym, h] of Object.entries(pf.holdings)) if (isLeveraged(sym)) held += h.qty * (prices[sym] ?? 0);
-  const room = LEVERAGE_CAP * equity - held;
+  const room = levCapFor(d, pid) * equity - held;
   return Math.max(0, Math.floor(room / (price * (1 + FEE_RATE))));
 }
 
+function noCards(d: GameData) {
+  if (augOn(d.room.version)) throw new GameError('이 판은 카드 대신 증강을 써요.', 409);
+}
+
 export function validateBuyItem(d: GameData, meId: string, now: number, input: { kind?: unknown }): ItemRow {
+  noCards(d);
   requirePlaying(d, meId, now);
   const kind = cleanKind(input.kind);
   const solo = d.players.length < 2;
@@ -765,6 +848,7 @@ export function validateBuyItem(d: GameData, meId: string, now: number, input: {
 }
 
 export function validateUseItem(d: GameData, meId: string, now: number, input: { kind?: unknown; payload?: unknown }): ItemRow {
+  noCards(d);
   requirePlaying(d, meId, now);
   const kind = cleanKind(input.kind);
   const solo = d.players.length < 2;
@@ -847,6 +931,8 @@ export function validateEndTurn(d: GameData, meId: string, now: number) {
   const me = requirePlaying(d, meId, now - 1e12); // 시간이 지나도 마감 버튼은 허용
   // 장 전에 마감하면 그날 장이 통째로 건너뛰어질 수 있음 → 장이 열린 뒤에만
   if (inPremarket(d.room, now)) throw new GameError('장이 열린 뒤에 마감할 수 있어요.', 409);
+  // 마감으로 하루가 넘어가면 증강이 무작위로 정해짐 → 사람은 먼저 고르게
+  if (augOn(d.room.version) && !me.bot_level && pendingSlot(deriveAugs(d), me.id, d.room.day)) throw new GameError('오늘 증강을 먼저 골라 주세요.', 409);
   return { playerId: me.id, day: d.room.day };
 }
 
@@ -1029,17 +1115,20 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
   const items = itemsOf(d);
   const fx = activeEffects(items, meId, d.room.day);
   if (fx.some((e) => e.kind === 'freeze')) throw new GameError('거래 정지 카드 때문에 오늘은 주문할 수 없어요.', 409);
-  const fee = fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE;
-
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
+  const fee = tradeFee(d, m, meId, symbol, side, fx.some((e) => e.kind === 'fee') ? FEE_BOMB_RATE : FEE_RATE, portfolioOf(d, meId));
+  const owned = augsOwned(d, meId);
+  const range = augOrderRange(owned);
+  const pct = Math.round(range * 100);
+  const maxOrders = augMaxOrders(owned, MAX_OPEN_ORDERS);
   const open = livePrice(d, m, symbol, now, STOCK_MAP[symbol].currency === 'USD' ? 'usd' : 'krw');
   const isUS = STOCK_MAP[symbol].currency === 'USD';
   const lim = isUS ? Math.round(limit * 100) / 100 : Math.round(limit);
-  if (side === 'buy' && !(lim < open && lim >= open * 0.7)) throw new GameError('예약해서 살 가격은 지금 가격보다 낮게, 30% 안쪽으로 정해 주세요.');
-  if (side === 'sell' && !(lim > open && lim <= open * 1.3)) throw new GameError('예약해서 팔 가격은 지금 가격보다 높게, 30% 안쪽으로 정해 주세요.');
+  if (side === 'buy' && !(lim < open && lim >= open * (1 - range))) throw new GameError(`예약해서 살 가격은 지금 가격보다 낮게, ${pct}% 안쪽으로 정해 주세요.`);
+  if (side === 'sell' && !(lim > open && lim <= open * (1 + range))) throw new GameError(`예약해서 팔 가격은 지금 가격보다 높게, ${pct}% 안쪽으로 정해 주세요.`);
 
   const mine = d.orders.filter((o) => o.player_id === meId && o.day === d.room.day && o.status === 'open');
-  if (mine.length >= MAX_OPEN_ORDERS) throw new GameError(`예약 주문은 하루 ${MAX_OPEN_ORDERS}개까지예요.`);
+  if (mine.length >= maxOrders) throw new GameError(`예약 주문은 하루 ${maxOrders}개까지예요.`);
   const pf = portfolioOf(d, meId);
   const fxRate = m.macro[d.room.day].fx;
   const krw = (o: { limit_price: number; symbol: string }) => (STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fxRate) : o.limit_price);
@@ -1047,11 +1136,11 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
     const reserved = mine.filter((o) => o.side === 'buy').reduce((a, o) => a + buyCost(o.qty, krw(o), o.fee), 0);
     if (reserved + buyCost(qty, krw({ limit_price: lim, symbol }), fee) > pf.cash) throw new GameError('예약해 둔 주문까지 합치면 현금이 모자라요.');
     // 레버리지 30% 제한은 예약 주문에도 (이미 걸어 둔 레버리지 예약까지 합쳐서) — 예약으로 제한을 피해 몰빵하지 못하게
-    const cap = leveragedCap(d, m, pf, symbol, krw({ limit_price: lim, symbol }), now);
+    const cap = leveragedCap(d, m, pf, symbol, krw({ limit_price: lim, symbol }), now, meId);
     if (cap !== null) {
       const pending = mine.filter((o) => o.side === 'buy' && isLeveraged(o.symbol)).reduce((a, o) => a + o.qty * krw(o), 0);
       const left = Math.max(0, Math.floor((cap * krw({ limit_price: lim, symbol }) - pending) / krw({ limit_price: lim, symbol })));
-      if (qty > left) throw new GameError(`레버리지·인버스 ETF는 예약 주문까지 합쳐서 총재산의 ${Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요` + (left > 0 ? ` (지금 최대 ${left}주)` : ''));
+      if (qty > left) throw new GameError(levMsg(d, meId, left, true));
     }
   } else {
     const reserved = mine.filter((o) => o.side === 'sell' && o.symbol === symbol).reduce((a, o) => a + o.qty, 0);
@@ -1108,7 +1197,7 @@ export function resolveOrders(d: GameData, day: number, upto: number, final: boo
     let ok = o.side === 'buy' ? buyCost(o.qty, price, o.fee) <= pf.cash : (pf.holdings[o.symbol]?.qty ?? 0) >= o.qty;
     // 체결 순간에도 레버리지 30% 제한을 다시 확인 (넘으면 취소)
     if (ok && o.side === 'buy' && day === d.room.day) {
-      const cap = leveragedCap(d, m, pf, o.symbol, price, clock.startAt + hitAt * clock.tickMs);
+      const cap = leveragedCap(d, m, pf, o.symbol, price, clock.startAt + hitAt * clock.tickMs, o.player_id);
       if (cap !== null && o.qty > cap) ok = false;
     }
     if (!ok) {
@@ -1225,3 +1314,100 @@ export function cardStats(d: GameData): Record<string, CardStats> {
   }
   return out;
 }
+
+/* ---------------- 증강 (v27) ---------------- */
+
+function augViewOf(d: GameData, meId: string): AugView {
+  const st = deriveAugs(d);
+  const mine = (st.players[meId] ?? []).filter((x) => x.picked).map((x) => ({ id: x.picked!, n: x.n, auto: x.auto }));
+  const p = d.room.status === 'playing' ? pendingSlot(st, meId, d.room.day) : null;
+  const info = augInfoLeft(d, st, meId);
+  const used = new Set((d.augs ?? []).filter((x) => x.player_id === meId && x.action === 'use').map((x) => x.aug));
+  return {
+    days: st.days,
+    mine,
+    offer: p ? { n: p.n, tier: p.tier, ids: p.offer, canReroll: p.canReroll } : null,
+    income: augIncomeOf(d, meId),
+    left: { ...info.left, timing: mine.some((x) => x.id === 'timing') && !used.has('timing') ? 1 : 0, undo: mine.some((x) => x.id === 'undo') && !used.has('undo') ? 1 : 0 },
+    usedToday: [...new Set((d.augs ?? []).filter((x) => x.player_id === meId && x.action === 'use' && x.day === d.room.day).map((x) => x.aug))],
+  };
+}
+
+function augTurn(d: GameData, meId: string, now: number) {
+  if (!augOn(d.room.version)) throw new GameError('이 판에는 증강이 없어요.', 409);
+  const r = d.room;
+  if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('게임이 진행 중일 때만 할 수 있어요.', 409);
+  const me = d.players.find((p) => p.id === meId);
+  if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
+  if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
+  if (r.deadline !== null && now >= r.deadline) throw new GameError('오늘 장이 끝났어요. 증강은 자동으로 정해져요.', 409);
+  const slot = pendingSlot(deriveAugs(d), meId, r.day);
+  if (!slot) throw new GameError('지금은 고를 증강이 없어요.', 409);
+  return slot;
+}
+
+/** 보기 3개 중 하나 고르기 — 보기는 서버가 다시 계산해 확인 */
+export function validatePickAug(d: GameData, meId: string, now: number, input: { aug?: unknown }): AugRow {
+  const slot = augTurn(d, meId, now);
+  const id = typeof input.aug === 'string' ? input.aug : '';
+  if (!slot.offer.includes(id)) throw new GameError('보기에 없는 증강이에요.');
+  return { player_id: meId, n: slot.n, day: d.room.day, action: 'pick', aug: id, slot: slot.offer.indexOf(id) };
+}
+
+/** 한 칸만 다시 뽑기 (나머지 두 칸은 그대로) */
+export function validateRerollAug(d: GameData, meId: string, now: number, input: { slot?: unknown }): AugRow {
+  const slot = augTurn(d, meId, now);
+  const i = typeof input.slot === 'number' && Number.isInteger(input.slot) ? input.slot : -1;
+  if (i < 0 || i >= slot.offer.length) throw new GameError('어느 칸을 다시 뽑을지 골라 주세요.');
+  if (!slot.canReroll[i]) throw new GameError('이 칸은 더 다시 뽑을 수 없어요.', 409);
+  return { player_id: meId, n: slot.n, day: d.room.day, action: 'reroll', aug: slot.offer[i], slot: i };
+}
+
+const USE_KINDS = ['detector', 'scout', 'paper', 'analyst', 'timing', 'undo'] as const;
+type UseKind = (typeof USE_KINDS)[number];
+
+/**
+ * 증강 쓰기: 정보(진위 판정·오를지 내릴지·내일 헤드라인·강한 업종)는 종류마다 하루 한 번, 보여 주는 범위는 예전 카드와 같음.
+ * 되돌리기는 반대 거래(수수료 없음)를 함께 돌려줌 — 서버가 둘을 같이 넣어야 함
+ */
+export function validateUseAug(d: GameData, meId: string, now: number, input: { kind?: unknown; payload?: unknown }): { row: AugRow; undo?: Trade } {
+  if (!augOn(d.room.version)) throw new GameError('이 판에는 증강이 없어요.', 409);
+  requirePlaying(d, meId, now);
+  const kind = USE_KINDS.find((k) => k === input.kind) as UseKind | undefined;
+  if (!kind) throw new GameError('쓸 증강을 골라 주세요.');
+  const st = deriveAugs(d);
+  const owned = ownedAugs(st, meId);
+  const mineUses = (d.augs ?? []).filter((x) => x.player_id === meId && x.action === 'use');
+  const p = (input.payload ?? {}) as { symbol?: unknown; pick?: unknown; trade?: unknown };
+  const base = { player_id: meId, n: -1, day: d.room.day, action: 'use' as const, aug: kind };
+  if (kind === 'timing' || kind === 'undo') {
+    if (!owned.includes(kind)) throw new GameError('이 증강이 없어요.', 409);
+    if (mineUses.some((x) => x.aug === kind)) throw new GameError('이 증강은 판 동안 한 번만 쓸 수 있어요.', 409);
+    if (inPremarket(d.room, now)) throw new GameError('장이 열린 뒤에 쓸 수 있어요.', 409);
+    const tid = typeof p.trade === 'string' ? p.trade : '';
+    const tr = d.trades.find((t) => t.player_id === meId && t.day === d.room.day && (t.id ?? '') === tid && tid);
+    if (!tr) throw new GameError('오늘 한 내 거래를 골라 주세요.');
+    if (mineUses.some((x) => x.payload?.trade === tid)) throw new GameError('이미 증강을 쓴 거래예요.', 409);
+    if (kind === 'timing') {
+      if (tr.side !== 'buy') throw new GameError('타이밍의 신은 산 거래에만 쓸 수 있어요.');
+      return { row: { ...base, payload: { trade: tid } } };
+    }
+    const pf = portfolioOf(d, meId);
+    if (tr.side === 'buy' && (pf.holdings[tr.symbol]?.qty ?? 0) < tr.qty) throw new GameError('그 뒤에 팔아서 되돌릴 주식이 모자라요.', 409);
+    if (tr.side === 'sell' && pf.cash < Math.ceil(tr.qty * tr.price)) throw new GameError('되돌리려면 판 돈만큼 현금이 있어야 해요.', 409);
+    const back: Trade = { player_id: meId, day: d.room.day, symbol: tr.symbol, side: tr.side === 'buy' ? 'sell' : 'buy', qty: tr.qty, price: tr.price, fee: 0 };
+    return { row: { ...base, payload: { trade: tid } }, undo: back };
+  }
+  const info = augInfoLeft(d, st, meId);
+  if (info.left[kind] <= 0) throw new GameError('이 정보를 볼 수 있는 증강 횟수가 없어요.', 409);
+  if (mineUses.some((x) => x.aug === kind && x.day === d.room.day)) throw new GameError('같은 종류는 하루에 한 번만 쓸 수 있어요. 횟수는 그대로예요.', 409);
+  if (kind === 'paper' && d.room.day + 1 >= d.room.total_days) throw new GameError('마지막 날엔 내일 헤드라인이 없어요.', 409);
+  if (kind === 'detector') {
+    if (typeof p.pick !== 'string' || p.pick.length > 300 || !visibleToday(d, meId, now).includes(p.pick)) throw new GameError('확인할 소식을 하나 골라 주세요.');
+    return { row: { ...base, payload: { pick: p.pick } } };
+  }
+  if (kind === 'scout') return { row: { ...base, payload: { symbol: cleanSymbol(p.symbol) } } };
+  return { row: { ...base } };
+}
+
+export { ownedAugs, AUG_INFO };

@@ -167,7 +167,8 @@ export function deriveItems(seed: number, playerIds: string[], rows: ItemRow[], 
   for (let d = 0; d <= currentDay; d++) {
     for (const id of playerIds) {
       const p = players[id];
-      const n = d === 0 ? START_CARDS : gdays.has(d) ? 1 : 0;
+      // (v27) 카드 대신 증강 — 무료 카드 없음
+      const n = version >= 27 ? 0 : d === 0 ? START_CARDS : gdays.has(d) ? 1 : 0;
       const rng = mulberry32((seed ^ (v3 ? 0x5eed : hash(id))) + d * 7919);
       for (let i = 0; i < n; i++) {
         const kind = pool[Math.floor(rng() * pool.length)];
