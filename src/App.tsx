@@ -20,6 +20,7 @@ import { Lobby, type ResumeInfo } from './screens/Lobby';
 // 대기실은 방에 들어갈 때만 받음 (첫 화면 파일 줄이기)
 const WaitingRoom = lazy(() => import('./screens/WaitingRoom').then((m) => ({ default: m.WaitingRoom })));
 import { loadNick, loadUi, type UiMode } from './session';
+import { setFlash } from './lib/flash';
 
 /** 새로고침하거나 주소를 직접 열었을 때 서버/저장소 정보로 화면 복원 */
 async function resolvePath(path: string): Promise<{ route: Route; url?: string }> {
@@ -27,10 +28,14 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
     const solo = loadSolo();
     return solo
       ? { route: { kind: 'game', session: { mode: 'solo', roomId: null, playerId: 'me', nickname: solo.nickname, ui: loadUi() } } }
-      : { route: { kind: 'lobby' }, url: '/' };
+      : (setFlash('이어서 할 연습 게임이 없어서 홈으로 왔어요'), { route: { kind: 'lobby' }, url: '/' });
   }
   const m = path.match(/^\/(room|game)\/([A-Z0-9]{6})$/i);
-  if (!m) return { route: { kind: 'lobby' }, url: '/' };
+  if (!m) {
+    // 잘못 친 주소·없어진 화면: 말없이 홈으로 가면 왜 바뀌었는지 모름
+    setFlash('없는 주소라서 홈으로 왔어요');
+    return { route: { kind: 'lobby' }, url: '/' };
+  }
   const code = m[2].toUpperCase();
   if (supabase) {
     // 게임 주소면 그 방의 내 자리를 (끝난 판 포함) 찾아 결과까지 다시 보여 줌. 대기실 주소(/room/)는 지금처럼
