@@ -15,7 +15,7 @@ import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankLi
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
-import { ReactionBubbles, ReactionButton } from '../components/Reactions';
+import { ReactionBubbles, ReactionButton, loadReactMute, saveReactMute } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
 import { StockDetail, TradePanel } from '../components/StockDetail';
 import { Term } from '../components/Term';
@@ -698,9 +698,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     setTimeout(() => setBubbles((b) => b.filter((x) => x.id !== r.id)), 3500);
   };
   // 반응 채널은 서버 판(대결·봇전 등)에서만 — 튜토리얼·연습은 이 기기에서만 도는 판이라 열지 않음
+  const [reactMute, setReactMute] = useState(loadReactMute);
+  const muteRef = useRef(reactMute);
+  muteRef.current = reactMute;
   const sendReaction = useReactions(session.mode === 'multi' ? session.roomId : null, me, (r) => {
     // 이 방 참가자가 보낸 것만 (방 ID 만 아는 외부인·다른 사람 사칭 무시)
     if (!view?.players.some((p) => p.id === r.from)) return;
+    if (muteRef.current) return; // 다른 사람 반응 끔
     play('react');
     pushBubble(r);
   });
@@ -1219,6 +1223,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {session.mode === 'multi' && players.some((p) => p.id !== me && !p.bot) && (
         <>
           <ReactionButton
+            muted={reactMute}
+            onMute={(on) => {
+              saveReactMute(on);
+              setReactMute(on);
+              if (on) setBubbles((b) => b.filter((x) => x.from === me));
+            }}
             onSend={(r) => {
               sendReaction(r);
               pushBubble({ ...r, id: Date.now(), from: me, mine: true });
