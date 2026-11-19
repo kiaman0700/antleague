@@ -2569,3 +2569,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .tut-prog { flex: none; width: 44px; height: 6px; border-radius: 3px; background: #3a3a3a; overflow: hidden; }
 .tut-prog > i { display: block; height: 100%; background: #8b7bff; border-radius: 3px; transition: width 0.2s ease-out; }
 @media (prefers-reduced-motion: reduce) { .tut-prog > i { transition: none; } }
+.more-ver { margin: 10px 4px 0; font-size: 12px; color: #9a9a9a; font-variant-numeric: tabular-nums; }
+.more-sound { display: grid; gap: 14px; } .more-sound .ms-row + .ms-row { padding-top: 14px; border-top: 1px solid #2a2a2a; }

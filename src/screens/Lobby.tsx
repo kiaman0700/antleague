@@ -1,4 +1,5 @@
 import { ToonIcon } from '../components/ToonIcon';
+import { loadReactMute, saveReactMute } from '../components/Reactions';
 import { ThemeCard, themeName } from '../components/ThemeCard';
 import { readStored } from '../lib/stored';
 import { nickNotice, titleProblem } from '../game/nickname';
@@ -1108,14 +1109,15 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="megaphone" /> <span className="mr-t"><b>공지사항{newNotice && <i className="more-new" aria-label="새 공지" />}</b><small>새 소식과 안내</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('feedback')}>
-                <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
+                <Icon name="chat" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('privacy')}>
                 <Icon name="lock" /> <span className="mr-t"><b>개인정보처리방침</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('terms')}>
-                <Icon name="book" /> <span className="mr-t"><b>이용약관</b><small>이용 규칙</small></span> <Icon name="right" size={14} />
+                <Icon name="news" /> <span className="mr-t"><b>이용약관</b><small>이용 규칙</small></span> <Icon name="right" size={14} />
               </button>
+              <p className="more-ver muted small">버전 {__BUILD__}</p>
             </section>
           </div>
         </div>
@@ -2211,8 +2213,19 @@ function TierProgress({ rating }: { rating: number }) {
 /** 효과음 켜기/끄기 (이 기기에 기억) */
 function SoundSetting() {
   const [m, setM] = useState(isMuted);
+  // 다른 사람 반응(이모지) 끄기 — 게임 안에서만 찾을 수 있던 것을 설정에도 (끄면 보내기도 막힘)
+  const [rm, setRm] = useState(loadReactMute);
   return (
     <section className="panel pad more-sound">
+      <div className="ms-row">
+        <span>
+          <b>다른 사람 반응</b>
+          <small className="muted">게임 중 이모지 반응 · 끄면 내 반응도 보내지 않아요</small>
+        </span>
+        <button className={'tgl' + (rm ? '' : ' on')} role="switch" aria-checked={!rm} aria-label="다른 사람 반응" onClick={() => (saveReactMute(!rm), setRm(!rm))}>
+          <i />
+        </button>
+      </div>
       <div className="ms-row">
         <span>
           <b>효과음</b>

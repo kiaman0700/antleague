@@ -48,6 +48,8 @@ function preloadFont(): Plugin {
 
 export default defineConfig({
   plugins: [react(), devApi(), preloadFont()],
+  // 설정 맨 아래 버전 줄 (버그 제보 때 어느 판인지 알 수 있게) — 한국 날짜·시각
+  define: { __BUILD__: JSON.stringify(new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 16).replace('T', ' ')) },
   // 화면 종류를 가르는 CSS 폭 규칙에 기기 조건 붙이기 (design/device-layout.md)
   css: { postcss: { plugins: [deviceCss()] } },
   server: { port: 5173 },
