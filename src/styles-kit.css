@@ -1863,3 +1863,11 @@ p { text-wrap: pretty; }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 }
+/* 막대 채움: 처음 보일 때 왼쪽에서 차오르고(transform), 값이 바뀌면 부드럽게 */
+.ms-bar i, .sk-bar i { transform-origin: left center; animation: bar-in 0.7s var(--ease-out) both; transition: width 0.5s var(--ease-std); }
+@keyframes bar-in { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .ms-bar i, .sk-bar i { animation: none; transition: none; } }
+/* 완료 알림의 체크 표시는 그려지듯 나타남 (토스: 끝나면 체크로 완료를 알림) */
+.ui-toast:not(.error) svg path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: check-draw 0.35s 0.1s var(--ease-out) forwards; }
+@keyframes check-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .ui-toast:not(.error) svg path { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; } }
