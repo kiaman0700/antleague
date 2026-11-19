@@ -2673,3 +2673,16 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .howto-more > summary::-webkit-details-marker { display: none; }
 .howto-more > summary::after { content: ' ›'; }
 .howto-more[open] > summary::after { content: ' ⌄'; }
+
+/* 좁은 PC 배치(가로 태블릿·작은 창): 종목 이름줄의 두 칸 배치가 좁아 칩이 세로로 쌓이고 '지금 가격'이 꺾였음
+   → 이름 옆에 칩을 한 줄로, 가격 줄은 그 아래 한 줄 */
+@media (max-width: 1180px) {
+  .desk .p-detail .detail-head { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; row-gap: 4px; }
+  .desk .p-detail .detail-head .tags { flex-wrap: nowrap; }
+  .desk .p-detail .detail-head .price-line { flex-basis: 100%; }
+  .desk .p-detail .detail-head .sub-price { flex-basis: 100%; margin: 0; }
+  /* 내 증강 줄: 이름이 길면 말줄임으로 한 줄에 (화살표가 다음 줄로 밀렸음) */
+  .desk .aug-strip { flex-wrap: nowrap; }
+  .desk .aug-strip .aug-strip-label { white-space: nowrap; flex: none; }
+  .desk .aug-strip .aug-strip-item { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
