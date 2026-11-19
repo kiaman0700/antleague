@@ -2705,4 +2705,4 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .notices-page .notice-text { max-width: 680px; }
 }
 /* 가진 주식이 없을 때 팔기 버튼: 꺼진 버튼처럼 흐리게 (누르면 까닭을 알림) */
-.m-tradebar .btn.sell.is-off { opacity: 0.45; }
+.m-tradebar .btn.sell.is-off, .trade-jump .btn.sell.is-off { opacity: 0.45; }

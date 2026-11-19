@@ -4,7 +4,7 @@
  */
 import { Icon } from './Icon';
 
-export function TradeJump({ easy, canSell, price, openOrders = 0, onBuy, onSell }: { easy: boolean; canSell: boolean; price: string; openOrders?: number; onBuy: () => void; onSell: () => void }) {
+export function TradeJump({ easy, canSell, price, openOrders = 0, onBuy, onSell, onCantSell }: { easy: boolean; canSell: boolean; price: string; openOrders?: number; onBuy: () => void; onSell: () => void; onCantSell?: () => void }) {
   return (
     <div className="trade-jump show">
       <span className="tj-price">
@@ -12,7 +12,8 @@ export function TradeJump({ easy, canSell, price, openOrders = 0, onBuy, onSell 
         {openOrders > 0 && <small className="tj-orders">예약 {openOrders}건</small>}
       </span>
       {/* 휴대폰과 같은 순서: 왼쪽 팔기 · 오른쪽 사기 (자리가 바뀌어 잘못 누르지 않게) */}
-      <button className="btn sell" onClick={onSell} disabled={!canSell} title={canSell ? '팔기' : '가진 주식이 없어요'}>
+      {/* 가진 주식이 없으면 흐리게 두고 누르면 까닭을 알림 (꺼 두기만 하면 눌러도 반응이 없었음) */}
+      <button className={'btn sell' + (canSell ? '' : ' is-off')} onClick={canSell ? onSell : onCantSell} aria-disabled={!canSell || undefined} disabled={!canSell && !onCantSell} title={canSell ? '팔기' : '가진 주식이 없어요'}>
         {easy ? '팔기' : '매도'}
       </button>
       <button className="btn buy" onClick={onBuy} title="사기 (Enter)">

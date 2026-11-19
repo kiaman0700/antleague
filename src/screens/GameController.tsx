@@ -1999,6 +1999,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 openOrders={myOrders.filter((o) => o.symbol === selected && o.day === day && o.status === 'open').length}
                 onBuy={() => setSheet('buy')}
                 onSell={() => setSheet('sell')}
+                onCantSell={() => showToast('아직 갖고 있는 주식이 없어요. 먼저 사야 팔 수 있어요', 'warn')}
               />
             </section>
           ) : id === 'news' ? (
