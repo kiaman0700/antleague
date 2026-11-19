@@ -25,6 +25,21 @@ describe('튜토리얼 게임', () => {
     expect(v.effectsToday).not.toContain('fee');
     expect(v.myItems.inventory.shield ?? 0).toBe(shields - 1);
   });
+  it('안내대로 첫날 그 종목을 사서 끝까지 들고 있으면 연습봇을 이긴다 (첫 판이 패배로 끝나지 않게)', () => {
+    let t = makeTutorial('나');
+    const sym = t.tutorial!.symbol;
+    t = soloAct(t, 'startDay', {});
+    const v0 = soloView(t);
+    const price = v0.live?.krw?.[sym]?.at(-1) ?? v0.market!.bars[sym][0].open;
+    const qty = Math.floor(900_000 / price);
+    t = soloAct(t, 'trade', { symbol: sym, side: 'buy', qty });
+    for (let i = 0; i < 10 && t.data.room.status === 'playing'; i++) t = soloAct(t, 'endTurn', {});
+    const v = soloView(t);
+    expect(v.room.status).toBe('finished');
+    const me = v.players.find((p) => p.id === 'me')!;
+    const bot = v.players.find((p) => p.id === TUTORIAL_BOT.id)!;
+    expect(me.equity).toBeGreaterThan(bot.equity);
+  });
   it('튜토리얼은 하던 연습 게임을 덮어쓰지 않는다', () => {
     soloAct(makeTutorial('나'), 'endTurn', {});
     expect(store.has('stockduel.solo2')).toBe(false);

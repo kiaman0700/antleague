@@ -29,7 +29,12 @@ export function makeTutorial(nickname: string): SoloSave {
     const m = marketFor(seed, 6, TUTORIAL_VERSION, tutorialSalt(seed));
     const n = m.news.find((x) => x.day === 0 && x.kind === 'company' && x.tone === 'good' && !x.rumor && !x.fake && x.at == null && x.symbol && !STOCK_MAP[x.symbol].etf);
     // 최신 규칙은 아침 뉴스가 시가에 먼저 반영돼서(장중엔 되돌림도 있음) '전날보다 2% 넘게 오른 종목'으로 고름
-    if (n && m.bars[n.symbol!][0].close > m.base[n.symbol!] * 1.02 && m.bars[n.symbol!][0].close >= m.bars[n.symbol!][0].open) pick = { symbol: n.symbol!, headline: n.headline };
+    if (!n || !(m.bars[n.symbol!][0].close > m.base[n.symbol!] * 1.02 && m.bars[n.symbol!][0].close >= m.bars[n.symbol!][0].open)) continue;
+    // 안내대로 첫날 사서 끝까지 들고 있으면 연습봇(지수 ETF)을 확실히 이기는 장면만 — 첫 판이 패배로 끝나지 않게 (가격은 손대지 않고 장면만 고름)
+    const last = 5;
+    const mine = m.bars[n.symbol!][last].close / m.bars[n.symbol!][0].close - 1;
+    const bot = m.bars.KIDX[last].close / m.bars.KIDX[0].open - 1;
+    if (mine > bot + 0.03) pick = { symbol: n.symbol!, headline: n.headline };
   }
   seed--;
   const now = new Date().toISOString();
