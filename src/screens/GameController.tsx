@@ -1948,7 +1948,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               {opponent && <PlayerPic r={{ nickname: opponent.nickname, bot: opponent.bot, avatar: opponent.avatar }} size={40} />}
             </>
           ) : (
-            <div className="score-solo muted">{room?.kind === 'daily' ? '오늘의 도전' : '연습 모드'}</div>
+            <div className="score-solo muted">{room?.kind === 'daily' ? `오늘의 도전${room.theme && THEMES.find((t) => t.id === room.theme) ? ' · ' + THEMES.find((t) => t.id === room.theme)!.name : ''}` : '연습 모드'}</div>
           )}
         </div>
         )}
