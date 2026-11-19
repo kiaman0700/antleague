@@ -19,8 +19,18 @@ import './styles-ui.css';
 import './styles-nav.css';
 import './styles-client.css';
 import './styles-kit.css';
+import './styles-v2.css';
 import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';
+
+// UI 2판 미리 보기: 주소에 ?ui=v2 를 붙이면 이 창에서만 새 디자인 (?ui=v1 로 되돌림). 기본 화면은 그대로
+try {
+  const want = new URLSearchParams(location.search).get('ui');
+  if (want === 'v2' || want === 'v1') sessionStorage.setItem('stockduel.ui', want);
+  if (sessionStorage.getItem('stockduel.ui') === 'v2') document.documentElement.dataset.ui = 'v2';
+} catch {
+  /* 저장소가 막힌 창은 기본 화면 */
+}
 
 startInstallWatch();
 // 아이폰 사파리는 문서에 touchstart 가 있어야 버튼의 :active(누름 효과)가 보임
