@@ -66,6 +66,10 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
       .catch(() => setErr(true));
   };
   useEffect(load, [acc.status]);
+  const hasLast = !!info?.last;
+  useEffect(() => {
+    if (hasLast) api('league', { seen: true }).catch(() => {});
+  }, [hasLast]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);

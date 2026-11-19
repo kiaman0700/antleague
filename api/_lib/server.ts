@@ -1223,10 +1223,19 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'dailyInfo': {
       // 오늘의 도전: 내 기록 + 오늘 점수표(회원·끝낸 판, 시험 회원 제외) — 계정 id 는 안 보냄
       rateLimit(uid + ':dailyInfo', 40, 60_000);
-      const day = kstDay();
-      const mine = await sb.from('daily_runs').select('room_id, ret, finished, member').eq('day', day).eq('user_id', uid).maybeSingle();
+      const today = kstDay();
+      let day = today;
+      // 결과 화면은 그 판을 넘김: 자정을 넘겨 끝낸 판도 시작한 날 점수표를 봄 (내 기록 줄일 때만)
+      const ofRoom = typeof b.room === 'string' && /^[0-9a-f-]{36}$/i.test(b.room) ? b.room : null;
+      if (ofRoom) {
+        const own = await sb.from('daily_runs').select('day').eq('user_id', uid).eq('room_id', ofRoom).maybeSingle();
+        const d0 = (own.data as { day?: string } | null)?.day;
+        if (!own.error && typeof d0 === 'string') day = d0.slice(0, 10);
+      }
+      const mineQ = await sb.from('daily_runs').select('room_id, ret, finished, member, trades').eq('day', day).eq('user_id', uid).maybeSingle();
+      const mine = mineQ.error && /trades/.test(mineQ.error.message) ? await sb.from('daily_runs').select('room_id, ret, finished, member').eq('day', day).eq('user_id', uid).maybeSingle() : mineQ;
       if (mine.error && /daily_runs/.test(mine.error.message)) return { day, ready: false };
-      const my = must(mine, 'daily mine') as { room_id: string | null; ret: number | null; finished: boolean; member: boolean } | null;
+      const my = must(mine, 'daily mine') as { room_id: string | null; ret: number | null; finished: boolean; member: boolean; trades?: number | null } | null;
       // 거래를 한 번도 안 한 기록은 점수표에서 뺌 (예전 줄은 거래 횟수가 비어 있어 그대로 보임)
       const boardQ = await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).or('trades.is.null,trades.gt.0').order('ret', { ascending: false }).order('finished_at', { ascending: true }).limit(200);
       const rows = must(boardQ.error && /trades/.test(boardQ.error.message) ? await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).order('ret', { ascending: false }).limit(200) : boardQ, 'daily board') as { user_id: string; nickname: string; ret: number }[];
@@ -1274,6 +1283,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
       return {
         day,
+        ...(day !== today ? { past: true } : {}),
         ready: true,
         // 오늘의 시장 테마 (오늘 것만 공개 — 모두 같은 시장)
         ...(CURRENT_RULES_VERSION >= THEME_VERSION ? { theme: dailyTheme(day) } : {}),
@@ -1283,6 +1293,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         myRet: my?.finished ? my.ret : null,
         myRank,
         member: !!my?.member,
+        ...(my?.finished && my.trades === 0 ? { noTrade: true } : {}),
         resume,
         // 점수표는 200명까지만 읽으므로 전체 인원은 따로 셈 ('200명 중 150위'처럼 틀리게 나오지 않게)
         total: Math.max(board.length, myRank ?? 0, (await sb.from('daily_runs').select('user_id', { count: 'exact', head: true }).eq('day', day).eq('finished', true).eq('member', true).or('trades.is.null,trades.gt.0')).count ?? 0),
@@ -2323,7 +2334,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (action === 'guestCode') return { status: 200, body: await guestCode(db(), uid, b.renew === true) };
     // (051) 튜토리얼 진행 기록 — 보기·적기 (보상 없음, 표시·자동 권하기에만 씀)
     // 주간 개미리그 (읽기만, 화면 갱신 한도)
-    if (action === 'league') return { status: 200, body: await leagueInfo(db(), uid) };
+    if (action === 'league') return { status: 200, body: await leagueInfo(db(), uid, b.seen === true) };
     if (action === 'tutorialState') return { status: 200, body: await tutorialState(uid) };
     if (action === 'tutorialMark') return { status: 200, body: await tutorialMark(uid, b) };
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };

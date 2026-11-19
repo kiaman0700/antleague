@@ -15,8 +15,13 @@ export async function leagueAdd(sb: SupabaseClient, uid: string, xp: number) {
   if (r.error && !/league_add|does not exist/.test(r.error.message)) console.error('[api] league_add', r.error.message);
 }
 
-export async function leagueInfo(sb: SupabaseClient, uid: string) {
+export async function leagueInfo(sb: SupabaseClient, uid: string, seen = false) {
   const week = weekOf();
+  // 지난주 결과를 봤다는 표시는 화면이 실제로 보여 준 뒤에만 (받다가 끊기거나 못 보고 지나가도 다시 나오게)
+  if (seen) {
+    await sb.from('league_tiers').update({ last_seen_week: week }).eq('user_id', uid);
+    return { ok: true };
+  }
   const { weekEndsAt } = missionPeriods();
   const isMember = await sb.from('profiles').select('user_id, is_test').eq('user_id', uid).maybeSingle();
   if (isMember.error && /league|relation/.test(isMember.error.message)) return { ready: false };
@@ -26,9 +31,7 @@ export async function leagueInfo(sb: SupabaseClient, uid: string) {
   const t = await sb.from('league_tiers').select('tier, last_week, last_rank, last_size, last_change, last_seen_week, last_reward').eq('user_id', uid).maybeSingle();
   const tier = (t.data as { tier: number } | null)?.tier ?? 0;
   const lt = t.data as { last_week: string | null; last_rank: number | null; last_size: number | null; last_change: number | null; last_seen_week: string | null; last_reward?: number | null } | null;
-  // 지난주 결과는 이번 주에 한 번만 팝업
   const last = lt?.last_week && lt.last_seen_week !== week ? { rank: lt.last_rank, size: lt.last_size, change: lt.last_change, reward: lt.last_reward ?? 0 } : null;
-  if (last) await sb.from('league_tiers').update({ last_seen_week: week }).eq('user_id', uid);
   const me = await sb.from('league_members').select('group_id, score').eq('week', week).eq('user_id', uid).maybeSingle();
   let group: { nickname: string; avatar: string; score: number; me: boolean }[] = [];
   if (me.data) {

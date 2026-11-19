@@ -8,12 +8,16 @@ import { ErrorState, Loading } from './ui';
 
 export interface DailyInfo {
   day: string;
+  /** 지난 날 기록을 보는 중 (자정을 넘겨 끝낸 판의 결과 화면) */
+  past?: boolean;
   ready: boolean;
   played?: boolean;
   finished?: boolean;
   myRet?: number | null;
   myRank?: number | null;
   member?: boolean;
+  /** 거래를 한 번도 안 하고 끝낸 기록 (점수표에 안 오름) */
+  noTrade?: boolean;
   resume?: { roomId: string; playerId: string; code: string } | null;
   total?: number;
   top?: { rank: number; nickname: string; ret: number; me: boolean }[];
@@ -35,7 +39,7 @@ export function StreakChip({ s }: { s?: DailyInfo['streak'] }) {
   );
 }
 
-export function useDailyInfo(enabled = true) {
+export function useDailyInfo(enabled = true, room?: string) {
   const [info, setInfo] = useState<DailyInfo | null>(null);
   const [err, setErr] = useState(false);
   const [n, setN] = useState(0);
@@ -43,13 +47,13 @@ export function useDailyInfo(enabled = true) {
     if (!enabled) return;
     let alive = true;
     setErr(false);
-    api<DailyInfo | null>('dailyInfo')
+    api<DailyInfo | null>('dailyInfo', room ? { room } : undefined)
       .then((r) => alive && setInfo(r ?? { day: '', ready: true, played: false, top: [], total: 0 }))
       .catch(() => alive && setErr(true));
     return () => {
       alive = false;
     };
-  }, [enabled, n]);
+  }, [enabled, n, room]);
   const reload = useCallback(() => setN((x) => x + 1), []);
   return { info, err, reload };
 }
@@ -102,8 +106,8 @@ export function DailyFriends({ info }: { info: DailyInfo }) {
 }
 
 /** 결과 화면: 오늘의 도전 순위 */
-export function DailyResult() {
-  const { info, err, reload } = useDailyInfo();
+export function DailyResult({ room }: { room?: string }) {
+  const { info, err, reload } = useDailyInfo(true, room);
   // 마지막 날 기록이 막 저장되는 중일 수 있어서, 아직 '끝남'이 아니면 잠깐 뒤 다시 (3번까지)
   const tries = useRef(0);
   useEffect(() => {
@@ -117,10 +121,10 @@ export function DailyResult() {
   if (!info) return <Loading inline label="오늘의 순위를 불러오는 중…" />;
   return (
     <div className="panel pad daily-result">
-      <h3>오늘의 도전 순위 <StreakChip s={info.streak} /></h3>
+      <h3>{info.past ? '그날의 도전 순위' : '오늘의 도전 순위'} <StreakChip s={info.streak} /></h3>
       <StreakResult s={info.streak} />
       <p className="muted small">
-        {info.myRank ? `오늘 ${info.total}명 중 ${info.myRank}위예요.` : !info.finished ? '기록을 저장하는 중이에요.' : info.member ? '이 계정 기록은 점수표에 오르지 않아요.' : '게스트 기록은 점수표에 오르지 않아요. 회원으로 하면 순위에 올라가요.'} 내일 0시에 새 시장이 열려요.
+        {info.myRank ? `${info.past ? '그날' : '오늘'} ${info.total}명 중 ${info.myRank}위예요.` : !info.finished ? '기록을 저장하는 중이에요.' : info.noTrade ? '거래를 한 번도 안 한 기록은 점수표에 오르지 않아요.' : info.member ? '이 계정 기록은 점수표에 오르지 않아요.' : '게스트 기록은 점수표에 오르지 않아요. 회원으로 하면 순위에 올라가요.'} {info.past ? '오늘의 새 시장이 이미 열려 있어요.' : '내일 0시에 새 시장이 열려요.'}
       </p>
       <DailyFriends info={info} />
       <DailyBoard info={info} />

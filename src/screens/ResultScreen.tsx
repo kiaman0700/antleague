@@ -610,7 +610,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
         </div>
       )}
     </>;
-  const dailyEl = matchKind === 'daily' ? <DailyResult /> : null;
+  const dailyEl = matchKind === 'daily' ? <DailyResult room={session.roomId ?? undefined} /> : null;
   const restEl = <>
       {/* 서버 판이 끝나면 미션이 확인됨 (연습은 이 기기 판이라 안 셈) */}
       {session.mode === 'multi' && <MissionsPanel retry={2} room={session.roomId ?? undefined} />}
@@ -690,7 +690,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
             {session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}
             {dailyEl}
             {restEl}
-            {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={tradeDeltas} isDaily />}
+            {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={tradeDeltas} isDaily room={session.roomId ?? undefined} />}
           </aside>
         </div>
         {actionsEl}
@@ -830,11 +830,12 @@ function ResultSlides({ slides }: { slides: { key: string; label: string; body: 
  * 결과 나누기 카드 (워들처럼 — 종목·가격 없이 날마다 오름 빨강·내림 파랑 칸만).
  * 오늘의 도전은 모두 같은 시장이라 '상위 n%'·연속 기록을 함께 (서버가 준 내 순위·전체 수만)
  */
-function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: { kind: string; rank: number | null; players: number; ret: number; days: number; daily: number[]; isDaily?: boolean }) {
-  const { info } = useDailyInfo(isDaily);
+function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false, room }: { kind: string; rank: number | null; players: number; ret: number; days: number; daily: number[]; isDaily?: boolean; room?: string }) {
+  const { info } = useDailyInfo(isDaily, room);
   const top = isDaily && info?.myRank && info.total ? Math.max(1, Math.ceil((info.myRank / info.total) * 100)) : null;
   const streak = isDaily && info?.streak && info.streak.streak > 1 ? info.streak.streak : 0;
-  const md = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.\s?/g, '/').replace(/\/$/, '');
+  // 자정을 넘겨 끝낸 판은 시작한 날짜로 (그날 시장 기록)
+  const md = isDaily && info?.past && /^\d{4}-\d{2}-\d{2}$/.test(info.day) ? `${+info.day.slice(5, 7)}/${+info.day.slice(8, 10)}` : new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.\s?/g, '/').replace(/\/$/, '');
   const bar = daily.map((v) => (v > 0 ? '🟥' : v < 0 ? '🟦' : '⬜')).join('');
   const slang = ret >= 0.2 ? '떡상' : ret >= 0.05 ? '익절' : ret > -0.05 ? '존버' : ret > -0.2 ? '물림' : '손절각';
   const head = isDaily ? `개미리그 오늘의 도전 ${md}${top ? ` · 상위 ${top}%` : ''}${streak ? ` · ${streak}일 연속` : ''}` : `개미리그 ${kind}${rank ? ` ${rank}위/${players}명` : ''} · ${days}일`;

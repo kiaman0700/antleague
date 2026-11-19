@@ -64,6 +64,15 @@ async function latestId() {
 }
 
 const [cmd, arg] = process.argv.slice(2);
+// 최근 24시간 배포 횟수 (무료 요금제는 하루 100번 — 넘으면 푸시해도 배포가 안 생김)
+if (cmd === 'count') {
+  const since = Date.now() - 24 * 3600_000;
+  const j = await api(`/v6/deployments?projectId=${project.projectId}&limit=100&since=${since}`);
+  const list = j.deployments ?? [];
+  const oldest = list.length ? Math.min(...list.map((d) => d.created ?? d.createdAt)) : null;
+  console.log(`최근 24시간 배포 ${list.length}번` + (list.length >= 100 && oldest ? ` — 가장 오래된 것이 ${when(oldest)} 이라, 그로부터 24시간 뒤부터 다시 배포돼요` : ''));
+  process.exit(0);
+}
 try {
   if (cmd === 'status' || !cmd) {
     const j = await api(`/v6/deployments?projectId=${project.projectId}&limit=10`);
