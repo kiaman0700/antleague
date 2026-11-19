@@ -927,12 +927,19 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       rateLimit(uid + ':forget', 3, 600_000);
       // 회원 탈퇴는 지금 비밀번호 확인 (비밀번호 바꾸기와 같게) — 로그인된 채 잠깐 비운 기기에서 남이 계정을 지우지 못하게
       if ((await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data) await verifyPassword(sb, uid, b.current);
-      const mine = must(await sb.from('players').select('id, left_game, rooms!inner(status)').eq('user_id', uid), 'my rooms') as unknown as { id: string; left_game: boolean; rooms: { status: string } }[];
+      const mine = must(await sb.from('players').select('id, room_id, nickname, left_game, rooms!inner(status)').eq('user_id', uid), 'my rooms') as unknown as { id: string; room_id: string; nickname: string; left_game: boolean; rooms: { status: string } }[];
       if (mine.some((p) => p.rooms.status === 'waiting' || (p.rooms.status === 'playing' && !p.left_game)))
         throw new GameError('대기 중이거나 진행 중인 방이 있어요. 먼저 그 방에서 나간(기권한) 뒤에 지울 수 있어요.', 409);
       // 끝난 게임의 순위표 닉네임은 '탈퇴한 플레이어'로 (다른 사람 기록의 숫자는 그대로)
-      const ids = mine.map((p) => p.id);
-      for (const id of ids) await sb.from('players').update({ nickname: `탈퇴${randomInt(100000)}`, rejoin_hash: null }).eq('id', id);
+      for (const p of mine) {
+        const gone = `탈퇴${randomInt(100000)}`;
+        await sb.from('players').update({ nickname: gone, rejoin_hash: null }).eq('id', p.id);
+        // 같이 한 사람의 전적(끝난 판 순위표)에 남은 옛 닉네임도 같은 이름으로 바꿈 — 탈퇴한 사람의 닉네임이 계속 보이지 않게
+        const mh = (await sb.from('match_history').select('id, results, winner_nickname').eq('room_id', p.room_id).maybeSingle()).data as { id: string; results: { nickname: string }[] | null; winner_nickname: string | null } | null;
+        if (mh && Array.isArray(mh.results) && mh.results.some((r) => r.nickname === p.nickname)) {
+          await sb.from('match_history').update({ results: mh.results.map((r) => (r.nickname === p.nickname ? { ...r, nickname: gone } : r)), winner_nickname: mh.winner_nickname === p.nickname ? gone : mh.winner_nickname }).eq('id', mh.id);
+        }
+      }
       const del = await sb.auth.admin.deleteUser(uid);
       if (del.error) throw new GameError('지우지 못했어요. 잠시 뒤 다시 해 주세요.', 500);
       return { ok: true };
