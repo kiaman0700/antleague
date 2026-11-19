@@ -2223,9 +2223,6 @@ code {
     font-size: 46px;
     letter-spacing: 10px;
   }
-  .seg button small {
-    display: none;
-  }
   .mode-toggle button {
     padding: 5px 8px;
   }

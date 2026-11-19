@@ -407,11 +407,11 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
       </div>
       <div className="field">
         <span>하루(장) 길이</span>
-        <div className="seg">
+        <div className="seg four">
           {SOLO_DAY_OPTIONS.map((sec) => (
             <button key={sec} aria-pressed={daySec === sec} className={daySec === sec ? 'on' : ''} onClick={() => setDaySec(sec)}>
               <b>{sec === 0 ? '무제한' : sec / 60 + '분'}</b>
-              <small>{sec === 0 ? '내가 마감할 때까지' : sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
+              <small>{sec === 0 ? '직접 마감' : sec === 60 ? '빠르게' : sec === 180 ? '추천' : '여유'}</small>
             </button>
           ))}
         </div>
