@@ -1,3 +1,4 @@
+import { parseStored, allStrings } from './lib/stored';
 import { graceSecondsFor } from './engine/grace';
 export type UiMode = 'easy' | 'pro';
 
@@ -80,20 +81,15 @@ function set(key: string, v: string | null) {
     /* 저장소를 못 써도 게임은 동작 */
   }
 }
-function json<T>(key: string, fallback: T): T {
-  try {
-    const s = get(key);
-    return s ? (JSON.parse(s) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+function json<T>(key: string, fallback: T, ok?: (v: T) => boolean): T {
+  return parseStored(get(key), fallback, ok);
 }
 
 export const loadNick = () => get(NICK) ?? '';
 export const saveNick = (n: string) => set(NICK, n);
 export const loadUi = (): UiMode => (get(UI) === 'pro' ? 'pro' : 'easy');
 export const saveUi = (m: UiMode) => set(UI, m);
-export const loadWatch = () => json<string[]>(WATCH, []);
+export const loadWatch = () => json<string[]>(WATCH, [], allStrings);
 export const saveWatch = (w: string[]) => set(WATCH, JSON.stringify(w));
 export const loadMute = () => get(MUTE) === '1';
 export const saveMute = (m: boolean) => set(MUTE, m ? '1' : '0');

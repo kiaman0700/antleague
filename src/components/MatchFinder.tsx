@@ -18,7 +18,7 @@ const waitTag = (base: string, n: number) => (n > 0 ? `${base} · ${n}명 대기
 export const loadPref = (): { kind: QueueKind; size: QueueSize; speed: QueueSpeed } => {
   try {
     const v = JSON.parse(localStorage.getItem(PREF) ?? 'null');
-    if (v && v.kind && v.size && v.speed) return v;
+    if (v && ['ranked', 'casual'].includes(v.kind) && ['duel', 'multi'].includes(v.size) && ['quick', 'normal'].includes(v.speed)) return { kind: v.kind, size: v.size, speed: v.speed };
   } catch {
     /* 저장소 없음 */
   }

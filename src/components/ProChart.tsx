@@ -6,6 +6,7 @@
  * - 보조지표: 이동평균 5·10·20, 볼린저밴드
  * - 그리기: 수평선, 추세선, 지우기 (종목별로 이 기기에 저장)
  */
+import { readStored } from "../lib/stored";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { getEffective } from "../prefs";
@@ -27,14 +28,11 @@ const IND_META: Record<Indicator, { label: string; color: string }> = {
   bb: { label: "볼린저", color: "#60a5fa" },
 };
 
-function load<T>(key: string, fallback: T): T {
-  try {
-    const s = localStorage.getItem(key);
-    return s ? (JSON.parse(s) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+const load = readStored;
+const okType = (v: { type: ChartType }) => v.type === "line" || v.type === "candle" || v.type === "ohlc";
+const okInds = (v: Indicator[]) => v.every((x) => typeof x === "string" && x in IND_META);
+const okDrawings = (v: Drawing[]) =>
+  v.every((d) => d && typeof d === "object" && typeof d.id === "string" && (d.kind === "h" ? Number.isFinite(d.price) : d.kind === "t" && [d.i1, d.p1, d.i2, d.p2].every(Number.isFinite)));
 function save(key: string, v: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(v));
@@ -131,7 +129,7 @@ export function ProChart({
       ? fixedType
       : load<{ type: ChartType }>(prefKey, {
           type: ui === "easy" ? "line" : "candle",
-        }).type,
+        }, okType).type,
   );
   // 같은 값을 쓰는 다른 차트(일별↔장중)도 바로 같이 바뀌게
   const setType = (t: ChartType) => {
@@ -148,7 +146,7 @@ export function ProChart({
     return () => window.removeEventListener("stockduel:chartType", on);
   }, [prefKey]);
   const [inds, setInds] = useState<Indicator[]>(() =>
-    load(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : []),
+    load<Indicator[]>(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : [], okInds),
   );
   useEffect(() => save(`stockduel.ind.${ui}`, inds), [ui, inds]);
   useEffect(() => {
@@ -158,15 +156,15 @@ export function ProChart({
         ? fixed
         : load<{ type: ChartType }>(prefKey, {
             type: ui === "easy" ? "line" : "candle",
-          }).type,
+          }, okType).type,
     );
-    setInds(load(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : []));
+    setInds(load<Indicator[]>(`stockduel.ind.${ui}`, ui === "pro" ? ["ma5"] : [], okInds));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ui, prefKey, eff.chartType]);
 
   const drawKey = unit?.drawKey ?? drawKeyFor(symbol);
-  const [drawings, setDrawings] = useState<Drawing[]>(() => load(drawKey, []));
-  useEffect(() => setDrawings(load(drawKey, [])), [drawKey]);
+  const [drawings, setDrawings] = useState<Drawing[]>(() => load<Drawing[]>(drawKey, [], okDrawings));
+  useEffect(() => setDrawings(load<Drawing[]>(drawKey, [], okDrawings)), [drawKey]);
   useEffect(() => save(drawKey, drawings), [drawKey, drawings]);
   const [tool, setTool] = useState<Tool>("none");
   const [pending, setPending] = useState<{ i: number; p: number } | null>(null);
