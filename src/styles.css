@@ -174,7 +174,7 @@ code {
   color: #ffffff;
 }
 .btn.primary:hover:not(:disabled) {
-  background: #7765f2;
+  background: #5f4de3;
 }
 .btn.ghost {
   background: transparent;

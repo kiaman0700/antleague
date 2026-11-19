@@ -19,7 +19,7 @@
 .lobby-shell.client .btn.primary:hover:not(:disabled),
 .waiting.wr-client .btn.primary:hover:not(:disabled),
 .result .btn.primary:hover:not(:disabled) {
-  background: #7765f2;
+  background: #5f4de3;
 }
 .lobby-shell.client .ln-brand em {
   color: #a99dff;
@@ -1528,7 +1528,7 @@ body:has(.result) {
   border-radius: 14px; background: #6b58ee; box-shadow: none;
   transition: background .15s, transform .08s;
 }
-.desk .end-turn:hover:not(:disabled) { background: #7765f2; }
+.desk .end-turn:hover:not(:disabled) { background: #5f4de3; }
 .desk .end-turn:active:not(:disabled) { transform: translateY(1px); }
 .desk .end-turn .et-main { display: inline-flex; align-items: center; gap: 7px; font-size: 18px; font-weight: 800; line-height: 1.1; }
 .desk .end-turn .et-sub { color: #fff; font-size: 14px; font-weight: 800; opacity: .95; letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; max-width: none; }

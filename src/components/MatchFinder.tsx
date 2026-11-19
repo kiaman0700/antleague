@@ -303,7 +303,9 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           ) : (
             <>
               <button className="btn primary st-btn" onClick={start} disabled={findDisabled}>
-                {findLabel}
+                <span className="st-btn-main">{findLabel}</span>
+                {/* 지금 고른 설정을 버튼 안에 — 고르지 않고 눌러도 무엇으로 찾는지 보이게 */}
+                {!findDisabled && <small className="st-btn-sub">{`${sizeEff === 'duel' ? '1대1' : '다인전'} · ${preset.label} · ${minutes}`}</small>}
               </button>
               {online !== null && (
                 <div className="st-status" aria-live="polite">
@@ -312,10 +314,11 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
                     {nWait > 0 ? `지금 ${nWait}명이 찾는 중` : '지금 찾는 사람이 없어요'}
                   </span>
                   <small>
-                    예상 대기 {waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}
+                    {/* 모르는 대기 시간은 숫자 대신 바로 할 수 있는 길만 */}
+                    {(nWait > 0 || eta[`${kind}_${sizeEff}_${pref.speed}`] != null) && <>예상 대기 {waitLabel(eta[`${kind}_${sizeEff}_${pref.speed}`] ?? null)}</>}
                     {nWait === 0 && onBots && !party && (
                       <>
-                        {' · '}
+                        {eta[`${kind}_${sizeEff}_${pref.speed}`] != null && ' · '}
                         <button type="button" className="st-bots" onClick={onBots}>
                           봇전은 바로 시작
                         </button>

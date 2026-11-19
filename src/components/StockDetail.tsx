@@ -1,4 +1,5 @@
 import { LEVERAGE_CAP } from "../engine/engine";
+import { RollNum } from './RollNum';
 import { useEffect, useState } from "react";
 
 /** 지난 날 장중 봉 (종목·날·간격마다 한 번만 만듦) */
@@ -375,7 +376,7 @@ export function StockDetail(props: Props) {
         {haltK && <HaltNote kind={haltK} />}
         <div className="price-line">
           <span className={"price " + tone(diff)}>
-            {isUS ? fmtUsd(nativeNow) : `${num(price)}원`}
+            <RollNum text={isUS ? fmtUsd(nativeNow) : `${num(price)}원`} />
           </span>
           <span className={"chg " + tone(diff)}>
             {diff >= 0 ? "▲" : "▼"} {fmtN(Math.abs(diff))} ({pct(q.ch)})

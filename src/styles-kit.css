@@ -2431,3 +2431,31 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 }
 @media (prefers-reduced-motion: reduce) { .aug-crest { transition: none !important; } }
 @media (max-width: 860px) { .aug-stage .aug-row3 { padding-top: 24px; } }
+
+/* 굴러가는 숫자 (RollNum) */
+.roll { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.roll-d { position: relative; display: inline-block; height: 1.15em; line-height: 1.15em; overflow: hidden; vertical-align: baseline; }
+.roll-d::before { content: '0'; visibility: hidden; }
+.roll-col { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.roll-col > span { height: 1.15em; line-height: 1.15em; text-align: center; }
+.roll-c { line-height: 1.15em; }
+@media (prefers-reduced-motion: reduce) { .roll-col { transition: none; } }
+.roll .roll-d, .roll .roll-c, .roll .roll-col > span { font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; }
+span.roll.roll { font-size: inherit; font-weight: inherit; color: inherit; line-height: inherit; }
+/* 무대 시세: 새 봉만 잠깐 진하게, 지금 값 점선 */
+.stage-chart .sc-new rect { animation: scNew 900ms ease-out; }
+.stage-chart .sc-up.sc-new rect { fill-opacity: 0.6; }
+.stage-chart .sc-down.sc-new rect { fill-opacity: 0.55; }
+@keyframes scNew { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.stage-chart .sc-new { transform-box: fill-box; }
+.stage-chart .sc-now { stroke-width: 1; stroke-dasharray: 3 4; stroke-opacity: 0.5; }
+.stage-chart .sc-now.is-up { stroke: #f2495c; }
+.stage-chart .sc-now.is-down { stroke: #3b82f6; }
+@media (prefers-reduced-motion: reduce) { .stage-chart .sc-new rect { animation: none; } }
+.st-btn { display: inline-flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.st-btn .st-btn-sub { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0; }
+.st-rec { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #6b58ee; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; vertical-align: 2px; }
+@media (max-width: 860px) {
+  .st-status { flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .st-status small { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; }
+}

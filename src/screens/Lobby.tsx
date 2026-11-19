@@ -735,7 +735,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     onGame({ mode: 'solo', roomId: null, playerId: 'me', nickname: s.nickname, ui: profile.ui });
   };
   // 연습 메뉴 '오늘의 도전' 칸: 오늘 했는지·순위 (로그인 전이면 서버에 안 물음)
-  const dailyTile = useDailyInfo(online && member && tab === 'practice').info;
+  const dailyTile = useDailyInfo(online && member && (tab === 'practice' || tab === 'casual' || tab === 'ranked')).info;
   const head = TAB_HEAD[tab];
   // 처음 온 사람에게 튜토리얼 권하기 (한 번 닫거나 해 보면 다시 안 나옴)
   const [nudge, setNudge] = useState(() => !tutorialSeen());
@@ -757,6 +757,9 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
     />
   );
 
+  // 빠른 칸 중 지금 할 만한 것 하나만 '추천' (처음 온 사람은 튜토리얼, 오늘의 도전을 아직 안 한 회원은 그것)
+  const recQuick: 'tutorial' | 'daily' | null = !tutorialSeen() && (account.profile?.games ?? 0) === 0 ? 'tutorial' : member && dailyTile?.ready && !dailyTile.played ? 'daily' : null;
+  const recTag = (k: 'tutorial' | 'daily') => (recQuick === k ? <em className="st-rec">추천</em> : null);
   const quickRow = (
     <section className="st-quick" aria-label="기다리지 않고 하기">
       <button className="st-qbtn" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>
@@ -769,14 +772,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       <button className="st-qbtn" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
         <i className="toon-i"><ToonIcon name="daily" size={36} /></i>
         <span>
-          <b>오늘의 도전</b>
-          <small>{member ? '모두 같은 시장에서' : '회원만 · 같은 시장'}</small>
+          <b>오늘의 도전 {recTag('daily')}</b>
+          <small>{member ? (dailyTile?.theme ? '오늘의 시장 열렸어요' : '모두 같은 시장에서') : '회원만 · 같은 시장'}</small>
         </span>
       </button>
       <button className="st-qbtn" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => setTutMenu(true))}>
         <i className="toon-i"><ToonIcon name="tutorial" size={36} /></i>
         <span>
-          <b>튜토리얼</b>
+          <b>튜토리얼 {recTag('tutorial')}</b>
           <small>연습봇과 한 판 하며 규칙을 익혀요</small>
         </span>
       </button>

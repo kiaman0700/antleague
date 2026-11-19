@@ -1,41 +1,60 @@
 /**
- * 로비 플레이 무대 뒤 차트 (장식이 아니라 '이 게임은 차트를 읽는 게임'이라는 걸 보여 주는 배경).
- * 진짜 차트처럼: 꼬리 있는 봉(오르면 빨강·내리면 파랑) + 5일 이동평균선 + 옅은 가로 눈금, 글자 쪽(왼쪽·아래)은 흐려짐
+ * 로비 플레이 무대 뒤 차트 — '이 게임은 차트를 읽는 게임'을 보여 주는 살아 있는 시세.
+ * 정해진 난수로 만든 연습용 흐름이라 실제 판 가격과는 상관없음. 1.6초마다 봉 하나가 새로 생기며 왼쪽으로 밀리고,
+ * 새 봉만 잠깐 진하게. 마지막 값에 가격 줄. 움직임 줄이기면 멈춘 그림, 창이 뒤에 있으면 쉼.
  */
+import { useEffect, useState } from 'react';
+
 const N = 26;
-// 정해진 난수 (그릴 때마다 같은 모양)
-function bars() {
-  let s = 7;
-  const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  const out: { o: number; c: number; h: number; l: number }[] = [];
-  let p = 100;
-  for (let i = 0; i < N; i++) {
-    // 완만히 오르다 중간에 한 번 꺾이고 다시 강하게 오르는 흐름
-    const drift = i < 9 ? 0.6 : i < 14 ? -1.4 : 1.6;
-    const o = p;
-    const c = o + drift + (r() - 0.5) * 6;
-    const h = Math.max(o, c) + r() * 3;
-    const l = Math.min(o, c) - r() * 3;
-    out.push({ o, c, h, l });
-    p = c;
-  }
-  return out;
+type Bar = { o: number; c: number; h: number; l: number };
+
+function rng(seed: number) {
+  let s = seed;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
-const DATA = bars();
+const r = rng(7);
+let last = 100;
+let k = 0;
+/** 완만히 오르다 꺾이고 다시 오르는 물결 — 끝없이 이어지게 */
+function nextBar(): Bar {
+  k++;
+  const drift = Math.sin(k / 6) * 1.1 + 0.25;
+  const o = last;
+  const c = o + drift + (r() - 0.5) * 5;
+  const h = Math.max(o, c) + r() * 2.6;
+  const l = Math.min(o, c) - r() * 2.6;
+  last = c;
+  return { o, c, h, l };
+}
+const START = Array.from({ length: N }, nextBar);
+
+const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export function StageChart() {
+  const [data, setData] = useState<Bar[]>(START);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (reduced()) return;
+    const t = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      setData((d) => [...d.slice(1), nextBar()]);
+      setTick((x) => x + 1);
+    }, 1600);
+    return () => clearInterval(t);
+  }, []);
   const W = 620;
   const H = 300;
-  const lo = Math.min(...DATA.map((b) => b.l));
-  const hi = Math.max(...DATA.map((b) => b.h));
-  const y = (v: number) => H - 18 - ((v - lo) / (hi - lo)) * (H - 36);
+  const lo = Math.min(...data.map((b) => b.l));
+  const hi = Math.max(...data.map((b) => b.h));
+  const y = (v: number) => H - 18 - ((v - lo) / (hi - lo || 1)) * (H - 36);
   const step = W / N;
   const bw = step * 0.56;
-  const ma = DATA.map((_, i) => {
-    const from = Math.max(0, i - 4);
-    const xs = DATA.slice(from, i + 1);
+  const ma = data.map((_, i) => {
+    const xs = data.slice(Math.max(0, i - 4), i + 1);
     return xs.reduce((s, b) => s + b.c, 0) / xs.length;
   });
+  const end = data[N - 1];
+  const up = end.c >= end.o;
   return (
     <svg className="stage-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden focusable="false">
       <defs>
@@ -50,7 +69,6 @@ export function StageChart() {
         </linearGradient>
         <mask id="sc-mask">
           <rect width={W} height={H} fill="url(#sc-fade-x)" />
-          {/* 아래쪽(고르기 칸 쪽)도 흐리게 */}
           <rect width={W} height={H} fill="url(#sc-fade-y)" />
         </mask>
       </defs>
@@ -58,19 +76,21 @@ export function StageChart() {
         {[0.25, 0.5, 0.75].map((f) => (
           <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} className="sc-grid" />
         ))}
-        {DATA.map((b, i) => {
+        {data.map((b, i) => {
           const x = i * step + step / 2;
-          const up = b.c >= b.o;
+          const isUp = b.c >= b.o;
           const top = y(Math.max(b.o, b.c));
           const bot = y(Math.min(b.o, b.c));
           return (
-            <g key={i} className={up ? 'sc-up' : 'sc-down'}>
+            <g key={tick + i} className={(isUp ? 'sc-up' : 'sc-down') + (i === N - 1 ? ' sc-new' : '')}>
               <line x1={x} x2={x} y1={y(b.h)} y2={y(b.l)} />
               <rect x={x - bw / 2} y={top} width={bw} height={Math.max(2, bot - top)} rx={2} />
             </g>
           );
         })}
         <polyline className="sc-ma" points={ma.map((v, i) => `${i * step + step / 2},${y(v)}`).join(' ')} />
+        {/* 지금 값 가로줄 (오르면 빨강·내리면 파랑) */}
+        <line className={'sc-now ' + (up ? 'is-up' : 'is-down')} x1={0} x2={W} y1={y(end.c)} y2={y(end.c)} />
       </g>
     </svg>
   );

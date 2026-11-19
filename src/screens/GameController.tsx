@@ -1,4 +1,5 @@
 import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
+import { RollNum } from '../components/RollNum';
 import { CoachTour } from '../components/CoachTour';
 import { GAME_TIME_VERSION, PLATFORMS } from '../game/community';
 import { RESULT_STEPS } from '../components/Tours';
@@ -1643,7 +1644,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           <div className="m-hero">
             <div className="mh-left">
               <b className="mh-eq">
-                {wonShort(equity)} <em className={tone(myRet)}>{pct(myRet, 1)}</em>
+                <RollNum text={wonShort(equity)} /> <em className={tone(myRet)}>{pct(myRet, 1)}</em>
               </b>
               {!rivals ? (
                 // 첫날 아무것도 사기 전엔 '시장보다 -1%' 처럼 이미 진 것처럼 보이지 않게 안내만
@@ -1860,7 +1861,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           <PlayerPic r={{ me: true, nickname: session.nickname, avatar: players.find((x) => x.id === session.playerId)?.avatar }} size={40} />
           <div className="score-me">
             <small>{session.nickname} (나)</small>
-            <b>{wonShort(equity)}</b>
+            <b>
+              <RollNum text={wonShort(equity)} />
+            </b>
             <span className={tone(myRet)}>{pct(myRet)}</span>
           </div>
           {rivals ? (
