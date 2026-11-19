@@ -178,3 +178,31 @@
 /* 아래 탭: 위 금속 띠 + 고른 칸은 자수정 테 */
 .m-game .bottom-nav, .lobby-bottom { background: linear-gradient(180deg, #17161c, #111014) !important; border-top: 0 !important; }
 .m-game .bottom-nav::before, .lobby-bottom::before { content: ''; position: absolute; left: 0; right: 0; top: -3px; height: 3px; background: var(--metal-amethyst); box-shadow: 0 1px 0 #08080a, 0 -1px 0 #08080a; pointer-events: none; }
+
+/* ════════ 로비 공통: 메뉴 칸·창 ════════ */
+/* 메뉴 칸(연습·더보기 등): 어두운 금속 테 + 아이콘은 은 메달 위에 */
+.lobby-shell.client .hub .tile, .lobby-shell .home-actions .tile, .home-actions .tile { border: 2px solid transparent !important; border-radius: 18px !important; background: linear-gradient(180deg, #1d1d22 0%, #16161a 45%, #121215 100%) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1px #08080a, 0 10px 22px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important; transition: transform 150ms var(--ease-out, ease-out); }
+.lobby-shell.client .hub .tile:hover, .lobby-shell .home-actions .tile:hover, .home-actions .tile:hover { transform: translateY(-3px); background: linear-gradient(180deg, #22212b 0%, #18171d 45%, #131216 100%) padding-box, var(--metal-amethyst) border-box !important; }
+/* 아이콘은 증강 카드처럼 은 메달 위에 (그림 자체는 그대로) */
+.home-actions .tile i.toon-i { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; border: 3px solid transparent; background: radial-gradient(circle at 50% 38%, #2f3540, #111114 72%) padding-box, var(--metal-silver) border-box !important; box-shadow: 0 0 0 1.5px #08080a, 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 0 0 1.5px rgba(0, 0, 0, 0.7); }
+.home-actions .tile .toon-i svg { width: 34px; height: 34px; }
+@media (prefers-reduced-motion: reduce) { .home-actions .tile { transition: none; } }
+
+/* 창(모달): 어두운 금속 테 + 안쪽 선 + 위 머리 줄 */
+.modal-bg > .modal:not(.aug-pick) { border: 2px solid transparent !important; background: linear-gradient(180deg, #1e1e24 0%, #17171b 40%, #131316 100%) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1.5px #08080a, 0 26px 60px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important; }
+.modal-bg > .modal .btn.primary:not(.ghost):not(:disabled) { border: 2px solid transparent !important; background: linear-gradient(#6b58ee, #6b58ee) padding-box, var(--metal-gold) border-box !important; box-shadow: 0 0 0 1px #0a0a0c, 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.25), inset 0 -4px 0 rgba(30, 18, 110, 0.5) !important; font-weight: 800; }
+.modal-bg > .modal .btn.primary:not(.ghost):not(:disabled):hover { background: linear-gradient(#5f4de3, #5f4de3) padding-box, var(--metal-gold) border-box !important; }
+
+/* 화면 제목: 아래 금속 줄 */
+.page-head h2, .hub-head h1 { text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); }
+
+/* 로비의 일반 칸(업적·내 데이터 등): 어두운 금속 테 */
+.lobby-shell main .panel:not(.orn):not(.mf-stage) { border: 2px solid transparent !important; background: linear-gradient(180deg, #1c1c21 0%, #161619 40%, #121215 100%) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1px #08080a, 0 12px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important; }
+/* 빈 화면 안내 아이콘: 자수정 메달 위에 */
+.ui-empty > i { width: 72px !important; height: 72px !important; border-radius: 50% !important; border: 3px solid transparent !important; background: radial-gradient(circle at 50% 38%, #33295e, #111114 72%) padding-box, var(--metal-amethyst) border-box !important; box-shadow: 0 0 0 1.5px #08080a, 0 8px 16px rgba(0, 0, 0, 0.5), inset 0 0 0 1.5px rgba(0, 0, 0, 0.7) !important; color: #e4ddff !important; display: inline-flex !important; align-items: center; justify-content: center; }
+.ui-empty.compact > i { width: 52px !important; height: 52px !important; }
+.ui-empty .btn.primary:not(:disabled) { border: 2px solid transparent !important; background: linear-gradient(#6b58ee, #6b58ee) padding-box, var(--metal-gold) border-box !important; box-shadow: 0 0 0 1px #0a0a0c, 0 6px 14px rgba(0, 0, 0, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.25), inset 0 -4px 0 rgba(30, 18, 110, 0.5) !important; font-weight: 800; }
+/* 업적 칸: 딴 것은 은 테, 못 딴 칸은 잠긴 어두운 메달 */
+.badge-grid .bg-cell { border: 2px solid transparent !important; background: linear-gradient(180deg, #1c1c21, #141417) padding-box, var(--metal-dark) border-box !important; box-shadow: 0 0 0 1px #08080a, 0 6px 14px rgba(0, 0, 0, 0.4) !important; }
+.badge-grid .bg-cell.hidden > i { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-weight: 800; color: #6a6a74; border: 2px solid transparent; background: radial-gradient(circle at 50% 38%, #24242a, #0e0e11 72%) padding-box, var(--metal-dark) border-box; box-shadow: 0 0 0 1px #08080a, inset 0 0 0 1px rgba(0, 0, 0, 0.7); }
+.badge-grid .bg-cell.hidden > b { color: #6a6a74; }
