@@ -92,11 +92,14 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
     <svg className="tier-emblem" width={Math.round(size * 1.3)} height={Math.round(size * 1.3)} viewBox="-7 -8 54 54" aria-hidden>
       <defs>
         <linearGradient id={`${id}-m`} x1="0" y1="0" x2="0.35" y2="1">
-          <stop offset="0" stopColor={shine} />
-          <stop offset="0.3" stopColor={light} />
-          <stop offset="0.5" stopColor={base} />
-          <stop offset="0.62" stopColor={mid} />
-          <stop offset="1" stopColor={dark} />
+          {/* 증강 카드와 같은 금속: 위 밝음 → 가운데 반사 띠 → 아래 그늘 */}
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.14" stopColor={shine} />
+          <stop offset="0.32" stopColor={base} />
+          <stop offset="0.45" stopColor={shine} />
+          <stop offset="0.58" stopColor={mid} />
+          <stop offset="0.8" stopColor={dark} />
+          <stop offset="1" stopColor={deep} />
         </linearGradient>
         <radialGradient id={`${id}-f`} cx="0.5" cy="0.32" r="0.78">
           <stop offset="0" stopColor={mix(base, '#000000', 0.4)} />
@@ -257,11 +260,18 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
         // 가운데 깎은 보석: 바깥 네 면 + 가운데 평평한 면(테이블) — 면마다 밝기를 달리해 입체로
         <g strokeLinejoin="round">
           <path d="M20 10 L27.6 20 L20 30.5 L12.4 20 Z" fill={deep} />
-          <path d="M20 10 L12.4 20 L16 20 L20 14.6 Z" fill={shine} />
-          <path d="M20 10 L27.6 20 L24 20 L20 14.6 Z" fill={light} />
-          <path d="M12.4 20 L20 30.5 L20 25.6 L16 20 Z" fill={mid} />
-          <path d="M27.6 20 L20 30.5 L20 25.6 L24 20 Z" fill={dark} />
+          {/* 바깥 면을 둘씩 나눠 여덟 면 — 면마다 밝기가 달라 반짝임이 보임 */}
+          <path d="M20 10 L16.2 15 L16 20 L20 14.6 Z" fill="#ffffff" fillOpacity="0.92" />
+          <path d="M16.2 15 L12.4 20 L16 20 Z" fill={shine} />
+          <path d="M20 10 L23.8 15 L24 20 L20 14.6 Z" fill={light} />
+          <path d="M23.8 15 L27.6 20 L24 20 Z" fill={base} />
+          <path d="M12.4 20 L16.2 25.2 L20 25.6 L16 20 Z" fill={mid} />
+          <path d="M16.2 25.2 L20 30.5 L20 25.6 Z" fill={dark} />
+          <path d="M27.6 20 L23.8 25.2 L20 25.6 L24 20 Z" fill={dark} />
+          <path d="M23.8 25.2 L20 30.5 L20 25.6 Z" fill={deep} />
           <path d="M20 14.6 L24 20 L20 25.6 L16 20 Z" fill={lv === 6 ? '#d9364b' : gem} />
+          <path d="M20 14.6 L24 20 L20 20 Z" fill="#ffffff" fillOpacity="0.35" />
+          <path d="M16 20 L20 25.6 L20 20 Z" fill="#000000" fillOpacity="0.18" />
           <path d="M20 10 L27.6 20 L20 30.5 L12.4 20 Z" fill="none" stroke={shine} strokeWidth="0.6" />
           <path d="M17.6 18.2 L20 15.6" stroke="#ffffff" strokeOpacity="0.9" strokeWidth="0.9" strokeLinecap="round" />
           {lv >= 2 && <path d="M16 13.2 l0.55 1.45 l1.45 0.55 l-1.45 0.55 l-0.55 1.45 l-0.55 -1.45 l-1.45 -0.55 l1.45 -0.55 z" fill="#ffffff" opacity="0.95" />}
