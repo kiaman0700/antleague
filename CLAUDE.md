@@ -299,3 +299,10 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 반응 끄기는 보내기도 막음. 봇전 판 경험치 하루 첫 판만. 오늘의 도전 '함께 n일' 없앰
 - 주석은 '왜'만 — 사용자 요청·날짜·조사 이야기는 주석에 쓰지 않음(사용자 지시). 검사 도구: 스크래치 samecode.mjs(주석 뺀 코드 비교)
 - 조사는 쉬지 않고 이어서(조사 담당이 끝나면 다음 조사를 바로 띄움). 오늘 조사한 것: 연속 기록·동시 접속·빠른 참가·임시 닉네임·테마, 화면 세부·국내 모의투자, 매칭·부계정·점수 공개·리그·법, 첫 10분·지는 사람·웹 푸시·접근성, 보안 점검표, 성능·느린 망, 테마 실제 규칙, 결과·복기, 봇 설계, 소셜, 쉬운 말
+
+## 규칙 v27 증강 (2026-11-19, 설계서 design/augments-v27.md · 목록 design/augments-v27-list.md) — **지금 최신**
+- 찬스 카드 대신 롤토체스식 증강: 고르는 날(`augmentDays`: 5일 0·2 / 10일 0·3·6 / 20일 0·5·10·14)마다 3개 중 1개, 판 끝까지. 등급(실버·골드·프리즘)은 방 공통 묶음(`tierPattern`, salt), 투자의 안목·외상 투자로 내 다음 등급만 한 칸. 72개(`src/game/augments.ts`), 뜨는 규칙 `eligible`(등급·차례·남은 날·여럿 판·업종 보유·집안·짝·한 명만), 보기 `augmentOffer(ctx, 다시 뽑기 칸 순서)`. '한 명만'은 차례마다 미리 정한 한 자리에만 뜸(`uniqueSeat` — 누가 골랐는지 안 새게)
+- 상태는 `src/engine/augs.ts` `deriveAugs`: 저장은 고른·다시 뽑은·쓴 줄만(DB 064 `augments`, 유니크로 동시 요청 한 번), 보기·자동 선택(그날 장이 끝날 때까지 안 고르면 seeded 무작위)은 늘 다시 계산. 줄은 created_at 순서 — 고른 뒤 다시 뽑기 무시, 고르기를 보낸 순간 보기에 있던 것이면 인정. 칸마다 다시 뽑기 1번(교장 +2). 사람은 고르기 전 장 마감 불가. 튜토리얼 첫 보기는 고정 `TUTORIAL_OFFER`
+- 효과 `src/engine/augEffects.ts` `augIncomeAll`: 돈은 거래·종가·고른 줄로 늘 다시 계산(저장 안 함, 판당 상한 `AUG_CAP`). 고른 돈은 **다음 날 아침**(상대에게 보이는 재산이 고른 순간 뛰지 않게), 날마다 효과는 **고른 다음 날부터**(고른 날 결과를 보고 고르지 못하게), 아직 안 온 날 돈은 화면 데이터에 없음. 수수료 `augFeeRate`·예약 `augMaxOrders/augOrderRange`·레버리지 `augLevCap`·늦잠(예약도 막음), 정보 쓰기 `validateUseAug`(카드와 같은 공개 범위, 종류마다 하루 한 번, 차트쟁이 답은 자리마다·쓴 순간 정확도), 되돌리기(그 종목 오늘 마지막 거래만, 피한 손실 7만원 `UNDO_CAP`), 타이밍의 신(마감 뒤 최저가 차액)
+- 화면 `src/components/Augments.tsx`(고르기 창 — 누르고 '고르기'로 확정·시세 보기로 접기 `AugPill` · `AugPanel` 내 증강·정보 쓰기 · `AugStrip` · 결과 `AugReveal` · 공부 `AugGuideBody`). 서버 `pickAug`·`rerollAug`·`useAug`(요청 번호), 봇 `botPickAug`(점수 + 난이도별 온도). 미션 card*·업적 첫 카드·카드 마스터는 증강 고르기·쓰기도 셈. 판 기록 game_stats.aug_log(065: 차례별 보기·고른 것·자동·다시 뽑기·받은 돈) → 운영자 '증강 · 14일'(고른 자리 vs 떴는데 안 고른 자리, k=20 당김)
+- 테스트 `src/engine/augs.test.ts`·`src/game/augments.test.ts`, e2e `augments.mjs`(e2e 도우미는 '증강을 먼저' 거절이면 첫 보기를 고르고 다시 마감). 예전 'cards'·'attacks' e2e 는 카드 판이 없어 전체 실행에서 뺌
