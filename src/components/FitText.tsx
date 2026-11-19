@@ -14,7 +14,8 @@ export function FitText({ children, className, title }: { children: ReactNode; c
     const i = inner.current;
     if (!o || !i) return;
     const measure = () => {
-      const d = Math.ceil(i.scrollWidth - o.clientWidth);
+      // 움직임 줄이기면 안쪽이 보통 글자(inline)라 scrollWidth 가 0 → 그려진 폭으로
+      const d = Math.ceil(Math.max(i.scrollWidth, i.getBoundingClientRect().width) - o.clientWidth);
       setDist((p) => (p === (d > 1 ? d : 0) ? p : d > 1 ? d : 0));
     };
     measure();

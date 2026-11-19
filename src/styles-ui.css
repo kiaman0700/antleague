@@ -738,8 +738,15 @@ button.tag:hover,
   .fit-text.sliding .ft-in {
     animation: none;
   }
-  .fit-text.sliding {
+  .fit-text {
     text-overflow: ellipsis;
+  }
+  .fit-text.sliding {
+    mask-image: none;
+  }
+  /* inline-block 이면 한 덩어리라 … 가 안 붙고 그냥 잘림 → 움직이지 않을 땐 보통 글자로 (길이는 FitText 가 그려진 폭으로 잼) */
+  .ft-in {
+    display: inline;
   }
 }
 
