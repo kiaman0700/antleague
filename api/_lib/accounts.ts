@@ -10,7 +10,7 @@ import { challengerMap } from './challenger.js';
 import { dropGuestCode } from './guestCodes.js';
 import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { cleanNickname, GameError } from '../../src/engine/engine.js';
+import { cleanNickname, newNickname, GameError } from '../../src/engine/engine.js';
 import { badgeTier, givesTitle, parseTiered } from '../../src/game/achievements.js';
 import { DIAMOND_MIN, ELO_K, ELO_SCALE, isPlaced, MASTER_MIN, PLACEMENT_GAMES, PLACEMENT_MULT } from '../../src/game/tier.js';
 import { AVATAR_MAP, canUseAvatar } from '../../src/game/avatars.js';
@@ -175,7 +175,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const username = cleanUsername(b.username);
       const password = cleanNewPassword(b.password);
       if (password.toLowerCase().includes(username)) throw new GameError('비밀번호에 아이디를 그대로 넣지 말아 주세요.');
-      const nickname = cleanNickname(b.nickname);
+      const nickname = newNickname(b.nickname);
       if (!(await nicknameFree(sb, nickname))) throw new GameError('이미 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.', 409);
       const taken = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
       if (taken.data) throw new GameError('이미 쓰는 아이디예요.', 409);
@@ -210,7 +210,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       if (b.nickname !== undefined) {
         let n = '';
         try {
-          n = cleanNickname(b.nickname);
+          n = newNickname(b.nickname);
         } catch {
           out.nickname = 'invalid';
         }
@@ -254,6 +254,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (b.nickname !== undefined) {
         const nickname = cleanNickname(b.nickname);
+        if (nickname !== p.nickname) newNickname(nickname); // 바꿀 때만 운영자 흉내 확인 (예전 이름은 그대로)
         if (nickname !== p.nickname && !(await nicknameFree(sb, nickname, uid))) throw new GameError('이미 쓰는 닉네임이에요.', 409);
         patch.nickname = nickname;
       }

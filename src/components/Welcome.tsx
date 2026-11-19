@@ -2,6 +2,7 @@
  * 환영 창 (design/onboarding.md): 처음 온 사람·둘러보기 중인 사람이 '하는' 버튼을 누를 때.
  * 게스트로 시작(닉네임) / 로그인 / 회원가입, 게스트는 '이어하기 코드로 불러오기'
  */
+import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname';
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { useDialogFocus, useEscape } from './ui';
@@ -10,7 +11,7 @@ import { resumeGuestWithCode, startGuest } from '../net/account';
 import { useNickCheck } from './LobbyNav';
 
 export type WelcomeStep = 'intro' | 'nick' | 'code';
-const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10;
+const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10 && !reservedNickname(n);
 
 /** 게스트 코드 책임 고지 (코드 보기·받기·불러오기 화면 모두 같은 말) */
 /** (052) 게스트 자동 삭제 안내 — 마지막 활동 날 뒤로 사흘 동안 활동이 없으면 그다음 날 0시(한국)에 삭제 */
@@ -151,7 +152,7 @@ export function Welcome({
               <span>대결에서 보일 이름 (1~10자)</span>
               <input autoFocus value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} />
               {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
-              {check === 'invalid' && nick && <small className="error">1~10자, 글자·숫자로 정해 주세요.</small>}
+              {check === 'invalid' && nick && <small className="error">{reservedNickname(nick) ? RESERVED_NICK_MSG : '1~10자, 글자·숫자로 정해 주세요.'}</small>}
               {check === 'ok' && <small className="good-msg">쓸 수 있어요</small>}
             </label>
             <small className="muted">나중에 '설정·더보기'에서 바꿀 수 있어요.</small>

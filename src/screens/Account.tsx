@@ -2,6 +2,7 @@
  * 회원 화면: 로그인·회원가입·비밀번호 찾기 (/login), 마이프로필 (/me), 랭킹 (/ranking)
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
+import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, Loading, PwInput } from '../components/ui';
 import { Avatar } from '../components/Avatar';
@@ -34,6 +35,8 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
     </header>
   );
 }
+
+const nickInvalidMsg = (n: string) => (reservedNickname(n) ? RESERVED_NICK_MSG : '1~10자, 꺾쇠(<>) 없이 써 주세요');
 
 const copy = (t: string) => navigator.clipboard?.writeText(t).catch(() => {});
 
@@ -256,7 +259,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
           <label className={fieldCls(nAvail)}>
             <span>닉네임 (게임·랭킹에 보이는 이름)</span>
             <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={10} placeholder="1~10자" />
-            <AvailMsg st={nAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
+            <AvailMsg st={nAvail} what="닉네임" invalid={nickInvalidMsg(nickname)} />
           </label>
         )}
         {tab === 'reset' && (
@@ -490,7 +493,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
               </div>
               {nickCheck ? (
                 <div className="nick-avail" aria-live="polite">
-                  <AvailMsg st={nickAvail} what="닉네임" invalid="1~10자, 꺾쇠(<>) 없이 써 주세요" />
+                  <AvailMsg st={nickAvail} what="닉네임" invalid={nickInvalidMsg(nick)} />
                 </div>
               ) : (
                 <small className="muted">게임·랭킹에 보이는 이름이에요. 다른 회원과 같은 닉네임은 못 써요.</small>

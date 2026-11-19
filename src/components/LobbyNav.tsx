@@ -4,6 +4,7 @@
  * - 모바일·태블릿 세로(860px 이하): 화면 아래 탭바 5칸
  * - 게스트가 온라인 기능을 처음 누르면: 게스트/회원 차이를 보여 주고, '게스트로 시작'일 때만 닉네임을 받음
  */
+import { reservedNickname } from '../game/nickname';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { TierBadge, tierText } from './TierBadge';
@@ -224,7 +225,7 @@ export function BottomNav({ active, onGo, online, badges }: Pick<NavProps, 'acti
 
 /* ================= 게스트 시작 안내 ================= */
 
-const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10;
+const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10 && !reservedNickname(n);
 
 /**
  * '하는' 버튼 앞에 끼우는 확인 (design/onboarding.md).

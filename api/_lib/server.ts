@@ -116,7 +116,7 @@ import {
   cleanCode,
   cleanDays,
   cleanMode,
-  cleanNickname,
+  newNickname,
   cleanTurn,
   finalResults,
   GameError,
@@ -370,7 +370,7 @@ async function roomsMadeSince(uid: string, since: string) {
 async function nickFor(uid: string, raw: unknown) {
   const p = await getProfile(db(), uid);
   if (p) return p.nickname;
-  const n = cleanNickname(raw);
+  const n = newNickname(raw);
   if (!(await nicknameFree(db(), n))) throw new GameError('회원이 쓰는 닉네임이에요. 게스트 닉네임을 다른 것으로 바꿔 주세요.', 409);
   return n;
 }

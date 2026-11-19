@@ -69,6 +69,11 @@ const impC = await G0({ action: 'create', nickname: 'A' + rnd, mode: 'easy', tot
 ok('게스트가 회원 닉네임으로 방 만들기 거절', impC.s === 409, impC.b?.error);
 const impQ = await G0({ action: 'queueJoin', queue: 'casual_duel_quick', nickname: 'a' + rnd.toUpperCase(), mode: 'easy' });
 ok('게스트가 회원 닉네임(대소문자만 다름)으로 매칭 거절', impQ.s === 409, impQ.b?.error);
+// 운영자로 오해할 닉네임은 새로 못 정함 (가입 확인·게스트 방 만들기)
+const avR = (await G0({ action: 'checkAvailable', nickname: '개미리그 운영자' })).b;
+ok('운영자 흉내 닉네임은 invalid', avR.nickname === 'invalid', JSON.stringify(avR));
+const impR = await G0({ action: 'create', nickname: 'Adm1n', mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '흉내' });
+ok('게스트가 운영자 흉내 닉네임으로 방 만들기 거절', impR.s === 400 && /운영자/.test(impR.b?.error ?? ''), impR.b?.error);
 const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
 ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
 const samePw = await G0({ action: 'signup', username: 'e2epw' + rnd, password: 'e2epw' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });
