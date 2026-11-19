@@ -48,7 +48,7 @@ export function TutorialMenu({ onPick, onAll, onClose }: { onPick: (c: Chapter) 
     <div className="modal-bg" onClick={onClose}>
       <div ref={box} tabIndex={-1} className="modal has-x tut-menu" role="dialog" aria-modal aria-label="튜토리얼" onClick={(e) => e.stopPropagation()}>
         <h3>
-          <Icon name="play" size={18} /> 튜토리얼
+          튜토리얼
         </h3>
         <button type="button" className="icon-btn sm modal-x" aria-label="닫기" onClick={onClose}>
           <Icon name="x" size={16} />
@@ -88,7 +88,7 @@ export function TutorialOffer({ onStart, onSkip }: { onStart: () => void; onSkip
     <div className="modal-bg">
       <div ref={box} tabIndex={-1} className="modal tut-offer" role="dialog" aria-modal aria-label="튜토리얼 할까요?">
         <h3>
-          <Icon name="play" size={18} /> 튜토리얼을 해 볼까요?
+          튜토리얼을 해 볼까요?
         </h3>
         <p className="muted small">홈 둘러보기 → 연습봇과 한 판 → 결과 보기 → 미션·업적 순서로 안내해 드려요. 약 5분이고, 언제든 건너뛸 수 있어요.</p>
         <div className="modal-actions">

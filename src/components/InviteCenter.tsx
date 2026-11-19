@@ -173,7 +173,7 @@ export function InviteCenter({ member, onWaiting, onGame, onParty }: { member: b
               <Icon name="x" />
             </button>
             <h3>
-              <Icon name={inv.kind === 'room' ? 'door' : 'users'} size={18} /> {inv.kind === 'duel' ? '1대1 대결 신청' : inv.kind === 'party' ? '파티 초대' : '방 초대'}
+              {inv.kind === 'duel' ? '1대1 대결 신청' : inv.kind === 'party' ? '파티 초대' : '방 초대'}
             </h3>
             <p>
               <b>{inv.from}</b> 님이 {inv.kind === 'duel' ? '1대1 대결을 신청했어요.' : inv.kind === 'party' ? '파티에 불렀어요. 일반전 다인전을 같이 찾아요.' : <>'<b>{inv.title}</b>' 방에 초대했어요.</>}

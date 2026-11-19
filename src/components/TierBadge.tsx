@@ -1,7 +1,6 @@
 /** 랭킹 티어 표시: 금속 테두리 방패 + 가운데 깎은 보석(이 게임만의 그림) + 티어 이름 + 단계 점수. 배치 중이면 '배치 n/2' */
 import { CHALLENGER_MIN, isPlaced, MASTER_MIN, PLACEMENT_GAMES, TIERS, tierOf } from '../game/tier';
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from './Icon';
 
 const TIER_LEVEL: Record<string, number> = { bronze: 0, silver: 1, gold: 2, platinum: 3, diamond: 4, master: 5 };
 
@@ -383,7 +382,7 @@ export function TierLadder({ mine }: { mine?: { rating: number; rankedGames: num
   return (
     <section className={'panel pad tier-ladder' + (more ? ' tl-more' : '')} aria-label="랭킹 티어">
       <h3>
-        <Icon name="crown" size={18} /> 랭킹 티어
+        랭킹 티어
       </h3>
       <p className="muted small">배치 2판 뒤 점수로 정해져요. 단계는 100점씩, 3이 가장 높아요. 챌린저는 2,500점 넘는 상위 1%예요.</p>
       <ol className="tl-stairs" ref={ref}>

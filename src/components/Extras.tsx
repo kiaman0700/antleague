@@ -21,7 +21,7 @@ export function Calendar({ market, day, onSelect, compact = false, hideTitle = f
   if (!shown.length) return null;
   return (
     <div className="calendar">
-      {!hideTitle && <h4 className="sec-head"><Icon name="calendar" /> 다가오는 일정</h4>}
+      {!hideTitle && <h4 className="sec-head">다가오는 일정</h4>}
       {shown.map((e, i) => {
         const payers = e.kind === 'dividend' ? market.dividends.filter((d) => d.day === e.day) : [];
         return (
@@ -82,7 +82,7 @@ export function OrdersAndDividends({
   const price = (o: OrderRow) => (STOCK_MAP[o.symbol].currency === 'USD' ? fmtUsd(o.limit_price) : num(o.limit_price) + '원');
   return (
     <div className="orders-div">
-      <h4 className="sec-title"><Icon name="hourglass" /> 예약 주문</h4>
+      <h4 className="sec-title">예약 주문</h4>
       {open.length === 0 && recent.length === 0 && <EmptyState compact icon="hourglass" title="예약 주문이 없어요" desc="종목 화면의 사기·팔기에서 걸 수 있어요." />}
       {open.map((o) => (
         <div key={o.id} className={'oo-row ' + o.side}>
@@ -104,7 +104,7 @@ export function OrdersAndDividends({
       ))}
       {portfolio.dividendLog.length > 0 && (
         <>
-          <h4 className="sec-title"><Icon name="coins" /> 받은 배당 {wonShort(portfolio.dividendIncome)}</h4>
+          <h4 className="sec-title">받은 배당 {wonShort(portfolio.dividendIncome)}</h4>
           {portfolio.dividendLog.map((d, i) => (
             <div key={i} className="oo-row done">
               <span>

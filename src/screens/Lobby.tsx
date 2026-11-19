@@ -149,7 +149,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
       </div>
       <small className="mp-desc muted">{desc}</small>
       {open && (
-        <Sheet title={<><Icon name="sliders" size={18} /> 커스텀 모드 설정</>} onClose={() => setOpen(false)}>
+        <Sheet title={<>커스텀 모드 설정</>} onClose={() => setOpen(false)}>
           <div className="field">
             <span>바탕 모드 (쉬운 말·주문 방식)</span>
             <div className="seg two">
@@ -265,7 +265,7 @@ function CodeJoin({
     }
   };
   return (
-    <Modal title={<><Icon name="key" size={18} /> 코드로 입장</>} onClose={onClose}>
+    <Modal title={<>코드로 입장</>} onClose={onClose}>
       <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
       <form
         className="join"
@@ -352,7 +352,7 @@ function QuickJoin({ nickname, mode, onJoined, onCreate, onClose }: { nickname: 
     </div>
   );
   return (
-    <Modal title={<><Icon name="ff" size={18} /> 빠른 참가</>} onClose={onClose}>
+    <Modal title={<>빠른 참가</>} onClose={onClose}>
       <p className="muted small">조건에 맞는 공개방 중 사람이 가장 많은 방에 바로 들어가요. 비밀방은 코드로만 들어갈 수 있어요. 점수는 바뀌지 않아요.</p>
       {seg<string>([['any', '상관없음'], ['duel', '1대1'], ['multi', '3명 이상']], size, setSize, '인원')}
       {seg<number>([[0, '상관없음'], [60, '1분'], [180, '3분'], [300, '5분 이상']], sec, setSec, '하루 길이')}
@@ -388,7 +388,7 @@ function PracticeStart({ onStart, onClose }: { onStart: (days: number, daySec: n
   const [days, setDays] = useState(20);
   const [daySec, setDaySec] = useState<number>(DEFAULT_SOLO_DAY);
   return (
-    <Modal title={<><Icon name="target" size={18} /> 혼자 연습하기</>} onClose={onClose}>
+    <Modal title={<>혼자 연습하기</>} onClose={onClose}>
       <p className="muted small">혼자서 같은 규칙으로 연습해요. 장중에 가격이 실시간으로 움직이고, 다 정했으면 "장 마감"으로 남은 시간을 건너뛸 수 있어요. 이 기기에 저장돼요.</p>
       <div className="field">
         <span>게임 길이</span>
@@ -431,7 +431,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
   const [daySec, setDaySec] = useState<number>(60);
   const setLevel = (i: number, lv: number) => setBots((b) => b.map((x, j) => (j === i ? lv : x)));
   return (
-    <Modal title={<><Icon name="bot" size={18} /> 봇전</>} onClose={onClose}>
+    <Modal title={<>봇전</>} onClose={onClose}>
       <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 랭킹 점수는 바뀌지 않고, 전적·업적·미션에는 남아요. 판 경험치는 하루 첫 판만 받아요.</p>
       <div className="field">
         <span>상대 봇 ({bots.length}명)</span>
@@ -510,7 +510,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
 /** 오늘의 도전은 회원만 — 손님에게는 안내와 가입·로그인 버튼만 (서버에 묻지 않아 손님 계정도 안 만듦) */
 function DailyMembersOnly({ onClose, onSignup, onLogin }: { onClose: () => void; onSignup: () => void; onLogin: () => void }) {
   return (
-    <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
+    <Modal title={<>오늘의 도전</>} onClose={onClose}>
       <p className="muted small">오늘 하루, 모든 회원이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작하고 점수표에 순위가 올라가요.</p>
       <p className="small warn-msg">오늘의 도전은 회원만 할 수 있어요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
       <div className="modal-actions">
@@ -544,7 +544,7 @@ function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: 
     }
   };
   return (
-    <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
+    <Modal title={<>오늘의 도전</>} onClose={onClose}>
       <p className="muted small">오늘 하루, 모든 사람이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작해요. 기회는 하루에 한 번이고, 중간에 나가면 그때 재산으로 기록돼요.</p>
       <ThemeCard id={info?.theme} />
       {err ? (
@@ -595,7 +595,7 @@ function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: 
 
 function HowTo({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title={<><Icon name="book" size={18} /> 이렇게 놀아요</>} onClose={onClose}>
+    <Modal title={<>이렇게 놀아요</>} onClose={onClose}>
       {/* 긴 글 대신 제목 + 짧은 설명 목록 (공통 부품) */}
       <IconList
         items={[
@@ -831,7 +831,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <aside className="hs-side">
             <section className="panel pad rank-card">
               <h3>
-                <Icon name="crown" size={18} /> 내 랭킹
+                내 랭킹
               </h3>
               <div className="rk-big">
                 <TierBadge rating={account.profile!.rating} rankedGames={account.profile!.ranked_games} size={56} chal={account.profile!.chal} />
@@ -936,7 +936,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-rooms">
           <div className="hr-head">
             <h3>
-              <Icon name="door" size={18} /> 지금 열린 방
+              지금 열린 방
             </h3>
             <button className="btn sm ghost" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               전체 보기 <Icon name="right" size={14} />
@@ -969,7 +969,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-recent">
           <div className="hr-head">
             <h3>
-              <Icon name="clock" size={18} /> 최근 대결
+              최근 대결
             </h3>
             <button className="btn sm ghost" onClick={() => go('records')}>
               업적·전적 전체 <Icon name="right" size={14} />
@@ -1332,7 +1332,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
       </div>
 
       {pwRoom && (
-        <Modal title={<><Icon name="lock" size={18} /> {pwRoom.title}</>} onClose={() => setPwRoom(null)}>
+        <Modal title={<>{pwRoom.title}</>} onClose={() => setPwRoom(null)}>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1691,7 +1691,7 @@ function Records({ go }: Pick<Props, 'go'>) {
       {history !== null && !histErr && (
         <section className="panel pad">
           <h3>
-            <Icon name="medal" /> 업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{BADGES.length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
+            업적 <small className="muted badge-count">{BADGES.filter((b) => myBadges[b.id]).length}/{BADGES.length}</small> {myTitle && <span className="title-tag"><BadgeIcon id={myTitle.id} size={13} /> {myTitle.name}</span>}
           </h3>
           <BadgeShelf mine={myBadges} />
         </section>
@@ -1759,7 +1759,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
   if (multi) {
     const playing = multi.status === 'playing';
     return (
-      <Modal title={<><Icon name={playing ? 'play' : 'door'} size={18} /> {playing ? '진행 중인 대결이 있어요' : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
+      <Modal title={<>{playing ? '진행 중인 대결이 있어요' : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
         <p className="muted small">
           {playing
             ? '연결이 끊겼거나 창이 닫혀서 대결 밖에 있어요. 대결은 계속 진행되고 있어요. 다시 들어갈까요?'
@@ -1807,7 +1807,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
   }
   if (solo)
     return (
-      <Modal title={<><Icon name="target" size={18} /> 하던 연습 게임이 있어요</>} onClose={close}>
+      <Modal title={<>하던 연습 게임이 있어요</>} onClose={close}>
         <p className="muted small">
           연습 중간에 나왔어요 ({solo.data.room.day + 1}일차 / {solo.data.room.total_days}일). 이어서 할까요?
         </p>

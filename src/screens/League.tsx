@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { api } from '../net/api';
 import { useAccount } from '../net/account';
 import { Avatar } from '../components/Avatar';
-import { Icon } from '../components/Icon';
 import { EmptyState, ErrorState, Loading } from '../components/ui';
 import type { LobbyPage } from './Lobby';
 
@@ -113,7 +112,7 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
           </section>
           <section className="panel pad">
             <h3>
-              <Icon name="users" /> 이번 주 우리 조
+              이번 주 우리 조
             </h3>
             {!info.group?.length ? (
               <EmptyState compact icon="trophy" title="이번 주에 아직 경험치를 안 얻었어요" desc="대결·봇전·오늘의 도전을 끝내거나 미션을 하면 조에 들어가요." />
@@ -144,7 +143,7 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
           </section>
           <section className="panel pad">
             <h3>
-              <Icon name="medal" /> 주간 보상
+              주간 보상
             </h3>
             <p className="muted small">한 주가 끝나면 받아요. 높은 단계일수록 많아요.</p>
             <ul className="lg-rewards">

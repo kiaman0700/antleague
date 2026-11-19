@@ -57,7 +57,7 @@ function RecoveryCode({ code, onDone }: { code: string; onDone: () => void }) {
   return (
     <section className="panel pad acc-recovery">
       <h3>
-        <Icon name="key" size={18} /> 복구 코드를 꼭 저장해 두세요
+        복구 코드를 꼭 저장해 두세요
       </h3>
       <p className="muted small">비밀번호를 잊었을 때 이 코드로만 새 비밀번호를 정할 수 있어요. 지금 한 번만 보여 드려요. (마이프로필에서 새로 받을 수 있어요)</p>
       <button className="code-big" onClick={async () => setCopied((await copyText(code)) ? 'ok' : 'fail')} title="눌러서 복사">
@@ -895,7 +895,7 @@ function SkillPanel({ s }: { s: import('../net/account').SkillInfo }) {
   return (
     <section className="panel pad sk-panel" aria-label="나의 투자 감각">
       <h3>
-        <Icon name="activity" /> 나의 투자 감각 <small className="muted">최근 {a.games}판</small>
+        나의 투자 감각 <small className="muted">최근 {a.games}판</small>
       </h3>
       <ul className="sk-list">
         {rows.map((r) => (

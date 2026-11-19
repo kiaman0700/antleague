@@ -323,7 +323,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     <section className={'panel pad match-finder' + (searching ? ' is-searching' : '')}>
       {!fixedKind && (
         <h3>
-          <Icon name="users" size={18} /> 대결 찾기
+          대결 찾기
         </h3>
       )}
       {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })), '대결 종류')}

@@ -1,6 +1,5 @@
 import { ToonIcon } from './ToonIcon';
 import { STREAK_RULE, StreakResult, type StreakInfo } from './Streak';
-import { Icon } from './Icon';
 /** 오늘의 도전 (설계서 design/bots-daily.md 3단계): 오늘 점수표 · 내 순위 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
@@ -86,7 +85,7 @@ export function DailyFriends({ info }: { info: DailyInfo }) {
   return (
     <div className="daily-friends">
       <h4>
-        <Icon name="users" size={14} /> 친구들
+        친구들
       </h4>
       <ol className="daily-board">
         {f.map((r, i) => (

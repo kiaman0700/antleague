@@ -1047,7 +1047,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         </div>
       )}
       {newsBig && !mobile && (
-        <Sheet title={<><Icon name="news" size={18} /> 오늘의 소식</>} onClose={() => setNewsBig(false)} wide>
+        <Sheet title={<>오늘의 소식</>} onClose={() => setNewsBig(false)} wide>
           {/* 관련 종목·업종을 누르면 그 차트로 가면서 창을 닫음 */}
           <div className="news-big" onClickCapture={(e) => (e.target as Element).closest(".rel-chip, .rb-sec, .linkish-soft") && setTimeout(() => setNewsBig(false), 0)}>{newsPanel}</div>
         </Sheet>

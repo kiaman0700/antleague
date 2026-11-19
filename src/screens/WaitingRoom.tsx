@@ -35,7 +35,7 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
   };
   const list = d?.friends ?? [];
   return (
-    <Sheet title={<><Icon name="userPlus" size={18} /> 친구 초대</>} onClose={onClose}>
+    <Sheet title={<>친구 초대</>} onClose={onClose}>
       {!d && <Loading inline />}
       {d && list.length === 0 && <p className="muted small">아직 친구가 없어요. 홈의 '친구' 메뉴에서 닉네임으로 추가할 수 있어요.</p>}
       <ul className="fr-list">

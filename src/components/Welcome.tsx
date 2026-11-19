@@ -84,7 +84,7 @@ export function Welcome({
         {step === 'intro' ? (
           <>
             <h3>
-              <Icon name="userPlus" size={18} /> 어떻게 시작할까요?
+              어떻게 시작할까요?
             </h3>
             {/* 친구가 보낸 초대 링크(?room=코드)로 왔으면: 왜 이 창이 떴는지 먼저 */}
             {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작 방법을 골라 주세요. 고르면 그 방 입장 창이 열려요.</p>}
@@ -146,7 +146,7 @@ export function Welcome({
             }}
           >
             <h3>
-              <Icon name="users" size={18} /> 게스트 닉네임
+              게스트 닉네임
             </h3>
             <label className={'field' + (check === 'ok' ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
               <span>대결에서 보일 이름 (1~10자)</span>
@@ -183,7 +183,7 @@ export function Welcome({
             }}
           >
             <h3>
-              <Icon name="key" size={18} /> 이어하기 코드로 불러오기
+              이어하기 코드로 불러오기
             </h3>
             <p className="muted small">다른 기기·브라우저에서 하던 게스트를 불러와요. 코드는 그 기기의 '설정·더보기 → 내 계정'에서 볼 수 있어요.</p>
             <label className="field">

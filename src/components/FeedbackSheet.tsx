@@ -59,7 +59,7 @@ export function FeedbackSheet({ onClose, initialKind = 'bug', initialText = '', 
   const hint = KINDS.find((k) => k[0] === kind)![2];
   return (
     <Sheet
-      title={<><Icon name="news" size={18} /> 의견·버그 보내기</>}
+      title={<>의견·버그 보내기</>}
       onClose={onClose}
       guard={async () => state === 'done' || !text.trim() || (await ask('쓰던 내용이 사라져요. 닫을까요?', { ok: '닫기' }))}
     >

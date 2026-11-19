@@ -361,7 +361,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     </>;
   const badgesEl = <>
       <div className="panel pad">
-        <h3><Icon name="medal" /> 이번 판 업적</h3>
+        <h3>이번 판 업적</h3>
         {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적에 내 업적이 묻히지 않게) */}
         <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.filter((r) => !botIds.has(r.id)).length) }}>
           {results.map((r, i) => botIds.has(r.id) ? null : (
@@ -392,7 +392,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const MOMENT_ICON: Record<string, IconName> = { caught: 'trend', dodged: 'shield', fooled: 'warn', missed: 'target' };
   const momentsEl = moments.length > 0 && (
     <div className="panel pad km-panel">
-      <h3><Icon name="target" /> 나의 결정적 순간</h3>
+      <h3>나의 결정적 순간</h3>
       <div className="km-list">
         {moments.map((k, i) => (
           <button key={i} className={'km-card km-' + k.kind} style={{ ['--k' as string]: i }} onClick={() => setReplayDay(k.day)}>
@@ -409,7 +409,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const lessons = useMemo(() => realLessons(market.news, last, 3).filter((l) => l.kind !== theme).slice(0, 2), [market.news, last, theme]);
   const lessonsEl = (lessons.length > 0 || !!theme) && (
     <div className="panel pad rw-panel">
-      <h3><Icon name="book" /> 실제 시장에서는?</h3>
+      <h3>실제 시장에서는?</h3>
       <ThemeCard id={theme} lesson />
       <div className="km-list">
         {lessons.map((l, i) => (
@@ -427,7 +427,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       {lessonsEl}
       {highlights.length > 0 && (
       <div className="panel pad">
-        <h3><Icon name="star" /> 하이라이트</h3>
+        <h3>하이라이트</h3>
         <div className="hl-grid" style={{ ['--cols' as string]: balancedCols(highlights.length) }}>
           {highlights.map((h, i) => (
             <button key={i} className="hl-card" onClick={() => h.day !== undefined && setReplayDay(h.day)}>
@@ -443,7 +443,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     </>;
   const replayEl = <>
       <div className="panel pad">
-        <h3><Icon name="play" /> 하루별 리플레이</h3>
+        <h3>하루별 리플레이</h3>
         <div className="replay">
           {Array.from({ length: market.totalDays }, (_, d) => {
             const deltas = results.map((r) => r.hist[d + 1] - r.hist[d]);
@@ -792,7 +792,7 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
   };
   return (
     <div className="panel pad share-card">
-      <h3><Icon name="share" /> 결과 공유</h3>
+      <h3>결과 공유</h3>
       <div className="sc-card">
         <b className="sc-kind">개미리그 · {kind}</b>
         {top ? <strong className="sc-rank">상위 {top}%<small> · 오늘 {info?.total}명</small></strong> : rank ? <strong className="sc-rank">{rank}위<small> / {players}명</small></strong> : null}

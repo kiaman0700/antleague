@@ -88,7 +88,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
     <section className="panel pad party-panel">
       <div className="hr-head">
         <h3>
-          <Icon name="users" size={18} /> 파티 {inParty ? `${party!.members.length}/2` : ''}
+          파티 {inParty ? `${party!.members.length}/2` : ''}
         </h3>
         {party && (
           <button className="btn sm ghost" onClick={leave}>
