@@ -391,8 +391,10 @@ export function StockDetail(props: Props) {
           )}
           {closed ? (
             <Term k="종가">오늘 종가</Term>
-          ) : live ? (
+          ) : live && !trade?.limitOnly ? (
             <span className="live-badge">● 지금 가격</span>
+          ) : live ? (
+            <>장 전 · <Term k="시가">오늘 시가</Term></>
           ) : (
             <Term k="시가">오늘 시가</Term>
           )}{" "}

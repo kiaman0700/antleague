@@ -1,4 +1,4 @@
-/* ============ 인터랙티브 차트 (토스 스타일: 깔끔하고 여백 있게) ============ */
+﻿/* ============ 인터랙티브 차트 (토스 스타일: 깔끔하고 여백 있게) ============ */
 .pchart {
   display: flex;
   flex-direction: column;
@@ -427,3 +427,9 @@
   stroke-dasharray: 3 3;
   opacity: 0.55;
 }
+
+/* 값이 하나뿐인 빈 차트 안내 */
+.pc-svg .pc-empty { fill: var(--text-3, #9a9a9a); font-size: 16px; font-weight: 600; pointer-events: none; }
+/* 휴대폰은 차트 그림이 반쯤 줄어 보이므로 글자를 키움 */
+@media (max-width: 600px) { .pc-svg .pc-empty { font-size: 26px; } }
+

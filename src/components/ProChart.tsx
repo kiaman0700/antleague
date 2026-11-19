@@ -1034,6 +1034,12 @@ export function ProChart({
             </text>
           </g>
         )}
+        {/* 첫날 장 전처럼 값이 하나뿐이면 점 하나만 찍혀 고장 난 것처럼 보이므로 안내 */}
+        {closes.length <= 1 && (
+          <text className="pc-empty" x={(padL + W - padR) / 2} y={padT + (H - padT - padB) * 0.3} textAnchor="middle">
+            장이 열리면 여기에 가격이 그려져요
+          </text>
+        )}
       </svg>
 
       {cross && ci && (
