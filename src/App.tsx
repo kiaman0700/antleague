@@ -34,7 +34,7 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
   const m = path.match(/^\/(room|game)\/([A-Z0-9]{6})$/i);
   if (!m) {
     // 잘못 친 주소·없어진 화면: 말없이 홈으로 가면 왜 바뀌었는지 모름
-    setFlash('없는 주소라서 홈으로 왔어요');
+    setFlash('없는 주소라서 홈으로 왔어요', 'info');
     return { route: { kind: 'lobby' }, url: '/' };
   }
   const code = m[2].toUpperCase();

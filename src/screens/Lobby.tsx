@@ -10,7 +10,7 @@ import { NoticeCenter, NoticeTicker, useHasUnreadNotice } from '../components/No
 import { InAppBanner } from '../components/InAppBanner';
 import { gameOpenElsewhere } from '../lib/activeTab';
 import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEscape, OfflineBanner, PwInput } from '../components/ui';
-import { flashLeft, peekFlash } from '../lib/flash';
+import { flashLeft, flashTone, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPicker, PREF_EVENT } from '../components/MatchFinder';
@@ -1559,7 +1559,7 @@ function FlashNote() {
     const t = setTimeout(() => setText(peekFlash()), flashLeft() + 50);
     return () => clearTimeout(t);
   }, [text]);
-  return text ? <Toast text={text} /> : null;
+  return text ? <Toast text={text} tone={flashTone()} /> : null;
 }
 
 function Records({ go }: Pick<Props, 'go'>) {

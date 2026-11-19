@@ -100,9 +100,10 @@
 .btn.danger:hover:not(:disabled) { background: rgba(240, 68, 82, 0.12); color: #ffb3bb; }
 
 /* 화면 아래 짧은 확인 안내 */
-.ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #262626; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
+.ui-toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 32px); padding: 11px 16px; border-radius: 12px; background: #262626; border: 1px solid rgba(139, 123, 255, 0.35); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 700; animation: uiToastIn 0.2s ease-out; }
 .ui-toast > svg, .ui-toast > .ico { color: var(--success); flex: 0 0 auto; }
 .ui-toast.error > svg, .ui-toast.error > .ico { color: var(--danger-text); }
+.ui-toast.info > svg, .ui-toast.info > .ico { color: var(--text-2, #c8c8c8); }
 @keyframes uiToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .ui-toast { animation: none; } }
 
@@ -902,7 +903,7 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 .play-hpop .hpop-btn.cl-play { cursor: pointer; }
 
 /* 결과 화면: 오래 가만히 있으면 홈으로 — 마지막 20초 안내 (시간이 걸린 상태 = 호박색) */
-.idle-exit { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px; background: #f5b83d; color: #1a1300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+.idle-exit { position: fixed; left: 50%; width: max-content; max-width: calc(100vw - 32px); bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 12px; background: #f5b83d; color: #1a1300; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
 .idle-exit .btn.sm { background: #1a1300; color: #f5b83d; border: 0; }
 
 /* ---------- 작은 글자·작은 버튼·잘림 ---------- */
@@ -1872,9 +1873,9 @@ p { text-wrap: pretty; }
 @keyframes bar-in { from { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .ms-bar i, .sk-bar i { animation: none; transition: none; } }
 /* 완료 알림의 체크 표시는 그려지듯 나타남 (토스: 끝나면 체크로 완료를 알림) */
-.ui-toast:not(.error) svg path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: check-draw 0.35s 0.1s var(--ease-out) forwards; }
+.ui-toast:not(.error):not(.info) svg path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: check-draw 0.35s 0.1s var(--ease-out) forwards; }
 @keyframes check-draw { to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .ui-toast:not(.error) svg path { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ui-toast:not(.error):not(.info) svg path { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; } }
 
 /* 토스식 내용 아이콘 (ToonIcon): 뒤 바탕 칸 없이 아이콘만 */
 i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; background: none !important; width: auto; height: auto; line-height: 0; }
@@ -2125,7 +2126,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .aug-check { color: #8b7bff; flex: none; margin-top: 2px; }
 .aug-reroll { align-self: flex-end; margin: 0 8px 6px; min-height: 36px; }
 .aug-go { min-height: 48px; }
-.aug-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 46; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: #242424; color: #f2f2f2; border: 1px solid var(--t-gold); font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+.aug-pill { position: fixed; left: 50%; width: max-content; max-width: calc(100vw - 32px); transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 46; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: #242424; color: #f2f2f2; border: 1px solid var(--t-gold); font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
 .aug-pill.t-silver { border-color: var(--t-silver); }
 .aug-pill.t-prism { border-color: var(--t-prism); }
 :root[data-device="pc"] .aug-pill { bottom: 24px; }

@@ -137,10 +137,10 @@ export function SectionTitle({ icon, children, right }: { icon?: IconName; child
 }
 
 /** 화면 아래 짧은 확인 안내 (예: '기권했어요') — 화면 읽기 프로그램도 읽어 줌 */
-export function Toast({ text, tone }: { text: string; tone?: 'error' }) {
+export function Toast({ text, tone }: { text: string; tone?: 'error' | 'info' }) {
   return (
     <div className={'ui-toast' + (tone ? ' ' + tone : '')} role="status" aria-live="polite">
-      <Icon name={tone === 'error' ? 'warn' : 'check'} size={16} />
+      <Icon name={tone === 'error' ? 'warn' : tone === 'info' ? 'info' : 'check'} size={16} />
       <span>{text}</span>
     </div>
   );

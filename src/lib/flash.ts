@@ -3,10 +3,13 @@
  * 앱 메모리에만 두고, 보여 준 지 3.5초 뒤에 지움 — 로비가 처음 그려지는 동안 몇 번 다시 그려져도 사라지지 않게.
  */
 let text = '';
+let tone: 'info' | undefined;
 let clearAt = 0;
 
-export function setFlash(t: string) {
+/** kind 'info': 해낸 일이 아니라 알려 주는 말 (체크 표시 대신 안내 아이콘) */
+export function setFlash(t: string, kind?: 'info') {
   text = t;
+  tone = kind;
   clearAt = 0;
   // 이미 그려진 로비도 바로 보여 주게
   try {
@@ -26,6 +29,10 @@ export function peekFlash(): string {
     clearAt = 0;
   }
   return text;
+}
+
+export function flashTone() {
+  return tone;
 }
 
 /** 남은 표시 시간(ms) */
