@@ -339,6 +339,10 @@ async function bumpPlayer(d: GameData, playerId: string, patch: Record<string, u
   if (!must(res, 'bump').length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
 }
 
+/** 자리별 마지막 '마감 취소' 시각 (서버 메모리 — 짧은 재촉 막기용이라 여러 대 사이 정확하지 않아도 됨) */
+const cancelAt = new Map<string, number>();
+const CANCEL_COOLDOWN_MS = 5000;
+
 /* ---- 요청 번호(063): 응답만 끊겨 다시 보내도 한 번만 처리 ---- */
 const REQ_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** 없으면 null (예전 화면), 모양이 틀리면 400 */
@@ -1449,6 +1453,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
 
     case 'endTurn': {
       const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      // 마감 → 취소를 되풀이해 상대 카운트다운을 계속 다시 시작시키지 못하게, 취소 뒤 잠깐은 다시 마감 못 함
+      const lastCancel = cancelAt.get(playerId);
+      if (lastCancel && Date.now() - lastCancel < CANCEL_COOLDOWN_MS) throw new GameError('방금 마감을 취소했어요. 잠깐 뒤에 다시 눌러 주세요.', 409);
       const d = await loadGame(roomId);
       const { day } = validateEndTurn(d, playerId, Date.now());
       await bumpPlayer(d, playerId, { ended_day: day });
@@ -1481,6 +1488,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const d = await loadGame(roomId);
       const { endedDay } = validateCancelEnd(d, playerId, Date.now());
       await bumpPlayer(d, playerId, { ended_day: endedDay });
+      cancelAt.set(playerId, Date.now());
+      if (cancelAt.size > 5000) cancelAt.clear();
       // 마감 인원이 기준 아래로 내려가면 카운트다운을 멈추고 원래 마감 시각으로
       const fresh = await loadGame(roomId);
       const back = restoreDeadline(fresh);

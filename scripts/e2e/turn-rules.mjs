@@ -46,7 +46,11 @@ else console.log('ℹ️ 10분 방을 만들 수 없음 — supabase/005_turn_ti
   if (migrated) ok('취소하면 원래 시간으로 복구 (끝내고 취소해서 상대 시간 줄이기 방지)', secsLeft(s) > 150 && !s.room.countdown, `남은 ${secsLeft(s)}초`);
   const trade = await A({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 1 });
   ok('취소 후 다시 거래 가능', trade.s === 200, trade.b?.error ?? '');
-  await A({ action: 'endTurn', roomId });
+  const quick = await A({ action: 'endTurn', roomId });
+  ok('취소하고 바로 다시 마감은 잠깐 막힘 (마감·취소 되풀이로 상대 재촉 방지)', quick.s === 409, quick.b?.error);
+  await new Promise((r) => setTimeout(r, 5200));
+  const again = await A({ action: 'endTurn', roomId });
+  ok('5초 지나면 다시 마감 가능', again.s === 200, again.b?.error ?? '');
   await B({ action: 'endTurn', roomId });
   s = await state();
   ok('둘 다 마감하면 시간과 상관없이 바로 다음 날', s.room.day === 1 && secsLeft(s) >= 175, `남은 ${secsLeft(s)}초`);
