@@ -382,7 +382,7 @@ const EV_SHORT: Record<string, string> = { story: '사건 발표', fomc: '미 �
 /** 모바일 상단 일정 영역: 짧은 칩을 가로로 넘겨 보고, 누르면 전체 일정 */
 export function ScheduleStrip({ market, day, onOpen }: { market: Market; day: number; onOpen: () => void }) {
   const seen = new Set<string>();
-  const evs = market.events.filter((e) => {
+  const evs = [...market.events].sort((a, b) => a.day - b.day).filter((e) => {
     if (e.day < day) return false;
     const k = e.day + e.kind + (e.symbol ?? '');
     if (seen.has(k)) return false;

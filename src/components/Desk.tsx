@@ -78,7 +78,7 @@ const EV_ICON: Record<EventKind, IconName> = { story: 'megaphone', fomc: 'dollar
 const EV_LABEL: Record<EventKind, string> = { story: '사건 발표', fomc: '미 연준', bok: '한은', earnings: '실적', expiry: '옵션 만기', dividend: '배당' };
 
 export function Timeline({ market, day, onSelect }: { market: Market; day: number; onSelect: (s: string) => void }) {
-  const next = market.events.find((e) => e.day >= day) ?? null;
+  const next = market.events.filter((e) => e.day >= day).reduce<(typeof market.events)[number] | null>((a, e) => (!a || e.day < a.day ? e : a), null);
   const [pick, setPick] = useState<number | null>(null);
   useEffect(() => setPick(null), [day]);
   const trackRef = useRef<HTMLDivElement>(null);

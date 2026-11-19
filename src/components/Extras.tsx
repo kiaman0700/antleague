@@ -16,7 +16,8 @@ export function dDay(eventDay: number, day: number) {
 }
 
 export function Calendar({ market, day, onSelect, compact = false, hideTitle = false }: { market: Market; day: number; onSelect: (s: string) => void; compact?: boolean; hideTitle?: boolean }) {
-  const upcoming = market.events.filter((e) => e.day >= day);
+  // 날짜 순 (일정은 만든 차례로 쌓여 배당락처럼 나중에 붙은 것이 맨 뒤에 섞였음)
+  const upcoming = market.events.filter((e) => e.day >= day).sort((a, b) => a.day - b.day);
   const shown = compact ? upcoming.slice(0, 3) : upcoming;
   if (!shown.length) return null;
   return (
