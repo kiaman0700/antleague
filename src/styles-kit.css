@@ -2603,3 +2603,11 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 @media (max-width: 600px) {
   .result .chart .axis, .result .chart .ref-label { font-size: 24px; }
 }
+
+/* 넘기는 결과 화면: 내용이 짧아도 아래 버튼 줄은 화면 맨 아래(가운데 떠 있지 않게), 큰 버튼이 남은 폭을 채움 */
+.result.slides { min-height: 100dvh; display: flex; flex-direction: column; }
+.result.slides > .rs-track { flex: 1 0 auto; }
+.result.slides .center-actions { margin-top: auto; flex-direction: row; flex-wrap: nowrap; align-items: stretch; }
+.result.slides .center-actions .btn { width: auto; }
+.result.slides .center-actions .btn.primary { flex: 1 1 auto; min-width: 0; max-width: none; }
+.result.slides .center-actions .btn:not(.primary) { flex: 0 0 auto; }
