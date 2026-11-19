@@ -2707,3 +2707,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 가진 주식이 없을 때 팔기 버튼: 꺼진 버튼처럼 흐리게 (누르면 까닭을 알림) */
 .m-tradebar .btn.sell.is-off, .trade-jump .btn.sell.is-off { opacity: 0.45; }
 .old-more { display: block; margin: 6px auto 0; font-size: 13px; }
+/* 지난 소문 진위 딱지: 세로로 쌓는 칸 안이라 칸 너비만큼 늘어나 막대처럼 보였음 → 글자 크기만큼 */
+.old-body .old-verdict { align-self: flex-start; margin-left: 0; }
