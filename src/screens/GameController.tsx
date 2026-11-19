@@ -1676,7 +1676,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               {!rivals ? (
                 // 첫날 아무것도 사기 전엔 '시장보다 -1%' 처럼 이미 진 것처럼 보이지 않게 안내만
                 day === 0 && myRet === 0 ? (
-                  <span className="mh-cmp">시장과 비교해요</span>
+                  <span className="mh-cmp">사면 시장(지수)과 비교돼요</span>
                 ) : (
                   <span className={'mh-cmp ' + tone(myRet - (idxNow / KR_INDEX_BASE - 1))}>
                     시장보다 {pct(myRet - (idxNow / KR_INDEX_BASE - 1), 1)}
