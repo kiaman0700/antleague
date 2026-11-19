@@ -300,7 +300,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                   {copied ? <><Icon name="check" /> 복사했어요</> : <><Icon name="share" /> 초대 링크 보내기</>}
                 </button>
                 {member && view.players.length < room.maxPlayers && (
-                  <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
+                  <button className="btn sm" onClick={() => setInviteOpen(true)}>
                     <Icon name="userPlus" /> 친구 초대
                   </button>
                 )}

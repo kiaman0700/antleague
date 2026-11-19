@@ -2004,3 +2004,16 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .panel.missions:has(> .ms-guest) { display: flex; flex-direction: column; }
 .panel.missions > .ms-guest { order: -1; margin: 0 0 12px; }
 .panel.missions:has(> .ms-guest) .ms-xp, .panel.missions:has(> .ms-guest) .ms-tut-xp { opacity: 0.45; }
+
+/* ===== 대기실·방 만들기 ===== */
+/* 휴대폰 방 만들기: 아래 고정 버튼과 탭바 사이 틈으로 뒤 글자가 비치지 않게 */
+.lobby-shell .create-bar { box-shadow: 0 20px 0 var(--bg); }
+/* PC 대기실: 빈 열 없이 자리 칸이 폭을 채움 */
+.wr-slots.slots { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+/* 테두리는 회색 — 보라는 '나' 칸만 */
+.wr-client .slot:not(.me), .wr-side .panel { border-color: var(--line-2) !important; }
+.wr-bar { border-top-color: var(--line-2) !important; }
+/* 코드 칸: 글자 사이를 넓힌 건 코드에만, 안내 글자는 보통 */
+.code-input::placeholder { letter-spacing: 0; }
+/* 예상 게임 시간: 칸 안의 칸 대신 위 구분선 */
+.estimate { border: 0 !important; border-top: 1px solid var(--divider) !important; border-radius: 0 !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }

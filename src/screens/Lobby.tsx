@@ -1486,7 +1486,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <small className="hint">모두 마감하면 바로 다음 날. {graceSentence(maxPlayers, turnSec)}</small>
         </div>
         <div className="estimate">
-          <span>⌛ 예상 게임 시간</span>
+          <span><Icon name="timer" size={14} /> 예상 게임 시간</span>
           <b>보통 약 {est.typical}분</b>
           <small>매일 시간을 끝까지 쓰면 최대 {est.max}분</small>
         </div>
