@@ -136,6 +136,8 @@ async function startGuest(ctx, p, base) {
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 for (const [label, opts] of SIZES) {
   const ctx = await browser.newContext(opts);
+  // UI=v2 로 돌리면 새 디자인(미리 보기) 상태로 점검
+  if (process.env.UI === 'v2') await ctx.addInitScript(() => { try { sessionStorage.setItem('stockduel.ui', 'v2'); } catch {} });
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 5 }));
   // 사파리처럼 '기기 종류' 정보 없음 (시험용 크롬이 데스크톱이라고 알려 주지 않게) — devices.mjs 와 같음
   if (opts.hasTouch) await ctx.addInitScript(() => Object.defineProperty(navigator, 'userAgentData', { get: () => undefined }));
