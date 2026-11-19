@@ -1996,3 +1996,11 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .rs-chip.on { background: rgba(139, 123, 255, 0.18); border-color: rgba(139, 123, 255, 0.75); color: #fff; }
 .rs-slide { gap: 16px; }
 .result .panel { border-color: var(--line-2); }
+/* 미션: 여러 번 해야 하는 미션은 제목 아래 얇은 진행 막대, 1시간 안 남으면 남은 시간을 호박색 */
+.ms-rowbar { display: block; height: 3px; margin-top: 5px; border-radius: 2px; background: var(--surface-3); overflow: hidden; max-width: 160px; }
+.ms-rowbar > i { display: block; height: 100%; background: #8b7bff; border-radius: 2px; }
+.ms-soon { color: #f5b83d; font-weight: 700; }
+/* 게스트 미션: '회원이 되면 경험치가 쌓여요' 안내를 맨 위로, 받을 수 없는 경험치는 흐리게 */
+.panel.missions:has(> .ms-guest) { display: flex; flex-direction: column; }
+.panel.missions > .ms-guest { order: -1; margin: 0 0 12px; }
+.panel.missions:has(> .ms-guest) .ms-xp, .panel.missions:has(> .ms-guest) .ms-tut-xp { opacity: 0.45; }

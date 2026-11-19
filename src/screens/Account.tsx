@@ -422,12 +422,16 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
     return (
       <div className="lobby page">
         <PageHead title="마이프로필" onBack={onBack} top desc="내 기록·칭호·계정" />
-        <section className="panel pad center">
-          <p>로그인하면 마이프로필과 랭킹을 쓸 수 있어요.</p>
-          <button className="btn primary" onClick={onLogin}>
-            로그인 · 회원가입
-          </button>
-        </section>
+        <EmptyState
+          icon="lock"
+          title="마이프로필은 회원만 볼 수 있어요"
+          desc="회원이 되면 사진·칭호·티어와 기록이 계속 남아요."
+          action={
+            <button className="btn primary" onClick={onLogin}>
+              로그인 · 회원가입
+            </button>
+          }
+        />
       </div>
     );
 

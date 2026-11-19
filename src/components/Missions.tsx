@@ -128,6 +128,11 @@ function Row({ m, onReroll, busy }: { m: MissionItem; onReroll?: () => void; bus
             {m.progress}/{m.goal}
           </small>
         )}
+        {m.goal > 1 && !m.done && (
+          <span className="ms-rowbar" aria-hidden>
+            <i style={{ width: `${Math.min(100, (m.progress / m.goal) * 100)}%` }} />
+          </span>
+        )}
         <span className="sr-only">{m.done ? ' (완료)' : ' (아직)'}</span>
         {m.modes && m.modes.length < ALL_MODES && <span className="ms-modes">{m.modes.join(' · ')}</span>}
       </span>
@@ -227,7 +232,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         <h3>
           일일 미션 <small className="muted">{doneN}/{info.today.list.length}</small>
         </h3>
-        <small className="muted">갱신까지 {left(info.today.endsAt)}</small>
+        <small className={info.today.endsAt - Date.now() < 3_600_000 ? "ms-soon" : "muted"}>갱신까지 {left(info.today.endsAt)}</small>
       </div>
       {canReroll && (
         <p className="ms-reroll-left muted small">
@@ -260,7 +265,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
       </ul>
       <div className="ms-head ms-week">
         <h4>주간 미션</h4>
-        <small className="muted">갱신까지 {left(info.week.endsAt)}</small>
+        <small className={info.week.endsAt - Date.now() < 3_600_000 ? "ms-soon" : "muted"}>갱신까지 {left(info.week.endsAt)}</small>
       </div>
       {canReroll && (
         <p className="ms-reroll-left muted small">

@@ -236,7 +236,7 @@ export function SocialPanel({
         <div className="cs-guest">
           <Icon name="users" size={28} />
           <p>로그인하면 친구를 추가하고, 파티로 같이 찾고, 1대1을 신청할 수 있어요.</p>
-          <button className="btn sm primary" onClick={onSignup}>
+          <button className="btn sm" onClick={onSignup}>
             회원가입
           </button>
           <button className="btn sm ghost" onClick={onLogin}>
