@@ -109,6 +109,16 @@ async function addToRoom(room: { id: string; code: string; status: string; max_p
   if (players.some((p) => p.nickname === nickname)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
   // 들어갈 수 있는 방인지 다 확인한 뒤에야: 다른 대기실에서 나오기 / 대결 중이면 막기
   await ensureFree(uid, room.id);
+  // 방을 잠그고 '대기 중·빈자리'를 다시 확인한 뒤 넣음(067) — 마지막 자리에 둘이 동시에 들어오거나, 시작하는 순간 끼어드는 것 막기
+  const rpc = await sb.rpc('join_room', { p_room: room.id, p_user: uid, p_nick: nickname, p_mode: mode, p_bot: null });
+  if (!rpc.error) {
+    if (rpc.data === 'started') throw new GameError('이미 시작했거나 끝난 방이에요.', 409);
+    if (rpc.data === 'full') throw new GameError(`방이 가득 찼어요 (최대 ${room.max_players}명).`, 409);
+    return { roomId: room.id, playerId: String(rpc.data), code: room.code };
+  }
+  if (/players_room_nick_uq/i.test(rpc.error.message)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
+  if (!/join_room/.test(rpc.error.message)) must(rpc, 'join');
+  // 067 전: 예전처럼
   const ins = await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode }).select('id').single();
   if (ins.error && /players_room_nick_uq/i.test(ins.error.message)) throw new GameError('방에 같은 닉네임이 있어요. 다른 닉네임을 써 주세요.');
   const p = must(ins, 'join') as { id: string };
@@ -1354,6 +1364,13 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const taken = new Set(ps.map((p) => p.nickname));
       let nickname = base;
       for (let i = 2; taken.has(nickname); i++) nickname = `${base} ${i}`;
+      const jr = await sb.rpc('join_room', { p_room: roomId, p_user: null, p_nick: nickname, p_mode: 'pro', p_bot: level });
+      if (!jr.error) {
+        if (jr.data === 'started') throw new GameError('게임이 시작된 뒤에는 봇을 넣을 수 없어요.', 409);
+        if (jr.data === 'full') throw new GameError('빈자리가 없어요.', 409);
+        return { ok: true };
+      }
+      if (!/join_room/.test(jr.error.message)) must(jr, 'add bot');
       const ins = await sb.from('players').insert({ room_id: roomId, user_id: null, nickname, mode: 'pro', ready: true, bot_level: level }).select('id').single();
       if (ins.error && /bot_level/.test(ins.error.message)) throw new GameError('아직 준비 중인 기능이에요.', 503);
       must(ins, 'add bot');
@@ -1390,6 +1407,16 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (d.players.length < 2) throw new GameError('2명 이상 모여야 시작할 수 있어요.', 409);
       if (!d.players.every((p) => p.ready || p.id === playerId)) throw new GameError('모두 준비해야 시작할 수 있어요.', 409);
       const deadline = iso(Date.now() + (d.room.turn_seconds + 3 + firstDayLead(d.room.version, d.room.turn_seconds, d.room.kind)) * 1000); // (v14) 첫날 장 전 시간 (방을 만들 때 규칙)
+      // 방을 잠그고 인원·준비를 다시 확인한 뒤 시작(067) — 시작과 나가기·입장이 겹쳐 혼자 남은 판이 되지 않게
+      const sr = await sb.rpc('start_room', { p_room: roomId, p_host: playerId, p_deadline: deadline });
+      if (!sr.error) {
+        if (sr.data === 'ok') return { ok: true };
+        if (sr.data === 'few') throw new GameError('방금 누가 나가서 혼자예요. 2명 이상 모여야 시작할 수 있어요.', 409);
+        if (sr.data === 'not_ready') throw new GameError('모두 준비해야 시작할 수 있어요.', 409);
+        if (sr.data === 'not_host') throw new GameError('방장만 시작할 수 있어요.', 403);
+        throw new GameError('이미 시작했어요.', 409);
+      }
+      if (!/start_room/.test(sr.error.message)) must(sr, 'start');
       let st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
       if (st.error && /day_deadline/.test(st.error.message)) st = await sb.from('rooms').update({ status: 'playing', day: 0, turn_deadline: deadline }).eq('id', roomId).eq('status', 'waiting');
       must(st, 'start');
@@ -2048,6 +2075,13 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     await touchRoom(roomId);
     return { ok: true };
   }
+  // 방을 잠그고 아직 대기 중일 때만 자리를 지움(067). 그사이 시작됐으면 진행 중인 판에서 자리가 사라지지 않게 기권으로 처리
+  const lw = await sb.rpc('leave_waiting', { p_room: roomId, p_player: playerId });
+  if (!lw.error) {
+    if (lw.data === 'playing') return leaveSeat(roomId, playerId);
+    return { ok: true };
+  }
+  if (!/leave_waiting/.test(lw.error.message)) must(lw, 'leave');
   must(await sb.from('players').delete().eq('id', playerId), 'leave');
   await touchRoom(roomId);
   return { ok: true };
