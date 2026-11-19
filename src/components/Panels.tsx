@@ -847,10 +847,13 @@ function CountUp({ value }: { value: number }) {
 
 export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec, pre }: DayCloseProps) {
   const [left, setLeft] = useState(autoSec ?? 0);
+  // '잠깐 더 보기' — 저절로 넘어가는 걸 멈춤 (장은 서버 시계대로 이미 흐르고 있음을 함께 알림)
+  const [hold, setHold] = useState(false);
   const nextRef = useRef(onNext);
   nextRef.current = onNext;
+  useEffect(() => setHold(false), [day]);
   useEffect(() => {
-    if (!autoSec) return;
+    if (!autoSec || hold) return;
     const end = Date.now() + autoSec * 1000;
     setLeft(autoSec);
     const id = setInterval(() => {
@@ -862,7 +865,7 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
       }
     }, 250);
     return () => clearInterval(id);
-  }, [autoSec, day]);
+  }, [autoSec, day, hold]);
   const movers = STOCKS.map((s) => {
     const prev = day === 0 ? market.base[s.symbol] : market.bars[s.symbol][day - 1].close;
     return { s, r: market.bars[s.symbol][day].close / prev - 1 };
@@ -920,7 +923,25 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
         </button>
         {autoSec ? (
           <div className="muted close-auto-note">
-            {last ? `${left}초 뒤 최종 결과로 넘어가요` : pre ? `${left}초 뒤 장 전 시간이 시작돼요` : `다음 날 장이 열렸어요. ${left}초 뒤 넘어가요`}
+            {hold
+              ? last
+                ? '천천히 보세요. 다 보면 위 버튼을 눌러요'
+                : pre
+                  ? '장 전 시간은 이미 흐르고 있어요. 다 보면 위 버튼을 눌러요'
+                  : '다음 날 장은 이미 열렸어요. 다 보면 위 버튼을 눌러요'
+              : last
+                ? `${left}초 뒤 최종 결과로 넘어가요`
+                : pre
+                  ? `${left}초 뒤 장 전 시간이 시작돼요`
+                  : `다음 날 장이 열렸어요. ${left}초 뒤 넘어가요`}
+            {!hold && (
+              <>
+                {' '}
+                <button type="button" className="linkish" onClick={() => setHold(true)}>
+                  잠깐 더 보기
+                </button>
+              </>
+            )}
           </div>
         ) : null}
       </div>

@@ -2074,3 +2074,6 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .st-chip.wait svg { opacity: 0.45; }
 :root:not([data-device="pc"]) .st-chip { height: 36px; }
 :root:not([data-device="pc"]) .st-title.sm { font-size: 24px !important; }
+
+/* 장 마감 10초 전: 꽉 찬 빨강 깜빡임('사기' 버튼과 같은 색) 대신 버튼 색은 그대로 두고 빨간 테두리만 */
+.m-end2.hurry, .desk .end-turn.hurry { background: #6b58ee !important; color: #fff; animation: none !important; box-shadow: inset 0 0 0 2px #ff6b7a !important; }

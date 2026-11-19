@@ -1912,5 +1912,6 @@ function ResultWaitExit({ onExit }: { onExit: () => void }) {
 /** 하루 마감 결산 팝업이 저절로 넘어가는 시간(초): 장 전 시간의 20% (v7+), 없으면 하루 시간의 8% — 3~8초 */
 function closeAutoSec(turnSeconds: number, version: number) {
   const base = version >= PREMARKET_VERSION ? preSeconds(turnSeconds) * 0.2 : turnSeconds * 0.08;
-  return Math.max(3, Math.min(8, Math.round(base)));
+  // 손익·지수·많이 오른·내린 종목을 읽을 시간 (5초 넘으면 '잠깐 더 보기'로 멈출 수 있음)
+  return Math.max(5, Math.min(8, Math.round(base)));
 }
