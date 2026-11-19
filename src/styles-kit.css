@@ -2017,3 +2017,44 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .code-input::placeholder { letter-spacing: 0; }
 /* 예상 게임 시간: 칸 안의 칸 대신 위 구분선 */
 .estimate { border: 0 !important; border-top: 1px solid var(--divider) !important; border-radius: 0 !important; background: transparent !important; padding-left: 0 !important; padding-right: 0 !important; }
+
+/* ===== 태블릿·가로 휴대폰 ===== */
+/* 가로 휴대폰(높이 500 이하): 주문 버튼을 아래에 붙이면 금액 줄을 가림 → 붙이지 않음 */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root:not([data-device="pc"]) .sheet-body .trade > .btn.xl { position: static; box-shadow: none; }
+  .m-game .pc-svg { max-height: calc(100dvh - 190px); }
+  .m-page.p-list:not(.split) { max-width: 600px; margin-left: auto; margin-right: auto; }
+}
+/* 태블릿: 키보드 단축키 안내는 쓸모없음, 주문 창은 가운데 폭 560, 로비 칸 조금 넓게 */
+:root[data-device="tablet"] .kbd-hint { display: none; }
+:root[data-device="tablet"] .m-game .sheet { max-width: 560px; margin: 0 auto; }
+:root[data-device="tablet"] .lobby-shell .hub { max-width: 760px; }
+
+/* ===== 결과 화면 2판: 가장 크게 = 내 수익률 하나, 바로 아래 시장·상대와 나란히 ===== */
+.result .banner h1 { font-size: 22px; }
+.result .banner .crown { transform: scale(0.75); margin-bottom: -6px; }
+.rs-hero { display: flex; flex-direction: column; gap: 4px; padding: 18px 18px 16px; }
+.rs-hero .rh-rank { color: var(--muted, #9a9a9a); font-size: 14px; font-weight: 700; }
+.rs-hero .rh-ret { font-size: 52px; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rs-hero .rh-won { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rs-hero .rh-won em { font-style: normal; }
+.rs-hero .rh-cmp { display: flex; gap: 8px; margin-top: 10px; }
+.rs-hero .rh-cmp > span { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); color: var(--text-2, #c8c8c8); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-hero .rh-cmp b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.rs-hero .rh-note { margin-top: 6px; color: var(--text-2, #c8c8c8); font-size: 14px; }
+/* PC 두 칸 (1180px 이상) — 오른쪽은 왼쪽을 읽는 동안에도 보이게 */
+.result.rs-wide { max-width: 1160px; }
+.rs-cols { display: flex; flex-direction: column; gap: 16px; }
+.rs-main, .rs-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 1180px) {
+  .rs-cols { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .rs-side { position: sticky; top: 16px; }
+  .rs-side .score-cards { grid-template-columns: 1fr !important; }
+  .rs-hero .rh-ret { font-size: 60px; }
+}
+/* 휴대폰 아래 버튼 줄: '홈으로'는 그대로 두고 한 줄에 나란히(주 버튼 넓게) — 고정 칸 높이를 줄임 */
+.result.slides .center-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; }
+.result.slides .center-actions > .rematch-note, .result.slides .center-actions > .error { grid-column: 1 / -1; }
+.result.slides .center-actions .again-btn { min-height: 52px; padding: 6px 14px; }
+.result.slides .center-actions .again-btn small { font-size: 11px; }
+.result.slides .center-actions > .btn:not(.again-btn) { min-height: 52px; padding: 0 18px; font-size: 15px; }
