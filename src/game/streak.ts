@@ -34,23 +34,3 @@ export function streakOf(days: string[], today: string): { streak: number; best:
   }
   return { streak, best, freezes, playedToday: set.has(today) };
 }
-
-/**
- * 친구와 함께 이어 온 날 (밤샘 조사 — 듀오링고 친구 연속 기록): 둘 다 오늘의 도전을 한 날이 며칠째 이어지는지.
- * 둘 다 오늘 했으면 오늘부터, 아니면 어제부터 거꾸로 셈 (오늘 아직이면 끊긴 게 아님). 얼리기는 없음.
- */
-export function togetherDays(mine: string[], theirs: string[], today: string): { days: number; today: boolean } {
-  const a = new Set(mine);
-  const b = new Set(theirs);
-  const both = (d: string) => a.has(d) && b.has(d);
-  const t = Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10));
-  const at = (k: number) => new Date(t - k * 86_400_000).toISOString().slice(0, 10);
-  const todayBoth = both(today);
-  let k = todayBoth ? 0 : 1;
-  let days = 0;
-  while (both(at(k))) {
-    days++;
-    k++;
-  }
-  return { days, today: todayBoth };
-}

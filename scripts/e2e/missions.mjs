@@ -118,7 +118,8 @@ const doneXp = all(after).filter((m) => m.done && !all(before).find((x) => x.id 
 // 판 경험치 (design/game-xp.md): 봇전 10~20, 하루 상한 600, 새 업적 +20 (처음엔 0)
 const tg = (await A({ action: 'missions', room: g1.roomId })).b;
 const gameGain = (tg.thisGame?.xp ?? 0) + (tg.thisGame?.firstWin ?? 0);
-ok('봇전 판 경험치 기록 (10~20, 상한이면 0)', !!tg.thisGame && tg.thisGame.firstWin === 0 && (tg.thisGame.xp === 0 ? tg.gameToday >= tg.gameCap - 20 : tg.thisGame.xp >= 10 && tg.thisGame.xp <= 20), JSON.stringify(tg.thisGame));
+// 봇전 판 경험치는 하루 첫 판만 (시험 계정은 하루에 여러 번 돌리므로 0 + 안내일 수 있음)
+ok('봇전 판 경험치 기록 (첫 판이면 10~20, 아니면 0 + 안내)', !!tg.thisGame && tg.thisGame.firstWin === 0 && (tg.thisGame.xp === 0 ? /하루 첫 판만/.test(tg.thisGame.detail) || tg.gameToday >= tg.gameCap - 20 : tg.thisGame.xp >= 10 && tg.thisGame.xp <= 20), JSON.stringify(tg.thisGame));
 const extra = after.xp - before.xp - doneXp - gameGain;
 ok('경험치 = 미션 + 판 (+ 새 업적 20씩)', extra >= 0 && extra % 20 === 0 && after.todayXp <= after.cap && tg.gameToday <= tg.gameCap, `xp ${before.xp}→${after.xp}, 미션 ${doneXp}, 판 ${gameGain}, 업적 ${extra}`);
 const other = (await A({ action: 'missions', room: '00000000-0000-0000-0000-000000000000' })).b;
@@ -136,6 +137,11 @@ const g2 = await playBotGame(A, false);
 const after3 = (await A({ action: 'missions' })).b;
 ok('거래 없이 끝낸 판은 판 경험치도 없음', (await A({ action: 'missions', room: g2.roomId })).b.thisGame === null && after3.xp === after2.xp, `${after2.xp}→${after3.xp}`);
 ok('거래 없이 끝낸 판은 미션에 안 셈', g2.s?.room?.status === 'finished' && JSON.stringify(all(after3).map((m) => m.progress)) === JSON.stringify(all(after2).map((m) => m.progress)), JSON.stringify(all(after3).map((m) => [m.id, m.progress])));
+
+// 5-2) 같은 날 두 번째로 거래해서 끝낸 봇전은 판 경험치 0 + '하루 첫 판만' 안내
+const g3 = await playBotGame(A);
+const t3 = (await A({ action: 'missions', room: g3.roomId })).b.thisGame;
+ok('같은 날 두 번째 봇전은 판 경험치 0 (하루 첫 판만)', g3.s?.room?.status === 'finished' && t3?.xp === 0 && /하루 첫 판만/.test(t3?.detail ?? ''), JSON.stringify(t3));
 
 // 6) 프로필에 경험치, 다른 사람 화면 데이터엔 없음
 const prof = (await A({ action: 'profile' })).b;

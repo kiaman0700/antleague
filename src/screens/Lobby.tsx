@@ -343,7 +343,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
   const setLevel = (i: number, lv: number) => setBots((b) => b.map((x, j) => (j === i ? lv : x)));
   return (
     <Modal title={<><Icon name="bot" size={18} /> 봇전</>} onClose={onClose}>
-      <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 랭킹 점수는 바뀌지 않고, 전적·업적·미션에는 남아요.</p>
+      <p className="muted small">기다리지 않고 봇과 바로 한 판 해요. 봇도 사람처럼 뉴스와 차트만 보고 움직여요(미래 가격은 몰라요). 랭킹 점수는 바뀌지 않고, 전적·업적·미션에는 남아요. 판 경험치는 하루 첫 판만 받아요.</p>
       <div className="field">
         <span>상대 봇 ({bots.length}명)</span>
         <ul className="bot-pick">

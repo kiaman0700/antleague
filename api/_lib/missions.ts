@@ -141,9 +141,19 @@ async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game
   let budget = GAME_XP_CAP - used;
   const parts = gameXp(game);
   if (parts.length) {
-    const want = parts.reduce((s, x) => s + x.xp, 0);
+    let want = parts.reduce((s, x) => s + x.xp, 0);
+    let label = parts.map((x) => `${x.label} ${x.xp}`).join(' · ');
+    // 봇전 판 경험치는 하루 첫 판만 (사용자 결정 2026-11-19 — 30초 번개 봇전 반복으로 리그 점수를 올리지 못하게).
+    // (계정, 'botday:날짜') 기본키라 두 판이 동시에 끝나도 한 판만 받음
+    if (game.kind === 'bot') {
+      const first = await sb.from('xp_log').insert({ user_id: uid, key: 'botday:' + day, xp: 0, detail: 'room:' + roomId });
+      if (first.error) {
+        want = 0;
+        label = '봇전 경험치는 하루 첫 판만 — 오늘은 이미 받았어요';
+      }
+    }
     const xp = capXp(want, budget);
-    if (await grant(sb, uid, 'game:' + roomId, xp, parts.map((x) => `${x.label} ${x.xp}`).join(' · '))) budget -= xp;
+    if (await grant(sb, uid, 'game:' + roomId, xp, label)) budget -= xp;
   }
   if (firstWinEligible(game) && budget > 0) await grant(sb, uid, 'firstwin:' + day, capXp(FIRST_WIN_XP, budget), 'room:' + roomId); // 어느 판에서 받았는지 (결과 화면 표시용)
   // 새로 딴 업적: 처음 보는 계정은 지금까지 딴 것을 0 으로 적어 두기만 (예전 업적으로 한꺼번에 받지 않게)

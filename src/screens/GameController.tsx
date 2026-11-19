@@ -1227,9 +1227,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             onMute={(on) => {
               saveReactMute(on);
               setReactMute(on);
-              if (on) setBubbles((b) => b.filter((x) => x.from === me));
+              if (on) setBubbles([]);
             }}
             onSend={(r) => {
+              if (reactMute) return; // 끈 동안은 보내기도 못 함
               sendReaction(r);
               pushBubble({ ...r, id: Date.now(), from: me, mine: true });
             }}

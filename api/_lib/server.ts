@@ -4,7 +4,7 @@
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
 import { leagueInfo } from './league.js';
-import { streakOf, togetherDays } from '../../src/game/streak.js';
+import { streakOf } from '../../src/game/streak.js';
 import { titleProblem } from '../../src/game/nickname.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -1094,34 +1094,20 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const hist = await sb.from('daily_runs').select('day').eq('user_id', uid).gte('day', since);
       const myDays = hist.error ? [] : ((hist.data ?? []) as { day: string }[]).map((r) => String(r.day).slice(0, 10));
       const streak = hist.error ? null : streakOf(myDays, day);
-      // 친구들 (회원끼리 수락한 친구만, 닉네임·수익률·끝냈는지·함께 이어 온 날만 — 계정 id 는 안 보냄)
-      // 오늘 한 친구 + 오늘 아직이지만 어제까지 나와 함께 이어 온 친구 (오늘도 하면 이어져요)
-      let friends: { nickname: string; ret: number | null; finished: boolean; played: boolean; together: number }[] = [];
+      // 친구들: 수락한 친구 중 오늘 한 사람만 (닉네임·수익률·끝냈는지 — 계정 id 는 안 보냄).
+      // '함께 n일'은 없앰 (사용자 2026-11-19: 오늘의 도전은 각자 하는 것)
+      let friends: { nickname: string; ret: number | null; finished: boolean }[] = [];
       const fr = await sb.from('friendships').select('user_a, user_b').eq('status', 'accepted').or(`user_a.eq.${uid},user_b.eq.${uid}`);
       if (!fr.error && fr.data?.length) {
         const fids = (fr.data as { user_a: string; user_b: string }[]).map((f) => (f.user_a === uid ? f.user_b : f.user_a)).slice(0, 100);
-        const since30 = new Date(Date.now() - 31 * 86_400_000).toISOString().slice(0, 10);
-        const fr2 = await sb.from('daily_runs').select('user_id, day, nickname, ret, finished').in('user_id', fids).gte('day', since30).order('day', { ascending: false }).limit(1000);
+        const fr2 = await sb.from('daily_runs').select('nickname, ret, finished').in('user_id', fids).eq('day', day).limit(100);
         if (!fr2.error) {
-          const byUser = new Map<string, { day: string; nickname: string; ret: number | null; finished: boolean }[]>();
-          for (const r of (fr2.data ?? []) as { user_id: string; day: string; nickname: string; ret: number | null; finished: boolean }[]) {
-            const list = byUser.get(r.user_id) ?? [];
-            list.push({ ...r, day: String(r.day).slice(0, 10) });
-            byUser.set(r.user_id, list);
-          }
-          for (const rows of byUser.values()) {
-            const todayRow = rows.find((r) => r.day === day);
-            const tg = togetherDays(myDays, rows.map((r) => r.day), day);
-            if (!todayRow && tg.days < 2) continue;
-            friends.push({
-              nickname: (todayRow ?? rows[0]).nickname,
-              ret: todayRow?.finished && typeof todayRow.ret === 'number' ? Math.round(todayRow.ret * 10000) / 10000 : null,
-              finished: !!todayRow?.finished,
-              played: !!todayRow,
-              together: tg.days,
-            });
-          }
-          friends.sort((x, y) => Number(y.played) - Number(x.played) || (y.ret ?? -9) - (x.ret ?? -9) || y.together - x.together);
+          friends = ((fr2.data ?? []) as { nickname: string; ret: number | null; finished: boolean }[]).map((r) => ({
+            nickname: r.nickname,
+            ret: r.finished && typeof r.ret === 'number' ? Math.round(r.ret * 10000) / 10000 : null,
+            finished: !!r.finished,
+          }));
+          friends.sort((x, y) => (y.ret ?? -9) - (x.ret ?? -9));
           friends = friends.slice(0, 30);
         }
       }
