@@ -2611,3 +2611,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .result.slides .center-actions .btn { width: auto; }
 .result.slides .center-actions .btn.primary { flex: 1 1 auto; min-width: 0; max-width: none; }
 .result.slides .center-actions .btn:not(.primary) { flex: 0 0 auto; }
+
+/* 태블릿: 공지 줄 글자 시작을 아래 메뉴 화면 내용(가운데 728px)과 같은 선에 (640px 이면 안쪽으로 40px 들어가 어긋났음) */
+:root[data-device="tablet"] .nt-bar { max-width: 760px; }
