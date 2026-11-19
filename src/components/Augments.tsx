@@ -18,8 +18,8 @@ export function AugBadge({ id, size = 18 }: { id: string; size?: number }) {
   const a = AUG_MAP[id];
   if (!a) return null;
   return (
-    <span className={`aug-badge t-${a.tier}`} style={{ width: size + 12, height: size + 12 }} aria-hidden>
-      <AugArt id={id} size={size} />
+    <span className="aug-badge" aria-hidden>
+      <AugArt id={id} size={size + 10} />
     </span>
   );
 }
@@ -75,15 +75,8 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             return (
               <div key={id} data-aug={id} className={'aug-opt' + (picked === id ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
                 <button className="aug-card" aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째. 누르면 바로 선택`} onClick={() => choose(id)} disabled={busy || !!picked}>
-                  <span className="aug-art" aria-hidden>
-                    <svg className="aug-art-line" viewBox="0 0 200 80" preserveAspectRatio="none">
-                      <path d="M0 62 L28 54 L52 60 L80 38 L104 46 L132 22 L160 30 L200 8" />
-                    </svg>
-                    <span className="aug-emblem">
-                      <span className="aug-emblem-in">
-                        <AugArt id={id} size={36} />
-                      </span>
-                    </span>
+                  <span className="aug-pic" aria-hidden>
+                    <AugArt id={id} size={72} />
                   </span>
                   <b className="aug-name">{a.name}</b>
                   {recommend === id && <span className="aug-rec">처음이라면 추천</span>}
@@ -197,10 +190,8 @@ export function AugSlots({ aug, size = 30 }: { aug: AugView; size?: number }) {
         const m = aug.mine.find((x) => x.n === n);
         const a = m ? AUG_MAP[m.id] : null;
         return a ? (
-          <span key={n} className={`aug-slot t-${a.tier}`} title={`${a.name} — ${a.desc}`}>
-            <span className="aug-slot-in">
-              <AugArt id={m!.id} size={Math.round(size * 0.5)} />
-            </span>
+          <span key={n} className="aug-slot" title={`${a.name} — ${a.desc}`}>
+            <AugArt id={m!.id} size={size} />
           </span>
         ) : (
           <span key={n} className="aug-slot empty" title={`${d + 1}일차에 골라요`}>
@@ -234,10 +225,8 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
           const got = sum(m.id);
           return (
             <li key={m.n} className={`aug-own t-${a.tier}`}>
-              <span className="aug-slot">
-                <span className="aug-slot-in">
-                  <AugArt id={m.id} size={18} />
-                </span>
+              <span className="aug-badge" aria-hidden>
+                <AugArt id={m.id} size={36} />
               </span>
               <span className="aug-body">
                 <b className="aug-name">

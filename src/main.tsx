@@ -19,9 +19,6 @@ import './styles-ui.css';
 import './styles-nav.css';
 import './styles-client.css';
 import './styles-kit.css';
-// 제목용 글꼴 (UI 2판에서만 씀 — 글자 묶음은 쓰일 때만 받음). 라이선스: SIL OFL 1.1
-import '@fontsource/black-han-sans/korean-400.css';
-import '@fontsource/black-han-sans/latin-400.css';
 import './styles-v2.css';
 import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';

@@ -1,32 +1,32 @@
-/** 증강마다 고유 아이콘 (같은 종류끼리도 한눈에 구분되게). 등급은 테두리 모양·색으로 */
-import {
-  Anchor, ArrowUpRight, Banknote, BadgePercent, BatteryCharging, BedDouble, Bitcoin, BookOpenCheck, Briefcase, CalendarCheck, CalendarDays, CandlestickChart,
-  Castle, Cherry, ChevronsUp, Cpu, Crosshair, Crown, Diamond, Dices, Droplets, Dumbbell, Ear, Earth, Eye, FileBarChart, Flame, FlaskConical, Footprints, Gem,
-  Gift, Glasses, Globe, GraduationCap, Hammer, HandCoins, Layers, LineChart, ListChecks, MessagesSquare, Newspaper, NotebookPen, Percent, PieChart, PiggyBank,
-  Rocket, ScanSearch, SearchCheck, Shield, ShieldCheck, ShieldPlus, Sprout, Swords, Target, Telescope, Ticket, Timer, TrendingUp, Trophy, Undo2, Users, Wallet, Zap,
-  type LucideIcon,
-} from 'lucide-react';
+/**
+ * 증강 그림: 정해 둔 토스식 '내용' 아이콘(ToonIcon — 여러 색 + 입체, 바탕 칸 없음)을 그대로 씀.
+ * 증강 종류마다 뜻이 가장 가까운 그림을 고름. 새 그림이 필요하면 ToonIcon 에 같은 방식으로 추가.
+ */
+import { ToonIcon, type ToonName } from './ToonIcon';
 
-const ART: Record<string, LucideIcon> = {
-  cash1: Banknote, cash2: Wallet, cash3: Gem,
-  save1: PiggyBank, save2: PiggyBank, save3: PiggyBank,
-  int1: Percent, int2: Percent, int3: Percent, king: Crown, compound: Sprout, payday: Briefcase,
-  cushion1: Shield, cushion2: ShieldPlus, insure: ShieldCheck, steel: Dumbbell,
-  hodl1: Anchor, hodl2: Anchor, div: Gift,
-  nofee: BadgePercent, orders: ListChecks, lev: Rocket, scalp: Zap, average: Droplets, spread: PieChart, allin: Flame, artisan: Hammer,
-  timing: Timer, undo: Undo2,
-  verdict1: Ear, verdict3: SearchCheck, verdict6: ScanSearch, memo: NotebookPen, guru: MessagesSquare,
-  scout1: LineChart, scout3: CandlestickChart, scout6: Telescope,
-  paper1: Newspaper, paper2: Glasses, analyst1: FileBarChart, analyst2: Users,
-  review: BookOpenCheck, calendar: CalendarDays,
-  loan: HandCoins, eye: Eye, lotto: Ticket, jackpot: Diamond, slot: Cherry, gambler: Dices, oneshot: Crosshair, principal: GraduationCap,
-  attend: CalendarCheck, sleepy: BedDouble,
-  climb: ChevronsUp, last1: Footprints, last2: ArrowUpRight, chaser: Target, army: Swords, comeback: Trophy,
-  semi1: Cpu, semi2: Cpu, battery1: BatteryCharging, battery2: BatteryCharging, bio1: FlaskConical, bio2: FlaskConical, crypto1: Bitcoin, crypto2: Bitcoin,
-  us1: Globe, us2: Globe, us3: Earth, etf1: Layers, rule: Castle,
+const ART: Record<string, ToonName> = {
+  // 돈
+  cash1: 'card_bonus', cash2: 'card_bonus', cash3: 'card_bonus', save1: 'card_bonus', save2: 'card_bonus', save3: 'card_bonus',
+  int1: 'rate', int2: 'rate', int3: 'rate', king: 'rate', compound: 'rate', payday: 'daily', div: 'rights',
+  // 버티기
+  cushion1: 'card_shield', cushion2: 'card_shield', insure: 'card_shield', steel: 'card_shield', hodl1: 'card_freeze', hodl2: 'card_freeze',
+  // 거래
+  nofee: 'card_fee', orders: 'create', lev: 'pump', scalp: 'quick', average: 'card_fee', spread: 'rooms', allin: 'flame', artisan: 'practice',
+  timing: 'quick', undo: 'card_mirror',
+  // 정보
+  verdict1: 'card_detector', verdict3: 'card_detector', verdict6: 'card_detector', memo: 'card_detector', guru: 'card_detector',
+  scout1: 'card_scout', scout3: 'card_scout', scout6: 'card_scout',
+  paper1: 'card_paper', paper2: 'card_paper', analyst1: 'card_analyst', analyst2: 'card_analyst', review: 'howto', calendar: 'daily',
+  // 재미
+  loan: 'short', eye: 'study', lotto: 'binary', jackpot: 'binary', slot: 'binary', gambler: 'binary', oneshot: 'pump', principal: 'tutorial',
+  attend: 'daily', sleepy: 'card_freeze',
+  // 따라잡기
+  climb: 'ranked', last1: 'ranked', last2: 'ranked', chaser: 'ranked', army: 'ranked', comeback: 'ranked',
+  // 업종
+  semi1: 'study', semi2: 'study', battery1: 'quick', battery2: 'quick', bio1: 'binary', bio2: 'binary', crypto1: 'pump', crypto2: 'pump',
+  us1: 'war', us2: 'war', us3: 'war', etf1: 'rooms', rule: 'rooms',
 };
 
 export function AugArt({ id, size }: { id: string; size: number }) {
-  const C = ART[id] ?? TrendingUp;
-  return <C size={size} strokeWidth={1.9} aria-hidden />;
+  return <ToonIcon name={ART[id] ?? 'card_bonus'} size={size} />;
 }
