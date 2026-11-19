@@ -147,7 +147,7 @@ function RefLine({ f, value, label }: { f: Frame; value: number; label: string }
   );
 }
 
-export function Sparkline({ values, up, width = 56, height = 20 }: { values: number[]; up: boolean; width?: number; height?: number }) {
+export function Sparkline({ values, up, flat = false, width = 56, height = 20 }: { values: number[]; up: boolean; flat?: boolean; width?: number; height?: number }) {
   if (values.length < 2) return <svg width={width} height={height} className="spark" aria-hidden />;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -156,7 +156,7 @@ export function Sparkline({ values, up, width = 56, height = 20 }: { values: num
     .join(' ');
   return (
     <svg width={width} height={height} className="spark" aria-hidden>
-      <path d={d} fill="none" stroke={up ? 'var(--up)' : 'var(--down)'} strokeWidth={1.5} strokeLinecap="round" />
+      <path d={d} fill="none" stroke={flat ? 'var(--muted, #9a9a9a)' : up ? 'var(--up)' : 'var(--down)'} strokeWidth={1.5} strokeLinecap="round" />
     </svg>
   );
 }
