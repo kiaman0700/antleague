@@ -167,6 +167,8 @@ function snsFace(seed: string) {
 export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen, daySec }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
+  // 지난 소문 진위 목록: 판이 길어질수록 첫날부터 모두 그려 소식 칸이 계속 무거워졌음 → 최근 6개만, 나머지는 펼쳐서
+  const [allRumorOld, setAllRumorOld] = useState(false);
   // 뉴스와 찌라시는 따로: 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
   const [modeRaw, setMode] = useState<'news' | 'rumor'>(only ?? 'news');
   const mode = only ?? modeRaw;
@@ -428,7 +430,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
         <>
           <h4 className="sec-title">지난 소문은 어떻게 됐을까</h4>
           <ul className="old-news">
-            {rumorOld.map((n, i) => (
+            {(allRumorOld ? rumorOld : rumorOld.slice(0, 6)).map((n, i) => (
               <li key={i} className={n.tone}>
                 <span className="d">{n.day + 1}일</span>
                 <span className="old-body">
@@ -440,6 +442,11 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
               </li>
             ))}
           </ul>
+          {rumorOld.length > 6 && (
+            <button type="button" className="linkish-soft old-more" onClick={() => setAllRumorOld((v) => !v)}>
+              {allRumorOld ? '접기 ▴' : `지난 소문 ${rumorOld.length - 6}개 더 보기 ▾`}
+            </button>
+          )}
         </>
       )}
       {showToday && (
