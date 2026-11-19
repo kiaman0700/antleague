@@ -686,12 +686,12 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
 
 function requirePlaying(d: GameData, meId: string, now: number) {
   const r = d.room;
-  if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('지금은 게임 중이 아니에요.', 409);
+  if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('게임이 진행 중일 때만 할 수 있어요.', 409);
   const me = d.players.find((p) => p.id === meId);
   if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
   if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
   if (me.ended_day >= r.day) throw new GameError('오늘은 이미 장 마감을 눌렀어요.', 409);
-  if (r.deadline !== null && now >= r.deadline) throw new GameError('오늘 시간이 다 됐어요.', 409);
+  if (r.deadline !== null && now >= r.deadline) throw new GameError('오늘 장이 끝났어요. 다음 날 다시 해 주세요.', 409);
   return me;
 }
 
@@ -724,8 +724,8 @@ export function validateTrade(d: GameData, meId: string, now: number, input: { s
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
   const price = livePrice(d, m, symbol, now); // 가격은 오직 서버가 정한다 — 요청을 받은 순간의 칸
   const pf = portfolioOf(d, meId);
-  if (side === 'buy' && buyCost(qty, price, fee) > pf.cash) throw new GameError('현금이 부족해요.');
-  if (side === 'sell' && (pf.holdings[symbol]?.qty ?? 0) < qty) throw new GameError('가진 수량이 부족해요.');
+  if (side === 'buy' && buyCost(qty, price, fee) > pf.cash) throw new GameError('현금이 모자라요. 수량을 줄여 보세요.');
+  if (side === 'sell' && (pf.holdings[symbol]?.qty ?? 0) < qty) throw new GameError('가진 주식보다 많이 팔 수 없어요. 수량을 줄여 보세요.');
   if (side === 'buy') {
     const cap = leveragedCap(d, m, pf, symbol, price, now);
     if (cap !== null && qty > cap) throw new GameError(`레버리지·인버스 ETF는 합쳐서 총재산의 ${Math.round(LEVERAGE_CAP * 100)}%까지만 살 수 있어요` + (cap > 0 ? ` (지금 최대 ${cap}주)` : ''));
@@ -919,7 +919,7 @@ export function restoreDeadline(d: GameData, now = Date.now()): number | null {
 /** 장 마감 취소 — 다음 날로 넘어가기 전이면 언제든. 시간이 이미 다 됐으면 불가 */
 export function validateCancelEnd(d: GameData, meId: string, now: number) {
   const r = d.room;
-  if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('지금은 게임 중이 아니에요.', 409);
+  if (r.status !== 'playing' || r.day >= r.total_days) throw new GameError('게임이 진행 중일 때만 할 수 있어요.', 409);
   const me = d.players.find((p) => p.id === meId);
   if (!me) throw new GameError('이 방의 플레이어가 아니에요.', 403);
   if (me.left_game) throw new GameError('기권한 게임이에요.', 409);
@@ -1035,8 +1035,8 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
   const open = livePrice(d, m, symbol, now, STOCK_MAP[symbol].currency === 'USD' ? 'usd' : 'krw');
   const isUS = STOCK_MAP[symbol].currency === 'USD';
   const lim = isUS ? Math.round(limit * 100) / 100 : Math.round(limit);
-  if (side === 'buy' && !(lim < open && lim >= open * 0.7)) throw new GameError('예약 사기 가격은 지금 가격보다 낮고, 30% 이내여야 해요.');
-  if (side === 'sell' && !(lim > open && lim <= open * 1.3)) throw new GameError('예약 팔기 가격은 지금 가격보다 높고, 30% 이내여야 해요.');
+  if (side === 'buy' && !(lim < open && lim >= open * 0.7)) throw new GameError('예약해서 살 가격은 지금 가격보다 낮게, 30% 안쪽으로 정해 주세요.');
+  if (side === 'sell' && !(lim > open && lim <= open * 1.3)) throw new GameError('예약해서 팔 가격은 지금 가격보다 높게, 30% 안쪽으로 정해 주세요.');
 
   const mine = d.orders.filter((o) => o.player_id === meId && o.day === d.room.day && o.status === 'open');
   if (mine.length >= MAX_OPEN_ORDERS) throw new GameError(`예약 주문은 하루 ${MAX_OPEN_ORDERS}개까지예요.`);
@@ -1045,7 +1045,7 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
   const krw = (o: { limit_price: number; symbol: string }) => (STOCK_MAP[o.symbol].currency === 'USD' ? Math.round(o.limit_price * fxRate) : o.limit_price);
   if (side === 'buy') {
     const reserved = mine.filter((o) => o.side === 'buy').reduce((a, o) => a + buyCost(o.qty, krw(o), o.fee), 0);
-    if (reserved + buyCost(qty, krw({ limit_price: lim, symbol }), fee) > pf.cash) throw new GameError('예약해 둔 주문까지 합치면 현금이 부족해요.');
+    if (reserved + buyCost(qty, krw({ limit_price: lim, symbol }), fee) > pf.cash) throw new GameError('예약해 둔 주문까지 합치면 현금이 모자라요.');
     // 레버리지 30% 제한은 예약 주문에도 (이미 걸어 둔 레버리지 예약까지 합쳐서) — 예약으로 제한을 피해 몰빵하지 못하게
     const cap = leveragedCap(d, m, pf, symbol, krw({ limit_price: lim, symbol }), now);
     if (cap !== null) {
@@ -1055,7 +1055,7 @@ export function validatePlaceOrder(d: GameData, meId: string, now: number, input
     }
   } else {
     const reserved = mine.filter((o) => o.side === 'sell' && o.symbol === symbol).reduce((a, o) => a + o.qty, 0);
-    if (reserved + qty > (pf.holdings[symbol]?.qty ?? 0)) throw new GameError('예약해 둔 주문까지 합치면 가진 수량이 부족해요.');
+    if (reserved + qty > (pf.holdings[symbol]?.qty ?? 0)) throw new GameError('예약해 둔 주문까지 합치면 가진 주식이 모자라요.');
   }
   return { player_id: meId, day: d.room.day, symbol, side, qty, limit_price: lim, fee, status: 'open' };
 }
@@ -1064,7 +1064,7 @@ export function validateCancelOrder(d: GameData, meId: string, now: number, inpu
   requirePlaying(d, meId, now);
   const o = d.orders.find((x) => x.id === input.orderId);
   if (!o || o.player_id !== meId) throw new GameError('주문을 찾을 수 없어요.', 404);
-  if (o.status !== 'open' || o.day !== d.room.day) throw new GameError('이미 처리된 주문이에요.', 409);
+  if (o.status !== 'open' || o.day !== d.room.day) throw new GameError('이미 끝난 주문이에요.', 409);
   return o.id!;
 }
 

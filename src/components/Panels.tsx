@@ -612,7 +612,7 @@ export function AssetsPanel({ ui, portfolio, prices, equity, onSelect, start = S
               <div>
                 <b>{STOCK_MAP[sym].name}</b>
                 <small>
-                  {num(h.qty)}주 · {easy ? '평균' : '평단'} {num(h.avgCost)}
+                  {num(h.qty)}주 · {easy ? '평균 산 가격' : '평단가'} {num(h.avgCost)}
                 </small>
               </div>
               <div className="r">

@@ -278,7 +278,7 @@ export function canBuy(p: PlayerItems, kind: ItemKind, cash: number, cost = ITEM
   if (!def || def.shopless) return '상점에서 살 수 없는 카드예요';
   if (p.total >= limit) return `카드는 최대 ${limit}장까지 가질 수 있어요`;
   if ((p.used[kind] ?? 0) + (p.inventory[kind] ?? 0) >= USE_LIMIT) return `이 카드는 한 판에 ${USE_LIMIT}번까지만 쓸 수 있어요`;
-  if (cash < cost) return '현금이 부족해요';
+  if (cash < cost) return '현금이 모자라요';
   return null;
 }
 

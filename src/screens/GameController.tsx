@@ -575,7 +575,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     run('placeOrder', { symbol, side, qty, limit }, () => {
       play('tap');
       setSheet(null);
-      showToast(`예약했어요. 장중에 그 가격이 되면 사고팔아요`);
+      showToast(`${STOCK_MAP[symbol].name} ${num(qty)}주 예약했어요. 그 가격이 되면 ${side === 'buy' ? '살게요' : '팔게요'}`);
     });
   const cancelOrder = (orderId: string) => run('cancelOrder', { orderId }, () => showToast('예약 주문을 취소했어요'));
 

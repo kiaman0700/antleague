@@ -57,9 +57,9 @@ describe('지정가 주문', () => {
   it('가격 범위·현금·보유 수량을 검증한다', () => {
     const d = game();
     const open = m.bars.NEOT[3].open;
-    expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'buy', qty: 1, limit: open + 100 }))).toMatch(/낮고/);
+    expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'buy', qty: 1, limit: open + 100 }))).toMatch(/낮게/);
     expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'buy', qty: 1, limit: open * 0.5 }))).toMatch(/30%/);
-    expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'sell', qty: 1, limit: open * 1.1 }))).toMatch(/수량/);
+    expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'sell', qty: 1, limit: open * 1.1 }))).toMatch(/가진 주식/);
     expect(err(() => validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'buy', qty: 9999, limit: open * 0.9 }))).toMatch(/현금/);
     const o = validatePlaceOrder(d, 'a', now, { symbol: 'NEOT', side: 'buy', qty: 1, limit: open * 0.95 });
     expect(o.status).toBe('open');
