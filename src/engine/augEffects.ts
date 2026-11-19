@@ -17,17 +17,17 @@ export interface AugIncome {
 
 /** 고르면 바로 받는 돈 */
 const NOW_CASH: Record<string, number> = {
-  cash1: 12_000, cash2: 30_000, cash3: 60_000, nofee: 10_000, orders: 10_000, lev: 10_000, review: 10_000, calendar: 10_000,
-  loan: 20_000, sleepy: 20_000, semi1: 10_000, battery1: 10_000, bio1: 10_000, crypto1: 10_000, us1: 10_000, etf1: 10_000, principal: 30_000,
+  cash1: 12_000, cash2: 30_000, cash3: 60_000, nofee: 5_000, orders: 10_000, lev: 10_000, review: 10_000, calendar: 10_000,
+  loan: 20_000, sleepy: 15_000, div: 10_000, semi1: 10_000, battery1: 10_000, bio1: 10_000, crypto1: 10_000, us1: 10_000, etf1: 10_000, principal: 45_000,
 };
 /** 며칠 뒤에 받는 돈 [며칠 뒤, 금액] */
-const LATER_CASH: Record<string, [number, number]> = { save1: [3, 15_000], save2: [3, 38_000], save3: [4, 75_000] };
+const LATER_CASH: Record<string, [number, number]> = { save1: [3, 15_000], save2: [3, 33_000], save3: [4, 68_000] };
 /** 판당 최대로 받는 돈 */
 export const AUG_CAP: Record<string, number> = {
   int1: 15_000, int2: 35_000, int3: 60_000, king: 40_000, cushion1: 15_000, cushion2: 30_000, insure: 70_000, hodl1: 15_000, hodl2: 35_000,
-  div: 20_000, attend: 15_000, climb: 15_000, last1: 15_000, last2: 30_000, army: 60_000, chaser: 30_000, payday: 30_000, spread: 30_000, steel: 30_000,
+  div: 20_000, attend: 15_000, climb: 20_000, last1: 15_000, last2: 30_000, army: 60_000, chaser: 35_000, payday: 30_000, spread: 30_000, steel: 30_000,
   semi2: 30_000, battery2: 30_000, bio2: 30_000, crypto2: 30_000, us2: 30_000, us3: 60_000, rule: 60_000, allin: 35_000, artisan: 60_000, scalp: 30_000,
-  average: 30_000, compound: 70_000, timing: 70_000, slot: 40_000, gambler: 120_000,
+  average: 30_000, compound: 60_000, timing: 70_000, slot: 40_000, gambler: 120_000,
 };
 /** 공개 확률표 [금액, 확률] — 화면 설명에도 그대로 보여 줌 */
 export const AUG_TABLES: Record<string, [number, number][]> = {
@@ -42,7 +42,7 @@ export const AUG_INFO: Record<string, { kind: 'detector' | 'scout' | 'paper' | '
   scout1: { kind: 'scout', n: 1, acc: 0.7 }, scout3: { kind: 'scout', n: 3, acc: 0.75 }, scout6: { kind: 'scout', n: 6, acc: 0.8 },
   paper1: { kind: 'paper', n: 1 }, paper2: { kind: 'paper', n: 2 }, analyst1: { kind: 'analyst', n: 1 }, analyst2: { kind: 'analyst', n: 2 },
 };
-const SECTOR_RATE: Record<string, [string, number]> = { semi2: ['semi', 0.05], battery2: ['battery', 0.05], bio2: ['bio', 0.05], crypto2: ['crypto', 0.05], us2: ['us', 0.05], us3: ['us', 0.08] };
+const SECTOR_RATE: Record<string, [string, number]> = { semi2: ['semi', 0.15], battery2: ['battery', 0.15], bio2: ['bio', 0.15], crypto2: ['crypto', 0.15], us2: ['us', 0.15], us3: ['us', 0.2] };
 
 function draw(table: [number, number][], u: number) {
   let x = u;
@@ -168,30 +168,34 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
       for (const { id: a, day: a0 } of mine) {
         switch (a) {
           case 'int1': case 'int2': case 'int3':
-            if (todays.length) add(pid, nextDay, a, Math.max(0, p.cash) * (a === 'int1' ? 0.0012 : 0.003));
+            if (todays.length) add(pid, nextDay, a, Math.max(0, p.cash) * (a === 'int1' ? 0.0018 : a === 'int2' ? 0.0045 : 0.005));
             break;
           case 'king':
             add(pid, nextDay, a, Math.max(0, p.cash) * 0.004);
             break;
           case 'cushion1': case 'cushion2': case 'insure': {
-            const over = -pnl - 0.03 * baseEq;
-            if (over > 0) add(pid, nextDay, a, over * (a === 'cushion1' ? 0.3 : a === 'cushion2' ? 0.5 : 1));
+            const over = -pnl - (a === 'insure' ? 0.02 : 0.03) * baseEq;
+            if (over > 0) add(pid, nextDay, a, over * (a === 'cushion1' ? 0.6 : a === 'cushion2' ? 0.5 : 1));
             break;
           }
           case 'compound':
-            add(pid, nextDay, a, eq * 0.001);
+            add(pid, nextDay, a, eq * 0.006);
             break;
           case 'attend':
             if (todays.length) add(pid, nextDay, a, 2_000);
             break;
           case 'climb':
-            if (multi && t > a0 && ranks[pid][t] < ranks[pid][t - 1]) add(pid, nextDay, a, 5_000);
+            if (multi && t > a0 && ranks[pid][t] < ranks[pid][t - 1]) add(pid, nextDay, a, 15_000);
             break;
-          case 'last1': case 'last2': case 'army':
-            if (multi && ranks[pid][t] === worst && worst > 1) add(pid, nextDay, a, a === 'last1' ? 3_000 : a === 'last2' ? 8_000 : 15_000);
+          case 'last1': case 'last2':
+            if (multi && ranks[pid][t] === worst && worst > 1) add(pid, nextDay, a, a === 'last1' ? 10_000 : 25_000);
+            break;
+          case 'army':
+            // 꼴찌이거나 1위와 10% 넘게 차이 나는 날 — 꼴찌 하나만 보면 판마다 너무 들쭉날쭉
+            if (multi && ((ranks[pid][t] === worst && worst > 1) || (top > 0 && (top - eq) / top > 0.1))) add(pid, nextDay, a, 15_000);
             break;
           case 'chaser':
-            if (multi && top > 0 && (top - eq) / top > 0.1) add(pid, nextDay, a, 10_000);
+            if (multi && top > 0 && (top - eq) / top > 0.1) add(pid, nextDay, a, 20_000);
             break;
           case 'semi2': case 'battery2': case 'bio2': case 'crypto2': case 'us2': case 'us3': {
             const [k, rate] = SECTOR_RATE[a];
@@ -202,27 +206,27 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
           case 'rule': {
             const sec = ruleSector(d, m, pid, a0);
             const g = sec ? heldGain((s) => STOCK_MAP[s]?.sector === sec) : 0;
-            if (g > 0) add(pid, nextDay, a, g * 0.08);
+            if (g > 0) add(pid, nextDay, a, g * 0.2);
             break;
           }
           case 'spread': {
-            const secs = new Set(Object.entries(p.holdings).filter(([s, h]) => h.qty * (close[s] ?? 0) >= eq * 0.05).map(([s]) => STOCK_MAP[s]?.sector));
-            if (secs.size >= 3) add(pid, nextDay, a, 5_000);
+            const secs = new Set(Object.entries(p.holdings).filter(([s, h]) => h.qty * (close[s] ?? 0) >= eq * 0.03).map(([s]) => STOCK_MAP[s]?.sector));
+            if (secs.size >= 3) add(pid, nextDay, a, 10_000);
             break;
           }
           case 'steel':
-            if (pnl < -0.05 * baseEq) add(pid, nextDay, a, 10_000);
+            if (pnl < -0.03 * baseEq) add(pid, nextDay, a, 10_000);
             break;
           case 'allin': {
             const big = Object.entries(p.holdings).sort((x, y) => y[1].qty * (close[y[0]] ?? 0) - x[1].qty * (close[x[0]] ?? 0))[0];
             if (big && big[1].qty * (close[big[0]] ?? 0) > eq * 0.7) {
               const g = heldGain((s) => s === big[0]);
-              if (g > 0) add(pid, nextDay, a, g * 0.05);
+              if (g > 0) add(pid, nextDay, a, g * 0.15);
             }
             break;
           }
           case 'artisan':
-            if (todays.length >= 1 && todays.length <= 3 && pnl > 0) add(pid, nextDay, a, pnl * 0.1);
+            if (todays.length >= 1 && todays.length <= 3 && pnl > 0) add(pid, nextDay, a, pnl * 0.25);
             break;
           case 'scalp': {
             // 같은 날 사서 같은 날 판 만큼의 이익
@@ -241,7 +245,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
                 b.cost -= q * avg;
               }
             }
-            if (gain > 0) add(pid, nextDay, a, gain * 0.1);
+            if (gain > 0) add(pid, nextDay, a, gain * 0.2);
             break;
           }
           case 'div': {
@@ -260,22 +264,26 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
       // 마지막 날 마감
       if (t === total - 1) {
         for (const { id: a } of mine) {
-          if (a === 'comeback' && multi && ranks[pid][t] === worst && worst > 1) add(pid, total, a, 60_000);
-          if (a === 'oneshot') add(pid, total, a, eq / start - 1 > 0.1 ? 100_000 : -20_000);
+          if (a === 'comeback' && multi && ranks[pid][t] === worst && worst > 1) add(pid, total, a, 100_000);
+          if (a === 'oneshot') add(pid, total, a, eq / start - 1 > 0.05 ? 100_000 : -20_000);
+          // 존버·물타기는 마지막 날 전날 마감 기준 — 마지막 날 다 팔아도 그동안 들고 버틴 몫은 받음
+          const tb = Math.max(0, t - 1);
+          const pb = pf[pid][tb];
+          const cb = pricesAt(m, tb, true);
           if (a === 'hodl1' || a === 'hodl2') {
             let g = 0;
-            for (const [sym, h] of Object.entries(p.holdings)) {
+            for (const [sym, h] of Object.entries(pb.holdings)) {
               let q = h.qty;
-              for (let k = Math.max(0, t - 3); k < t; k++) q = Math.min(q, pf[pid][k]?.holdings[sym]?.qty ?? 0);
-              if (t < 3) q = 0;
-              g += q * ((close[sym] ?? 0) - h.avgCost);
+              for (let k = Math.max(0, tb - 3); k < tb; k++) q = Math.min(q, pf[pid][k]?.holdings[sym]?.qty ?? 0);
+              if (tb < 3) q = 0;
+              g += q * ((cb[sym] ?? 0) - h.avgCost);
             }
-            if (g > 0) add(pid, total, a, g * (a === 'hodl1' ? 0.3 : 0.7));
+            if (g > 0) add(pid, total, a, g * (a === 'hodl1' ? 0.6 : 0.7));
           }
           if (a === 'average') {
             let loss = 0;
-            for (const [sym, h] of Object.entries(p.holdings)) loss += Math.max(0, h.qty * (h.avgCost - (close[sym] ?? 0)));
-            if (loss > 0) add(pid, total, a, loss * 0.2);
+            for (const [sym, h] of Object.entries(pb.holdings)) loss += Math.max(0, h.qty * (h.avgCost - (cb[sym] ?? 0)));
+            if (loss > 0) add(pid, total, a, loss * 0.5);
           }
         }
       }

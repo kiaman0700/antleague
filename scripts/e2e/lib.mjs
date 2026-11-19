@@ -42,6 +42,12 @@ export async function apiPost(body, tok) {
     await go({ action: 'takeOver' });
     res = await go(body);
   }
+  // (규칙 v27) 고르는 날엔 증강을 먼저 — 회원 시험도 첫 보기를 고르고 다시 마감
+  if (body?.action === 'endTurn' && res.s === 409 && /증강을 먼저/.test(res.b?.error ?? '')) {
+    const st = (await go({ action: 'state', roomId: body.roomId })).b;
+    if (st?.aug?.offer) await go({ action: 'pickAug', roomId: body.roomId, aug: st.aug.offer.ids[0] });
+    res = await go(body);
+  }
   return res;
 }
 
