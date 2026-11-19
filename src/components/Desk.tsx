@@ -107,7 +107,8 @@ export function Timeline({ market, day, onSelect }: { market: Market; day: numbe
               title={evs.map((e) => e.title).join(', ') || `${d + 1}일차`}
             >
               <small>{d + 1}</small>
-              <span aria-hidden={kinds.length ? undefined : true}>{kinds.length ? kinds.slice(0, 2).map((k) => <Icon key={k} name={EV_ICON[k]} size={12} className={'ev ev-' + k} />) : '·'}</span>
+              <span aria-hidden={kinds.length ? undefined : true}>{/* 칸이 좁아 아이콘 두 개면 옆 칸까지 넘침 → 첫 일정 아이콘 + 나머지 수 (누르면 아래 줄에 모두) */}
+                {kinds.length ? <><Icon name={EV_ICON[kinds[0]]} size={12} className={'ev ev-' + kinds[0]} />{kinds.length > 1 && <i className="tl-plus">+{kinds.length - 1}</i>}</> : '·'}</span>
             </button>
           );
         })}
