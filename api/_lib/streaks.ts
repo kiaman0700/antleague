@@ -14,10 +14,19 @@ export function countsForStreak(kind: string | null | undefined, leftGame: boole
   return STREAK_KINDS.has(kind ?? '') && !leftGame && trades > 0;
 }
 
-export async function recordPlayDay(sb: SupabaseClient, uid: string, roomId: string, now = Date.now()) {
-  const r = await sb.from('play_days').insert({ user_id: uid, day: kst(now), room_id: roomId });
-  // 같은 날 두 번째 판(기본키 충돌)·061 적용 전이면 조용히 넘어감
-  if (r.error && !/duplicate|unique|play_days/i.test(r.error.message)) console.error('[api] play day', r.error.message);
+/**
+ * 한 날로 적기. 자정을 넘겨 끝난 판은 시작한 날(startedAt)에 먼저 적고, 그날이 이미 적혀 있으면 끝난 날에 —
+ * 밤 11시 50분에 시작해 0시 5분에 끝낸 판 때문에 매일 했는데도 연속이 끊기지 않게
+ */
+export async function recordPlayDay(sb: SupabaseClient, uid: string, roomId: string, now = Date.now(), startedAt?: number) {
+  const days = [...new Set([startedAt && startedAt < now ? kst(startedAt) : null, kst(now)].filter((x): x is string => !!x))];
+  for (const day of days) {
+    const r = await sb.from('play_days').insert({ user_id: uid, day, room_id: roomId });
+    if (!r.error) return;
+    // 같은 날 두 번째 판(기본키 충돌)이면 다음 날짜로, 061 적용 전이면 조용히 넘어감
+    if (!/duplicate|unique|play_days/i.test(r.error.message)) console.error('[api] play day', r.error.message);
+    if (!/duplicate|unique/i.test(r.error.message)) return;
+  }
 }
 
 /** 내 연속 기록 (최근 400일만 봄) — 숫자만 돌려줌 */

@@ -487,8 +487,10 @@ function dailyTheme(day: string) {
   return themeForDay(day, (block) => createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('daily-theme:' + block).digest('hex'));
 }
 /** 오늘의 도전 점수 기록 (한 번만 — 아직 안 끝난 기록만 바꿈) */
-async function recordDaily(roomId: string, ret: number) {
-  const res = await db().from('daily_runs').update({ ret, finished: true, finished_at: new Date().toISOString() }).eq('room_id', roomId).eq('finished', false);
+async function recordDaily(roomId: string, ret: number, trades?: number) {
+  let res = await db().from('daily_runs').update({ ret, finished: true, finished_at: new Date().toISOString(), ...(trades === undefined ? {} : { trades }) }).eq('room_id', roomId).eq('finished', false);
+  // 068 전이면 거래 횟수 칸 없이
+  if (res.error && /trades/.test(res.error.message)) res = await db().from('daily_runs').update({ ret, finished: true, finished_at: new Date().toISOString() }).eq('room_id', roomId).eq('finished', false);
   if (res.error && !/daily_runs/.test(res.error.message)) console.error('[api] daily', res.error.message);
 }
 
@@ -605,18 +607,23 @@ async function moveBots(d0: GameData, now = Date.now()): Promise<boolean> {
   return changed;
 }
 
-async function maybeAdvance(d: GameData): Promise<boolean> {
-  const next = nextRoomState(d, Date.now());
-  if (!next) return false;
-  const advanced = (await updatePlayingRoom(d.room.id, d.room.day, { day: next.day, status: next.status, turn_deadline: iso(next.deadline), day_deadline: iso(next.day_deadline) }, 'advance')) > 0;
-  if (!advanced) return false;
-  // 오늘 남은 예약 주문 처리: 끝까지 안 닿은 건 만료
-  await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, 0).n, true));
-  if (next.status === 'finished') {
-    const fresh = await loadGame(d.room.id);
+/** 끝난 판의 뒤처리를 이 서버 인스턴스에서 이미 한 방 (다시 하지 않게) */
+const recordedRooms = new Set<string>();
+
+/**
+ * 끝난 판 뒤처리: 전적·판 기록·랭킹 점수·미션(경험치·연속 기록). 모두 '한 번만' 들어가게 되어 있어 다시 불러도 안전.
+ * 판을 끝낸 요청이 중간에 끊겨도, 다음에 그 방 상태를 물을 때 한 번 더 불러 빠진 것을 채움
+ */
+async function finishRecords(roomId: string) {
+  if (recordedRooms.has(roomId)) return;
+  recordedRooms.add(roomId);
+  if (recordedRooms.size > 2000) recordedRooms.delete(recordedRooms.values().next().value!);
+  try {
+    const fresh = await loadGame(roomId);
+    if (fresh.room.status !== 'finished') return;
     const fin = finalResults(fresh);
-    await db().from('match_history').upsert({ room_id: d.room.id, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
-    if (d.room.kind === 'daily' && fin.results[0]) await recordDaily(d.room.id, fin.results[0].ret);
+    await db().from('match_history').upsert({ room_id: roomId, results: fin.results, winner_nickname: fin.winner }, { onConflict: 'room_id', ignoreDuplicates: true });
+    if (fresh.room.kind === 'daily' && fin.results[0]) await recordDaily(roomId, fin.results[0].ret, fresh.trades.length);
     // 밸런스용 판 기록 (계정 id 없이, 시험 판 표시, 그 판 시작 때의 실력) — 점수 반영 전에. 실패해도 진행에 영향 없음
     try {
       await recordGameStats(db(), fresh, fin);
@@ -624,7 +631,7 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
       console.error('[api] stats', e instanceof Error ? e.message : e);
     }
     try {
-      await recordMatch(db(), d.room.id, fin.results, !!d.room.ranked);
+      await recordMatch(db(), roomId, fin.results, !!fresh.room.ranked);
     } catch (e) {
       console.error('[api] rank', e instanceof Error ? e.message : e);
     }
@@ -634,7 +641,21 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
     } catch (e) {
       console.error('[api] missions', e instanceof Error ? e.message : e);
     }
+  } catch (e) {
+    // 다음 요청이 다시 해 볼 수 있게
+    recordedRooms.delete(roomId);
+    console.error('[api] finish', e instanceof Error ? e.message : e);
   }
+}
+
+async function maybeAdvance(d: GameData): Promise<boolean> {
+  const next = nextRoomState(d, Date.now());
+  if (!next) return false;
+  const advanced = (await updatePlayingRoom(d.room.id, d.room.day, { day: next.day, status: next.status, turn_deadline: iso(next.deadline), day_deadline: iso(next.day_deadline) }, 'advance')) > 0;
+  if (!advanced) return false;
+  // 오늘 남은 예약 주문 처리: 끝까지 안 닿은 건 만료
+  await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, 0).n, true));
+  if (next.status === 'finished') await finishRecords(d.room.id);
   return true;
 }
 
@@ -844,6 +865,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await fillOrdersNow(d)) d = await loadGame(roomId);
       if (await moveBots(d)) d = await loadGame(roomId);
       if (await maybeAdvance(d)) d = await loadGame(roomId);
+      // 판을 끝낸 요청이 뒤처리 중에 끊겼을 수 있음 → 끝난 방이면 빠진 기록을 한 번 채움 (이미 했으면 아무 일 없음)
+      if (d.room.status === 'finished') await finishRecords(roomId);
       // 화면이 이미 가진 장중 칸 수 (숫자만 받음)
       const lf = typeof b.liveDay === 'number' && typeof b.liveFrom === 'number' ? { day: Math.floor(b.liveDay), from: Math.floor(b.liveFrom) } : undefined;
       const pk = typeof b.postsKey === 'string' && b.postsKey.length <= 40 ? b.postsKey : undefined;
@@ -1204,7 +1227,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const mine = await sb.from('daily_runs').select('room_id, ret, finished, member').eq('day', day).eq('user_id', uid).maybeSingle();
       if (mine.error && /daily_runs/.test(mine.error.message)) return { day, ready: false };
       const my = must(mine, 'daily mine') as { room_id: string | null; ret: number | null; finished: boolean; member: boolean } | null;
-      const rows = must(await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).order('ret', { ascending: false }).limit(200), 'daily board') as { user_id: string; nickname: string; ret: number }[];
+      // 거래를 한 번도 안 한 기록은 점수표에서 뺌 (예전 줄은 거래 횟수가 비어 있어 그대로 보임)
+      const boardQ = await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).or('trades.is.null,trades.gt.0').order('ret', { ascending: false }).order('finished_at', { ascending: true }).limit(200);
+      const rows = must(boardQ.error && /trades/.test(boardQ.error.message) ? await sb.from('daily_runs').select('user_id, nickname, ret').eq('day', day).eq('finished', true).eq('member', true).order('ret', { ascending: false }).limit(200) : boardQ, 'daily board') as { user_id: string; nickname: string; ret: number }[];
       const ids = rows.map((r) => r.user_id);
       const tests = new Set<string>();
       if (ids.length) {
@@ -1260,7 +1285,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         member: !!my?.member,
         resume,
         // 점수표는 200명까지만 읽으므로 전체 인원은 따로 셈 ('200명 중 150위'처럼 틀리게 나오지 않게)
-        total: Math.max(board.length, myRank ?? 0, (await sb.from('daily_runs').select('user_id', { count: 'exact', head: true }).eq('day', day).eq('finished', true).eq('member', true)).count ?? 0),
+        total: Math.max(board.length, myRank ?? 0, (await sb.from('daily_runs').select('user_id', { count: 'exact', head: true }).eq('day', day).eq('finished', true).eq('member', true).or('trades.is.null,trades.gt.0')).count ?? 0),
         top,
         friends,
       };
@@ -2073,7 +2098,7 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
     if (res.error && /left_day/.test(res.error.message)) res = await sb.from('players').update({ left_game: true, ended_day: patch.ended_day, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');
-    if (dailyRet !== null) await recordDaily(roomId, dailyRet);
+    if (dailyRet !== null) await recordDaily(roomId, dailyRet, d.trades.length);
     let fresh = await loadGame(roomId);
     if (await moveBots(fresh)) fresh = await loadGame(roomId);
     if (!(await maybeAdvance(fresh))) {

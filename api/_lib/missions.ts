@@ -195,7 +195,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
   for (const p of humans) {
     const uid = p.user_id;
     // 연속 기록은 손님도 (랭킹전·일반전·오늘의 도전을 끝까지 + 거래 1번 이상)
-    if (countsForStreak(d.room.kind, !!p.left_game, d.trades.filter((t) => t.player_id === p.id).length)) await recordPlayDay(sb, uid, d.room.id, now);
+    if (countsForStreak(d.room.kind, !!p.left_game, d.trades.filter((t) => t.player_id === p.id).length)) await recordPlayDay(sb, uid, d.room.id, now, Date.parse(p.created_at) || undefined);
     if (!members.has(uid) || p.left_game) continue;
     // 같은 판은 한 번만 (기본키) — 먼저 넣은 요청만 진행
     const claim = await sb.from('mission_rooms').insert({ user_id: uid, room_id: d.room.id });
