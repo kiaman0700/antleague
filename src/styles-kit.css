@@ -2058,3 +2058,8 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .result.slides .center-actions .again-btn { min-height: 52px; padding: 6px 14px; }
 .result.slides .center-actions .again-btn small { font-size: 11px; }
 .result.slides .center-actions > .btn:not(.again-btn) { min-height: 52px; padding: 0 18px; font-size: 15px; }
+/* 배너는 수익률 아래 한 줄 안내 정도로 작게 (가장 큰 건 수익률) */
+.result .banner { padding: 14px 16px !important; }
+.result .banner .crown { display: none; }
+.result .banner h1 { font-size: 18px; margin: 0 0 2px; }
+.result .banner p { font-size: 14px; margin: 2px 0 0; }

@@ -227,6 +227,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const preset = Object.values(SPEED_PRESET).find((x) => x.days === days && x.turnSeconds === sec);
   const speedText = preset ? `${preset.label} · ${preset.minutes}` : setText;
   const me = results.find((r) => r.id === session.playerId)!;
+  const myRank0 = rankOf(session.playerId);
   // 혼자 한 판: 한 번도 거래 안 했으면 시장이 내려도 '잘했어요'라고 하지 않음
   const soloWin = me.trades > 0 && me.ret > indexRet;
   const iWon = winner?.id === session.playerId;
@@ -251,9 +252,6 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
           <>
             <div className="crown"><Icon name={soloWin ? 'trophy' : 'activity'} size={40} /></div>
             <h1>{matchKind === 'daily' ? '오늘의 도전 끝!' : '연습 끝!'}</h1>
-            <p>
-              내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
-            </p>
             <p>{me.trades === 0 ? '한 번도 사고팔지 않았어요. 다음엔 종목을 사 보세요!' : soloWin ? '시장보다 잘했어요!' : '이번엔 시장보다 조금 아쉬웠어요'}</p>
           </>
         ) : results.length < 2 ? (
@@ -298,6 +296,34 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
         )}
       </div>
     </>;
+  // 가장 크게: 내 수익률 하나 + 시장·상대와 나란히 비교 (결과 화면 사례 공통)
+  const rival = solo ? null : ranked.find((r) => r.id !== session.playerId && (myRank0 === 0 || rankOf(r.id) === 0)) ?? null;
+  const gain = me.equity - me.equity / (1 + me.ret);
+  const vsMarket = (me.ret - indexRet) * 100;
+  const heroEl = (
+    <div className="panel rs-hero">
+      <span className="rh-rank">{solo ? (matchKind === 'daily' ? '오늘의 도전' : '연습') + ' · 내 수익률' : `${myRank0 + 1}위 · ${results.length}명 중`}</span>
+      <b className={'rh-ret ' + tone(me.ret)}>{pct(me.ret)}</b>
+      <span className="rh-won">
+        {won(me.equity)} <em className={tone(gain)}>({gain >= 0 ? '+' : '−'}{wonShort(Math.abs(gain))})</em>
+      </span>
+      <div className="rh-cmp">
+        <span>
+          종합지수 <b className={tone(indexRet)}>{pct(indexRet)}</b>
+        </span>
+        {rival && (
+          <span>
+            {rankOf(rival.id) === 0 ? '1위 ' : ''}
+            {rival.nickname} <b className={tone(rival.ret)}>{pct(rival.ret)}</b>
+          </span>
+        )}
+      </div>
+      {/* 한 번도 안 샀으면 시장이 내려 '앞섰다'고 해도 잘한 게 아님 */}
+      {me.trades > 0 && <small className="rh-note">
+        시장보다 <b className={tone(vsMarket)}>{vsMarket >= 0 ? '+' : ''}{vsMarket.toFixed(1)}%p</b> {vsMarket >= 0 ? '앞섰어요' : '뒤졌어요'}
+      </small>}
+    </div>
+  );
   const cardsEl = <>
       <div className="score-cards">
         {ranked.map((r) => {
@@ -427,8 +453,6 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     </div>
   );
   const highlightsEl = <>
-      {momentsEl}
-      {lessonsEl}
       {highlights.length > 0 && (
       <div className="panel pad">
         <h3>하이라이트</h3>
@@ -629,21 +653,31 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     </>;
   const myRank = rankOf(session.playerId);
 
+  // PC: 넓으면 두 칸 — 왼쪽 '무슨 일이 있었나', 오른쪽 '무엇을 얻었나' (좁으면 CSS 가 한 줄로 쌓음)
   if (wide)
     return (
-      <div className="result">
+      <div className="result rs-wide">
         {bannerEl}
-        {cardsEl}
-        {badgesEl}
-        {highlightsEl}
-        {replayEl}
-        {chartEl}
-        {marketEl}
-        {ratingEl}
-        {session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}
-        {dailyEl}
-        {restEl}
-        {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
+        <div className="rs-cols">
+          <div className="rs-main">
+            {heroEl}
+            {momentsEl}
+            {chartEl}
+            {lessonsEl}
+            {highlightsEl}
+            {replayEl}
+            {marketEl}
+          </div>
+          <aside className="rs-side">
+            {!solo && cardsEl}
+            {ratingEl}
+            {badgesEl}
+            {session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}
+            {dailyEl}
+            {restEl}
+            {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
+          </aside>
+        </div>
         {actionsEl}
       </div>
     );
@@ -652,10 +686,12 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     <div className="result slides">
       <ResultSlides
         slides={[
-          { key: 'sum', label: '요약', body: <>{bannerEl}{ratingEl}{cardsEl}</> },
-          { key: 'review', label: '복기', body: <>{highlightsEl}{replayEl}{marketEl}</> },
-          // 오늘의 도전은 점수표(순위·연속 기록)가 '순위' 칸에
-          { key: 'rank', label: '순위', body: <>{dailyEl}{chartEl}</> },
+          { key: 'sum', label: '요약', body: <>{heroEl}{bannerEl}{ratingEl}{momentsEl}</> },
+          { key: 'review', label: '복기', body: <>{lessonsEl}{highlightsEl}{replayEl}</> },
+          // 혼자 한 판은 순위 대신 '시장'(나 대 종합지수), 오늘의 도전은 점수표(순위·연속 기록)
+          solo && matchKind !== 'daily'
+            ? { key: 'rank', label: '시장', body: <>{chartEl}{marketEl}</> }
+            : { key: 'rank', label: '순위', body: <>{dailyEl}{!solo && cardsEl}{chartEl}{marketEl}</> },
           { key: 'reward', label: '보상', body: <>{badgesEl}{session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}{restEl}</> },
           {
             key: 'share',
