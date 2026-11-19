@@ -2625,3 +2625,14 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 가진 주식 줄: 손익 글자에 오름·내림 색이 붙어 있는데 '.hold small' 회색이 덮어 늘 회색이었음 */
 .hold .r small.up { color: var(--up); }
 .hold .r small.down { color: var(--down); }
+
+/* PC 크게 보기 차트: 그림이 1.6배쯤 커져 눈금·'지금' 글자가 20px 넘게 커지고 위 버튼(12px)보다 훨씬 컸음
+   → 그림 속 글자는 줄인 만큼 맞추고(보이는 크기 13~15px), 위 버튼은 조금 키움 */
+@media (min-width: 961px) {
+  .chart-full .pc-svg .axis { font-size: 9px; }
+  .chart-full .pc-svg .ref-label { font-size: 9px; }
+  .chart-full .pc-svg .now-tag text, .chart-full .pc-svg .cross-tag text, .chart-full .pc-svg .drawn-tag text { font-size: 8.5px; }
+  .chart-full .pc-svg .pc-empty { font-size: 11px; }
+  .chart-full .pc-svg .now-mark rect, .chart-full .pc-svg .now-mark text { transform-box: fill-box; transform-origin: center; transform: scale(0.66); }
+  .chart-full .pc-seg button, .chart-full .pc-tools button { font-size: 14px; }
+}
