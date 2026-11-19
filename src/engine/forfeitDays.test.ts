@@ -1,4 +1,4 @@
-// 상대가 모두 기권해 판이 바로 끝나면, 업적은 실제로 한 날(마지막 기권 날)까지만 (사용자 결정 2026-11-18)
+// 상대가 모두 기권해 판이 바로 끝나면, 업적은 실제로 한 날(마지막 기권 날)까지만
 import { describe, expect, it } from 'vitest';
 import { finalResults, playedLastDay, validateLeave, type GameData } from './engine.js';
 import { computeAchievements, cutMarket } from '../game/achievements.js';
@@ -63,7 +63,7 @@ describe('기권 뒤 자동으로 넘어간 날은 업적에서 뺌', () => {
   });
 });
 
-describe('기권으로 끝난 판의 재산·수익률은 기권한 날 가격으로 (사용자 결정 2026-11-18)', () => {
+describe('기권으로 끝난 판의 재산·수익률은 기권한 날 가격으로', () => {
   it('남은 사람의 재산 = 기권한 날 종가로 계산, 화면 데이터에 endDay', async () => {
     const { buildView } = await import('./engine.js');
     const { startCashFor } = await import('../game/portfolio.js');

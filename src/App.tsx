@@ -79,6 +79,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acct.status, lobbyGame]);
   // (051) 다른 곳에서 이 계정으로 접속해 이 기기가 로그아웃되면 어느 화면이든 로비로 (안내는 로비가 띄움)
+  // (060) 동시 접속 창에서 취소·확인 → 다시 로그인하는 곳으로
+  useEffect(() => {
+    const on = (e: Event) => navigate({ kind: 'lobby', page: (e as CustomEvent).detail === 'login' ? 'login' : 'home' });
+    window.addEventListener('go-signin', on);
+    return () => window.removeEventListener('go-signin', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const on = () => navigate({ kind: 'lobby' }, { replace: true });
     window.addEventListener('session-replaced', on);

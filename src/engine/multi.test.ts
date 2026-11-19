@@ -113,7 +113,7 @@ describe('조사', () => {
   });
 });
 
-describe('매칭에서 거래 0회 = 꼴찌 (2026-11-17 사용자 결정)', () => {
+describe('매칭에서 거래 0회 = 꼴찌', () => {
   const fin = (kind: 'match' | 'custom', trade: string[]) => {
     const d = game3(10);
     d.room = { ...d.room, day: 10, status: 'finished', kind };
@@ -142,7 +142,7 @@ describe('봇전에서 거래 0회 = 업적 없음 (순위는 그대로)', () =>
     const d = game3(10);
     d.room = { ...d.room, day: 10, status: 'finished', kind };
     d.players = d.players.map((p) => (p.id === 'a' ? p : { ...p, bot_level: 3 }));
-    // 봇들은 비싸게 사서 손해 → 거래 0회인 A 가 재산 1위 (예전엔 1위·마음 편한 투자 등 업적을 받았음)
+    // 봇들은 비싸게 사서 손해 → 거래 0회인 A 가 재산 1위 (그래도 1위·마음 편한 투자 등 업적을 받으면 안 됨)
     for (const id of ['b', 'c']) d.trades.push({ player_id: id, day: 0, symbol: 'CORE', side: 'buy', qty: 1, price: 900_000, fee: 900 });
     return finalResults(d);
   };

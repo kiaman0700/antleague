@@ -82,7 +82,7 @@ describe('화면 데이터: 지금 칸까지만', () => {
     }
     expect(checked).toBe(5);
   });
-  it('상대 재산도 지금 가격 기준 원 단위 (2026-11-17 결정), 상대 거래는 안 보임', () => {
+  it('상대 재산도 지금 가격 기준 원 단위, 상대 거래는 안 보임', () => {
     const d = game();
     d.trades.push({ player_id: 'b', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
     d.trades.push({ player_id: 'a', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });

@@ -84,7 +84,7 @@ describe('나감·자리 비움', () => {
   });
 });
 
-describe('상대 재산은 보이고, 무엇을 샀는지는 안 보임 (2026-11-17 결정)', () => {
+describe('상대 재산은 보이고, 무엇을 샀는지는 안 보임', () => {
   it('상대도 재산·순위는 원 단위, 거래·보유·오늘 거래 횟수는 없음', () => {
     const d = game(2, 0);
     d.trades.push({ player_id: 'p1', day: 0, symbol: 'CORE', side: 'buy', qty: 7, price: 101_234, fee: 709 });

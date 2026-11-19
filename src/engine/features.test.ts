@@ -115,7 +115,7 @@ describe('업적', () => {
     });
     expect(res.cash ?? []).not.toContain('beat_market');
   });
-  it('새 업적: 첫 거래·ETF 입문·몰빵, 고수봇이 있는 판에서 1위면 고수봇 사냥꾼 (2026-11-17)', () => {
+  it('새 업적: 첫 거래·ETF 입문·몰빵, 고수봇이 있는 판에서 1위면 고수봇 사냥꾼', () => {
     const m = generateMarket(SEED, 10);
     const buy = (id: string, sym: string, qty: number) => ({ player_id: id, day: 0, symbol: sym, side: 'buy' as const, qty, price: m.bars[sym][0].open, fee: 0.001 });
     const qty = Math.floor((startCashFor(m.version) * 0.9) / m.bars.KIDX[0].open);
@@ -153,7 +153,7 @@ describe('업적', () => {
   });
 });
 
-describe('기권한 사람은 업적 없음 (2026-11-17 — 현금만 들고 기권해 투자왕·존버의 미학을 받던 빈틈)', () => {
+describe('기권한 사람은 업적 없음 (현금만 들고 기권해 투자왕·존버의 미학을 받지 않게)', () => {
   it('기권한 사람은 재산이 더 많아도 투자왕이 아니고 업적을 하나도 못 받음, 남은 사람이 1위', () => {
     const m = generateMarket(SEED, 10);
     const px = m.bars.CORE[0].open;

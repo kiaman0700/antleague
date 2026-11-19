@@ -1,4 +1,4 @@
-import { setConcurrent, concurrentCleared } from './concurrent';
+import { setConcurrent, concurrentCleared, noteGuest } from './concurrent';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { View } from '../engine/engine';
 import type { Market } from '../game/market';
@@ -66,6 +66,7 @@ export async function api<T = unknown>(action: string, payload: Record<string, u
       throw e;
     }
     if (e instanceof ApiError && e.status === 401 && e.code === 'replaced' && supabase) {
+      noteGuest(!!(await supabase.auth.getSession().catch(() => null))?.data.session?.user?.is_anonymous);
       setConcurrent('kicked');
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       try {
@@ -301,7 +302,7 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
       const emoji = typeof p.emoji === 'string' && EMOJIS.includes(p.emoji) ? p.emoji : undefined;
       const text = typeof p.text === 'string' && PHRASES.includes(p.text) ? p.text : undefined;
       if ((!emoji && !text) || typeof p.from !== 'string') return;
-      // 서버가 방송하면 보낸 나에게도 옴 — 내 화면엔 누를 때 이미 띄웠으니 건너뜀 (두 번 뜨던 것)
+      // 서버가 방송하면 보낸 나에게도 옴 — 내 화면엔 누를 때 이미 띄웠으니 건너뜀 (두 번 뜨지 않게)
       if (p.from === me.current) return;
       // 도배 방지: 0.7초에 하나
       const now = Date.now();
@@ -316,7 +317,7 @@ export function useReactions(roomId: string | null, playerId: string, onReceive:
     };
   }, [roomId]);
 
-  // 보내기는 서버로: 서버가 이 방 사람인지 확인하고 '보낸 사람'을 직접 붙여 방송 (다른 사람 이름으로 보내기 막기, 2026-11-17)
+  // 보내기는 서버로: 서버가 이 방 사람인지 확인하고 '보낸 사람'을 직접 붙여 방송 (다른 사람 이름으로 보내기 막기)
   return (r: { emoji?: string; text?: string }) => {
     if (!roomId) return;
     api('react', { roomId, ...r }).catch(() => {});
