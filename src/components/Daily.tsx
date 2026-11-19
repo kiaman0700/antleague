@@ -1,3 +1,4 @@
+import { ToonIcon } from './ToonIcon';
 import { STREAK_RULE, StreakResult, type StreakInfo } from './Streak';
 import { Icon } from './Icon';
 /** 오늘의 도전 (설계서 design/bots-daily.md 3단계): 오늘 점수표 · 내 순위 */
@@ -30,7 +31,7 @@ export function StreakChip({ s }: { s?: DailyInfo['streak'] }) {
   if (!s || s.streak <= 0) return null;
   return (
     <span className="streak-chip" title={`최고 ${s.best}일 · ${STREAK_RULE}`}>
-      <Icon name="flame" size={13} /> {s.streak}일 연속
+      <ToonIcon name="flame" size={16} /> {s.streak}일 연속
     </span>
   );
 }

@@ -3,7 +3,7 @@
  * 오늘 아직이면 불꽃을 흐리게만 — 시간 압박 문구는 쓰지 않음. '연속 · 최고'를 함께 보여 줌.
  */
 import { STREAK_MILESTONES } from '../game/streak';
-import { Icon } from './Icon';
+import { ToonIcon } from './ToonIcon';
 
 export interface StreakInfo {
   streak: number;
@@ -19,7 +19,7 @@ export function StreakFlame({ s }: { s?: StreakInfo | null }) {
   if (!s || s.streak <= 0) return null;
   return (
     <span className={'stk-flame' + (s.playedToday ? '' : ' wait')} title={`연속 ${s.streak}일 · 최고 ${s.best}일${s.playedToday ? '' : ' · 오늘 아직'}`}>
-      <Icon name="flame" size={13} />
+      <ToonIcon name="flame" size={16} />
       {s.streak}
     </span>
   );
@@ -32,7 +32,7 @@ export function StreakLine({ s, showRule }: { s?: StreakInfo | null; showRule?: 
   return (
     <div className="stk-line">
       <span className={'stk-flame' + (s.streak > 0 && s.playedToday ? '' : ' wait')}>
-        <Icon name="flame" size={14} />
+        <ToonIcon name="flame" size={28} />
       </span>
       <span>
         {s.streak > 0 ? (
@@ -59,7 +59,7 @@ export function StreakResult({ s }: { s?: StreakInfo | null }) {
   const mile = STREAK_MILESTONES.includes(s.streak);
   return (
     <div className={'stk-result' + (mile ? ' mile' : '')} role="status">
-      <Icon name="flame" size={16} />
+      <ToonIcon name="flame" size={28} />
       <span>
         {mile ? <b>연속 {s.streak}일 달성!</b> : <b>연속 {s.streak}일째</b>}
         <small className="muted"> · 오늘 기록 인정 · 최고 {s.best}일</small>

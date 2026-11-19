@@ -1871,3 +1871,18 @@ p { text-wrap: pretty; }
 .ui-toast:not(.error) svg path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: check-draw 0.35s 0.1s var(--ease-out) forwards; }
 @keyframes check-draw { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .ui-toast:not(.error) svg path { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; } }
+
+/* 토스식 내용 아이콘 (ToonIcon): 뒤 바탕 칸 없이 아이콘만 */
+i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; background: none !important; width: auto; height: auto; line-height: 0; }
+.st-qbtn i.toon-i { width: 40px; height: 40px; }
+.toon { display: block; flex: none; }
+@media (max-width: 860px) {
+  .tile i.toon-i .toon { width: 34px; height: 34px; }
+  .st-qbtn i.toon-i .toon { width: 30px; height: 30px; }
+}
+/* 연속 기록 불꽃은 토스식 그림 — 바탕 원 없이, 오늘 아직이면 흑백으로 */
+.stk-line .stk-flame, .stk-line .stk-flame.wait { width: auto; height: auto; background: none; }
+.stk-flame.wait .toon { filter: grayscale(1); opacity: 0.55; }
+.stk-flame .toon { display: inline-block; vertical-align: -3px; }
+.streak-chip .toon { display: inline-block; vertical-align: -3px; }
+.theme-card > .toon { margin-top: 2px; }
