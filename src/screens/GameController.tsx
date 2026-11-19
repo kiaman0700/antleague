@@ -426,10 +426,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const preReadyMe = !!meRow?.preReady;
   // 카드를 지금 못 쓰는 이유 (버튼이 회색인 까닭을 그대로 알려 줌)
   const cardBlock =
-    closing !== null ? '하루 결산 중이에요. 다음 날에 쓸 수 있어요'
+    closing !== null ? '오늘 장을 정리하고 있어요. 다음 날 쓸 수 있어요'
     : endedToday ? '장 마감을 눌렀어요. 마감을 취소하면 다시 쓸 수 있어요'
     : remaining === 0 ? '시간이 다 됐어요. 곧 다음 날로 넘어가요'
-    : room?.status !== 'playing' ? '지금은 게임 중이 아니에요'
+    : room?.status !== 'playing' ? '게임이 진행 중일 때만 할 수 있어요'
     : null;
   const cardCanAct = canAct && remaining !== 0;
 
@@ -530,7 +530,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     if (seenOrders.current) {
       for (const o of view.myOrders) {
         const before = seenOrders.current.get(o.id!);
-        if (before === 'open' && o.status === 'filled') showToast(`예약 체결! ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
+        if (before === 'open' && o.status === 'filled') showToast(`예약한 ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주를 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
       }
     }
     seenOrders.current = cur;
@@ -575,7 +575,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     run('placeOrder', { symbol, side, qty, limit }, () => {
       play('tap');
       setSheet(null);
-      showToast(`예약 완료 · 장중에 가격이 닿으면 체결돼요`);
+      showToast(`예약했어요. 장중에 그 가격이 되면 사고팔아요`);
     });
   const cancelOrder = (orderId: string) => run('cancelOrder', { orderId }, () => showToast('예약 주문을 취소했어요'));
 
@@ -613,7 +613,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             : `용돈 봉투! 현금 ${wonShort(BONUS_AMOUNT)}이 들어왔어요`
           : d.type === 'info'
             ? `${d.name} 결과가 뉴스에 나왔어요`
-            : `${d.name} 발동! 내일 상대에게 적용돼요`,
+            : `${d.name} 카드를 썼어요. 내일 상대에게 효과가 나타나요`,
       );
       if (d.type === 'info') {
         setTab('news');
@@ -641,7 +641,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     run('endTurn', {}, () => {});
     // 매칭(랭킹전·일반전)에서 아직 거래가 0회면 마감할 때마다 알림 — 끝까지 0회면 순위 맨 뒤 (서버 finalResults)
     if (view?.room.kind === 'match' && view.myTrades.length === 0)
-      showToast('아직 거래가 0회예요. 매칭에서는 끝까지 한 번도 거래하지 않으면 꼴찌가 돼요', 'warn');
+      showToast('아직 한 번도 사고팔지 않았어요. 랭킹전·일반전에서는 끝까지 거래가 없으면 꼴찌가 돼요', 'warn');
   };
   // 장 마감 취소: 다음 날로 넘어가기 전(시간이 남아 있을 때)이면 언제든
   const preReady = () => {
@@ -669,7 +669,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       return;
     }
     // 버튼 이름과 같게: 혼자 하는 판(시간 제한 없음)은 '장 시작', 대결은 '준비 완료'
-    showToast(`장 전 시간이에요. 커뮤니티 글을 보고 예약 주문을 걸어 두세요. 다 했으면 '${freePre ? '장 시작' : '준비 완료'}'!`, 'warn');
+    showToast(`장 전 시간이에요. 커뮤니티 글을 보고 예약 주문을 걸어 두세요. 다 했으면 ${freePre ? "'장 시작'을" : "'준비 완료'를"} 눌러 주세요`, 'warn');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 한 번만 (freePre 가 바뀌어도 다시 띄우지 않음)
   }, [inPre, showToast]);
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
@@ -1055,7 +1055,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {exitAsk && (
         <Sheet title="대결에서 나갈까요?" onClose={() => setExitAsk(false)}>
           <div className="exit-ask">
-            <p className="muted small">대결 중에 나가면 <b>기권</b>이에요. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어오면 '재입장'을 물어봐요.</p>
+            <p className="muted small">대결 중에 나가면 <b>기권</b>이에요. 실수로 창이 닫히거나 인터넷이 끊긴 경우에는 다시 들어왔을 때 이어서 할지 물어봐요.</p>
             <button className="btn full primary" onClick={() => setExitAsk(false)}>
               <Icon name="play" size={16} /> 계속하기
             </button>
@@ -1130,7 +1130,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {intro && room && (
         <MatchIntro
           title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : room.kind === 'bot' ? '봇전' : '대결 시작'}
-          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 전 시간이에요 · 커뮤니티 글을 보고 준비하세요' : '장이 열렸어요'}`}
+          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 열리기 전이에요 · 커뮤니티 글을 보고 준비해요' : '장이 열렸어요'}`}
           players={players.filter((p) => p.status !== 'left')}
           meId={me}
           onClose={() => setIntro(false)}
@@ -1471,7 +1471,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               ) : opponent ? (
                 <button className="mh-cmp btnlike" onClick={() => setRankSheet(true)}>
                   <span className={tiedFirst ? 'muted' : myRank === 1 ? 'up' : 'down'}>
-                    {tiedFirst ? `${josa(opponent.nickname, "과", "와")} 비기는 중` : myRank === 1 ? `${opponent.nickname}보다 앞서는 중` : `${opponent.nickname}보다 뒤지는 중`}
+                    {tiedFirst ? `${josa(opponent.nickname, "과", "와")} 동점이에요` : myRank === 1 ? `${opponent.nickname}보다 앞서요` : `${opponent.nickname}보다 뒤져요`}
                   </span>
                   <span className={'mh-st' + (oppEnded ? ' ok' : '')}>{oppEnded ? <><Icon name="check" size={12} /> 마감</> : '고민 중'}</span>
                 </button>
@@ -1488,7 +1488,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               disabled={inPre ? preReadyMe || busy : endedToday ? !canCancelEnd || busy : !canAct || busy}
               onClick={inPre ? preReady : endedToday ? cancelEnd : endTurn}
             >
-              <b>{inPre ? endLabel : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 마감' : '장 마감'}</b>
+              <b>{inPre ? endLabel : endedToday ? '마감 취소' : day + 1 >= total ? '마지막 장 마감' : '장 마감'}</b>
               <small>
                 {inPre
                   ? freePre ? '준비되면 눌러요' : `장 시작까지 ${mmss2(preLeft)}${preReadyMe ? ` · ${preReadyCount}/${preStaying}` : ''}`
@@ -1605,7 +1605,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
 
         <BottomSheet open={marketSheet} onClose={() => setMarketSheet(false)} title="오늘의 시장">
           <MarketGridPinnable market={m} day={displayDay} closed={displayClosed} pins={pins} onTogglePin={togglePin} />
-          <p className="muted small sheet-note">핀을 누르면 상단에 계속 고정돼요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
+          <p className="muted small sheet-note">핀을 누르면 위에 계속 보여요 (최대 3개). 고정하지 않은 칸은 지수 → 지수, 금리 → 금리처럼 같은 종류끼리 4초마다 바뀌어요.</p>
         </BottomSheet>
 
         <BottomSheet open={schedSheet} onClose={() => setSchedSheet(false)} title="다가오는 일정">
@@ -1668,7 +1668,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             <>
               <div className="tug-wrap">
                 <span className={'tug-lead ' + (opponent?.status === 'left' || tiedFirst ? 'muted' : myRank === 1 ? 'up' : 'down')}>
-                  {opponent?.status === 'left' ? '상대가 나갔어요' : tiedFirst ? '비기는 중' : myRank === 1 ? '내가 앞서는 중' : '상대가 앞서는 중'}
+                  {opponent?.status === 'left' ? '상대가 기권했어요' : tiedFirst ? '동점이에요' : myRank === 1 ? '내가 앞서요' : '상대가 앞서요'}
                 </span>
                 <div className="tug" aria-hidden>
                   <div className="tug-me" style={{ width: `${share * 100}%` }} />
@@ -1816,7 +1816,7 @@ function ResultWaitExit({ onExit }: { onExit: () => void }) {
   if (!show) return null;
   return (
     <>
-      <p className="muted small">연결이 느려요. 결과는 '업적'과 내 기록에 남아요.</p>
+      <p className="muted small">연결이 느려요. 결과는 '업적' 화면에 남아요.</p>
       <button className="btn" onClick={onExit}>
         홈으로
       </button>

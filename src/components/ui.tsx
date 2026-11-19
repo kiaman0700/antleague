@@ -81,11 +81,11 @@ export function ErrorState({ what, onRetry, compact = false }: { what: string; o
       tone="error"
       compact={compact}
       title={`${what}${hasBatchim(what.slice(-1)) ? '을' : '를'} 불러오지 못했어요`}
-      desc="인터넷 연결을 확인하고 다시 시도해 주세요."
+      desc="인터넷 연결을 확인하고 다시 불러와 주세요."
       action={
         onRetry && (
           <button className="btn sm" onClick={onRetry}>
-            <Icon name="refresh" size={14} /> 다시 시도
+            <Icon name="refresh" size={14} /> 다시 불러오기
           </button>
         )
       }

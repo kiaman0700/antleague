@@ -53,10 +53,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <div className="crash">
           <div className="crash-box">
             <h2>{offline ? '인터넷 연결이 끊겼어요' : '화면을 불러오지 못했어요'}</h2>
-            <p className="muted">{offline ? '연결되면 저절로 다시 열려요. 진행 중인 게임은 그대로예요.' : '잠깐 연결이 불안했어요. 다시 시도해 주세요. 진행 중인 게임은 그대로예요.'}</p>
+            <p className="muted">{offline ? '연결되면 저절로 다시 열려요. 진행 중인 게임은 그대로예요.' : '잠깐 연결이 불안했어요. 다시 불러와 주세요. 진행 중인 게임은 그대로예요.'}</p>
             <div className="crash-actions">
               <button className="btn primary" onClick={() => location.reload()}>
-                다시 시도
+                다시 불러오기
               </button>
               <button className="btn ghost" onClick={() => location.assign('/')}>
                 홈으로

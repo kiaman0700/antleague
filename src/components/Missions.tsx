@@ -218,7 +218,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
           <Icon name="play" size={16} />
           <span>
             <b>튜토리얼 완료하기</b>
-            <small className="muted">연습봇과 한 판(게임 기초)을 끝내면 · 한 번만</small>
+            <small className="muted">연습봇과 한 판을 끝내면 받아요 · 한 번만</small>
           </span>
           <b className="ms-tut-xp">+{info.tutorial.xp}</b>
         </div>
@@ -282,7 +282,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
           )}
         </div>
       )}
-      <p className="ms-note muted small">대결·봇전·오늘의 도전을 끝까지 하면(거래 1번 이상) 미션이 확인돼요.</p>
+      <p className="ms-note muted small">대결·봇전·오늘의 도전을 끝까지 하면(거래 1번 이상) 미션이 채워져요.</p>
     </section>
   );
 }

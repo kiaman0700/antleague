@@ -45,7 +45,7 @@ const pwFails = new Map<string, { n: number; reset: number }>();
 function pwGuard(key: string) {
   const now = Date.now();
   const e = pwFails.get(key);
-  if (e && now < e.reset && e.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.', 429);
+  if (e && now < e.reset && e.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 해 주세요.', 429);
 }
 function pwFail(key: string) {
   const now = Date.now();
@@ -64,7 +64,7 @@ async function roomPwState(roomId: string) {
 }
 async function roomPwGuard(roomId: string) {
   const st = await roomPwState(roomId);
-  if (st && st.fails >= 20) throw new GameError('이 방은 비밀번호 시도가 너무 많아 잠시 잠겼어요. 나중에 다시 시도해 주세요.', 429);
+  if (st && st.fails >= 20) throw new GameError('이 방은 비밀번호 시도가 너무 많아 잠시 잠겼어요. 나중에 다시 해 주세요.', 429);
 }
 async function roomPwFail(roomId: string) {
   const st = await roomPwState(roomId);
@@ -77,7 +77,7 @@ async function userPwGuard(roomId: string, uid: string) {
   const r = await db().from('pw_attempts').select('n, first_at').eq('room_id', roomId).eq('user_id', uid).maybeSingle();
   if (r.error || !r.data) return;
   const row = r.data as { n: number; first_at: string };
-  if (Date.now() - new Date(row.first_at).getTime() < 600_000 && row.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요.', 429);
+  if (Date.now() - new Date(row.first_at).getTime() < 600_000 && row.n >= 5) throw new GameError('비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 해 주세요.', 429);
 }
 async function userPwFail(roomId: string, uid: string) {
   const r = await db().rpc('pw_attempt_fail', { p_room: roomId, p_user: uid });
@@ -242,7 +242,7 @@ function rateLimit(key: string, max: number, windowMs: number) {
     if (buckets.size > 5000) for (const [k, v] of buckets) if (now > v.reset) buckets.delete(k);
     return;
   }
-  if (++b.n > max) throw new GameError('요청이 너무 많아요. 잠시 후 다시 시도해 주세요.', 429);
+  if (++b.n > max) throw new GameError('요청이 너무 많아요. 잠시 뒤 다시 해 주세요.', 429);
 }
 
 /* ---------------- DB 헬퍼 ---------------- */
@@ -336,7 +336,7 @@ async function bumpPlayer(d: GameData, playerId: string, patch: Record<string, u
     .eq('id', playerId)
     .eq('version', me.version)
     .select('id');
-  if (!must(res, 'bump').length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 시도해 주세요.', 409);
+  if (!must(res, 'bump').length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
 }
 
 const iso = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString() : null);
@@ -594,7 +594,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       // 방 만들기 남용 방지: 1시간에 10개까지
       const since = new Date(Date.now() - 3600_000).toISOString();
       rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
-      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
+      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 뒤 다시 해 주세요.', 429);
 
       let room: { id: string; code: string } | null = null;
       for (let i = 0; i < 5 && !room; i++) {
@@ -602,7 +602,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!res.error) room = res.data;
         else if (!/duplicate/i.test(res.error.message)) must(res, 'create room');
       }
-      if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
+      if (!room) throw new GameError('방을 만들지 못했어요. 다시 해 주세요.', 500);
       // 새 방은 최신 시장 규칙(v2). rules_version 컬럼이 아직 없으면(006 적용 전) 빼고 저장 → v1
       const secretRow = { room_id: room.id, seed: randomInt(2_000_000_000), password_hash: passwordHash };
       await insertSecret(secretRow);
@@ -827,7 +827,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       }
       const since = new Date(Date.now() - 3600_000).toISOString();
       rateLimit(uid + ':makeRoom', 15, 3600_000); // 만들고 바로 나가 방이 지워지는 경우까지 (서버 메모리 기준)
-      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 후 다시 시도해 주세요.', 429);
+      if ((await roomsMadeSince(uid, since)) >= 10) throw new GameError('방을 너무 많이 만들었어요. 잠시 뒤 다시 해 주세요.', 429);
       await ensureFree(uid);
       const secret = must(await sb.from('room_secrets').select('password_hash').eq('room_id', roomId).maybeSingle(), 'pw') as { password_hash: string | null } | null;
       let room: { id: string; code: string } | null = null;
@@ -841,7 +841,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!res.error) room = res.data;
         else if (!/duplicate/i.test(res.error.message)) must(res, 'rematch room');
       }
-      if (!room) throw new GameError('방을 만들지 못했어요. 다시 시도해 주세요.', 500);
+      if (!room) throw new GameError('방을 만들지 못했어요. 다시 해 주세요.', 500);
       await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: secret?.password_hash ?? null });
       const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname: me.nickname, mode: me.mode, ready: true }).select('id').single(), 'host') as { id: string };
       must(await sb.from('rooms').update({ host_id: p.id }).eq('id', room.id), 'host_id');
@@ -868,7 +868,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const ids = mine.map((p) => p.id);
       for (const id of ids) await sb.from('players').update({ nickname: `탈퇴${randomInt(100000)}`, rejoin_hash: null }).eq('id', id);
       const del = await sb.auth.admin.deleteUser(uid);
-      if (del.error) throw new GameError('지우지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+      if (del.error) throw new GameError('지우지 못했어요. 잠시 뒤 다시 해 주세요.', 500);
       return { ok: true };
     }
 
@@ -891,7 +891,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if ((allHour.count ?? 0) >= 300) throw new GameError('지금 의견이 많이 몰렸어요. 잠시 후 다시 보내 주세요.', 429);
       // 자동 시험 계정이 보낸 의견은 읽음으로 저장 — 운영자 의견함·안 읽은 수에 시험 글이 쌓이지 않게
       const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page, ...(testMarked.has(uid) ? { read_at: new Date().toISOString() } : {}) });
-      if (res.error) throw new GameError('보내지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
+      if (res.error) throw new GameError('보내지 못했어요. 잠시 뒤 다시 해 주세요.', 503);
       return { ok: true };
     }
 
@@ -1222,7 +1222,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
           if (!res.error) room = res.data;
           else if (!/duplicate/i.test(res.error.message)) must(res, 'daily room');
         }
-        if (!room) throw new GameError('도전을 시작하지 못했어요. 다시 시도해 주세요.', 500);
+        if (!room) throw new GameError('도전을 시작하지 못했어요. 다시 해 주세요.', 500);
         roomId = room.id;
         const sec = dailySecret(day);
         must(await sb.from('room_secrets').insert({ room_id: room.id, seed: sec.seed, password_hash: null, rules_version: CURRENT_RULES_VERSION, salt: sec.salt }), 'daily secret');
@@ -1259,7 +1259,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!res.error) room = res.data;
         else if (!/duplicate/i.test(res.error.message)) must(res, 'bot room');
       }
-      if (!room) throw new GameError('봇전을 시작하지 못했어요. 다시 시도해 주세요.', 500);
+      if (!room) throw new GameError('봇전을 시작하지 못했어요. 다시 해 주세요.', 500);
       try {
         await insertSecret({ room_id: room.id, seed: randomInt(2_000_000_000), password_hash: null });
         const p = must(await sb.from('players').insert({ room_id: room.id, user_id: uid, nickname, mode, ready: true }).select('id').single(), 'bot host') as { id: string };
@@ -1441,15 +1441,15 @@ async function createGuest(ip: string) {
     db().from('guest_log').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since),
     db().from('guest_log').select('id', { count: 'exact', head: true }).gte('created_at', since),
   ]);
-  if (!mine.error && (mine.count ?? 0) >= 60) throw new GameError('같은 인터넷에서 접속이 너무 많아요. 잠시 후 다시 시도해 주세요.', 429);
-  if (!all.error && (all.count ?? 0) >= 3000) throw new GameError('지금 접속이 몰려 있어요. 잠시 후 다시 시도해 주세요.', 429);
+  if (!mine.error && (mine.count ?? 0) >= 60) throw new GameError('같은 인터넷에서 접속이 너무 많아요. 잠시 뒤 다시 해 주세요.', 429);
+  if (!all.error && (all.count ?? 0) >= 3000) throw new GameError('지금 접속이 몰려 있어요. 잠시 뒤 다시 해 주세요.', 429);
   const id = randomBytes(12).toString('hex');
   const email = `guest-${id}@guest.invalid`;
   const password = randomBytes(24).toString('base64url');
   const res = await db().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { guest: true } });
   if (res.error) {
     console.error('[api] guest', res.error.message);
-    throw new GameError('접속용 계정을 만들지 못했어요. 잠시 후 다시 시도해 주세요.', 503);
+    throw new GameError('접속용 계정을 만들지 못했어요. 잠시 뒤 다시 해 주세요.', 503);
   }
   await db().from('guest_log').insert({ ip_hash: ipHash });
   return { email, password };
@@ -2039,7 +2039,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       const st = (error as { status?: number } | null)?.status ?? 0;
       if (error && (st === 0 || st === 429 || st >= 500)) {
         console.error('[api] auth check failed', st, error.message);
-        return { status: 503, body: { error: '잠시 연결이 불안정해요. 다시 시도해 주세요.' } };
+        return { status: 503, body: { error: '잠시 연결이 불안정해요. 다시 해 주세요.' } };
       }
       // (051) 세션이 끊겼음 = 다른 곳에서 더 나중에 로그인했거나 로그아웃·비밀번호 변경 → 화면은 새 손님을 만들지 않고 안내
       if ((error as { code?: string } | null)?.code === 'session_not_found' || /session missing/i.test(error?.message ?? '')) return { status: 401, body: REPLACED };
@@ -2118,6 +2118,6 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     const msg = e instanceof Error ? `${e.message}${(e as { cause?: unknown }).cause ? ' / ' + String((e as { cause?: unknown }).cause) : ''}` : String(e);
     console.error('[api] unexpected', msg);
     await logServerError(typeof (body as { action?: unknown } | null)?.action === 'string' ? String((body as { action: string }).action) : '-', msg);
-    return { status: 500, body: { error: '서버 오류가 났어요. 잠시 후 다시 시도해 주세요.' } };
+    return { status: 500, body: { error: '서버 오류가 났어요. 잠시 뒤 다시 해 주세요.' } };
   }
 }

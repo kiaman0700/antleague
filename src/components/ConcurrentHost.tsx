@@ -26,7 +26,7 @@ export function ConcurrentHost() {
       // 막혀 있던 화면 정보를 모두 다시 받음
       location.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : '접속하지 못했어요. 다시 시도해 주세요.');
+      setErr(e instanceof Error ? e.message : '접속하지 못했어요. 다시 해 주세요.');
       setBusy(false);
     }
   };

@@ -86,7 +86,7 @@ export function FeedbackSheet({ onClose, initialKind = 'bug', initialText = '', 
           </small>
           {kind === 'privacy' && (
             <p className="fb-privacy muted small">
-              회원 탈퇴·내 데이터 지우기는 마이프로필(손님은 업적 화면) 맨 아래에서 바로 할 수 있어요. 여기 보낸 글에는 답장을 드릴 수 없어요
+              회원 탈퇴·내 데이터 지우기는 마이프로필(게스트는 업적 화면) 맨 아래에서 바로 할 수 있어요. 여기 보낸 글에는 답장을 드릴 수 없어요
               {OPERATOR_EMAIL ? (
                 <>
                   . 답이 필요하면 메일로 보내 주세요: <a href={`mailto:${OPERATOR_EMAIL}`}>{OPERATOR_EMAIL}</a>

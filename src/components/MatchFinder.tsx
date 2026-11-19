@@ -207,7 +207,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   const preset = SPEED_PRESET[pref.speed];
   const minutes = preset.minutes.replace('약 ', '');
   const nWait = waitingIn(sizeEff, pref.speed);
-  const findLabel = joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : inParty && party!.waiting ? '파티원이 돌아오길 기다리는 중' : stage ? '대결 찾기' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`;
+  const findLabel = joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장만 찾을 수 있어요' : inParty && party!.waiting ? '파티원이 돌아오길 기다려요' : stage ? '대결 찾기' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`;
   const findDisabled = loading || joining || (inParty && (!party!.isLeader || kind === 'ranked' || !!party!.waiting));
 
   if (stage)
@@ -215,11 +215,11 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
       <section className={'mf-stage' + (searching ? ' is-searching' : '')} aria-label={`${kind === 'ranked' ? '랭킹전' : '일반전'} 대결 찾기`}>
         <StageChart />
         <div className="st-copy">
-          <span className="st-eyebrow">{kind === 'ranked' ? '랭킹전 · 이기면 점수가 올라요' : '일반전 · 점수 걱정 없이'}</span>
+          <span className="st-eyebrow">{kind === 'ranked' ? '랭킹전 · 이기면 점수가 올라요' : '일반전 · 점수 없이 가볍게'}</span>
           <h1 className="st-title">
-            {sizeEff === 'duel' ? '두 명이 겨루는' : '서너 명이 겨루는'}
+            {sizeEff === 'duel' ? '두 명이 겨루는' : '3~4명이 겨루는'}
             <br />
-            {minutes}짜리 한 판
+            {minutes} 한 판
           </h1>
           <p className="st-desc">
             같은 시장, 같은 뉴스. {preset.days}일 동안 하루 {preset.turnSeconds}초씩 사고팔아 마지막 날 재산이 많은 사람이 이겨요.
@@ -263,12 +263,12 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
             <div className="mf-live" role="status" aria-live="polite">
               <div className="mf-live-top">
                 <span className="mf-spin sm" aria-hidden />
-                <b>{linking ? '상대를 찾았어요! 방을 만드는 중…' : '상대를 찾고 있어요'}</b>
+                <b>{linking ? '상대를 찾았어요. 곧 시작해요' : '상대를 찾고 있어요'}</b>
                 <span className="mf-clock">{mmss(waited)}</span>
               </div>
               <small className="muted">
                 예상 대기 {waitLabel(info?.etaSec ?? null)}
-                {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 아직 찾는 사람이 나뿐이에요') : ''}
+                {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 지금은 나만 찾고 있어요') : ''}
               </small>
               <div className="mf-live-act">
                 {alt && (
@@ -326,10 +326,10 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
           대결 찾기
         </h3>
       )}
-      {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '부담 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })), '대결 종류')}
+      {!fixedKind && seg(kind, [['ranked', '랭킹전', member ? '점수가 오르내려요' : '회원 전용'], ['casual', '일반전', '점수 없이']], (v) => (v === 'ranked' && !member ? onLogin() : save({ ...pref, kind: v })), '대결 종류')}
       {inParty ? (
         <p className="muted small mf-note">
-          파티는 <b>다인전</b>으로 같이 찾아요. 4명 방이 기본이고, 1분 30초 넘게 못 모이면 3명 방으로 시작해요.
+          파티는 <b>다인전</b>으로 같이 찾아요. 보통 4명이 모이고, 1분 30초가 지나면 3명으로도 시작해요.
         </p>
       ) : (
         seg(sizeEff, [['duel', '1대1', waitTag('두 명', waitingIn('duel', pref.speed))], ['multi', '다인전', waitTag('3~4명', waitingIn('multi', pref.speed))]], (v) => save({ ...pref, size: v }), '몇 명이서')
@@ -373,13 +373,13 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         <div className="mf-live" role="status" aria-live="polite">
           <div className="mf-live-top">
             <span className="mf-spin sm" aria-hidden />
-            <b>{linking ? '상대를 찾았어요! 방을 만드는 중…' : '상대를 찾고 있어요'}</b>
+            <b>{linking ? '상대를 찾았어요. 곧 시작해요' : '상대를 찾고 있어요'}</b>
             <span className="mf-clock">{mmss(waited)}</span>
           </div>
           <small className="muted">
             예상 대기 {waitLabel(info?.etaSec ?? null)}
             {/* inQueue 에는 나도 들어 있음 → '나 말고' 몇 명인지로 (혼자인데 '1명 대기 중'이라 헷갈리지 않게) */}
-            {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 아직 찾는 사람이 나뿐이에요') : ''}
+            {info ? (info.inQueue > 1 ? `. 나 말고 ${info.inQueue - 1}명이 찾고 있어요` : '. 지금은 나만 찾고 있어요') : ''}
           </small>
           <div className="mf-live-act">
             {alt && (
@@ -396,7 +396,7 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
         </div>
       ) : (
         <button className="btn primary xl full" onClick={start} disabled={loading || joining || (inParty && (!party!.isLeader || kind === 'ranked' || !!party!.waiting))}>
-          <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장이 찾기를 시작해요' : inParty && party!.waiting ? '파티원이 돌아오길 기다리는 중' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
+          <Icon name="search" size={18} /> {joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장만 찾을 수 있어요' : inParty && party!.waiting ? '파티원이 돌아오길 기다려요' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`}
         </button>
       )}
     </section>

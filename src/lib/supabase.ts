@@ -43,9 +43,9 @@ export function accessToken(): Promise<string> {
       // 같은 인터넷(PC방·학교 등)에서 익명 접속이 많아 막힘 → 서버가 만들어 주는 손님 계정으로 로그인
       const guest = await guestSignIn();
       if (guest) return guest;
-      throw new Error('같은 인터넷에서 새로 접속한 사람이 많아 잠시 막혔어요. 몇 분 뒤에 다시 시도해 주세요. (혼자 연습·튜토리얼은 지금도 할 수 있어요)');
+      throw new Error('같은 인터넷에서 새로 접속한 사람이 많아 잠시 막혔어요. 몇 분 뒤에 다시 해 주세요. (혼자 연습·튜토리얼은 지금도 할 수 있어요)');
     }
-    if (error || !signed.session) throw new Error('서버에 접속하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.');
+    if (error || !signed.session) throw new Error('서버에 접속하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.');
     return signed.session.access_token;
   })().finally(() => {
     // 토큰은 자동 갱신되므로 매번 세션에서 다시 읽는다

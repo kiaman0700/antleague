@@ -55,7 +55,7 @@ function InviteFriends({ roomId, onClose }: { roomId: string; onClose: () => voi
           </li>
         ))}
       </ul>
-      <p className="muted small">초대는 5분 동안 유효해요. 받은 친구는 홈 화면에서 바로 '입장'할 수 있어요 (비밀방도 비밀번호 없이). 친구가 실수로 거절했으면 다시 초대하면 돼요.</p>
+      <p className="muted small">초대는 5분 동안 받을 수 있어요. 받은 친구는 홈 화면에서 바로 들어올 수 있어요 (비밀방도 비밀번호 없이). 친구가 실수로 거절했으면 다시 초대하면 돼요.</p>
     </Sheet>
   );
 }
@@ -297,7 +297,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
               <div className="big-code">{room.code}</div>
               <div className="wr-btns">
                 <button className="btn sm" onClick={copy}>
-                  {copied ? <><Icon name="check" /> 복사됐어요!</> : <><Icon name="share" /> 초대 링크 보내기</>}
+                  {copied ? <><Icon name="check" /> 복사했어요</> : <><Icon name="share" /> 초대 링크 보내기</>}
                 </button>
                 {member && view.players.length < room.maxPlayers && (
                   <button className="btn sm primary" onClick={() => setInviteOpen(true)}>
@@ -305,7 +305,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
                   </button>
                 )}
               </div>
-              {room.isPrivate && <p className="muted small">비밀방이에요. 방 목록에서 들어오려면 비밀번호가 필요해요</p>}
+              {room.isPrivate && <p className="muted small">비밀방이에요. 목록에서 들어오는 사람은 비밀번호를 넣어야 해요.</p>}
             </div>
           )}
           <div className="panel pad">
@@ -322,7 +322,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
           <b>
             준비 {readyCount}/{view.players.length}
           </b>
-          <small className="muted">{isHost ? (canStart ? '모두 준비됐어요. 시작하세요!' : view.players.length < 2 ? '한 명 이상 더 들어와야 해요' : `${notReady.map((p) => p.nickname).join(', ')} 님의 준비를 기다리는 중`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
+          <small className="muted">{isHost ? (canStart ? '모두 준비됐어요. 게임을 시작해 주세요' : view.players.length < 2 ? '한 명 더 들어오면 시작할 수 있어요' : `${notReady.map((p) => p.nickname).join(', ')} 님이 준비하길 기다려요`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
           {(err || error) && <p className="error">{err || error}</p>}
         </div>
         {isHost ? (

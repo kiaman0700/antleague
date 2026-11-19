@@ -165,13 +165,13 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       if (champLeft) {
         /* 기권한 사람의 하이라이트는 넣지 않음 */
       } else if (takeDay >= 0) {
-        out.push({ icon: 'flame', title: `${takeDay + 1}일차, 운명이 갈렸다`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
+        out.push({ icon: 'flame', title: `${takeDay + 1}일차에 승부가 갈렸어요`, text: `${josa(champ.nickname, '이', '가')} 1위로 올라선 뒤 끝까지 지켰어요`, day: takeDay });
       } else {
         let best = 0;
         let bd = 0;
         for (let d = 1; d < days; d++) if (gapOn(d) - gapOn(d - 1) > best) [best, bd] = [gapOn(d) - gapOn(d - 1), d];
         // 차이가 없었으면(비김 등) 지어낸 문장 대신 넘어감
-        if (best > 0) out.push({ icon: 'flame', title: `${bd + 1}일차, 격차가 벌어졌다`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
+        if (best > 0) out.push({ icon: 'flame', title: `${bd + 1}일차에 차이가 벌어졌어요`, text: `${josa(champ.nickname, '이', '가')} 처음부터 1위를 지키며 하루에 ${wonShort(best)} 더 달아났어요`, day: bd });
       }
       const tieEnd = gapOn(days - 1) === 0;
       // 기권으로 끝난 판: 남은 사람이 한 명이면 재산이 같아도 비긴 게 아님
@@ -250,7 +250,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
             <p>
               내 수익률 <b className={tone(me.ret)}>{pct(me.ret)}</b> · 시장(지수) <b className={tone(indexRet)}>{pct(indexRet)}</b>
             </p>
-            <p>{me.trades === 0 ? '한 번도 사고팔지 않았어요. 다음엔 종목을 사 보세요!' : soloWin ? '시장보다 잘했어요!' : '이번엔 시장이 이겼네요. 다시 도전!'}</p>
+            <p>{me.trades === 0 ? '한 번도 사고팔지 않았어요. 다음엔 종목을 사 보세요!' : soloWin ? '시장보다 잘했어요!' : '이번엔 시장보다 조금 아쉬웠어요'}</p>
           </>
         ) : results.length < 2 ? (
           <h1>상대 기록을 불러오지 못했어요</h1>
@@ -270,7 +270,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                         ? ranked.slice(1).every((r) => r.left) ? '다른 사람들이 모두 기권해서 이겼어요' : '다른 사람들이 기권했거나 거래를 안 해서 이겼어요'
                         : ranked[1].idle ? '상대가 거래를 한 번도 안 해서 이겼어요' : '상대가 기권해서 이겼어요'
                       : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
-                    · {iWon ? '오늘의 투자왕!' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판엔 꼭 이겨봐요`}
+                    · {iWon ? '이번 판 1등이에요' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판에 다시 도전해 봐요`}
                   </>}
             </p>
           </>
@@ -384,7 +384,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
           ))}
         </div>
         {/* 혼자 연습(브라우저 판)은 기록·업적·경험치가 서버에 남지 않음 — 어디서 모이는지 알려 줌 */}
-        {session.mode === 'solo' && !session.tutorial && <p className="muted small rw-note">연습 판은 업적·경험치가 기록에 남지 않아요. 봇전이나 대결에서 모여요.</p>}
+        {session.mode === 'solo' && !session.tutorial && <p className="muted small rw-note">연습 판은 업적·경험치가 기록에 남지 않아요. 봇전이나 대결에서 쌓여요.</p>}
       </div>
     </>;
   // 나의 결정적 순간 — 판이 끝나 공개된 뉴스 진위·내 거래만으로 (잡은·피한·속은·놓친)
@@ -562,7 +562,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
           ) : ratingGone ? (
             <span className="muted">점수는 마이프로필에서 확인할 수 있어요</span>
           ) : (
-            <span className="muted">랭킹 점수를 반영하는 중…</span>
+            <span className="muted">랭킹 점수를 계산하고 있어요…</span>
           )}
         </div>
       )}
@@ -601,7 +601,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
           <>
             {nextCode && <p className="rematch-note">다시 하기 방이 열렸어요! 같은 설정으로 바로 붙어요</p>}
             <button className="btn primary xl again-btn" onClick={rematch} disabled={rematching}>
-              {rematching ? '방으로 가는 중…' : <><b>{matchKind === 'bot' ? '같은 봇과 한 판 더' : nextCode ? '다시 하기 방 입장' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
+              {rematching ? '방으로 가는 중…' : <><b>{matchKind === 'bot' ? '같은 봇과 한 판 더' : nextCode ? '다시 하기 방으로' : '이 사람들과 한 판 더'}</b><small>{final.players.length}명 · {setText}</small></>}
             </button>
             <button className="btn ghost" onClick={onExit}>
               홈으로
@@ -848,7 +848,7 @@ function GuestSave({ won, badges }: { won: boolean; badges: number }) {
       <p className="muted small">게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 기록을 지우면 사라지고, 사흘 동안 활동이 없으면 자동으로 지워져요. 회원가입하면 지금 기록 그대로 옮겨지고 랭킹전·친구·칭호도 쓸 수 있어요.</p>
       <div className="row">
         <button className="btn primary sm" onClick={signup}>
-          회원가입하고 지키기
+          회원가입하고 기록 남기기
         </button>
         <button className="btn ghost sm" onClick={close}>
           나중에

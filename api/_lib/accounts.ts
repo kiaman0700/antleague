@@ -169,7 +169,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
         if (cur.error || email.endsWith('@' + USER_DOMAIN)) throw new GameError('이미 가입한 계정이에요.', 409);
         // 1분 넘게 지난 반쯤 된 프로필만 지움 — 두 번 눌러 동시에 가입 중인 요청의 프로필을 서로 지우지 않게
         const del = await sb.from('profiles').delete().eq('user_id', uid).lt('created_at', new Date(Date.now() - 60_000).toISOString()).select('user_id');
-        if (!del.error && !(del.data ?? []).length) throw new GameError('가입을 처리하는 중이에요. 잠시 후 다시 시도해 주세요.', 409);
+        if (!del.error && !(del.data ?? []).length) throw new GameError('가입을 처리하는 중이에요. 잠시 뒤 다시 해 주세요.', 409);
       }
       // [필수] 세 가지: 만 14세 이상 · 이용약관 · 개인정보 수집·이용 (화면에서 칸을 지워 보내도 여기서 다시 확인)
       if (b.agree14 !== true || b.agreePrivacy !== true || b.agreeTerms !== true) throw new GameError('만 14세 이상 확인, 이용약관 동의, 개인정보 수집·이용 동의가 모두 필요해요.');
@@ -192,7 +192,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       const up = await sb.auth.admin.updateUserById(uid, { email: `u_${randomBytes(12).toString('hex')}@${USER_DOMAIN}`, password, email_confirm: true });
       if (up.error) {
         await sb.from('profiles').delete().eq('user_id', uid); // 실패하면 예약 취소
-        throw new GameError('가입하지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+        throw new GameError('가입하지 못했어요. 잠시 뒤 다시 해 주세요.', 500);
       }
       // 게스트 이어하기 코드는 지움 — 회원 계정을 코드로 열 수 없게 (051)
       await dropGuestCode(sb, uid).catch(() => {});
@@ -295,7 +295,7 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       await verifyPassword(sb, uid, b.current);
       const password = cleanNewPassword(b.password);
       const r = await sb.auth.admin.updateUserById(uid, { password });
-      if (r.error) throw new GameError('바꾸지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+      if (r.error) throw new GameError('바꾸지 못했어요. 잠시 뒤 다시 해 주세요.', 500);
       await revokeSessions(sb, uid); // 다른 기기에 남은 로그인도 끊음
       return { ok: true };
     }
@@ -418,7 +418,7 @@ export async function resetPassword(sb: SupabaseClient, b: Body) {
   const ok = check(code.length === 12 ? code : 'x'.repeat(12), p?.recovery_hash ?? DUMMY_HASH);
   if (!p || code.length !== 12 || !ok) throw new GameError('아이디나 복구 코드가 맞지 않아요.', 403);
   const r = await sb.auth.admin.updateUserById(p.user_id, { password });
-  if (r.error) throw new GameError('바꾸지 못했어요. 잠시 후 다시 시도해 주세요.', 500);
+  if (r.error) throw new GameError('바꾸지 못했어요. 잠시 뒤 다시 해 주세요.', 500);
   await revokeSessions(sb, p.user_id); // 비밀번호를 찾았으면 남이 쓰던 로그인도 모두 끊음
   const next = newRecovery();
   await sb.from('profiles').update({ recovery_hash: hash(normRecovery(next)) }).eq('user_id', p.user_id);

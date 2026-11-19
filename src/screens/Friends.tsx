@@ -152,7 +152,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
           <Icon name="users" size={34} />
         </i>
         <h3>친구 기능은 회원만 쓸 수 있어요</h3>
-        <p className="muted">친구를 추가하면 접속 중인지 보이고, 앞으로 방 초대·1대1 신청도 할 수 있어요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
+        <p className="muted">친구를 추가하면 접속 중인지 보이고, 방 초대·1대1 신청도 할 수 있어요. 가입은 아이디·비밀번호·닉네임만 있으면 돼요.</p>
         <div className="rg-actions">
           <button className="btn primary" onClick={onSignup}>
             <Icon name="userPlus" /> 회원가입

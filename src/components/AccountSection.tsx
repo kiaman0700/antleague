@@ -48,7 +48,7 @@ export function GuestCodeBox() {
         <div className="gc-box-code">
           <code aria-label="이어하기 코드">{code}</code>
           <button className="btn sm" onClick={copy}>
-            {copied ? <><Icon name="check" size={14} /> 복사됐어요</> : '복사'}
+            {copied ? <><Icon name="check" size={14} /> 복사했어요</> : '복사'}
           </button>
           <button className="btn sm ghost" disabled={busy} onClick={() => void load(true)}>
             새 코드로 바꾸기

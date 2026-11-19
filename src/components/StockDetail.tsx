@@ -773,7 +773,7 @@ export function TradePanel({
       </div>
 
       {trade.limitOnly && (
-        <div className="trade-block pre">장 전이에요. 예약 주문만 걸 수 있고, 장이 열리면 가격이 닿을 때 체결돼요.</div>
+        <div className="trade-block pre">장 열리기 전에는 예약 주문만 할 수 있어요. 장이 열리고 그 가격이 되면 사고팔아요.</div>
       )}
       {!trade.allowed && trade.reason && (
         <div className="trade-block">{trade.reason}</div>
@@ -789,8 +789,8 @@ export function TradePanel({
         <div className="limit-box">
           <p className="limit-help">
             {side === "buy"
-              ? "오늘 장중에 가격이 여기까지 내려오면 이 가격에 자동으로 사요."
-              : "오늘 장중에 가격이 여기까지 오르면 이 가격에 자동으로 팔아요."}{" "}
+              ? "오늘 장중에 가격이 여기까지 내려오면 이 가격에 사요."
+              : "오늘 장중에 가격이 여기까지 오르면 이 가격에 팔아요."}{" "}
             안 닿으면 장 마감 때 취소돼요.
           </p>
           <div className="qty-box">
@@ -936,8 +936,8 @@ export function TradePanel({
           {budget === null
             ? " "
             : qty === 0
-            ? `모은 돈 ${won(budget)} · 1주에 ${won(unitKrw)}이라 아직 1주도 못 사요`
-            : `모은 돈 ${won(budget)} → ${qty}주 (남는 돈은 쓰지 않아요)`}
+            ? `고른 금액 ${won(budget)} · 1주에 ${won(unitKrw)}이라 아직 1주도 못 사요`
+            : `고른 금액 ${won(budget)} → ${qty}주 (남는 돈은 그대로 있어요)`}
         </p>
       )}
 
@@ -984,7 +984,7 @@ export function TradePanel({
 
       <button className={"btn xl " + side} disabled={!valid} onClick={submit}>
         {trade.busy
-          ? "처리 중…"
+          ? "주문하는 중…"
           : kind === "limit"
             ? `${qty > 0 ? num(qty) + "주 " : ""}예약 ${side === "buy" ? buyLabel : sellLabel}`
             : qty > 0

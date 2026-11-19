@@ -87,7 +87,7 @@ export function Welcome({
               어떻게 시작할까요?
             </h3>
             {/* 친구가 보낸 초대 링크(?room=코드)로 왔으면: 왜 이 창이 떴는지 먼저 */}
-            {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작 방법을 골라 주세요. 고르면 그 방 입장 창이 열려요.</p>}
+            {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작 방법을 골라 주세요. 고르면 그 방으로 들어갈 수 있어요.</p>}
             <p className="muted small">회원가입은 무료예요. 아이디·비밀번호·닉네임만 받고 이메일·전화번호는 받지 않아요.</p>
             <table className="gs-compare">
               <thead>
@@ -149,7 +149,7 @@ export function Welcome({
               게스트 닉네임
             </h3>
             <label className={'field' + (check === 'ok' ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
-              <span>대결에서 보일 이름 (1~10자)</span>
+              <span>닉네임 (1~10자)</span>
               <input autoFocus value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} />
               {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
               {check === 'invalid' && nick && <small className="error">{nickNotice(nick) ?? '1~10자, 글자·숫자로 정해 주세요.'}</small>}

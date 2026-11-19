@@ -265,8 +265,8 @@ function CodeJoin({
     }
   };
   return (
-    <Modal title={<>코드로 입장</>} onClose={onClose}>
-      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력하세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
+    <Modal title={<>코드로 들어가기</>} onClose={onClose}>
+      <p className="muted small">친구에게 받은 6자리 초대 코드를 입력해 주세요. 비밀방도 코드로는 바로 들어갈 수 있어요.</p>
       <form
         className="join"
         onSubmit={(e) => {
@@ -288,10 +288,10 @@ function CodeJoin({
           onChange={(e) => (setCode(parseRoomCode(e.target.value)), setErr(''))}
         />
         <button className="btn primary" disabled={busy || !online}>
-          입장
+          들어가기
         </button>
       </form>
-      {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
+      {!online && <p className="muted small">인터넷에 연결되면 들어갈 수 있어요.</p>}
       {!err && hasConfusable(code) && <p className="muted small">방 코드에는 I·O·0·1 이 없어요. 비슷한 글자(J·Q·2·L 등)인지 다시 봐 주세요.</p>}
       {!err && !hasConfusable(code) && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
       {err && <p className="error" role="alert">{err}</p>}
@@ -628,7 +628,7 @@ type FrameModal = null | 'howto' | 'privacy' | 'terms' | 'feedback';
 
 const TAB_HEAD: Record<HubTab, { title: string; desc: string }> = {
   ranked: { title: '랭킹전', desc: '실력이 비슷한 회원끼리 겨뤄요. 이기면 점수가 올라요' },
-  casual: { title: '일반전', desc: '점수 걱정 없이 가볍게 한 판' },
+  casual: { title: '일반전', desc: '점수 없이 가볍게 한 판' },
   custom: { title: '커스텀', desc: '친구와 방을 만들어 규칙을 직접 정해요' },
   practice: { title: '연습', desc: '혼자 연습하고 규칙을 익혀요' },
   more: { title: '설정·더보기', desc: '계정, 화면 모드, 도움말' },
@@ -797,8 +797,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-nudge" aria-label="처음이라면">
           <Icon name="book" size={22} />
           <div>
-            <b>처음이세요? 3분 튜토리얼부터 해 보세요</b>
-            <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 진짜 대결이 훨씬 쉬워져요.</p>
+            <b>처음이라면 3분 튜토리얼부터 해 보세요</b>
+            <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 대결이 훨씬 쉬워져요.</p>
           </div>
           <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('home')))}>
             튜토리얼 하기
@@ -911,21 +911,21 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setModal('quick'))}>
               <i className="toon-i"><ToonIcon name="quick" size={40} /></i>
               <b>빠른 참가</b>
-              <small>조건에 맞는 열린 방에 바로 들어가요</small>
+              <small>조건에 맞는 방에 바로 들어가요</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
               <i className="toon-i"><ToonIcon name="create" size={40} /></i>
               <b>방 만들기</b>
-              <small>인원·길이·시간을 직접 정해요(점수 없음)</small>
+              <small>인원과 판 길이를 직접 정해요 · 점수 없음</small>
             </button>
             <button className="tile" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               <i className="toon-i"><ToonIcon name="rooms" size={40} /></i>
               <b>방 찾기</b>
-              <small>{openRooms === null ? '열린 방 둘러보기' : openRooms > 0 ? `지금 ${openRooms}개 열려 있어요` : '공개방·비밀방 둘러보기'}</small>
+              <small>{openRooms === null ? '방 둘러보기' : openRooms > 0 ? `${openRooms}개 방이 사람을 기다려요` : '공개방·비밀방 둘러보기'}</small>
             </button>
-            <button className="tile" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setModal('code'))}>
+            <button className="tile" onClick={() => okWhileMatching('코드로 들어가기는') && gate.guard(() => setModal('code'))}>
               <i className="toon-i"><ToonIcon name="code" size={40} /></i>
-              <b>코드로 입장</b>
+              <b>코드로 들어가기</b>
               <small>친구에게 받은 6자리 코드</small>
             </button>
           </nav>
@@ -936,14 +936,14 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
         <section className="panel pad hub-rooms">
           <div className="hr-head">
             <h3>
-              지금 열린 방
+              들어갈 수 있는 방
             </h3>
             <button className="btn sm ghost" onClick={() => okWhileMatching('방 들어가기는') && gate.guard(() => go('rooms'))}>
               전체 보기 <Icon name="right" size={14} />
             </button>
           </div>
           {roomList === null && <Loading inline />}
-          {roomList !== null && roomList.length === 0 && <p className="muted small">지금 열린 방이 없어요. 방을 만들고 친구에게 코드를 보내 보세요.</p>}
+          {roomList !== null && roomList.length === 0 && <p className="muted small">들어갈 수 있는 방이 없어요. 방을 만들어 친구를 불러 보세요.</p>}
           {roomList !== null && roomList.length > 0 && (
             <ul className="hr-list">
               {roomList.slice(0, 6).map((r) => (
@@ -972,7 +972,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
               최근 대결
             </h3>
             <button className="btn sm ghost" onClick={() => go('records')}>
-              업적·전적 전체 <Icon name="right" size={14} />
+              전체 전적 <Icon name="right" size={14} />
             </button>
           </div>
           <ul className="hr-list">
@@ -1048,7 +1048,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Avatar id={account.profile?.avatar} name={account.profile?.nickname ?? ''} size={44} />
                 <span className="mr-t">
                   <b>{account.profile?.nickname}</b>
-                  <small>{tierText(account.profile?.rating ?? 1000, account.profile?.ranked_games, account.profile?.chal)} · 마이프로필 · 사진 · 칭호 · 계정</small>
+                  <small>{tierText(account.profile?.rating ?? 1000, account.profile?.ranked_games, account.profile?.chal)} · 사진·칭호·계정 관리</small>
                 </span>
                 <Icon name="right" size={14} />
               </button>
@@ -1102,7 +1102,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="phone" /> <span className="mr-t"><b>앱처럼 쓰기</b><small>홈 화면에 추가하는 방법 (기기별 그림 안내)</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => go('notices')}>
-                <Icon name="megaphone" /> <span className="mr-t"><b>공지사항{newNotice && <i className="more-new" aria-label="새 공지" />}</b><small>운영자가 알리는 소식</small></span> <Icon name="right" size={14} />
+                <Icon name="megaphone" /> <span className="mr-t"><b>공지사항{newNotice && <i className="more-new" aria-label="새 공지" />}</b><small>새 소식과 안내</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('feedback')}>
                 <Icon name="bell" /> <span className="mr-t"><b>의견·버그 보내기</b><small>운영자에게 바로 전달돼요</small></span> <Icon name="right" size={14} />
@@ -1111,7 +1111,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
                 <Icon name="lock" /> <span className="mr-t"><b>개인정보처리방침</b><small>모으는 정보와 지우는 방법</small></span> <Icon name="right" size={14} />
               </button>
               <button className="more-row" onClick={() => openModal('terms')}>
-                <Icon name="book" /> <span className="mr-t"><b>이용약관</b><small>서비스 이용 약속</small></span> <Icon name="right" size={14} />
+                <Icon name="book" /> <span className="mr-t"><b>이용약관</b><small>이용 규칙</small></span> <Icon name="right" size={14} />
               </button>
             </section>
           </div>
@@ -1179,7 +1179,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 function OfflineNote() {
   return (
     <section className="panel pad">
-      <p className="muted">온라인 설정이 없어 이 기능을 쓸 수 없어요. '연습'에서 혼자 할 수 있어요.</p>
+      <p className="muted">지금은 온라인 대결을 할 수 없어요. '연습'에서 혼자 해 보세요.</p>
     </section>
   );
 }
@@ -1278,8 +1278,8 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <button className="chip on" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setQuickOpen(true))}>
           <Icon name="ff" /> 빠른 참가
         </button>
-        <button className="chip" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setCodeOpen(true))}>
-          <Icon name="key" /> 코드로 입장
+        <button className="chip" onClick={() => okWhileMatching('코드로 들어가기는') && gate.guard(() => setCodeOpen(true))}>
+          <Icon name="key" /> 코드로 들어가기
         </button>
       </div>
 
@@ -1291,7 +1291,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           <EmptyState
             icon={loadErr ? 'warn' : 'door'}
             tone={loadErr ? 'error' : undefined}
-            title={loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '지금 열린 방이 없어요' : '조건에 맞는 방이 없어요'}
+            title={loadErr ? '방 목록을 불러오지 못했어요' : rooms.length === 0 ? '들어갈 수 있는 방이 없어요' : '조건에 맞는 방이 없어요'}
             desc={loadErr ? '인터넷 연결을 확인해 주세요. 잠시 뒤 저절로 다시 불러와요.' : '직접 방을 만들고 친구를 불러 보세요.'}
             action={
               <button className="btn primary" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
@@ -1325,7 +1325,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
               <small>
                 {r.players}/{r.maxPlayers}명
               </small>
-              <em>{r.joined ? '돌아가기' : '입장'}</em>
+              <em>{r.joined ? '돌아가기' : '들어가기'}</em>
             </span>
           </button>
         ))}
@@ -1350,7 +1350,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
                 취소
               </button>
               <button type="submit" className="btn primary" disabled={busy || pwInput.length < 4}>
-                입장
+                들어가기
               </button>
             </div>
           </form>
@@ -1497,7 +1497,7 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
         <div className="seg two">
           <button aria-pressed={!isPrivate} className={!isPrivate ? 'on' : ''} onClick={() => setIsPrivate(false)}>
             <b><Icon name="globe" /> 공개방</b>
-            <small>누구나 목록에서 입장</small>
+            <small>누구나 목록에서 들어올 수 있어요</small>
           </button>
           <button aria-pressed={isPrivate} className={isPrivate ? 'on' : ''} onClick={() => setIsPrivate(true)}>
             <b><Icon name="lock" /> 비밀방</b>
@@ -1608,7 +1608,7 @@ function Records({ go }: Pick<Props, 'go'>) {
           <div className="rec-sum">
             <div><b>{sum.games}</b><small>대결</small></div>
             <div><b className="rec-gold">{sum.wins}</b><small>1위</small></div>
-            <div><b>{sum.games > 0 ? `${Math.round((sum.wins / sum.games) * 100)}%` : '-'}</b><small>승률{record.draws ? ` · 비김 ${record.draws}` : ''}</small></div>
+            <div><b>{sum.games > 0 ? `${Math.round((sum.wins / sum.games) * 100)}%` : '-'}</b><small>승률{record.draws ? ` · 무승부 ${record.draws}` : ''}</small></div>
           </div>
           {/* 롤·배그 전적처럼 한 줄 카드 — 누르면 그 판의 상세(참가자별 순위·수익률·재산·업적)가 펼쳐짐 */}
           <ul className="mr-list">
@@ -1762,7 +1762,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
       <Modal title={<>{playing ? '진행 중인 대결이 있어요' : '들어가 있는 대기실이 있어요'}</>} onClose={close}>
         <p className="muted small">
           {playing
-            ? '연결이 끊겼거나 창이 닫혀서 대결 밖에 있어요. 대결은 계속 진행되고 있어요. 다시 들어갈까요?'
+            ? '연결이 끊겼거나 창이 닫혀서 대결에서 빠져나왔어요. 대결은 계속되고 있어요. 다시 들어갈까요?'
             : '대기실에 자리가 남아 있어요. 돌아가거나, 방에서 나갈 수 있어요.'}
         </p>
         <p className="rc-room">
@@ -1799,7 +1799,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
                 : onWaiting(multi.roomId, multi.playerId, multi.nickname, multi.code)
             }
           >
-            {playing ? '다시 입장' : '대기실로'}
+            {playing ? '다시 들어가기' : '대기실로'}
           </button>
         </div>
       </Modal>
@@ -1809,7 +1809,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
     return (
       <Modal title={<>하던 연습 게임이 있어요</>} onClose={close}>
         <p className="muted small">
-          연습 중간에 나왔어요 ({solo.data.room.day + 1}일차 / {solo.data.room.total_days}일). 이어서 할까요?
+          연습을 {solo.data.room.day + 1}일차에서 멈췄어요 (전체 {solo.data.room.total_days}일). 이어서 할까요?
         </p>
         <div className="modal-actions rc-actions">
           <button
@@ -2106,7 +2106,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
                 <small>
                   {queueText(match.queue)}
                   {match.phase === 'linking'
-                    ? ' · 방 만드는 중'
+                    ? ' · 곧 시작'
                     : match.info?.etaSec != null
                       ? ` · 예상 ${waitLabel(match.info.etaSec)}`
                       : match.info && match.info.inQueue > 1

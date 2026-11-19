@@ -53,7 +53,7 @@ export function bandText(b: [number, number]) {
   return `${f(b[0])}~${b[1] > 0 && b[0] >= 0 ? b[1] : f(b[1])}%`;
 }
 
-const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
+const STATUS_TEXT = { away: '자리 비움', left: '기권' } as const;
 
 /** 내 자산은 화면에서 계산한 최신값으로 덮어써서 순위 계산 */
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
@@ -92,7 +92,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
             )}
           </span>
           {r.status !== 'on' ? (
-            <span className={'rs gone ' + r.status} title={r.status === 'left' ? '게임에서 나갔어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
+            <span className={'rs gone ' + r.status} title={r.status === 'left' ? '기권했어요 (기다리지 않아요)' : '한동안 응답이 없어요 (기다리지 않아요)'}>
               {STATUS_TEXT[r.status]}
             </span>
           ) : (
@@ -130,7 +130,7 @@ export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds 
           </span>
         ))}
         {gone.map((r) => (
-          <span key={r.id} className={'es-p gone ' + r.status} title={r.status === 'left' ? '나갔어요' : '자리 비움 — 기다리지 않아요'}>
+          <span key={r.id} className={'es-p gone ' + r.status} title={r.status === 'left' ? '기권했어요' : '자리 비움 — 기다리지 않아요'}>
             <i>
               <Icon name="door" size={12} />
             </i>

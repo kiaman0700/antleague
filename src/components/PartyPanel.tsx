@@ -96,7 +96,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
           </button>
         )}
       </div>
-      {!inParty && <p className="muted small">친구 1명과 파티를 만들어 일반전 다인전을 같이 찾을 수 있어요. 4명 방이 기본이고, 1분 30초 넘게 못 모이면 3명 방에도 들어가요.</p>}
+      {!inParty && <p className="muted small">친구 1명과 파티를 만들어 일반전 다인전을 같이 찾을 수 있어요. 보통 4명이 모이고, 1분 30초가 지나면 3명으로도 시작해요.</p>}
       {party && (
         <ul className="party-members">
           {party.members.map((m, i) => (
@@ -106,7 +106,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
               {m.leader && <em className="party-leader">파티장</em>}
               <small className="muted">{tierShort(m.rating, m.ranked)}</small>
               {/* 판이 끝난 뒤 파티로 돌아왔는지 (롤처럼 모두 돌아와야 다시 찾기) */}
-              {!m.me && m.back === false && <em className="party-away">아직 안 돌아옴</em>}
+              {!m.me && m.back === false && <em className="party-away">아직 안 왔어요</em>}
               {!m.me && m.back === true && party.members.length > 1 && <em className="party-back"><Icon name="check" size={11} /> 돌아옴</em>}
             </li>
           ))}
@@ -116,7 +116,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
       {inParty && !party!.isLeader && <p className="muted small">파티장이 '일반전 찾기'를 누르면 같이 찾기 시작해요.</p>}
       {canInvite && (
         <button className="btn sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          <Icon name="userPlus" size={14} /> 친구 파티에 부르기
+          <Icon name="userPlus" size={14} /> 파티에 친구 초대
         </button>
       )}
       {open && canInvite && (
@@ -130,7 +130,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
                 <span className="fr-txt">
                   <b>{f.nickname}</b>
                   {sent[f.id] && sent[f.id] !== 'ok' && <small className="error">{sent[f.id]}</small>}
-                  {sent[f.id] === 'ok' && <small className="good-msg">불렀어요. 2분 안에 수락하면 들어와요 (못 받았으면 다시 부르기)</small>}
+                  {sent[f.id] === 'ok' && <small className="good-msg">초대했어요. 친구가 2분 안에 수락하면 들어와요</small>}
                 </span>
                 <span className="fr-act">
                   <button className="btn sm" disabled={!!fresh[f.id]} onClick={() => invite(f.id)}>

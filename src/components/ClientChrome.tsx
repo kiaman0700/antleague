@@ -83,7 +83,7 @@ export function TopBar({
           matching ? (
             <span className="cl-play-wrap">
               <button className="cl-play searching" onClick={onPlay} title="찾고 있는 대결 보기">
-                <span>{matching.linking ? '방 만드는 중' : '매칭 중'} {matching.time}</span>
+                <span>{matching.linking ? '곧 시작' : '매칭 중'} {matching.time}</span>
                 <small>{matching.text}</small>
               </button>
               {!matching.linking && (
@@ -259,7 +259,7 @@ export function SocialPanel({
                     }, party.isLeader ? '파티를 없앴어요' : '파티에서 나왔어요')
                   }
                 >
-                  {party.isLeader ? '해산' : '나가기'}
+                  {party.isLeader ? '파티 없애기' : '나가기'}
                 </button>
               )}
             </div>
@@ -333,13 +333,13 @@ export function SocialPanel({
                             <button
                               className="cs-mini"
                               disabled={!!busy}
-                              title="파티에 부르기 (일반전 다인전 같이 찾기)"
+                              title="파티에 초대 (일반전 다인전 같이 찾기)"
                               onClick={() =>
                                 okWhileMatching('파티 부르기는') &&
                                 act('p' + f.id, async () => {
                                   await api('partyInvite', { friendId: f.id });
                                   await reloadParty();
-                                }, `${f.nickname} 님을 파티에 불렀어요`)
+                                }, `${f.nickname} 님을 파티에 초대했어요`)
                               }
                             >
                               파티

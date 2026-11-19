@@ -294,7 +294,7 @@ export function cleanDays(v: unknown) {
 }
 export function cleanTurn(v: unknown) {
   if (typeof v === 'number' && TURN_CHOICES.includes(v)) return v;
-  throw new GameError('고민 시간을 다시 골라 주세요.');
+  throw new GameError('하루 길이를 다시 골라 주세요.');
 }
 export function cleanCode(v: unknown) {
   if (typeof v !== 'string') throw new GameError('방 코드를 입력해 주세요.');
@@ -587,7 +587,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     }
     if (e.to === meId) {
       if (e.blocked) base.notices.push({ key, text: `방패가 누군가의 ${josa(name, '을', '를')} 막았어요!`, kind: 'ok' });
-      else if (e.kind !== 'fake') base.notices.push({ key, text: `누군가 나에게 ${name} 카드를 썼어요! 다음 날부터 적용돼요`, kind: 'warn' });
+      else if (e.kind !== 'fake') base.notices.push({ key, text: `누군가 나에게 ${name} 카드를 썼어요. 내일 효과가 나타나요`, kind: 'warn' });
     } else if (e.from === meId && e.blocked) base.notices.push({ key, text: `${nick(e.to)}에게 쓴 ${josa(name, '은', '는')} 방어에 막혔어요`, kind: 'warn' });
   });
 
@@ -756,7 +756,7 @@ export function validateBuyItem(d: GameData, meId: string, now: number, input: {
   requirePlaying(d, meId, now);
   const kind = cleanKind(input.kind);
   const solo = d.players.length < 2;
-  if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 둘이서 할 때만 쓸 수 있어요.');
+  if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 상대가 있는 판에서만 쓸 수 있어요.');
   const mine = itemsOf(d).players[meId];
   const cost = itemCost(kind, d.players.length, d.room.version ?? 1);
   const why = canBuy(mine, kind, portfolioOf(d, meId).cash, cost, holdLimit(d.room.version ?? 1));
@@ -768,7 +768,7 @@ export function validateUseItem(d: GameData, meId: string, now: number, input: {
   requirePlaying(d, meId, now);
   const kind = cleanKind(input.kind);
   const solo = d.players.length < 2;
-  if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 둘이서 할 때만 쓸 수 있어요.');
+  if (solo && ITEM_MAP[kind].multiOnly) throw new GameError('이 카드는 상대가 있는 판에서만 쓸 수 있어요.');
   const mine = itemsOf(d).players[meId];
   const usedToday = d.items.some((r) => r.player_id === meId && r.action === 'use' && r.kind === kind && r.day === d.room.day);
   const why = canUse(mine, kind, d.room.day, d.room.total_days, usedToday);
