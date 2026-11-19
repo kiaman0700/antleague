@@ -1,4 +1,5 @@
 import { currentChapter, finishChapter, nextChapter, stopTour, useChapter } from '../lib/onboarding';
+import { OrnCorners } from '../components/AugFrame';
 import { CoachTour } from '../components/CoachTour';
 import { GAME_TIME_VERSION, PLATFORMS } from '../game/community';
 import { RESULT_STEPS } from '../components/Tours';
@@ -1852,7 +1853,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         <div className="hud-right">{settings}</div>
       </header>
 
-      <section className="score desk-score">
+      <section className="score desk-score orn orn-amethyst orn-thin">
+        <OrnCorners tone="amethyst" />
         {rivals && players.length > 2 ? (
           <RankStrip rows={rows} />
         ) : (
