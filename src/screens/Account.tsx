@@ -3,6 +3,7 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { StreakLine } from '../components/Streak';
+import { FormStrip, RatingSpark } from '../components/FormStrip';
 import { copyText } from '../lib/copy';
 import { nickNotice } from '../game/nickname';
 import { useEffect, useState } from 'react';
@@ -565,6 +566,12 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <b>{p.best_ret === null ? '-' : pct(p.best_ret, 1)}</b>
         </div>
       </section>
+      {acc.recent.length > 0 && (
+        <section className="panel pad me-form" aria-label="최근 흐름">
+          <FormStrip rows={acc.recent} />
+          <RatingSpark rows={acc.recent} />
+        </section>
+      )}
 
       {acc.streak && (
         <section className="panel pad stk-panel" aria-label="연속 기록">
@@ -767,11 +774,14 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
       {data && data.top.length === 0 && acc.status === 'member' && <EmptyState icon="trophy" title="아직 랭킹이 비어 있어요" desc={`랭킹전 배치 ${PLACEMENT_GAMES}판을 마친 회원부터 순위에 올라가요.`} />}
       {data && data.top.length > 0 && (
         <ol className="rank-board">
-          {data.top.map((r) => {
+          {data.top.map((r, i) => {
             const t = titleLabel(r.title);
             const mine = data.me && r.nickname === data.me.nickname;
+            // 티어가 바뀌는 자리에 얇은 구분 줄 (어느 티어까지가 어디인지 한눈에)
+            const tierName = tierOf(r.rating).name;
+            const newTier = i === 0 || tierOf(data.top[i - 1].rating).name !== tierName;
             return (
-              <li key={r.rank + r.nickname} className={mine ? 'me' : ''}>
+              <li key={r.rank + r.nickname} className={(mine ? 'me' : '') + (newTier && i > 0 ? ' rb-tier-start' : '')} data-tier={newTier && i > 0 ? tierName : undefined}>
                 <span className={'rb-rank r' + Math.min(r.rank, 4)}>{r.rank}</span>
                 <Avatar id={r.avatar} name={r.nickname} size={30} />
                 <span className="rb-name">
@@ -786,9 +796,23 @@ export function RankingPage({ onBack, onLogin, onPlay }: { onBack: () => void; o
                   {r.games}판 · {r.wins}승
                 </span>
                 <TierBadge rating={r.rating} rankedGames={PLACEMENT_GAMES} size={24} chal={r.chal} />
+                <span className="rb-pts">{r.rating.toLocaleString('ko-KR')}</span>
               </li>
             );
           })}
+          {/* 내가 목록 밖이면 내 줄을 아래에 붙여 늘 보이게 */}
+          {data.me?.rank && !data.top.some((r) => r.nickname === data.me!.nickname) && (
+            <li className="me rb-sticky">
+              <span className="rb-rank r4">{data.me.rank}</span>
+              <Avatar id={acc.profile?.avatar} name={data.me.nickname} size={30} />
+              <span className="rb-name">
+                <b>{data.me.nickname}</b>
+              </span>
+              <span className="rb-stat muted">{data.me.games}판</span>
+              <TierBadge rating={data.me.rating} rankedGames={PLACEMENT_GAMES} size={24} chal={data.me.chal} />
+              <span className="rb-pts">{data.me.rating.toLocaleString('ko-KR')}</span>
+            </li>
+          )}
         </ol>
       )}
       <DailyRankPanel />

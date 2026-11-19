@@ -37,4 +37,5 @@ export function pct(r: number, digits = 2) {
   return `${v > 0 ? '+' : ''}${s}%`;
 }
 
-export const tone = (v: number) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
+// 비율이 0.05% 미만이면 '0.0%'로 보이므로 색도 보합 (금액 차이는 1원 이상이라 영향 없음)
+export const tone = (v: number) => (v >= 0.0005 ? 'up' : v <= -0.0005 ? 'down' : 'flat');
