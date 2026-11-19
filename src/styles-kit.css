@@ -2717,3 +2717,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 
 /* 대기실 아래 버튼 글자는 한 줄 (왼쪽 안내가 길어져도 버튼이 좁아지지 않게) */
 .wr-go { white-space: nowrap; flex-shrink: 0; }
+/* 좁은 휴대폰에서 네 칸 고르기의 글자가 '상관없/음'처럼 꺾이지 않게: 옆 여백을 줄이고 글자는 한 줄 */
+.qj-seg button { padding-inline: 4px; white-space: nowrap; }
+@media (max-width: 400px) { .qj-seg button b { font-size: 15px; } }
