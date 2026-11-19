@@ -1073,7 +1073,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const ago = (ms: number) => new Date(nowMs - ms).toISOString();
       await sb.from('match_tickets').update({ last_poll: new Date(nowMs).toISOString() }).eq('id', mine.id);
       // 정리: 창을 닫은 사람(10초 응답 없음), 서버가 멈춰 15초 넘게 '잡힌 채' 남은 표, 2분 지난 매칭 결과
-      await sb.from('match_tickets').delete().is('room_id', null).is('claim', null).lt('last_poll', ago(10_000));
+      // 만든 지 30초 안 된 표는 지우지 않음 — 파티장이 만든 파티원 표는 파티원 화면(뒤에 둔 창은 확인이 느림)이 첫 확인을 하기 전에 지워지곤 했음. 후보에서는 아래 last_poll 조건으로 여전히 빠짐
+      await sb.from('match_tickets').delete().is('room_id', null).is('claim', null).lt('last_poll', ago(10_000)).lt('created_at', ago(30_000));
       await sb.from('match_tickets').update({ claim: null, claimed_at: null }).is('room_id', null).lt('claimed_at', ago(15_000));
       await sb.from('match_tickets').delete().lt('matched_at', ago(120_000));
       const q = parseQueue(mine.queue)!;
@@ -1140,12 +1141,15 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const seenNow = new Date().toISOString();
         const ins = must(await sb.from('players').insert(members.map((m) => ({ room_id: room!.id, user_id: m.user_id, nickname: m.nickname, mode: m.mode, ready: true, last_seen: seenNow }))).select('id, user_id'), 'match players') as { id: string; user_id: string }[];
         const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
-        must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
+        // 대기표를 먼저 방에 잇고(실패하면 방을 지우고 풀어 줌) 그다음에 판을 시작 —
+        // 판이 시작된 뒤 표 연결이 실패하면 그 사람은 계속 찾는 중으로 남아 다른 판에 또 잡힘
         const matchedAt = new Date().toISOString();
         for (const m of members) {
           const p = ins.find((x) => x.user_id === m.user_id);
-          await sb.from('match_tickets').update({ room_id: room.id, player_id: p?.id ?? null, nickname: m.nickname, matched_at: matchedAt }).eq('id', m.id);
+          if (!p) throw new GameError('방을 만들지 못했어요.', 500);
+          must(await sb.from('match_tickets').update({ room_id: room.id, player_id: p.id, nickname: m.nickname, matched_at: matchedAt }).eq('id', m.id), 'match ticket');
         }
+        must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
         const meP = ins.find((x) => x.user_id === uid)!;
         return { status: 'matched', roomId: room.id, playerId: meP.id, code: room.code, nickname: members.find((m) => m.user_id === uid)!.nickname, mode: mine.mode };
       } catch (e) {

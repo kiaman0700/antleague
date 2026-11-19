@@ -59,6 +59,8 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let last: { queue: string; nickname: string; mode: string; follow: boolean } | null = null;
 /** 찾는 중에 화면을 벗어난 시각 (0 = 계속 보고 있었음) */
 let awayStart = 0;
+/** 마지막으로 알아서 다시 찾은 때 (연달아 되풀이하지 않게) */
+let lastAutoRetry = 0;
 const REJOIN_MS = 3 * 60_000;
 /** 찾기 세대: 그만 찾기 → 다시 찾기 사이에 늦게 온 예전 응답은 무시 */
 let gen = 0;
@@ -98,6 +100,14 @@ async function tick() {
           return;
         }
         set({ phase: 'idle', queue: null, info: null, err: '화면을 오래 벗어나 있어서 찾기를 멈췄어요. 다시 찾아 주세요.' });
+        return;
+      }
+      // 화면은 보고 있었는데 인터넷이 잠깐 느려 서버가 대기표를 지운 경우: 같은 설정으로 한 번은 알아서 다시 찾음 (1분에 한 번까지)
+      if (s.reason !== 'party' && last && !last.follow && !cancelAsked && Date.now() - lastAutoRetry > 60_000) {
+        lastAutoRetry = Date.now();
+        const l = last;
+        set({ phase: 'idle', queue: null, info: null });
+        void startMatch(l.queue, l.nickname, l.mode).then(() => getMatch().phase === 'searching' && showNotice('연결이 잠깐 끊겨서 다시 찾고 있어요.'));
         return;
       }
       set({ phase: 'idle', queue: null, info: null, err: s.reason === 'party' ? '파티원 연결이 끊겨서 같이 찾기가 취소됐어요. 친구가 다시 들어오면 찾아 주세요.' : '대기가 끝났어요. 다시 찾아 주세요.' });

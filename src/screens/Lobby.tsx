@@ -1741,8 +1741,13 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
   }, [done]);
   useEffect(() => {
     if (!online) return;
-    api<ResumeInfo | null>('resume')
+    let tries = 0;
+    let stop = false;
+    let again: ReturnType<typeof setTimeout> | undefined;
+    const ask = () => api<ResumeInfo | null>('resume')
       .then((r) => {
+        // 매칭을 찾다 새로고침한 직후엔 방이 아직 만들어지는 중일 수 있음 → 못 찾았으면 잠깐 뒤 두 번 더 확인
+        if (!r && !stop && tries++ < 2) again = setTimeout(ask, 4000);
         // 답이 오는 사이 다른 창(봇전·도전 등)을 이미 열었으면 겹쳐 띄우지 않고 작은 띠로만
         // (이미 이 팝업을 띄웠으면 그건 '다른 창'이 아님 — 개발 모드처럼 두 번 확인해도 숨기지 않게)
         if (r && !gotResume.current && document.querySelector('.modal-bg')) setHidden(true);
@@ -1751,7 +1756,14 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
         if (r) gotResume.current = true;
         setMulti(r);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!stop && tries++ < 2) again = setTimeout(ask, 4000);
+      });
+    void ask();
+    return () => {
+      stop = true;
+      if (again) clearTimeout(again);
+    };
   }, []);
   const close = () => setHidden(true);
   // 팝업을 닫아도 진행 중인 대결로 돌아갈 길은 남김 (작은 띠)
