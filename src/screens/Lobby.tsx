@@ -230,7 +230,7 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
 function GuestNickField({ nick, setNick }: { nick: string; setNick: (v: string) => void }) {
   const check = useNickCheck(nick, online);
   return (
-    <label className={'field' + (check === 'ok' && nick ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
+    <label className={'field gn-field' + (check === 'ok' && nick ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
       <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
       <input value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
       {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}

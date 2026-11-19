@@ -2647,3 +2647,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .news-big .nb-two > .news-panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; scrollbar-width: thin; }
   .news-big .nb-two > .news-panel + .news-panel { border-left: 1px solid var(--line, #242424); padding-left: 24px; }
 }
+/* '쓸 수 있는 이름' 초록 테두리는 고치는 동안만 — 저장된 닉네임 칸이 늘 초록이면 성공 알림처럼 계속 눈에 띄었음 */
+.gn-field.good:not(:focus-within) input { border-color: var(--line-2, #2e2e2e) !important; box-shadow: none; }
