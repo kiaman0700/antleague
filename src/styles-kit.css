@@ -1964,3 +1964,5 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 :root[data-device="phone"] .m-page:not(.split) .srow.sel { background: transparent; }
 :root[data-device="phone"] .m-page:not(.split) .srow.sel::before { opacity: 1; }
 :root[data-device="phone"] .m-page:not(.split) .stock-list > div:has(> .srow.sel) + div > .srow::before { opacity: 1; }
+/* 움직임 줄이기: 보통 알림도 나타나는 움직임 없이 */
+@media (prefers-reduced-motion: reduce) { .toast, .ui-toast { animation: none !important; } }

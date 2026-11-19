@@ -332,18 +332,65 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const newsTimer = useRef<number>();
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const showToast = useCallback((text: string, kind: 'ok' | 'err' | 'warn' = 'ok') => {
-    setToast({ text, kind });
+  // 알림은 한 번에 하나씩, 나머지는 줄을 섬 — 같은 순간에 온 알림이 서로 덮어써 사라지지 않게
+  const toastQ = useRef<{ text: string; kind: 'ok' | 'err' | 'warn' }[]>([]);
+  const toastOn = useRef<string | null>(null);
+  const nextToast = useCallback(() => {
+    const t = toastQ.current.shift();
+    if (!t) {
+      toastOn.current = null;
+      setToast(null);
+      return;
+    }
+    toastOn.current = t.text;
+    setToast(t);
+    // 확인은 3초, 주의·오류는 5초부터, 긴 글은 읽을 만큼 더 (최대 10초). 창이 뒤에 있으면 돌아올 때까지 기다림
+    const ms = Math.min(10_000, Math.max(t.kind === 'ok' ? 3000 : 5000, t.text.length * 60));
+    const done = () => {
+      if (document.visibilityState === 'hidden') toastTimer.current = window.setTimeout(done, 1000);
+      else nextToast();
+    };
     window.clearTimeout(toastTimer.current);
-    // 긴 안내는 읽을 시간만큼 더 오래
-    toastTimer.current = window.setTimeout(() => setToast(null), Math.max(2600, text.length * 90));
+    toastTimer.current = window.setTimeout(done, ms);
   }, []);
-  /** 장중 속보: 크게, 더 오래(6초+), 누르면 그 종목으로 */
-  const showNews = useCallback((msg: Omit<ToastMsg, 'kind'>) => {
-    setNewsToast({ ...msg, kind: 'news' });
+  const showToast = useCallback(
+    (text: string, kind: 'ok' | 'err' | 'warn' = 'ok') => {
+      if (toastOn.current === text || toastQ.current.some((t) => t.text === text)) return;
+      // 기다리는 줄은 3개까지 — 넘치면 가장 오래된 확인 알림부터 버림 (오류·주의는 남김)
+      if (toastQ.current.length >= 3) {
+        const i = toastQ.current.findIndex((t) => t.kind === 'ok');
+        toastQ.current.splice(i >= 0 ? i : 0, 1);
+      }
+      // 오류는 줄 맨 앞으로
+      if (kind === 'err') toastQ.current.unshift({ text, kind });
+      else toastQ.current.push({ text, kind });
+      if (!toastOn.current) nextToast();
+    },
+    [nextToast],
+  );
+  /** 장중 속보: 크게, 더 오래(6초+), 누르면 그 종목으로. 여러 개면 하나씩 */
+  const newsQ = useRef<Omit<ToastMsg, 'kind'>[]>([]);
+  const newsOn = useRef(false);
+  const nextNews = useCallback(() => {
+    const m = newsQ.current.shift();
+    if (!m) {
+      newsOn.current = false;
+      setNewsToast(null);
+      return;
+    }
+    newsOn.current = true;
+    setNewsToast({ ...m, kind: 'news' });
     window.clearTimeout(newsTimer.current);
-    newsTimer.current = window.setTimeout(() => setNewsToast(null), Math.max(6000, msg.text.length * 110));
+    newsTimer.current = window.setTimeout(nextNews, Math.min(10_000, Math.max(6000, m.text.length * 110)));
   }, []);
+  const showNews = useCallback(
+    (msg: Omit<ToastMsg, 'kind'>) => {
+      if (newsQ.current.length >= 3) newsQ.current.shift();
+      newsQ.current.push(msg);
+      if (!newsOn.current) nextNews();
+    },
+    [nextNews],
+  );
 
   useEffect(() => {
     if (session.demo) return; // 멈춘 장면
@@ -560,10 +607,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     if (!view) return;
     const cur = new Map(view.myOrders.map((o) => [o.id!, o.status]));
     if (seenOrders.current) {
-      for (const o of view.myOrders) {
-        const before = seenOrders.current.get(o.id!);
-        if (before === 'open' && o.status === 'filled') showToast(`예약한 ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주를 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
-      }
+      const filled = view.myOrders.filter((o) => seenOrders.current!.get(o.id!) === 'open' && o.status === 'filled');
+      // 한꺼번에 체결되면 한 줄로 모음
+      if (filled.length === 1) {
+        const o = filled[0];
+        showToast(`예약한 ${STOCK_MAP[o.symbol].name} ${num(o.qty)}주를 ${o.side === 'buy' ? '샀어요' : '팔았어요'}`);
+      } else if (filled.length > 1) showToast(`예약 주문 ${filled.length}건이 체결됐어요`);
     }
     seenOrders.current = cur;
   }, [view, showToast]);
@@ -1132,12 +1181,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         xy={mobile ? layout.mToastXY : layout.toastXY}
         onMove={(xy) => setLayout(mobile ? { mToastXY: xy } : { toastXY: xy })}
         onPick={(sym) => {
-          setNewsToast(null);
+          nextNews();
           selectStock(sym);
         }}
       />
       {/* 보통 알림 자리 (샀어요·오류 등) — 처음엔 아래쪽 */}
-      <ToastSpot slot="alert" toast={toast} editing={editing} pos="bottom" xy={mobile ? layout.mAlertXY : layout.alertXY} onMove={(xy) => setLayout(mobile ? { mAlertXY: xy } : { alertXY: xy })} onDismiss={() => setToast(null)} />
+      <ToastSpot slot="alert" toast={toast} editing={editing} pos="bottom" xy={mobile ? layout.mAlertXY : layout.alertXY} onMove={(xy) => setLayout(mobile ? { mAlertXY: xy } : { alertXY: xy })} onDismiss={nextToast} />
       {(
         <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={`${STOCK_MAP[selected].name} ${sheet === 'sell' ? (easy ? '팔기' : '매도') : easy ? '사기' : '매수'}`}>
           {sheet && (
