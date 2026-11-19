@@ -116,7 +116,9 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       for (const r of final.items) if (r.player_id === p.id && r.action === 'use' && r.kind === 'bonus' && typeof r.payload?.amount === 'number') bonusOn[r.day] = (bonusOn[r.day] ?? 0) + r.payload.amount;
       // 매칭(랭킹전·일반전)에서 거래 0회 = 기권처럼 순위 맨 뒤 (서버 finalResults 와 같은 규칙)
       const idle = matchKind === 'match' && !p.left && trades.length === 0;
-      return { id: p.id, nickname: p.nickname, left: !!p.left, idle, bonusOn, equity, ret: equity / START_CASH - 1, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
+      // 증강으로 받은 돈을 뺀 수익률 — 시장과 비교할 때 (증강 돈만으로 '시장보다 잘했어요'가 되지 않게)
+      const augSum = (final.augIncome?.[p.id] ?? []).filter((x) => x.day <= last).reduce((a, x) => a + x.amount, 0);
+      return { id: p.id, nickname: p.nickname, left: !!p.left, idle, bonusOn, equity, ret: equity / START_CASH - 1, tradeRet: (equity - augSum) / START_CASH - 1, augSum, hist, trades: trades.length, pf, best, worst, used, fakesReceived };
     });
   }, [final, session.playerId, market, last, START_CASH, matchKind]);
 
@@ -234,7 +236,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   const me = results.find((r) => r.id === session.playerId)!;
   const myRank0 = rankOf(session.playerId);
   // 혼자 한 판: 한 번도 거래 안 했으면 시장이 내려도 '잘했어요'라고 하지 않음
-  const soloWin = me.trades > 0 && me.ret > indexRet;
+  const soloWin = me.trades > 0 && me.tradeRet > indexRet;
   const iWon = winner?.id === session.playerId;
   // 이번 시장 성적: 처음엔 많이 오른 5개·많이 내린 5개만 (47종목을 다 펼치면 화면이 너무 길어짐)
   const [allStocks, setAllStocks] = useState(false);
@@ -304,7 +306,10 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   // 가장 크게: 내 수익률 하나 + 시장·상대와 나란히 비교 (결과 화면 사례 공통)
   const rival = solo ? null : ranked.find((r) => r.id !== session.playerId && (myRank0 === 0 || rankOf(r.id) === 0)) ?? null;
   const gain = me.equity - me.equity / (1 + me.ret);
-  const vsMarket = (me.ret - indexRet) * 100;
+  const vsMarket = (me.tradeRet - indexRet) * 100;
+  // 공유 카드의 날마다 오름·내림 칸: 증강으로 들어온 돈은 빼고 (투자로 번 날만 빨강)
+  const myAug = final.augIncome?.[me.id] ?? [];
+  const tradeDeltas = me.hist.slice(1).map((v, d) => v - me.hist[d] - myAug.filter((x) => x.day === d).reduce((sum, x) => sum + x.amount, 0));
   const heroEl = (
     <div className="panel rs-hero">
       <span className="rh-rank">{solo ? (matchKind === 'daily' ? '오늘의 도전' : '연습') + ' · 내 수익률' : `${myRank0 + 1}위 · ${results.length}명 중`}</span>
@@ -325,7 +330,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       </div>
       {/* 한 번도 안 샀으면 시장이 내려 '앞섰다'고 해도 잘한 게 아님 */}
       {me.trades > 0 && <small className="rh-note">
-        시장보다 <b className={tone(vsMarket)}>{vsMarket >= 0 ? '+' : ''}{vsMarket.toFixed(1)}%p</b> {vsMarket >= 0 ? '앞섰어요' : '뒤졌어요'}
+        시장보다 <b className={tone(vsMarket)}>{vsMarket >= 0 ? '+' : ''}{vsMarket.toFixed(1)}%p</b> {vsMarket >= 0 ? '앞섰어요' : '뒤졌어요'}{me.augSum !== 0 && <span className="muted small"> (증강으로 받은 돈 빼고)</span>}
       </small>}
     </div>
   );
@@ -685,7 +690,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
             {session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}
             {dailyEl}
             {restEl}
-            {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
+            {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={tradeDeltas} isDaily />}
           </aside>
         </div>
         {actionsEl}
@@ -713,7 +718,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                 players={results.length}
                 ret={me.ret}
                 days={market.totalDays}
-                daily={me.hist.slice(1).map((v, d) => v - me.hist[d])}
+                daily={tradeDeltas}
                 isDaily={matchKind === 'daily'}
               />
             ),
