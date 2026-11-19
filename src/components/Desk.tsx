@@ -175,7 +175,7 @@ export function CardTray({
     <div className="tray">
       <div className="tray-head">
         <b>
-          🃏 찬스 카드 <span className="count-badge">{mine.total}/{Math.max(holdLimit(version), mine.total)}</span>
+          <Icon name="cards" size={15} /> 찬스 카드 <span className="count-badge">{mine.total}/{Math.max(holdLimit(version), mine.total)}</span>
         </b>
         <button className="btn sm" onClick={onOpen}>
           <Icon name="cart" /> 상점 · 전체
