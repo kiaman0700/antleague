@@ -8,13 +8,15 @@ interface Req {
   text: string;
   ok: string;
   danger: boolean;
+  /** 알림만(묻는 게 아님) — 취소 버튼 없이 확인 하나 */
+  notice: boolean;
   done: (v: boolean) => void;
 }
 let cur: Req | null = null;
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 
-export function ask(text: string, opt: { ok?: string; danger?: boolean } = {}): Promise<boolean> {
+export function ask(text: string, opt: { ok?: string; danger?: boolean; notice?: boolean } = {}): Promise<boolean> {
   // 이미 떠 있는 확인 창은 '아니요'로 닫고 새로
   cur?.done(false);
   return new Promise((resolve) => {
@@ -22,6 +24,7 @@ export function ask(text: string, opt: { ok?: string; danger?: boolean } = {}): 
       text,
       ok: opt.ok ?? '확인',
       danger: !!opt.danger,
+      notice: !!opt.notice,
       done: (v) => {
         if (cur === req) {
           cur = null;
@@ -69,9 +72,11 @@ export function ConfirmHost() {
       <div className="modal confirm-modal" role="alertdialog" aria-modal aria-label={req.text} onClick={(e) => e.stopPropagation()}>
         <p className="confirm-text">{req.text}</p>
         <div className="confirm-actions">
-          <button ref={cancelRef} className="btn" onClick={() => req.done(false)}>
-            취소
-          </button>
+          {!req.notice && (
+            <button ref={cancelRef} className="btn" onClick={() => req.done(false)}>
+              취소
+            </button>
+          )}
           <button ref={okRef} className={'btn ' + (req.danger ? 'danger' : 'primary')} onClick={() => req.done(true)}>
             {req.ok}
           </button>

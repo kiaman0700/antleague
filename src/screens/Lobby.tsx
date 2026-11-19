@@ -735,7 +735,8 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       setModal(null);
       onGame({ mode: 'multi', roomId: r.roomId, code: r.code, playerId: r.playerId, nickname, ui: profile.ui });
     } catch (e) {
-      void ask(e instanceof Error ? e.message : String(e), { ok: '확인' });
+      // 시작하지 못한 까닭을 알리는 창 — 물어보는 게 아니라 '취소'는 없음
+      void ask(e instanceof Error ? e.message : String(e), { ok: '확인', notice: true });
     }
   };
   const startPractice = async (days: number, daySec: number, bots: number[] = []) => {
@@ -1784,7 +1785,7 @@ function Reconnect({ onWaiting, onGame, quiet }: Pick<Props, 'onWaiting' | 'onGa
   if (done && !multi && !solo) return <Toast text={done} />;
   if (hidden) {
     if (!multi && !solo) return null;
-    const label = multi ? (multi.status === 'playing' ? '진행 중인 대결' : '들어가 있는 대기실') : '하던 연습 게임';
+    const label = multi ? (multi.status === 'playing' ? `진행 중인 ${multi.kind === 'daily' ? '오늘의 도전' : multi.kind === 'bot' ? '봇전' : '대결'}` : '들어가 있는 대기실') : '하던 연습 게임';
     return (
       <button className="rc-pill" onClick={() => setHidden(false)}>
         <Icon name="play" size={14} /> {label} · 다시 보기

@@ -91,10 +91,15 @@ async function userPwFail(roomId: string, uid: string) {
  * (재입장 팝업이 여러 방 중 하나만 보여 주는 문제·한 사람이 여러 판을 동시에 하는 문제 방지)
  */
 async function ensureFree(uid: string, exceptRoom?: string) {
-  const seats = must(await db().from('players').select('id, room_id, left_game, rooms!inner(status)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { id: string; room_id: string; left_game: boolean; rooms: { status: string } }[];
+  const seats = must(await db().from('players').select('id, room_id, left_game, rooms!inner(status, kind)').eq('user_id', uid).in('rooms.status', ['playing', 'waiting']), 'seats') as unknown as { id: string; room_id: string; left_game: boolean; rooms: { status: string; kind?: string | null } }[];
   const others = seats.filter((p) => p.room_id !== exceptRoom);
-  if (others.some((p) => p.rooms.status === 'playing' && !p.left_game))
+  const busy = others.find((p) => p.rooms.status === 'playing' && !p.left_game);
+  if (busy) {
+    // 하던 판이 혼자 하는 판(오늘의 도전·봇전)이면 '대결·기권' 대신 그 이름·'그만둔'으로
+    const k = busy.rooms.kind;
+    if (k === 'daily' || k === 'bot') throw new GameError(`하던 ${k === 'daily' ? '오늘의 도전' : '봇전'}이 있어요. 로비의 재입장 안내로 돌아가거나 그만둔 뒤에 새로 시작할 수 있어요.`, 409);
     throw new GameError('진행 중인 대결이 있어요. 로비의 재입장 안내로 돌아가거나 기권한 뒤에 다른 방에 들어갈 수 있어요.', 409);
+  }
   for (const p of others.filter((x) => x.rooms.status === 'waiting')) await leaveSeat(p.room_id, p.id).catch(() => {});
   // 매칭을 찾던 중이었으면 그 대기도 취소 (이미 잡혔으면 그대로 — 곧 그쪽 게임이 시작됨)
   await db().from('match_tickets').delete().eq('user_id', uid).is('claim', null).is('room_id', null);
