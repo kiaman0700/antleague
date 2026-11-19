@@ -1843,3 +1843,10 @@ p { text-wrap: pretty; }
 .qj-seg .on, .qj-seg button { min-width: 0; }
 .qj-none .modal-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 8px; }
 .qj-none .modal-actions .btn { white-space: nowrap; justify-content: center; }
+
+/* 오늘의 시장 테마 카드 (ThemeCard.tsx) */
+.theme-card { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; padding: 12px; border-radius: 12px; background: var(--surface-2, #242424); border: 1px solid var(--line-2, #2e2e2e); line-height: 1.5; }
+.theme-card > i { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #2a2440; color: #b9adff; }
+.theme-card small { display: block; color: var(--text-3, #9a9a9a); font-size: 12px; }
+.theme-card b { display: block; font-size: 15px; }
+.theme-card .theme-text { display: block; margin-top: 2px; color: var(--text-2, #c8c8c8); font-size: 13px; }

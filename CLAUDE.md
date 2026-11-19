@@ -289,3 +289,13 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - e2e `social` 이 로컬에서 429(친구 신청 계정당 1시간 20번, 서버 메모리)로 실패하면 같은 개발 서버로 여러 번 돌린 탓 — `BASE=https://antleague.vercel.app npm run e2e -- social` 로 확인 (2026-11-19 두 번 그랬고 운영은 통과)
 - (2026-11-19 아침) 비밀방 비밀번호 칸 PwInput(보기 버튼) · 초대 링크(?room=)로 온 처음 방문자에게 시작 창 맨 위 안내 · 로그인 탭 바꾸면 비밀번호 칸 비움
 - 새 갈래를 GitHub 에 올리면 Vercel 이 미리보기 배포를 함(하루 100번에 셈) — 승인 전 준비 작업은 갈래를 로컬에만 두거나, vercel.json `git.deploymentEnabled` 에 그 갈래 이름을 false 로. 2026-11-19 `bot-xp-cap`(봇전 경험치 하루 100, 승인 대기) 을 올려 미리보기 1번 씀
+
+## 2026-11-19 묶음 (design/v26-batch.md, 사용자 승인 A~D)
+- 규칙 v26(지금 최신) = v25 + 오늘의 도전 '오늘의 시장' 테마(`src/game/themes.ts` 7개: pump 테마주 광풍·war 전쟁과 유가·delist 상장 폐지 주의보·rate 금리 충격·binary 신약 승인 발표·short 공매도 보고서·rights 유상증자). 테마는 rooms.theme(DB 062, 공개), 7일 묶음마다 7개를 서버 비밀 키 HMAC('daily-theme:'+묶음)로 섞어 돌림(이틀 연속 같은 테마 없음, `themeForDay`). 시장은 테마 사건을 꼭 넣음(`planEvents24(..., force)`, rate 는 금통위 0.5%p 깜짝 변경). 테마 없는 v26 = v25 가격(v26.test.ts). v26 부터 가격을 움직이는 사건 기사(storyNews)는 v17 '경쟁사 모양' 가짜 기사 바꾸기에서 뺌 — v24~25 에선 공매도 오보 속보가 30% 경쟁사 기사로 바뀌어 이유 모를 급락이 됐음. 서버 loadGame 은 방 칸을 골라 담으므로 새 칸(theme 등)은 거기에도 넣어야 함
+- 연속 기록 2판(A, DB 061 play_days): 랭킹전·일반전·오늘의 도전을 끝까지 + 거래 1번 이상 한 날만, 얼리기 없음, 연속·최고(`src/game/streak.ts`, `api/_lib/streaks.ts`). missions·profile·dailyInfo 응답 streak. 화면 `Streak.tsx`(미션 버튼 불꽃·미션 팝업·마이프로필·결과 7/30/100일)
+- 손님 닉네임 양보(C): 회원 닉네임과 같으면 손님은 '형용사+개미+4자리'(`randomGuestName`)로 바뀌고 응답 guestRenamed → `RenameNotice` 한 번. 이용약관·시작 창·닉네임 칸에 미리 알림
+- 커스텀 빠른 참가(D): 서버 `quickJoin {size: any|duel|multi, turnSeconds: 60|180|300(5분 이상)}` — 공개·대기·자리 있음·방장 사람·90초 안 응답·차단 관계 없음, 사람 많은 방 먼저. 없으면 404 → '이 조건으로 방 만들기'(sessionStorage stockduel.createPreset). e2e quickjoin
+- 닉네임·방 제목 막기(`src/game/nickname.ts`): 운영자·공식 흉내, 전각 영어→반각(같은 이름으로 걸림), 영어+러시아·그리스 섞기, 방 제목의 링크·연락처·리딩방·오픈채팅
+- 반응 끄기는 보내기도 막음. 봇전 판 경험치 하루 첫 판만. 오늘의 도전 '함께 n일' 없앰
+- 주석은 '왜'만 — 사용자 요청·날짜·조사 이야기는 주석에 쓰지 않음(사용자 지시). 검사 도구: 스크래치 samecode.mjs(주석 뺀 코드 비교)
+- 조사는 쉬지 않고 이어서(조사 담당이 끝나면 다음 조사를 바로 띄움). 오늘 조사한 것: 연속 기록·동시 접속·빠른 참가·임시 닉네임·테마, 화면 세부·국내 모의투자, 매칭·부계정·점수 공개·리그·법, 첫 10분·지는 사람·웹 푸시·접근성, 보안 점검표, 성능·느린 망, 테마 실제 규칙, 결과·복기, 봇 설계, 소셜, 쉬운 말

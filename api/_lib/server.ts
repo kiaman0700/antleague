@@ -6,6 +6,7 @@
 import { leagueInfo } from './league.js';
 import { myStreak } from './streaks.js';
 import { nickNotice, randomGuestName, titleProblem } from '../../src/game/nickname.js';
+import { THEME_VERSION, themeForDay } from '../../src/game/themes.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
@@ -306,6 +307,8 @@ async function loadGame(roomId: string): Promise<GameData> {
       next_code: r.next_code ?? null,
       kind: r.kind ?? 'custom',
       ranked: !!r.ranked,
+      // (v26) 오늘의 시장 테마 — 시장을 만들 때 씀 (062 전이면 없음)
+      theme: r.theme ?? null,
     } as RoomRow,
     players: must(pl, 'players') as PlayerRow[],
     trades: (must(trades, 'trades') as Trade[]).map((t) => ({ ...t, price: Number(t.price), fee: Number(t.fee) })),
@@ -421,6 +424,10 @@ export function kstDay(now = Date.now()) {
 function dailySecret(day: string) {
   const h = (k: string) => createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update(k + day).digest('hex');
   return { seed: parseInt(h('daily-seed:').slice(0, 8), 16) % 2_000_000_000, salt: h('daily-salt:').slice(0, 32) };
+}
+/** (v26) 그날의 '오늘의 시장' 테마 — 7일 묶음 순서는 서버 비밀 키 HMAC 로만 정해 미래 테마는 서버만 앎 */
+function dailyTheme(day: string) {
+  return themeForDay(day, (block) => createHmac('sha256', process.env.SUPABASE_SECRET_KEY ?? 'dev').update('daily-theme:' + block).digest('hex'));
 }
 /** 오늘의 도전 점수 기록 (한 번만 — 아직 안 끝난 기록만 바꿈) */
 async function recordDaily(roomId: string, ret: number) {
@@ -1164,6 +1171,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return {
         day,
         ready: true,
+        // 오늘의 시장 테마 (오늘 것만 공개 — 모두 같은 시장)
+        ...(CURRENT_RULES_VERSION >= THEME_VERSION ? { theme: dailyTheme(day) } : {}),
         ...(streak ? { streak } : {}),
         played: !!my,
         finished: !!my?.finished,
@@ -1207,7 +1216,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         for (let i = 0; i < 5 && !room; i++) {
           const res = await sb
             .from('rooms')
-            .insert({ code: newCode(), total_days: DAILY_DAYS, turn_seconds: DAILY_TURN, title: `오늘의 도전 · ${Number(mm)}월 ${Number(dd)}일`, max_players: 2 /* DB 제한(2~6) — 이미 진행 중이라 아무도 못 들어옴 */, is_private: true, kind: 'daily', status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline })
+            .insert({ code: newCode(), total_days: DAILY_DAYS, turn_seconds: DAILY_TURN, title: `오늘의 도전 · ${Number(mm)}월 ${Number(dd)}일`, max_players: 2 /* DB 제한(2~6) — 이미 진행 중이라 아무도 못 들어옴 */, is_private: true, kind: 'daily', status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline, ...(CURRENT_RULES_VERSION >= THEME_VERSION ? { theme: dailyTheme(day) } : {}) })
             .select('id, code')
             .single();
           if (!res.error) room = res.data;

@@ -21,6 +21,8 @@ export interface DailyInfo {
   friends?: { nickname: string; ret: number | null; finished: boolean }[];
   /** 연속 기록 (서버 계산) */
   streak?: StreakInfo | null;
+  /** (v26) 오늘의 시장 테마 id */
+  theme?: string;
 }
 
 /** 연속 기록 칩: 'n일 연속' (최고 기록은 칩 설명에) */

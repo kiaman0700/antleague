@@ -1,3 +1,4 @@
+import { ThemeCard, themeName } from '../components/ThemeCard';
 import { readStored } from '../lib/stored';
 import { nickNotice, titleProblem } from '../game/nickname';
 import { parseRoomCode, hasConfusable } from '../lib/roomCode';
@@ -544,6 +545,7 @@ function DailyStart({ onClose, onGame, member }: { onClose: () => void; onGame: 
   return (
     <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
       <p className="muted small">오늘 하루, 모든 사람이 똑같은 시장으로 한 번씩 겨뤄요. 10일 동안 하루 1분, 100만원으로 시작해요. 기회는 하루에 한 번이고, 중간에 나가면 그때 재산으로 기록돼요.</p>
+      <ThemeCard id={info?.theme} />
       {err ? (
         <ErrorState what="오늘의 도전" onRetry={reload} compact />
       ) : !info ? (
@@ -998,7 +1000,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <button className="tile" onClick={() => okWhileMatching('오늘의 도전은') && (member ? gate.guard(() => setModal('daily')) : setModal('daily'))}>
               <i><Icon name="daily" size={24} /></i>
               <b>오늘의 도전</b>
-              <small>{!member ? '회원만 · 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중` : '모두 같은 시장, 하루 한 번'}</small>
+              <small>{!member ? '회원만 · 하루 한 번' : dailyTile?.finished ? `오늘 완료${dailyTile.myRank ? ` · ${dailyTile.myRank}위` : ''}${dailyTile.streak?.streak ? ` · ${dailyTile.streak.streak}일 연속` : ''}` : dailyTile?.resume ? '하던 도전 이어하기' : themeName(dailyTile?.theme) ? `오늘의 시장 · ${themeName(dailyTile?.theme)}` : dailyTile?.streak?.streak ? `${dailyTile.streak.streak}일 연속 중` : '모두 같은 시장, 하루 한 번'}</small>
             </button>
           )}
           <button className="tile" onClick={() => okWhileMatching('봇전은') && gate.guard(() => setModal('bots'))}>

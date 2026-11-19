@@ -208,7 +208,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
     const idx = fin.results.findIndex((r) => r.nickname === p.nickname);
     const res = fin.results[idx];
     if (!res) continue;
-    market ??= marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
+    market ??= marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
     const m = market;
     const game: MissionGame = {
       kind: d.room.kind ?? 'custom',

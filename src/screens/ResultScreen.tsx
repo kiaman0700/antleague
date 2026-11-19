@@ -1,3 +1,4 @@
+import { ThemeCard } from '../components/ThemeCard';
 import { shareOrCopy } from '../lib/copy';
 import { api } from '../net/api';
 import { setFlash } from '../lib/flash';
@@ -27,6 +28,8 @@ import { useAccount } from '../net/account';
 import type React from 'react';
 
 interface Props {
+  /** (v26) 오늘의 시장 테마 id */
+  theme?: string;
   session: Session;
   market: Market;
   final: NonNullable<View['final']>;
@@ -50,7 +53,7 @@ interface Props {
 const COLORS = PLAYER_COLORS;
 const rankBadge = (i: number) => <span className={'rank-badge r' + (i + 1)}>{i + 1}</span>;
 
-export function ResultScreen({ session, market: fullMarket, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
+export function ResultScreen({ theme, session, market: fullMarket, final, onExit, nextCode, onRematch, matchKind, ranked: rankedGame, onFindAgain, onReplay, dayInfo, party, onBackToParty }: Props) {
   const wide = useIsMobile('(min-width: 900px)');
   // 상대가 모두 기권해 바로 끝난 판: 기권한 날까지만 (재산·수익률·그래프·리플레이 모두)
   const market = useMemo(() => (final.endDay != null && final.endDay < fullMarket.totalDays - 1 ? cutMarket(fullMarket, final.endDay) : fullMarket), [fullMarket, final.endDay]);
@@ -402,10 +405,12 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
     </div>
   );
   // 실제 시장에서는? — 그 판에 있었던 사건을 실제 시장 지식으로 (끝난 판의 공개 뉴스 제목만)
-  const lessons = useMemo(() => realLessons(market.news, last), [market.news, last]);
-  const lessonsEl = lessons.length > 0 && (
+  // 테마 카드가 이미 설명하는 사건은 빼고 (같은 이야기 두 번 안 함)
+  const lessons = useMemo(() => realLessons(market.news, last, 3).filter((l) => l.kind !== theme).slice(0, 2), [market.news, last, theme]);
+  const lessonsEl = (lessons.length > 0 || !!theme) && (
     <div className="panel pad rw-panel">
       <h3><Icon name="book" /> 실제 시장에서는?</h3>
+      <ThemeCard id={theme} lesson />
       <div className="km-list">
         {lessons.map((l, i) => (
           <button key={l.kind} className="km-card rw-card" style={{ ['--k' as string]: i + moments.length }} onClick={() => setReplayDay(l.day)}>

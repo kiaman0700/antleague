@@ -2,6 +2,7 @@ import { gaussian, mulberry32, pick, range, seeded, type Rng } from '../lib/rng.
 import * as T from './news.js';
 import { planStories, SECTOR_NEWS_MULT } from './stories.js';
 import { delistStages, EVENTS_VERSION, nameOf, planEvents24, range24, type HaltMark } from './events24.js';
+import { isThemeId, THEME_VERSION } from './themes.js';
 import { CAP_WEIGHT, COMPANIES, COMPANY_LINKS, etfMembers, SECTOR_MAP, STOCK_MAP, STOCK_SECTORS, STOCKS, type StockDef } from './stocks.js';
 
 /** 하루 장중 가격 포인트 수 (마감 애니메이션 / 라인차트용) */
@@ -243,7 +244,7 @@ const TWIST_HEADS = [
   '{name}, 대주주 지분 매도 소식에 "악재 미리 아나" 의심',
   '{name}, 업계 "발표 내용 시장 기대 못 미칠 것" 전망',
 ];
-export function generateMarket(seed: number, totalDays: number, version = 1, salt?: string): Market {
+export function generateMarket(seed: number, totalDays: number, version = 1, salt?: string, theme?: string | null): Market {
   /**
    * v4: 방마다 서버에만 있는 128비트 비밀값(salt)으로 난수를 만듦.
    * (32비트 시드는 첫날 공개되는 금리·환율·뉴스로 몇 분 만에 역산돼 미래 가격이 드러날 수 있었음)
@@ -321,7 +322,10 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
   // (v24) 실제 시장 같은 사건 — 전용 난수(ev24), 한 판에 최대 3개 (src/game/events24.ts)
   const v24 = version >= EVENTS_VERSION;
   const rngE = R('ev24', () => mulberry32((seed ^ 0x6a09e667) >>> 0));
-  const ev24 = v24 ? planEvents24(rngE, totalDays, new Set(stories.map((x) => x.symbol))) : [];
+  // (v26) 오늘의 시장 테마: 그 사건을 꼭 넣음. 테마가 없으면 v25 와 같은 시장
+  const themeKind = version >= THEME_VERSION && isThemeId(theme) ? theme : null;
+  const forced = themeKind && themeKind !== 'rate' ? themeKind : undefined;
+  const ev24 = v24 ? planEvents24(rngE, totalDays, new Set(stories.map((x) => x.symbol)), forced) : [];
   const halts: HaltMark[] = [];
   /** 가격 제한을 넓히는 날 (미국 승인 결과 발표: 하루 −80%~+200%) */
   const wideDay = new Set<string>();
@@ -717,14 +721,16 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       }
     }
     if (bok) {
-      const t = rng();
+      // (v26 금리 충격) 동결 없이 0.5%p 깜짝 변경, 반응도 1.5배
+      const shock = themeKind === 'rate';
+      const t = shock ? 0.3 + rng() * 0.7 : rng();
       if (t < 0.3) pushMacro('rate', pick(rng, T.MACRO.rateHold), 'good');
       else {
         const cut = macro.rate > 1.0 && (macro.rate >= 5 || t < 0.65);
-        const d = rng() < 0.6 ? 0.25 : 0.5;
+        const d = shock ? 0.5 : rng() < 0.6 ? 0.25 : 0.5;
         dRate += cut ? -d : d;
-        krSent += (cut ? 1 : -1) * range(rng, 0.006, 0.015);
-        fxPct += cut ? 0.6 : -0.6;
+        krSent += (cut ? 1 : -1) * range(rng, 0.006, 0.015) * (shock ? 1.5 : 1);
+        fxPct += (cut ? 0.6 : -0.6) * (shock ? 1.5 : 1);
         pushMacro('rate', fill(pick(rng, cut ? T.MACRO.rateCut : T.MACRO.rateHike), { d: d.toFixed(2) }), cut ? 'good' : 'bad');
       }
     }
@@ -920,7 +926,8 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
       if (n.kind !== 'company' || !n.symbol || n.rel) continue;
       const def = STOCK_MAP[n.symbol];
       // (v18) 머리말(단독)이 붙은 가짜 기사도 — v17 은 머리말 없는 것만 바꿔서 '단독 + 경쟁사 모양 = 진짜'가 보였음
-      if (n.fake && (version >= 18 || !n.label) && rngF() < 0.3) {
+      // (v26) 가격을 움직이는 사건 기사(공매도 보고서·반전 기사 등)는 제목을 바꾸지 않음 — 바꾸면 이유 모를 급락이 됨
+      if (n.fake && (version >= 18 || !n.label) && !(version >= THEME_VERSION && storyNews.has(n)) && rngF() < 0.3) {
         const peers = rivalPool(def, version);
         if (peers.length) {
           const rival = peers[Math.floor(rngF() * peers.length)];

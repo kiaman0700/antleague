@@ -39,6 +39,7 @@ const [A, B] = [await member('A'), await member('B')];
 const i0 = await A({ action: 'dailyInfo' });
 ok('오늘의 도전 정보', i0.s === 200 && i0.b?.ready === true && /^\d{4}-\d{2}-\d{2}$/.test(i0.b?.day ?? ''), i0.b?.error ?? i0.b?.day);
 const raw0 = JSON.stringify(i0.b);
+ok('오늘의 시장 테마 (7가지 중 하나)', ['pump', 'war', 'delist', 'rate', 'binary', 'short', 'rights'].includes(i0.b?.theme), i0.b?.theme);
 ok('친구 기록 칸은 목록(친구만, 계정 id 없음)', Array.isArray(i0.b?.friends) && !/user_id/.test(JSON.stringify(i0.b?.friends)), JSON.stringify(i0.b?.friends).slice(0, 80));
 ok('점수표에 계정 id 없음 (내 이어하기 방 번호 resume 은 내 방이라 빼고 봄)', !/user_id|[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify({ ...i0.b, resume: null })), JSON.stringify(i0.b?.resume ?? null).slice(0, 60));
 
@@ -59,6 +60,7 @@ if (sa.s === 200 && sb.s === 200) {
   const sig = (v) => JSON.stringify([v.market.news.map((n) => n.headline), Object.fromEntries(Object.entries(v.market.bars).map(([k, bars]) => [k, bars[0]?.open]))]);
   ok('두 계정의 오늘 시장이 똑같음 (같은 뉴스·시가)', sig(va) === sig(vb));
   ok('방 종류는 daily, 혼자', va.room.kind === 'daily' && va.players.length === 1);
+  ok('방의 테마 = 오늘의 테마 (공개 정보)', va.room.theme === i0.b?.theme, `${va.room.theme} / ${i0.b?.theme}`);
   const raw = JSON.stringify(va);
   // 시장 조각의 seed 칸은 늘 0 으로 지워서 보냄 (sliceMarket) — 진짜 값·비밀값(salt)은 없어야 함
   ok('화면 데이터에 시드·비밀값 없음', va.market.seed === 0 && vb.market.seed === 0 && !raw.includes('"salt"') && va.final === null);

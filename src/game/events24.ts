@@ -31,7 +31,8 @@ const pickOne = <T,>(r: Rng, a: T[]) => a[Math.floor(r() * a.length)];
 /** 가상의 지역 이름 (실제 나라·사건 이름은 쓰지 않음) */
 const PLACES = ['카스펠 해협', '노르단 접경', '아즈라 반도', '셀린 만', '바르텐 고원'];
 
-export function planEvents24(r: Rng, totalDays: number, taken: Set<string>): Ev24[] {
+/** force: (v26 오늘의 시장) 이 종류의 사건은 꼭 넣음 — 확률 굴림을 0으로 두고, 앞 3개 안에 남게 맨 앞으로 */
+export function planEvents24(r: Rng, totalDays: number, taken: Set<string>, force?: Ev24['kind']): Ev24[] {
   const T = totalDays;
   const out: Ev24[] = [];
   const used = new Set(taken);
@@ -48,6 +49,7 @@ export function planEvents24(r: Rng, totalDays: number, taken: Set<string>): Ev2
   };
   // 정해진 순서로 굴려서 (뒤 사건이 앞 사건 자리와 겹치지 않게)
   const rolls = { pump: r(), binary: r(), delist: r(), war: r(), rights: r(), short: r() };
+  if (force) rolls[force] = 0;
   if (T >= 8 && rolls.pump < 0.5) {
     const sym = take(kr.filter((c) => ['bio', 'crypto', 'ent', 'battery', 'it'].includes(c.sector)));
     if (sym) {
@@ -81,6 +83,10 @@ export function planEvents24(r: Rng, totalDays: number, taken: Set<string>): Ev2
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
+  }
+  if (force) {
+    const i = out.findIndex((e) => e.kind === force);
+    if (i > 0) out.unshift(...out.splice(i, 1));
   }
   return out.slice(0, 3);
 }

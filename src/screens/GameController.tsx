@@ -833,6 +833,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         />
       )}
       <ResultScreen
+        theme={view.room.theme}
         session={session}
         market={market}
         final={view.final}
