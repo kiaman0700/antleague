@@ -977,6 +977,8 @@ export function finalResults(d: GameData) {
   // 아무것도 안 하고 1위·점수·업적을 받던 빈틈 (사용자 결정 2026-11-17). 봇전·연습·커스텀·친구 방은 그대로
   const idleRule = d.room.kind === 'match';
   const isIdle = (p: PlayerRow) => idleRule && !p.left_game && !d.trades.some((t) => t.player_id === p.id);
+  // 봇전도 거래 0회인 사람은 업적만 없음 (순위는 그대로) — 아무것도 안 하고 '깡통 계좌' 같은 업적을 받던 빈틈
+  const noBadge = (p: PlayerRow) => d.room.kind === 'bot' && !p.bot_level && !d.trades.some((t) => t.player_id === p.id);
   const badges = computeAchievements({
     market: m,
     endDay: playedLastDay(d),
@@ -989,7 +991,7 @@ export function finalResults(d: GameData) {
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
       bot: p.bot_level ?? null,
       // 거래 0회(매칭)도 업적 계산에선 기권처럼 (1위 업적 등을 받지 않게)
-      left: !!p.left_game || isIdle(p),
+      left: !!p.left_game || isIdle(p) || noBadge(p),
     })),
   });
   const results = players.map((p) => {
