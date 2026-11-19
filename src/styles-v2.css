@@ -88,8 +88,19 @@
   :root[data-ui='v2'] :is(.st-btn.btn, .cl-play, .wr-go, .btn.primary, .end-turn, .m-end2, .st-qbtn) { transition: none; }
 }
 
-/* ── 제목용 글꼴: 큰 제목과 화면 이름에만 (본문·표 숫자는 Pretendard 그대로) ── */
+/* ── 제목용 글꼴: 아주 큰 글자에만 (작은 크기에선 획이 뭉개져 읽기 어려움 — 화면 이름·메뉴·본문은 Pretendard 그대로) ── */
 :root[data-ui='v2'] { --disp: 'Black Han Sans', Pretendard, sans-serif; }
-:root[data-ui='v2'] :is(.st-title, .hub-head h1, .page-head h2, .aug-stage .aug-name) { font-family: var(--disp); font-weight: 400; letter-spacing: 0; }
-:root[data-ui='v2'] .st-title { line-height: 1.12; }
-:root[data-ui='v2'] :is(.st-btn.btn, .cl-play > span) { font-family: var(--disp); font-weight: 400; letter-spacing: 0.01em; }
+:root[data-ui='v2'] .st-title { font-family: var(--disp); font-weight: 400; letter-spacing: 0; line-height: 1.12; }
+:root[data-ui='v2'] .st-btn.btn { font-family: var(--disp); font-weight: 400; letter-spacing: 0.01em; }
+:root[data-ui='v2'] :is(.page-head h2, .hub-head h1) { font-weight: 900; letter-spacing: -0.03em; }
+
+/* ── 메뉴 타일(연습·더보기 등): 패널 재질 + 마름모 문양 아이콘, 올리면 살짝 떠오름 ── */
+:root[data-ui='v2'] .home-actions .tile { border: 1px solid var(--v2-line); background: #18181c; box-shadow: var(--v2-edge), var(--v2-drop); transition: transform 0.12s, border-color 0.15s; }
+:root[data-ui='v2'] .home-actions .tile:hover { transform: translateY(-2px); border-color: var(--v2-line2); }
+:root[data-ui='v2'] .home-actions .tile:active { transform: translateY(1px); }
+:root[data-ui='v2'] .home-actions .tile .toon-i { width: 44px; height: 44px; transform: rotate(45deg); border-radius: 11px; border: 2px solid #8b7bff; background: #111113; display: grid; place-items: center; margin: 6px 0 14px 6px; }
+:root[data-ui='v2'] .home-actions .tile .toon-i > svg { transform: rotate(-45deg) scale(0.7); }
+:root[data-ui='v2'] .home-actions .tile:nth-child(3n + 1) .toon-i { border-color: var(--v2-gold); }
+:root[data-ui='v2'] .home-actions .tile:nth-child(3n) .toon-i { border-color: #f2495c; }
+:root[data-ui='v2'] .home-actions .tile b { font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { :root[data-ui='v2'] .home-actions .tile { transition: none; } }
