@@ -1037,9 +1037,9 @@ export function ProChart({
             </text>
           </g>
         )}
-        {/* 첫날 장 전처럼 값이 하나뿐이면 점 하나만 찍혀 고장 난 것처럼 보이므로 안내 — 장이 막 열린 몇 초는 빼려고 부르는 쪽이 장 전에만 넘김 */}
+        {/* 첫날 장 전처럼 값이 하나뿐이면 점 하나만 찍혀 고장 난 것처럼 보이므로 안내 (기준선·지금 가격 줄과 겹치지 않게 그 둘에서 가장 먼 자리) — 장이 막 열린 몇 초는 빼려고 부르는 쪽이 장 전에만 넘김 */}
         {emptyNote && closes.length <= 1 && (
-          <text className="pc-empty" x={(padL + W - padR) / 2} y={padT + (H - padT - padB) * 0.3} textAnchor="middle">
+          <text className="pc-empty" x={(padL + W - padR) / 2} y={(() => { const lines = [refLine ? y(refLine.value) : null, closes.length ? y(closes[closes.length - 1]) : null].filter((v): v is number => v !== null); return [0.25, 0.5, 0.75].map((f) => padT + (H - padT - padB) * f).sort((a, b) => Math.min(...lines.map((l) => Math.abs(l - b)), 999) - Math.min(...lines.map((l) => Math.abs(l - a)), 999))[0] + 5; })()} textAnchor="middle">
             {emptyNote}
           </text>
         )}
