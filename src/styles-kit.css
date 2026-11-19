@@ -1836,3 +1836,10 @@ p { text-wrap: pretty; }
 .stk-result b { color: #f2e2b8; }
 .stk-result.mile { background: #3a2410; }
 .stk-result.mile b { color: #f5b83d; }
+
+/* 빠른 참가: 맞는 방이 없을 때 */
+.qj-none { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--surface-2, #242424); }
+.qj-none p { margin: 0 0 10px; line-height: 1.5; }
+.qj-seg .on, .qj-seg button { min-width: 0; }
+.qj-none .modal-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 8px; }
+.qj-none .modal-actions .btn { white-space: nowrap; justify-content: center; }

@@ -1,3 +1,4 @@
+import { readStored } from '../lib/stored';
 import { nickNotice, titleProblem } from '../game/nickname';
 import { parseRoomCode, hasConfusable } from '../lib/roomCode';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -48,7 +49,7 @@ import { AVATARS } from '../game/avatars';
 import { pct, tone, wonShort } from '../lib/format';
 import { isMuted, setMuted } from '../lib/sound';
 import { supabase } from '../lib/supabase';
-import { api } from '../net/api';
+import { api, ApiError } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
 import { BadgeIcon, Icon } from '../components/Icon';
 import { PrefsPanel, Sheet } from '../components/PrefsPanel';
@@ -291,6 +292,91 @@ function CodeJoin({
       {!online && <p className="muted small">인터넷에 연결되면 입장할 수 있어요.</p>}
       {!err && hasConfusable(code) && <p className="muted small">방 코드에는 I·O·0·1 이 없어요. 비슷한 글자(J·Q·2·L 등)인지 다시 봐 주세요.</p>}
       {!err && !hasConfusable(code) && code.length > 0 && code.length < 6 && <p className="muted small">6자리 중 {code.length}자리 입력했어요</p>}
+      {err && <p className="error" role="alert">{err}</p>}
+    </Modal>
+  );
+}
+
+const CREATE_PRESET = 'stockduel.createPreset';
+const QUICK_PREF = 'stockduel.quickJoin';
+
+/**
+ * 커스텀 방 빠른 참가 (design/v26-batch.md D): 인원·하루 길이만 골라 조건에 맞는 열린 방에 바로 들어감.
+ * 맞는 방이 없으면 같은 조건으로 방 만들기를 권함 (매칭이 아니라 기다리지 않음).
+ */
+function QuickJoin({ nickname, mode, onJoined, onCreate, onClose }: { nickname: string; mode: UiMode; onJoined: (r: Joined) => void; onCreate: () => void; onClose: () => void }) {
+  const saved = readStored<{ size: string; sec: number }>(QUICK_PREF, { size: 'any', sec: 0 }, (v) => ['any', 'duel', 'multi'].includes(v.size) && [0, 60, 180, 300].includes(v.sec));
+  const [size, setSize] = useState(saved.size);
+  const [sec, setSec] = useState(saved.sec);
+  const [busy, setBusy] = useState(false);
+  const [none, setNone] = useState(false);
+  const [err, setErr] = useState('');
+  const go = async () => {
+    setBusy(true);
+    setErr('');
+    setNone(false);
+    try {
+      localStorage.setItem(QUICK_PREF, JSON.stringify({ size, sec }));
+    } catch {
+      /* 무시 */
+    }
+    try {
+      onJoined(await api<Joined>('quickJoin', { size, turnSeconds: sec || undefined, nickname, mode }));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) setNone(true);
+      else setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const create = () => {
+    try {
+      sessionStorage.setItem(CREATE_PRESET, JSON.stringify({ maxPlayers: size === 'duel' ? 2 : size === 'multi' ? 4 : undefined, turnSec: sec === 300 ? 300 : sec || undefined }));
+    } catch {
+      /* 무시 */
+    }
+    onCreate();
+  };
+  const seg = <T extends string | number>(items: [T, string][], v: T, set: (x: T) => void, label: string) => (
+    <div className="field">
+      <span>{label}</span>
+      <div className="seg qj-seg" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map(([k, l]) => (
+          <button key={String(k)} aria-pressed={v === k} className={v === k ? 'on' : ''} onClick={() => (set(k), setNone(false))}>
+            <b>{l}</b>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <Modal title={<><Icon name="ff" size={18} /> 빠른 참가</>} onClose={onClose}>
+      <p className="muted small">조건에 맞는 공개방 중 사람이 가장 많은 방에 바로 들어가요. 비밀방은 코드로만 들어갈 수 있어요. 점수는 바뀌지 않아요.</p>
+      {seg<string>([['any', '상관없음'], ['duel', '1대1'], ['multi', '3명 이상']], size, setSize, '인원')}
+      {seg<number>([[0, '상관없음'], [60, '1분'], [180, '3분'], [300, '5분 이상']], sec, setSec, '하루 길이')}
+      {none ? (
+        <div className="qj-none" role="status">
+          <p>
+            <b>조건에 맞는 방이 없어요.</b>
+            <br />
+            <span className="muted small">같은 조건으로 방을 만들면 다른 사람이 빠른 참가로 들어올 수 있어요.</span>
+          </p>
+          <div className="modal-actions">
+            <button className="btn" onClick={() => setNone(false)}>
+              조건 바꾸기
+            </button>
+            <button className="btn primary" onClick={create}>
+              이 조건으로 방 만들기
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="modal-actions">
+          <button className="btn primary" disabled={busy} onClick={go}>
+            {busy ? '찾는 중…' : '빠른 참가'}
+          </button>
+        </div>
+      )}
       {err && <p className="error" role="alert">{err}</p>}
     </Modal>
   );
@@ -549,7 +635,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
   const account = useAccount();
   const profile = useProfile();
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
-  const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots' | 'daily'>(null);
+  const [modal, setModal] = useState<null | 'code' | 'practice' | 'bots' | 'daily' | 'quick'>(null);
   // 단계별 튜토리얼 (design/onboarding.md)
   const chapter = useChapter();
   const [tutMenu, setTutMenu] = useState(false);
@@ -818,7 +904,12 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
 
       {tab === 'custom' &&
         (online ? (
-          <nav className="home-actions three">
+          <nav className="home-actions">
+            <button className="tile" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setModal('quick'))}>
+              <i><Icon name="ff" size={24} /></i>
+              <b>빠른 참가</b>
+              <small>조건에 맞는 열린 방에 바로 들어가요</small>
+            </button>
             <button className="tile" onClick={() => okWhileMatching('방 만들기는') && gate.guard(() => go('create'))}>
               <i><Icon name="plus" size={24} /></i>
               <b>방 만들기</b>
@@ -1025,6 +1116,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
       )}
 
       {modal === 'code' && <CodeJoin initial={invite} onJoined={joined} onClose={() => setModal(null)} />}
+      {modal === 'quick' && <QuickJoin nickname={nick()} mode={profile.ui} onJoined={joined} onCreate={() => (setModal(null), go('create'))} onClose={() => setModal(null)} />}
       {modal === 'practice' && <PracticeStart onStart={startPractice} onClose={() => setModal(null)} />}
       {modal === 'bots' && <BotStart onStart={startBots} onClose={() => setModal(null)} />}
       {modal === 'daily' && (member ? <DailyStart member={member} onGame={onGame} onClose={() => setModal(null)} /> : <DailyMembersOnly onClose={() => setModal(null)} onSignup={() => (setModal(null), go('signup'))} onLogin={() => (setModal(null), go('login'))} />)}
@@ -1102,6 +1194,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const [pwInput, setPwInput] = useState('');
   const [pwErr, setPwErr] = useState('');
   const [codeOpen, setCodeOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'private'>('all');
 
   const [loadErr, setLoadErr] = useState(false);
@@ -1179,6 +1272,9 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           </button>
         ))}
         <span className="grow" />
+        <button className="chip on" onClick={() => okWhileMatching('빠른 참가는') && gate.guard(() => setQuickOpen(true))}>
+          <Icon name="ff" /> 빠른 참가
+        </button>
         <button className="chip" onClick={() => okWhileMatching('코드로 입장은') && gate.guard(() => setCodeOpen(true))}>
           <Icon name="key" /> 코드로 입장
         </button>
@@ -1264,6 +1360,15 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
           onClose={() => setCodeOpen(false)}
         />
       )}
+      {quickOpen && (
+        <QuickJoin
+          nickname={account.profile?.nickname ?? loadNick().trim()}
+          mode={profile.ui}
+          onJoined={(r) => onWaiting(r.roomId, r.playerId, account.profile?.nickname ?? loadNick().trim(), r.code)}
+          onCreate={() => (setQuickOpen(false), go('create'))}
+          onClose={() => setQuickOpen(false)}
+        />
+      )}
       {gate.el}
     </div>
   );
@@ -1277,9 +1382,26 @@ function Create({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
   const gate = useGuestGate(account, online, () => go('signup'), () => go('login'));
   const [title, setTitle] = useState('');
   const titleBad = title.trim() ? titleProblem(title.trim()) : null;
-  const [maxPlayers, setMaxPlayers] = useState(2);
+  // 빠른 참가에서 '이 조건으로 방 만들기'로 왔으면 그 조건을 채워 둠 (한 번만)
+  const [preset] = useState(() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(CREATE_PRESET) ?? 'null') as { maxPlayers?: number; turnSec?: number } | null;
+      return v && typeof v === 'object' ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  // 읽은 뒤 지움 — 초기값 함수 안에서 지우면 개발 모드의 두 번 계산 때 두 번째가 빈 값을 읽음
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(CREATE_PRESET);
+    } catch {
+      /* 무시 */
+    }
+  }, []);
+  const [maxPlayers, setMaxPlayers] = useState(() => ([2, 3, 4, 5, 6].includes(preset?.maxPlayers ?? 0) ? preset!.maxPlayers! : 2));
   const [days, setDays] = useState(20);
-  const [turnSec, setTurnSec] = useState(180);
+  const [turnSec, setTurnSec] = useState(() => (TURN_OPTIONS.some((o) => o.sec === preset?.turnSec) ? preset!.turnSec! : 180));
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

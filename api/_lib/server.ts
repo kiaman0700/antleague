@@ -658,6 +658,47 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         .slice(0, 30);
     }
 
+    case 'quickJoin': {
+      // 커스텀 방 빠른 참가 (design/v26-batch.md D): 조건에 맞는 열린 방 중 사람이 가장 많은 방(같으면 오래 기다린 방)에 들어감.
+      // 비밀방·꽉 찬 방·시작한 방·방장이 자리에 없는 방·차단 관계인 사람이 있는 방은 빼고, 입장은 addToRoom 과정 그대로.
+      rateLimit(uid + ':quickJoin', 10, 60_000);
+      const size = b.size === 'duel' || b.size === 'multi' ? b.size : 'any';
+      const sec = b.turnSeconds === 60 || b.turnSeconds === 180 || b.turnSeconds === 300 ? (b.turnSeconds as number) : 0;
+      const nickname = await nickFor(uid, b.nickname);
+      const mode = cleanMode(b.mode);
+      const since = new Date(Date.now() - 3 * 3600_000).toISOString();
+      const rooms = (must(
+        await sb.from('rooms').select('id, code, status, max_players, is_private, turn_seconds, host_id, created_at, kind').eq('status', 'waiting').eq('is_private', false).gte('created_at', since).order('created_at', { ascending: true }).limit(80),
+        'quick rooms',
+      ) as { id: string; code: string; status: string; max_players: number; is_private: boolean; turn_seconds: number; host_id: string; created_at: string; kind: string | null }[]).filter(
+        (r) => (r.kind ?? 'custom') === 'custom' && (size === 'any' || (size === 'duel' ? r.max_players === 2 : r.max_players >= 3)) && (!sec || (sec === 300 ? r.turn_seconds >= 300 : r.turn_seconds === sec)),
+      );
+      if (!rooms.length) throw new GameError('조건에 맞는 방이 없어요.', 404);
+      let psRes = await sb.from('players').select('id, room_id, user_id, last_seen, bot_level').in('room_id', rooms.map((r) => r.id));
+      if (psRes.error && /last_seen|bot_level/.test(psRes.error.message)) psRes = (await sb.from('players').select('id, room_id, user_id').in('room_id', rooms.map((r) => r.id))) as typeof psRes;
+      const ps = must(psRes, 'quick players') as { id: string; room_id: string; user_id: string | null; last_seen?: string | null; bot_level?: number | null }[];
+      const blk = ((await sb.from('blocks').select('blocker, blocked').or(`blocker.eq.${uid},blocked.eq.${uid}`).limit(500)).data ?? []) as { blocker: string; blocked: string }[];
+      const avoid = new Set(blk.map((x) => (x.blocker === uid ? x.blocked : x.blocker)));
+      const cands = rooms
+        .map((r) => ({ r, mine: ps.filter((p) => p.room_id === r.id) }))
+        .filter(({ r, mine }) => {
+          const host = mine.find((p) => p.id === r.host_id);
+          const seen = host?.last_seen ? new Date(host.last_seen).getTime() : new Date(r.created_at).getTime();
+          return mine.length > 0 && mine.length < r.max_players && !!host && !host.bot_level && Date.now() - seen < 90_000 && !mine.some((p) => p.user_id === uid) && !mine.some((p) => p.user_id && avoid.has(p.user_id));
+        })
+        .sort((x, y) => y.mine.length - x.mine.length || x.r.created_at.localeCompare(y.r.created_at));
+      for (const { r } of cands.slice(0, 3)) {
+        try {
+          return await addToRoom(r, uid, nickname, mode);
+        } catch (e) {
+          // 그사이 꽉 찼거나 시작한 방이면 다음 방으로
+          if (e instanceof GameError && e.status === 409) continue;
+          throw e;
+        }
+      }
+      throw new GameError('조건에 맞는 방이 없어요.', 404);
+    }
+
     case 'joinRoom': {
       // 방 목록에서 입장 — 비밀방은 비밀번호 확인
       if (typeof b.roomId !== 'string' || !/^[0-9a-f-]{36}$/i.test(b.roomId)) throw new GameError('잘못된 방이에요.');

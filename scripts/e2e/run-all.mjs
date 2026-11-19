@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 
 const TESTS = [
   'three-players', 'cards', 'orders', 'turn-rules', 'realtime', 'lifecycle', 'attacks', 'admin', 'accounts', 'matching',
-  'injection', 'merge', 'social', 'avatar', 'reactions', 'db-direct', 'realtime-privacy', 'history-privacy', 'bots', 'daily', 'missions', 'guestcode', 'tutorial',
+  'injection', 'merge', 'social', 'avatar', 'reactions', 'db-direct', 'realtime-privacy', 'history-privacy', 'bots', 'daily', 'missions', 'guestcode', 'tutorial', 'quickjoin',
 ];
 const only = process.argv.slice(2);
 const list = only.length ? TESTS.filter((t) => only.includes(t)) : TESTS;
