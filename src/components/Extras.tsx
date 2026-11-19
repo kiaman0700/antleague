@@ -87,7 +87,7 @@ export function OrdersAndDividends({
       {open.map((o) => (
         <div key={o.id} className={'oo-row ' + o.side}>
           <button className="linkish-soft" onClick={() => onSelect(o.symbol)}>
-            <b>{STOCK_MAP[o.symbol].name}</b> {o.side === 'buy' ? '사기' : '팔기'} {num(o.qty)}주 @ {price(o)}
+            <b>{STOCK_MAP[o.symbol].name}</b> {price(o)}에 {num(o.qty)}주 {o.side === 'buy' ? '사기' : '팔기'}
           </button>
           <button className="btn sm ghost" disabled={!canAct} onClick={() => onCancel(o.id!)}>
             취소
@@ -97,7 +97,7 @@ export function OrdersAndDividends({
       {recent.map((o) => (
         <div key={o.id} className={'oo-row done s-' + o.status}>
           <span>
-            {o.day + 1}일 · {STOCK_MAP[o.symbol].name} {o.side === 'buy' ? '사기' : '팔기'} {num(o.qty)}주 @ {price(o)}
+            {o.day + 1}일 · {STOCK_MAP[o.symbol].name} {price(o)}에 {num(o.qty)}주 {o.side === 'buy' ? '사기' : '팔기'}
           </span>
           <em>{label[o.status]}</em>
         </div>

@@ -51,6 +51,8 @@ interface Props {
   refLine?: { value: number; label: string } | null;
   /** 선 색(빨강·파랑)을 정하는 기준 값 — 없으면 보이는 첫 값. 위 가격 표시와 같은 기준(전날 종가)을 넘겨 색이 엇갈리지 않게 */
   colorBase?: number;
+  /** 값이 하나뿐일 때 차트 가운데에 띄울 안내 (장 전처럼 아직 그릴 게 없을 때만 넘김) */
+  emptyNote?: string;
   markers?: { day: number; tone: "good" | "bad" | "day" }[];
   fmt?: (v: number) => string;
   /** 전체 화면용 */
@@ -100,6 +102,7 @@ export function ProChart({
   liveOpenOnly,
   refLine,
   colorBase,
+  emptyNote,
   markers = [],
   fmt = (v) => Math.round(v).toLocaleString("ko-KR"),
   tall = false,
@@ -1034,10 +1037,10 @@ export function ProChart({
             </text>
           </g>
         )}
-        {/* 첫날 장 전처럼 값이 하나뿐이면 점 하나만 찍혀 고장 난 것처럼 보이므로 안내 */}
-        {closes.length <= 1 && (
+        {/* 첫날 장 전처럼 값이 하나뿐이면 점 하나만 찍혀 고장 난 것처럼 보이므로 안내 — 장이 막 열린 몇 초는 빼려고 부르는 쪽이 장 전에만 넘김 */}
+        {emptyNote && closes.length <= 1 && (
           <text className="pc-empty" x={(padL + W - padR) / 2} y={padT + (H - padT - padB) * 0.3} textAnchor="middle">
-            장이 열리면 여기에 가격이 그려져요
+            {emptyNote}
           </text>
         )}
       </svg>

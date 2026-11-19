@@ -254,6 +254,7 @@ export function StockDetail(props: Props) {
             refLine={ref}
             markers={markers}
             fmt={chartFmt}
+            emptyNote={trade?.limitOnly ? "장이 열리면 여기에 가격이 그려져요" : undefined}
             tall={big || tallChart}
             onExpand={big ? undefined : () => setFull(true)}
           />
@@ -316,6 +317,7 @@ export function StockDetail(props: Props) {
             })),
           ]}
           fmt={chartFmt}
+            emptyNote={trade?.limitOnly ? "장이 열리면 여기에 가격이 그려져요" : undefined}
           tall={big || tallChart}
           onExpand={big ? undefined : () => setFull(true)}
           unit={{
@@ -1075,8 +1077,8 @@ export function TradePanel({
           {openOrders.map((o) => (
             <div key={o.id} className={"oo-row " + o.side}>
               <span>
-                {o.side === "buy" ? buyLabel : sellLabel} {num(o.qty)}주 @{" "}
-                {isUS ? fmtUsd(o.limit_price) : num(o.limit_price) + "원"}
+                {isUS ? fmtUsd(o.limit_price) : num(o.limit_price) + "원"}에 {num(o.qty)}주{" "}
+                {o.side === "buy" ? buyLabel : sellLabel}
               </span>
               <button
                 className="btn sm ghost"
