@@ -1,6 +1,7 @@
 /**
  * 단계별 튜토리얼 진행 (design/onboarding.md)
- * ① home 홈 둘러보기 → ② game 게임 기초(연습봇과 한 판) → ③ result 결과 보기 → ④ growth 미션·업적·성장
+ * ② game 게임 기초(연습봇과 한 판) → ③ result 결과 보기 → ④ growth 미션·업적·성장. ① home 홈 둘러보기는 메뉴에서 따로
+ * (화면 설명을 먼저 읽히는 것보다 바로 해 보는 쪽이 배우기 쉬움)
  * - 이어서 하는 중인 단계 목록은 이 탭(sessionStorage)에만 — 새로고침해도 이어짐
  * - 끝냄·건너뜀 기록은 계정(서버 tutorial_progress)에 + 이 기기에도 (서버에 못 물을 때)
  */
@@ -15,6 +16,8 @@ export const CHAPTERS: { id: Chapter; title: string; desc: string; time: string 
   { id: 'growth', title: '미션·업적·성장', desc: '미션과 경험치·레벨, 업적과 칭호, 랭킹', time: '약 40초' },
 ];
 const ORDER: Chapter[] = ['home', 'game', 'result', 'growth'];
+/** '처음부터 하기'로 이어서 하는 단계 */
+const FLOW: Chapter[] = ['game', 'result', 'growth'];
 
 const QKEY = 'stockduel.tourQ';
 const DKEY = 'stockduel.tourDone';
@@ -71,7 +74,7 @@ export function useChapter(): Chapter | null {
 }
 
 /** 튜토리얼 시작: 처음부터 전부(이어서) 또는 한 단계만 */
-export function startTour(chs: Chapter[] = ORDER) {
+export function startTour(chs: Chapter[] = FLOW) {
   write(QKEY, JSON.stringify(chs), ss());
   ping();
 }

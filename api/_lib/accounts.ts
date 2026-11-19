@@ -105,7 +105,8 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
   const tut = await sb.from('tutorial_progress').select('done').eq('user_id', uid).maybeSingle();
   const tdone = (!tut.error && (tut.data as { done?: string[] } | null)?.done) || [];
   if (tdone.includes('game')) for (const id of ['first_trade', 'first_card', 'shield']) out[id] = (out[id] ?? 0) + 1;
-  if (['home', 'game', 'result', 'growth'].every((c) => tdone.includes(c))) out.tut_grad = 1;
+  // 홈 둘러보기는 메뉴에서 따로 보는 단계라 졸업 조건에 넣지 않음
+  if (['game', 'result', 'growth'].every((c) => tdone.includes(c))) out.tut_grad = 1;
   // (055) 주간 리그: 올라가 본 가장 높은 단계 · 조 1위 횟수 (서버가 정산한 값만)
   const lg = await sb.from('league_tiers').select('best_tier, firsts').eq('user_id', uid).maybeSingle();
   if (!lg.error && lg.data) {

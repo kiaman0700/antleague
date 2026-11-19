@@ -60,7 +60,7 @@ export const BADGES: Badge[] = [
   { id: 'detective', emoji: '🔍', name: '루머 감별사', desc: '루머 감별기를 3번 이상 씀', rarity: 1 },
   { id: 'first_card', emoji: '🎴', name: '첫 카드', desc: '찬스 카드를 처음 씀', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
-  { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼 4단계(홈·게임·결과·미션)를 모두 끝냄', rarity: 1 },
+  { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼(게임·결과·미션)을 모두 끝냄', rarity: 1 },
   // 웃픈 업적 (안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
   { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
   { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '판 동안 10% 넘게 움직인 종목을 최고가 3% 안에서 매수', rarity: 1, funny: true },

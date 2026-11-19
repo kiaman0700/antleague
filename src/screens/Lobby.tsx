@@ -800,7 +800,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
             <b>처음이라면 튜토리얼부터 해 보세요</b>
             <p className="muted small">연습 상대와 사고팔기·뉴스·카드를 직접 해 봐요. 대결이 훨씬 쉬워져요.</p>
           </div>
-          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('home')))}>
+          <button className="btn primary" onClick={() => okWhileMatching('튜토리얼은') && gate.guard(() => (startTour(), goChapter('game')))}>
             튜토리얼 하기
           </button>
           <button
@@ -1135,7 +1135,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           onAll={() => {
             setTutMenu(false);
             startTour();
-            goChapter('home');
+            goChapter('game');
           }}
         />
       )}
@@ -1144,7 +1144,7 @@ function Hub({ tab, go, onWaiting, onGame, openModal, party, reloadParty }: Omit
           onStart={() => {
             setTutOffer(false);
             startTour();
-            goChapter('home');
+            goChapter('game');
           }}
           onSkip={() => {
             setTutOffer(false);
