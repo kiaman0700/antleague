@@ -141,7 +141,7 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
 
   // 휴대폰·태블릿은 공유 창, PC 는 바로 복사. 복사가 안 되면 방 코드를 알려 줌
   const copy = async () => {
-    const r = await shareOrCopy({ title: '개미리그 초대', text: `방 코드 ${room.code}`, url: link });
+    const r = await shareOrCopy({ title: '개미리그 초대', text: `개미리그 같이 한 판 하자! 가입 없이 바로 들어올 수 있어 (방 코드 ${room.code})`, url: link });
     if (r === 'copied') {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);

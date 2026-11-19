@@ -1,5 +1,5 @@
 import { ThemeCard } from '../components/ThemeCard';
-import { shareOrCopy } from '../lib/copy';
+import { copyText, shareOrCopy } from '../lib/copy';
 import { api } from '../net/api';
 import { setFlash } from '../lib/flash';
 import { balancedCols } from '../components/ui';
@@ -838,7 +838,9 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
   const bar = daily.map((v) => (v > 0 ? '🟥' : v < 0 ? '🟦' : '⬜')).join('');
   const slang = ret >= 0.2 ? '떡상' : ret >= 0.05 ? '익절' : ret > -0.05 ? '존버' : ret > -0.2 ? '물림' : '손절각';
   const head = isDaily ? `개미리그 오늘의 도전 ${md}${top ? ` · 상위 ${top}%` : ''}${streak ? ` · ${streak}일 연속` : ''}` : `개미리그 ${kind}${rank ? ` ${rank}위/${players}명` : ''} · ${days}일`;
-  const text = [head, `수익률 ${pct(ret)} (${slang})`, bar, location.origin].join('\n');
+  // 오늘의 도전은 모두 같은 시장이라 비교가 됨 → 한마디 붙이고 연습 메뉴(도전이 있는 곳) 주소로
+  const body = [head, `수익률 ${pct(ret)} (${slang})`, bar, ...(isDaily ? ['너는 몇 %?'] : [])];
+  const text = [...body, location.origin + (isDaily ? '/learn' : '')].join('\n');
   const [done, setDone] = useState('');
   const share = async () => {
     const r = await shareOrCopy({ text });
@@ -859,6 +861,10 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
       </div>
       <button className="btn" onClick={share}>
         공유하기
+      </button>
+      {/* 단체방에 링크 미리보기가 매번 뜨는 게 싫은 사람용 */}
+      <button className="btn text small" onClick={async () => setDone((await copyText(body.join('\n'))) ? '글자만 복사했어요 (링크 없이).' : '복사하지 못했어요.')}>
+        링크 빼고 글자만 복사
       </button>
       {done && <p className="muted small" role="status">{done}</p>}
     </div>
