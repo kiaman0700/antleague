@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CURRENT_RULES_VERSION, graceDeadline, graceSecondsFor, type GameData } from './engine.js';
 
 /**
- * 카운트다운은 시간을 '당기기만' 함 — 원래 남은 시간이 카운트다운보다 짧으면 그대로 (사용자 질문 2026-11-17:
- * "1분 남았는데 장 마감 눌러서 카운트다운 1분 30초가 되면 오히려 늘어나지 않아?")
+ * 카운트다운은 시간을 '당기기만' 함 — 원래 남은 시간이 카운트다운보다 짧으면 그대로
+ * (1분 남았을 때 장 마감으로 1분 30초 카운트다운이 시작돼 시간이 늘어나면 안 됨)
  */
 const T0 = 1_900_000_000_000;
 function room(players: number, turnSeconds: number, leftMs: number): GameData {

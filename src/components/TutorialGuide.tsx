@@ -257,7 +257,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
             : keyLow
               ? { top: 12, left: leftPc }
               : { bottom: 24, left: leftPc }
-    : // 가운데: transform 대신 translate — 나타나는 움직임(pop-in, transform)이 가운데 맞춤을 덮어 잠깐 오른쪽으로 튀던 문제
+    : // 가운데: transform 대신 translate — 나타나는 움직임(pop-in, transform)이 가운데 맞춤을 덮어 잠깐 오른쪽으로 튀지 않게
       { top: '50%', left: '50%', translate: '-50% -50%' };
 
   return (

@@ -1,5 +1,5 @@
 /**
- * 미션 2판 (설계서 design/missions-v2.md): 일일 미션 6개(쉬움 3 + 보통 3) · 주간 미션 3개(보통 1 + 어려움 2).
+ * 미션 (설계서 design/missions-v2.md): 일일 미션 6개(쉬움 3 + 보통 3) · 주간 미션 3개(보통 1 + 어려움 2).
  * 일일·주간은 서로 다른 목록에서만 나오고, 미션마다 깰 수 있는 게임 종류(modes)가 정해져 있음.
  * 판정은 서버가 끝난 판의 데이터로만 (화면이 보내는 '했어요'는 없음). 보상은 경험치 → 레벨 → 레벨 업적(사진·칭호).
  * 서버·화면 공용 (상대 import 에 .js)
@@ -112,7 +112,7 @@ export const MISSIONS: MissionDef[] = [
 export const MISSION_MAP: Record<string, MissionDef> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 /** 하루에 일일 미션으로 받을 수 있는 경험치 상한 (짜고 치기 막기) — 주간 미션은 따로 */
 export const DAILY_XP_CAP = 450;
-/** 미완료 미션 바꾸기 횟수: 일일은 하루 3번, 주간은 한 주 1번 — 각각 갱신 때 다시 채워짐 (사용자 결정 2026-11-18) */
+/** 미완료 미션 바꾸기 횟수: 일일은 하루 3번, 주간은 한 주 1번 — 각각 갱신 때 다시 채워짐 */
 export const REROLLS: Record<'day' | 'week', number> = { day: 3, week: 1 };
 export const DAY_COUNT = 6;
 export const WEEK_COUNT = 3;
@@ -120,7 +120,7 @@ export const WEEK_COUNT = 3;
 const SLOT_TIERS: Record<'day' | 'week', MissionTier[]> = { day: ['easy', 'easy', 'easy', 'normal', 'normal', 'normal'], week: ['normal', 'hard', 'hard'] };
 export const slotTier = (kind: 'day' | 'week', slot: number) => SLOT_TIERS[kind][slot];
 
-/** 최대 레벨 (2026-11-17 사용자: 오래 걸렸으면) — 매일 미션 + 5판쯤이면 1년쯤 */
+/** 최대 레벨 — 매일 미션 + 5판쯤이면 1년쯤 */
 export const MAX_LEVEL = 100;
 /** 레벨 l 에서 다음 레벨까지 필요한 경험치: 100 에서 시작해 레벨마다 4.5%씩 늘어남 (10 단위) */
 export const levelNeed = (l: number) => Math.round((100 * Math.pow(1.045, l - 1)) / 10) * 10;
@@ -186,7 +186,7 @@ export interface MissionGame {
   detectorUses: number;
   cardUses: number;
   filledOrders: number;
-  /** (2판) 랭킹전 */
+  /** 랭킹전 */
   ranked?: boolean;
   boughtKr?: boolean;
   boughtUs?: boolean;

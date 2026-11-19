@@ -30,7 +30,7 @@ export function useParty(member: boolean) {
     const since = Date.now() - lastAt.current;
     // 창이 뒤에 있어도 10초마다는 확인 — 로비에 있는 파티원이 다른 탭을 봐도 '돌아옴'(15초)이 풀려 파티장 찾기를 막지 않게
     if (!member || (document.visibilityState !== 'visible' && since < 10_000)) return Promise.resolve();
-    // 파티가 없으면 12초마다만 (3초마다 묻던 것 — 초대·수락은 그 자리에서 바로 다시 불러옴)
+    // 파티가 없으면 12초마다만 (초대·수락은 그 자리에서 바로 다시 불러옴)
     if (force !== true && !inParty.current && since < 12_000) return Promise.resolve();
     lastAt.current = Date.now();
     return api<{ party: PartyState | null }>('party')

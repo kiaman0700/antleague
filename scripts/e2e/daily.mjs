@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import { user, ok, done, BASE, TEST_KEY, VIS, env } from './lib.mjs';
 
-// 오늘의 도전은 회원만 (2026-11-18) — 시험 회원(.members.json 의 dailyA·dailyB, 깃에 안 올라감)을 만들어 두고 다시 씀
+// 오늘의 도전은 회원만 — 시험 회원(.members.json 의 dailyA·dailyB, 깃에 안 올라감)을 만들어 두고 다시 씀
 const post = async (body, tok) => {
   const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
   return { s: r.status, b: await r.json().catch(() => null) };

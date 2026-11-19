@@ -535,7 +535,7 @@
     display: none;
   }
 }
-/* 1280px 이상: 소셜 패널 늘 보임 — 친구 버튼은 그대로 두고 칸 접기·펴기 (사용자 요청 2026-11-17: 눌러도 버튼이 사라지지 않게) */
+/* 1280px 이상: 소셜 패널 늘 보임 — 친구 버튼은 그대로 두고 칸 접기·펴기 (눌러도 버튼이 사라지지 않게) */
 @media (min-width: 1280px) {
   .cl-social-wrap .cs-head .icon-btn[aria-label='닫기'] {
     display: none;
@@ -1487,7 +1487,7 @@ body:has(.result) {
 .more-row .mr-t small { font-size: 12px; color: var(--muted, #9aa0b4); font-weight: 500; }
 .more-sound .ms-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .more-sound .ms-row > span { display: grid; gap: 2px; }
-/* 켜기·끄기 스위치 (예전 체크박스용 .switch 와 이름이 겹치지 않게 .tgl) */
+/* 켜기·끄기 스위치 (체크박스용 .switch 와 이름이 겹치지 않게 .tgl) */
 .tgl { position: relative; width: 46px; height: 26px; padding: 0; border-radius: 99px; border: 0; background: rgba(255,255,255,.14); flex: 0 0 auto; cursor: pointer; transition: background .18s; }
 .tgl::after { content: ''; position: absolute; inset: -9px -4px; } /* 누르기 쉬운 크기 */
 .tgl i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .18s; }
@@ -1780,7 +1780,7 @@ label:has(> input[type='checkbox']) { min-height: 36px; display: inline-flex; al
   .wr-left > .wr-rules { order: 3; }
 }
 
-/* ---- 소셜 칸 접기 (1280px 이상, 사용자 요청 2026-11-17): 접으면 칸은 사라지고 위 메뉴바에 친구 아이콘만 (태블릿 가로처럼) ---- */
+/* ---- 소셜 칸 접기 (1280px 이상): 접으면 칸은 사라지고 위 메뉴바에 친구 아이콘만 (태블릿 가로처럼) ---- */
 .cs-fold { display: none; }
 @media (min-width: 1280px) {
   .cs-fold { display: grid; }

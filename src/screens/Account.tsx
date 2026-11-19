@@ -112,7 +112,7 @@ export function LoginPage({ onBack, onDone, initialTab = 'login' }: { onBack: ()
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
-  // 탭을 바꾸면 비밀번호 칸은 비움 (로그인에 친 비밀번호가 '새 비밀번호'에 그대로 들어가 있던 것) — 아이디는 그대로
+  // 탭을 바꾸면 비밀번호 칸은 비움 (로그인에 친 비밀번호가 '새 비밀번호' 칸에 남지 않게) — 아이디는 그대로
   const switchTab = (k: 'login' | 'signup' | 'reset') => {
     if (k !== tab) {
       setPassword('');
@@ -402,7 +402,7 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [cur, setCur] = useState('');
-  // 사진·칭호·비밀번호·복구 코드는 각각 따로 여는 창 (사용자 요청 2026-11-17: 사진과 칭호는 따로, 계정 설정은 접어 두기)
+  // 사진·칭호·비밀번호·복구 코드는 각각 따로 여는 창 (계정 설정은 접어 둠)
   const [sheet, setSheet] = useState<null | 'avatar' | 'title' | 'password' | 'recovery'>(null);
   const [editNick, setEditNick] = useState(false);
   const [pw, setPw] = useState('');
@@ -869,7 +869,7 @@ function DecoTitles({ current, badges, onPick }: { current: string | null; badge
 }
 
 /**
- * '나의 투자 감각' (밤샘 조사 — 지는 날에도 나아지는 게 보이게): 서버가 판마다 계산한 숫자의 최근 평균.
+ * '나의 투자 감각' (지는 날에도 나아지는 게 보이게): 서버가 판마다 계산한 숫자의 최근 평균.
  * 막대 4개 + 최근 10판이 그 전 판들보다 나아졌으면 ▲. 돈 자랑이 아니라 '뉴스 읽기 실력'만
  */
 function SkillPanel({ s }: { s: import('../net/account').SkillInfo }) {

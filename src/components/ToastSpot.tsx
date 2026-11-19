@@ -44,7 +44,7 @@ export function ToastSpot({ slot, toast, editing, pos, xy, onMove, onPick, onDis
   const vRef = useRef<HTMLElement>(null);
   const hRef = useRef<HTMLElement>(null);
   const cls = (xy ? ' free' : pos === 'bottom' ? ' at-bottom' : '');
-  // 보통 알림이 장중 속보 카드와 겹치면(사용자가 둘을 가까이 옮겨 둔 경우) 속보 아래·위로 비켜 감
+  // 보통 알림이 장중 속보 카드와 겹치면(배치 편집으로 둘을 가까이 옮겨 둔 경우) 속보 아래·위로 비켜 감
   const alertRef = useRef<HTMLDivElement>(null);
   const [shift, setShift] = useState(0);
   const alertOn = slot === 'alert' && !!toast && toast.kind !== 'news';

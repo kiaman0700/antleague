@@ -174,7 +174,7 @@ function relationsFor(s: StockDef, related: string[], rival?: string, version = 
     if (!d) continue;
     if (x === rival) out[x] = 'rival';
     else if (d.etf) out[x] = 'etf';
-    // (v19) 같은 업종이면 연결이 있어도 '같은 업종' — '거래처'는 다른 업종의 공급망·고객사만 (코어반도체↔나노칩스가 거래처로 보이던 것)
+    // (v19) 같은 업종이면 연결이 있어도 '같은 업종' — '거래처'는 다른 업종의 공급망·고객사만 (코어반도체↔나노칩스가 거래처로 보이지 않게)
     else if (version >= 19 && d.sector === s.sector) out[x] = 'peer';
     else if (COMPANY_LINKS[s.symbol]?.[x] != null || COMPANY_LINKS[x]?.[s.symbol] != null) out[x] = 'link';
     else if (d.sector === s.sector) out[x] = 'peer';
@@ -650,7 +650,7 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
           oilPct += range24(rngE, 1, 3);
           krSent -= range24(rngE, 0.003, 0.008);
         } else if (day === e.day) {
-          // 같은 날 '유가 하락' 같은 반대 뉴스는 빼고(시장이 앞뒤가 맞게), 원인을 짚는 업종 기사를 함께 (사용자: 뉴스·속보·커뮤니티가 서로 이어지게)
+          // 같은 날 '유가 하락' 같은 반대 뉴스는 빼고(시장이 앞뒤가 맞게), 원인을 짚는 업종 기사를 함께 (뉴스·속보·커뮤니티가 서로 이어지게)
           for (let k = news.length - 1; k >= 0; k--) {
             const x = news[k];
             if (x.day === day && x.kind === 'macro' && /유가/.test(x.headline) && /하락|급락/.test(x.headline)) news.splice(k, 1);

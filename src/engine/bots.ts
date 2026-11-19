@@ -296,7 +296,7 @@ export function newsBot(opt: NewsBotOpts): Strategy {
 export const STRATEGY: Record<number, Strategy> = {
   1: easyBot,
   2: newsBot({ news: { verdict: false, skipRecap: false, rumorW: 1 }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: false, reserve: 0.2, trustPosts: 0.4, trustVerified: 0.8 }),
-  // 시뮬(sim/levels.ts, 2026-11-17): 카드를 사는 봇은 카드 값 때문에 오히려 약했음 → 판단으로 강하게:
+  // 시뮬(sim/levels.ts): 카드를 사는 봇은 카드 값 때문에 오히려 약했음 → 판단으로 강하게:
   // 시황·특징주(지난 정리 기사) 빼기 + 하루 10번 보기 + 수수료 폭탄 조심 + 사건 찌라시 따라 들고 가기 — 평균 +14% (보통 +8%, 쉬움 -8%)
   3: newsBot({ news: { verdict: false, skipRecap: true, rumorW: 1, rel: true }, threshold: 0.9, maxPicks: 3, useInfo: true, buyInfo: [], useFreeAttacks: true, attack: [], buyDefense: [], feeAware: true, reserve: 0.2, storyHold: true, trustPosts: 0, trustVerified: 1 }),
 };

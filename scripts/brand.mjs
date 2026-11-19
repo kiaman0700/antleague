@@ -1,6 +1,6 @@
-// 개미리그 로고·아이콘 파일 만들기 (2026-11-18, 'V자 더듬이' 개미)
+// 개미리그 로고·아이콘 파일 만들기 ('V자 더듬이' 개미)
 //   node scripts/brand.mjs            → public/brand/* 와 public/favicon.ico 를 다시 만듦
-//   node scripts/brand.mjs --tile=violet → 앱 아이콘·파비콘 바탕을 보라로 (기본: 검정, 2026-11-18 사용자 결정)
+//   node scripts/brand.mjs --tile=violet → 앱 아이콘·파비콘 바탕을 보라로 (기본: 검정)
 // 그림: 개미 머리 + 두 더듬이가 이어진 V자 차트 — 왼쪽 파란 선이 머리까지 떨어지고, 오른쪽 빨간 선이 다시 오름.
 // PNG 는 이 컴퓨터 크롬(playwright-core)으로 그림.
 import { writeFileSync, readFileSync } from 'node:fs';
@@ -23,7 +23,7 @@ const C = {
   textLight: '#161616',
 };
 
-// 글자 로고는 예전과 같은 Pretendard ExtraBold 글자 모양(도형)
+// 글자 로고는 Pretendard ExtraBold 글자 모양(도형)
 const WORD = readFileSync(new URL('wordmark-dark.svg', OUT), 'utf8').match(/d="([^"]+)"/)[1];
 
 const st = (d, c, w) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;

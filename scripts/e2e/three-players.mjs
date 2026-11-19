@@ -5,7 +5,7 @@ const [A, B, C, D] = await Promise.all([user(), user(), user(), user()]);
 const made = await A({ action: 'create', nickname: '철수', mode: 'pro', totalDays: 10, turnSeconds: 180, maxPlayers: 3, title: '비밀 3인방', isPrivate: true, password: 'tiger1234' });
 ok('A 비밀방(3인) 생성', made.s === 200, JSON.stringify(made.b));
 const { roomId, code } = made.b;
-// 새 방은 최신 규칙으로 저장돼야 함 (DB 제한 때문에 몰래 예전 규칙(v1)으로 바뀌던 문제 재발 방지)
+// 새 방은 최신 규칙으로 저장돼야 함 (DB 제한 때문에 몰래 v1 규칙으로 바뀌지 않는지)
 const st0 = (await A({ action: 'state', roomId })).b;
 const { CURRENT_RULES_VERSION } = await import('../../src/engine/engine.ts').catch(() => ({ CURRENT_RULES_VERSION: null }));
 ok('새 방은 최신 규칙 버전', st0?.room?.rulesVersion >= 11 && (CURRENT_RULES_VERSION === null || st0.room.rulesVersion === CURRENT_RULES_VERSION), String(st0?.room?.rulesVersion));

@@ -100,7 +100,7 @@ export async function earnedBadges(sb: SupabaseClient, uid: string): Promise<Rec
   const pr = await sb.from('profiles').select('xp').eq('user_id', uid).maybeSingle();
   if (!pr.error && pr.data) for (const id of levelBadges((pr.data as { xp?: number }).xp ?? 0)) out[id] = 1;
   // (051) 튜토리얼: 게임 기초(②)에서 하는 첫 거래·첫 카드(감별기)·철벽 방어(연습봇의 수수료 폭탄을 방패가 막음)는 진짜 업적으로,
-  //   4단계를 모두 끝내면 '개미 학교 졸업' (사용자 결정 2026-11-18). 튜토리얼은 브라우저 판이라 서버는 끝낸 기록만 믿음 — 업적은 처음 한 번
+  //   4단계를 모두 끝내면 '개미 학교 졸업'. 튜토리얼은 브라우저 판이라 서버는 끝낸 기록만 믿음 — 업적은 처음 한 번
   const tut = await sb.from('tutorial_progress').select('done').eq('user_id', uid).maybeSingle();
   const tdone = (!tut.error && (tut.data as { done?: string[] } | null)?.done) || [];
   if (tdone.includes('game')) for (const id of ['first_trade', 'first_card', 'shield']) out[id] = (out[id] ?? 0) + 1;
@@ -466,7 +466,7 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
   if (!profs.length) return;
   const byNick = new Map(ps.map((p) => [p.nickname, p.user_id]));
   const quit = new Set(ps.filter((p) => p.left_game && p.user_id).map((p) => p.user_id!));
-  // 매칭에서 거래 0회인 사람도 기권처럼 꼴찌·승리 없음 (finalResults 의 idle — 사용자 결정 2026-11-17)
+  // 매칭에서 거래 0회인 사람도 기권처럼 꼴찌·승리 없음 (finalResults 의 idle)
   for (const r of results) if (r.idle) { const u = ps.find((p) => p.nickname === r.nickname)?.user_id; if (u) quit.add(u); }
   const rankOf = new Map<string, number>();
   results.forEach((r, i) => {
@@ -484,7 +484,7 @@ export async function recordMatch(sb: SupabaseClient, roomId: string, results: {
     const eloRank = new Map<string, number>();
     const order = [...members].sort((x, y) => (quit.has(x.user_id) ? 1 : 0) - (quit.has(y.user_id) ? 1 : 0) || rankOf.get(x.user_id)! - rankOf.get(y.user_id)!);
     order.forEach((m, i) => eloRank.set(m.user_id, quit.has(m.user_id) ? members.length : i + 1));
-    // 같은 상대와 몇 번을 만나도 점수는 똑같이 (사람이 적어 같은 상대를 자주 만나는 경우 — 사용자 결정)
+    // 같은 상대와 몇 번을 만나도 점수는 똑같이 (사람이 적어 같은 상대를 자주 만나는 경우)
     delta = eloDeltas(members, eloRank);
     // 배치(랭킹전 2판) 중인 사람은 점수가 크게 움직여 빨리 제 실력 자리로 (상대 점수 차에 따라 오르내리는 건 Elo 가 이미 반영)
     for (const m of members) if (!isPlaced(m.ranked_games)) delta.set(m.user_id, Math.round((delta.get(m.user_id) ?? 0) * PLACEMENT_MULT));

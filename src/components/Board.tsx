@@ -58,7 +58,7 @@ const STATUS_TEXT = { away: '자리 비움', left: '나감' } as const;
 export function rankRows(players: PublicPlayer[], meId: string, myEquity: number, day: number, start: number): RankRow[] {
   return players
     .map((p) => ({ ret: (p.id === meId ? myEquity : p.equity) / start - 1, id: p.id, nickname: p.nickname, equity: p.id === meId ? myEquity : p.equity, ended: p.endedDay >= day, me: p.id === meId, status: p.id === meId ? ('on' as const) : (p.status ?? 'on'), band: p.id === meId ? null : (p.band ?? null), rank: p.rank, verified: !!p.verified, avatar: p.avatar, bot: p.bot ?? 0 }))
-    // 순위는 서버가 정확한 재산으로 정한 것 (예전 서버면 재산 순)
+    // 순위는 서버가 정확한 재산으로 정한 것 (rank 가 없는 응답이면 재산 순)
     // 같은 순위(동점)면 나 먼저, 그다음 이름순 — 새로 받을 때마다 자리가 뒤섞이지 않게
     .sort((a, b) => (a.rank && b.rank ? a.rank - b.rank : b.equity - a.equity) || Number(!!b.me) - Number(!!a.me) || a.nickname.localeCompare(b.nickname, 'ko', { numeric: true }));
 }
@@ -106,7 +106,7 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
 /** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
 export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds = 600 }: { rows: RankRow[]; countdown: boolean; compact?: boolean; leftSec?: number | null; turnSeconds?: number }) {
   // 나간·자리 비운 사람은 기다리지 않으므로 마감 인원 계산에서 뺌
-  // 마감 현황은 순위와 상관없이 늘 같은 순서 — 나 먼저, 그다음 이름순(개미봇 1·2·3…). 순위 순서면 동점일 때 자리가 뒤섞였음
+  // 마감 현황은 순위와 상관없이 늘 같은 순서 — 나 먼저, 그다음 이름순(개미봇 1·2·3…). 순위 순서로 두면 동점일 때 자리가 뒤섞이므로
   const order = (a: RankRow, b: RankRow) => Number(!!b.me) - Number(!!a.me) || a.nickname.localeCompare(b.nickname, 'ko', { numeric: true });
   const rows = all.filter((r) => r.status === 'on').sort(order);
   const gone = all.filter((r) => r.status !== 'on').sort(order);

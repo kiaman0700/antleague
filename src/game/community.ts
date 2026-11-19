@@ -78,9 +78,9 @@ export function clockOf(at: number) {
   const min = 9 * 60 + Math.round(Math.max(0, Math.min(1, at)) * 390);
   return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 }
-/** (v22) 게임 안의 시간: 하루가 몇 초인지(daySec)에 맞춰 장이 열린 뒤 몇 초째인지 — '42초', '2분 31초' (사용자 요청 2026-11-18) */
+/** (v22) 게임 안의 시간: 하루가 몇 초인지(daySec)에 맞춰 장이 열린 뒤 몇 초째인지 — '42초', '2분 31초' */
 export const GAME_TIME_VERSION = 22;
-/** (v25) 모든 공개 소식에 커뮤니티가 반응 (사용자 요청 2026-11-18 '모든 소식에 커뮤니티도 난리나고 서로 영향') */
+/** (v25) 모든 공개 소식에 커뮤니티가 반응 (소식과 커뮤니티가 서로 이어지게) */
 export const REACT_VERSION = 25;
 export function gameTime(at: number, daySec: number): string {
   const t = Math.round(Math.max(0, Math.min(1, at)) * daySec);

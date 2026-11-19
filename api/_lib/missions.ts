@@ -24,7 +24,7 @@ export function missionsFor(uid: string, now = Date.now()) {
   return { ...p, dayIds: pickMissions(pickHex(uid, p.day), 'day'), weekIds: pickMissions(pickHex(uid, p.week), 'week') };
 }
 
-/* ---- 미션 바꾸기 (2판): mission_rerolls(계정, 기간)에 바꾼 횟수와 칸별로 바뀐 미션 ---- */
+/* ---- 미션 바꾸기: mission_rerolls(계정, 기간)에 바꾼 횟수와 칸별로 바뀐 미션 ---- */
 interface Rerolls {
   ok: boolean;
   day: { count: number; slots: Record<string, string> };
@@ -117,7 +117,7 @@ async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, d
   return true;
 }
 /*
- * (051) 튜토리얼 완료하기 미션 — 일일·주간과 따로, 계정마다 한 번 (사용자 결정 2026-11-18):
+ * (051) 튜토리얼 완료하기 미션 — 일일·주간과 따로, 계정마다 한 번:
  * 게임 기초(②)를 끝내면 레벨 1 → 2 에 필요한 경험치(levelNeed(1) = 100)만큼. 하루 상한 밖.
  * 튜토리얼은 브라우저 판이라 서버는 '끝냈다'는 기록만 믿음 → 계정마다 한 번, 큰 보상 아님
  */
@@ -143,7 +143,7 @@ async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game
   if (parts.length) {
     let want = parts.reduce((s, x) => s + x.xp, 0);
     let label = parts.map((x) => `${x.label} ${x.xp}`).join(' · ');
-    // 봇전 판 경험치는 하루 첫 판만 (사용자 결정 2026-11-19 — 30초 번개 봇전 반복으로 리그 점수를 올리지 못하게).
+    // 봇전 판 경험치는 하루 첫 판만 (30초 번개 봇전 반복으로 리그 점수를 올리지 못하게).
     // (계정, 'botday:날짜') 기본키라 두 판이 동시에 끝나도 한 판만 받음
     if (game.kind === 'bot') {
       const first = await sb.from('xp_log').insert({ user_id: uid, key: 'botday:' + day, xp: 0, detail: 'room:' + roomId });
@@ -248,7 +248,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       }
     }
     const ms = await missionsForUser(sb, uid, now);
-    // 오늘 첫 승은 예전과 같은 날짜 열쇠 (미션 2판으로 기간 이름이 바뀌어도 하루 한 번)
+    // 오늘 첫 승은 'd:' 날짜 열쇠 (미션 기간 이름 'd2:' 와 상관없이 하루 한 번)
     await grantGameXp(sb, uid, d.room.id, game, ms.day.replace(/^d2:/, 'd:'), ms.dayEndsAt);
     const todo = [...ms.dayIds.map((id) => ({ id, period: ms.day })), ...ms.weekIds.map((id) => ({ id, period: ms.week }))].filter((x) => missionGain(x.id, game) > 0);
     if (!todo.length) continue;

@@ -1,5 +1,5 @@
 -- 037: 비밀방 비밀번호 시도 — 사람·방마다 10분에 5번 (서버가 여러 대여도 같은 횟수) — 여러 번 실행해도 안전
--- 예전엔 서버 메모리에만 세서, 요청이 다른 서버로 가면 횟수가 안 쌓였음 (2026-11-17 운영 점검에서 발견)
+-- 서버 메모리에만 세면 요청이 다른 서버로 갈 때 횟수가 안 쌓이므로 DB 에서 셈
 create table if not exists public.pw_attempts (
   room_id uuid not null references public.rooms(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,

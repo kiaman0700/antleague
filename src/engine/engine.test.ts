@@ -33,7 +33,7 @@ describe('미래 정보 숨김', () => {
     const m = v.market!;
     const full = generateMarket(SEED, 10);
     expect(m.seed).toBe(0);
-    // 시드가 값 하나로 따로 들어 있지 않음 (시각 숫자 안에 우연히 4242 가 끼는 경우는 제외 — 예전엔 가끔 실패하던 것)
+    // 시드가 값 하나로 따로 들어 있지 않음 (시각 숫자 안에 우연히 4242 가 끼는 경우는 제외 — 그러지 않으면 가끔 실패함)
     expect(JSON.stringify(v)).not.toMatch(new RegExp('[^0-9.]' + SEED + '[^0-9.]'));
     expect(m.bars.NEOT.length).toBe(3); // 0,1일 + 오늘
     expect(m.bars.NEOT[2].close).toBe(full.bars.NEOT[2].open); // 오늘 종가는 시가로 가려짐

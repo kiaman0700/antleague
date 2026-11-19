@@ -39,7 +39,7 @@ export function ForgetMe() {
       setBusy(false);
     }
   };
-  // 계정 확인 전엔 숨김 — 회원인데 잠깐 '게스트 계정 지우기' 문구가 보였다 바뀌던 것
+  // 계정 확인 전엔 숨김 — 회원인데 잠깐 '게스트 계정 지우기' 문구가 보였다 바뀌지 않게
   if (acc.status === 'loading') return null;
   return (
     <section className="panel pad forget">

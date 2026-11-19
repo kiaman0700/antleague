@@ -1,4 +1,4 @@
--- 043: 공지사항 (2026-11-18) — 운영자만 쓰고·고치고·지움, 모두 읽기만. 읽기·쓰기 모두 서버(/api/game)만 (RLS + 권한 회수)
+-- 043: 공지사항 — 운영자만 쓰고·고치고·지움, 모두 읽기만. 읽기·쓰기 모두 서버(/api/game)만 (RLS + 권한 회수)
 -- 여러 번 실행해도 안전
 create table if not exists public.notices (
   id uuid primary key default gen_random_uuid(),

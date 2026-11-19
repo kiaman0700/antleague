@@ -1,5 +1,5 @@
 -- 029: 이모지 반응 채널을 '그 방 사람만' 듣고 보낼 수 있게 (여러 번 실행해도 안전)
--- 예전엔 방 ID 만 알면 누구나 react-<방ID> 채널에 들어와 반응을 보낼 수 있었음.
+-- 이 확인이 없으면 방 ID 만 알아도 누구나 react-<방ID> 채널에 들어와 반응을 보낼 수 있음.
 create or replace function public.react_member(p_topic text)
 returns boolean
 language plpgsql

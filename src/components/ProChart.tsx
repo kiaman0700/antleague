@@ -118,7 +118,7 @@ export function ProChart({
   const plotH = H - padT - padB;
 
   // 설정: 초보=라인, 일반=캔들이 기본. 바꾼 건 모드별로 기억
-  // 차트가 하나로 합쳐져서(5·10·20·30초·일) 모양 설정도 하나 — 예전 '초 단위 차트 모양' 설정은 쓰지 않음
+  // 차트가 하나로 합쳐져서(5·10·20·30초·일) 모양 설정도 하나 — '초 단위 차트 모양' 설정은 쓰지 않음
   const eff = getEffective();
   const prefKey = `stockduel.chart.${ui}`;
   // 내 화면 설정에서 차트 모양을 정했으면 그걸 기본으로
@@ -176,7 +176,7 @@ export function ProChart({
   const offset = unit?.offset;
   const defaultView = useCallback(
     (): [number, number] => {
-      // 처음 화면은 늘 봉 SLOTS 칸 — 5·10·20·30초·일 어느 간격이든 봉 굵기·사이가 같게 (사용자 요청 2026-11-17).
+      // 처음 화면은 늘 봉 SLOTS 칸 — 5·10·20·30초·일 어느 간격이든 봉 굵기·사이가 같게.
       // 봉이 적으면 늘리지 않고 빈칸으로 둠. 장중은 오늘 끝(지금 이후 칸 포함)에, 일봉은 지난날+2칸에 오른쪽 끝을 맞춤
       const anchor = offset != null ? totalDays - 1 : Math.min(totalDays - 1, lastIdx + 2);
       const end = Math.max(SLOTS - 1, anchor);
@@ -185,7 +185,7 @@ export function ProChart({
     [totalDays, lastIdx, offset],
   );
   const [view, setViewRaw] = useState<[number, number]>(defaultView);
-  // 사용자가 끌거나 확대했으면 새 봉이 생겨도 화면을 처음 자리로 되돌리지 않음 (지난 날을 보는 중에 1초마다 튀어 돌아가지 않게)
+  // 끌거나 확대했으면 새 봉이 생겨도 화면을 처음 자리로 되돌리지 않음 (지난 날을 보는 중에 1초마다 튀어 돌아가지 않게)
   const moved = useRef(false);
   const setView: typeof setViewRaw = (v) => {
     moved.current = true;
@@ -271,7 +271,7 @@ export function ProChart({
         hi = Math.max(hi, refLine.value);
       }
     }
-    // 세로 범위는 최소 가격의 0.6% — 100원(한 호가)만 움직여도 칸 끝까지 튀어 보이던 것. 작은 움직임은 가운데서 작게
+    // 세로 범위는 최소 가격의 0.6% — 100원(한 호가)만 움직여도 칸 끝까지 튀어 보이지 않게. 작은 움직임은 가운데서 작게
     const minSpan = ((lo + hi) / 2) * 0.006;
     if (hi - lo < minSpan) {
       const mid = (lo + hi) / 2;
@@ -290,7 +290,7 @@ export function ProChart({
     yMin + (1 - (py - padT) / plotH) * (yMax - yMin);
 
   // ---------- 포인터 조작 ----------
-  // SVG id 는 차트마다 따로 — 작은 차트와 크게 보기가 같은 id(clip-종목)를 써서 큰 차트가 작은 차트 크기로 잘리던 것
+  // SVG id 는 차트마다 따로 — 작은 차트와 크게 보기가 같은 id(clip-종목)를 쓰면 큰 차트가 작은 차트 크기로 잘림
   const uid = useId().replace(/:/g, "");
   const clipId = `clip-${uid}`;
   const fillId = `fill-${uid}`;
@@ -489,7 +489,7 @@ export function ProChart({
   const gridVals = (() => {
     const span = yMax - yMin;
     if (!(span > 0)) return [yMin];
-    // 눈금은 6칸 안팎 (예전 4칸이라 가격 눈금이 2~3개뿐이었음)
+    // 눈금은 6칸 안팎 (4칸이면 가격 눈금이 2~3개뿐)
     const raw = span / 6;
     const p10 = Math.pow(10, Math.floor(Math.log10(raw)));
     const step = [1, 2, 2.5, 5, 10].map((m) => m * p10).find((s) => s >= raw) ?? 10 * p10;
@@ -550,7 +550,7 @@ export function ProChart({
             </button>
           ))}
         </div>
-        {/* 기간 버튼(5일·10일·전체, 최근·오늘)은 없앰 — 확대·끌기로 보고, 두 번 눌러 처음 화면 (사용자 요청 2026-11-17) */}
+        {/* 기간 버튼 없이 확대·끌기로 보고, 두 번 눌러 처음 화면 */}
         <div className="pc-tools">
           <button
             className={"pc-ic" + (indOpen || inds.length ? " on" : "")}
@@ -889,7 +889,7 @@ export function ProChart({
                 const diff = lastPrice ? (v - lastPrice) / lastPrice : 0;
                 const when = unit ? (unit.when ?? unit.axis)(i) : `${i + 1}일`;
                 const shown = fmt(v);
-                // 처음 하는 사람도 바로 알게 '최고'·'최저' 글자를 앞에 (차트 앱 조사 2026-11-18: 가격만 쓰는 게 보통, 우리는 말로)
+                // 처음 하는 사람도 바로 알게 '최고'·'최저' 글자를 앞에
                 const label = `${top ? "최고" : "최저"} ${shown}${shown.startsWith("$") ? "" : "원"} (${diff > 0 ? "+" : ""}${(diff * 100).toFixed(2)}%, ${when})`;
                 // 휴대폰처럼 차트가 줄어들면 화면 기준 11.5px, 커지면 다른 눈금 글자처럼 함께 커짐
                 const fz = Math.max(12, 11.5 * unitPerPx);

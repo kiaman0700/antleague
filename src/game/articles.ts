@@ -72,7 +72,7 @@ export function articleOf(n: NewsEvent, key: string, fake: boolean, daySec?: num
   const person = () => pick(SUR) + pick(GIVEN);
   const good = n.tone === 'good';
   const title = n.headline.replace(/^\[[^\]]+\]\s*/, '');
-  // 제목에 이미 따옴표가 있으면 바깥 작은따옴표를 붙이지 않음 (''증권가 "…"'' 처럼 겹치던 것)
+  // 제목에 이미 따옴표가 있으면 바깥 작은따옴표를 붙이지 않음 (''증권가 "…"'' 처럼 겹치지 않게)
   const qt = /["'“”‘’]/.test(title) ? title : `'${title}'`;
   const co = n.symbol && STOCK_MAP[n.symbol] ? STOCK_MAP[n.symbol].name : null;
   const sec = n.sector ? SECTOR_MAP[n.sector]?.name ?? null : co && n.symbol ? SECTOR_MAP[STOCK_MAP[n.symbol].sector]?.name ?? null : null;

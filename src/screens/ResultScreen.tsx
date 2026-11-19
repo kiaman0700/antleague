@@ -359,7 +359,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
   const badgesEl = <>
       <div className="panel pad">
         <h3><Icon name="medal" /> 이번 판 업적</h3>
-        {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적이 길게 나와 내 업적이 묻히던 것) */}
+        {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적에 내 업적이 묻히지 않게) */}
         <div className="badge-cols" style={{ ['--cols' as string]: balancedCols(results.filter((r) => !botIds.has(r.id)).length) }}>
           {results.map((r, i) => botIds.has(r.id) ? null : (
             <div key={r.id}>
@@ -384,7 +384,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         {session.mode === 'solo' && !session.tutorial && <p className="muted small rw-note">연습 판은 업적·경험치가 기록에 남지 않아요. 봇전이나 대결에서 모여요.</p>}
       </div>
     </>;
-  // (밤샘 조사) 나의 결정적 순간 — 판이 끝나 공개된 뉴스 진위·내 거래만으로 (잡은·피한·속은·놓친)
+  // 나의 결정적 순간 — 판이 끝나 공개된 뉴스 진위·내 거래만으로 (잡은·피한·속은·놓친)
   const moments = useMemo(() => keyMoments(market, final.trades.filter((t) => t.player_id === session.playerId), last), [market, final.trades, session.playerId, last]);
   const MOMENT_ICON: Record<string, IconName> = { caught: 'trend', dodged: 'shield', fooled: 'warn', missed: 'target' };
   const momentsEl = moments.length > 0 && (
@@ -401,7 +401,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
       </div>
     </div>
   );
-  // (밤샘 조사) 실제 시장에서는? — 그 판에 있었던 사건을 실제 시장 지식으로 (끝난 판의 공개 뉴스 제목만)
+  // 실제 시장에서는? — 그 판에 있었던 사건을 실제 시장 지식으로 (끝난 판의 공개 뉴스 제목만)
   const lessons = useMemo(() => realLessons(market.news, last), [market.news, last]);
   const lessonsEl = lessons.length > 0 && (
     <div className="panel pad rw-panel">
@@ -645,7 +645,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
         slides={[
           { key: 'sum', label: '요약', body: <>{bannerEl}{ratingEl}{cardsEl}</> },
           { key: 'review', label: '복기', body: <>{highlightsEl}{replayEl}{marketEl}</> },
-          // 오늘의 도전은 점수표(순위·연속 기록)가 '순위' 칸에 (예전엔 '보상' 칸에 있었음)
+          // 오늘의 도전은 점수표(순위·연속 기록)가 '순위' 칸에
           { key: 'rank', label: '순위', body: <>{dailyEl}{chartEl}</> },
           { key: 'reward', label: '보상', body: <>{badgesEl}<GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />{restEl}</> },
           {
@@ -671,7 +671,7 @@ export function ResultScreen({ session, market: fullMarket, final, onExit, nextC
 }
 
 /**
- * 결과 화면에서 한동안(3분) 아무것도 안 하면 홈으로 (사용자 요청 2026-11-17).
+ * 결과 화면에서 한동안(3분) 아무것도 안 하면 홈으로.
  * 결과 화면도 8초마다 서버에 '한 판 더' 방을 묻고 있어서, 켜 둔 채 자리를 비우면 요청이 계속 나감.
  * 누르기·스크롤·키 입력이 있으면 처음부터 다시 셈. 마지막 20초는 아래에 안내 + '더 보기'
  */
@@ -712,7 +712,7 @@ function IdleExit({ onExit }: { onExit: () => void }) {
 }
 
 /**
- * (휴대폰) 결과를 칸으로 나눠 위 칩으로 바로 가거나 좌우로 넘김 (설계서 v24 B — 조사: 넘기기만으로 이동하면 잘 못 찾음 → 칩이 기본).
+ * (휴대폰) 결과를 칸으로 나눠 위 칩으로 바로 가거나 좌우로 넘김 (설계서 v24 B — 넘기기만으로는 칸을 잘 못 찾으므로 칩이 기본).
  * 브라우저의 가로 스크롤 맞춤(scroll-snap)을 써서 손가락으로 넘기기·키보드 모두 됨. 칸 안 가로 목록은 끝에서 칸이 넘어가지 않게(overscroll contain)
  */
 function ResultSlides({ slides }: { slides: { key: string; label: string; body: React.ReactNode }[] }) {
@@ -806,7 +806,7 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
 }
 
 /**
- * 게스트에게 좋은 순간(이겼거나 업적을 땄을 때)에만 가입 권유 (조사: 막지 않기, 한 번에 한 번, 두 번 닫으면 그만).
+ * 게스트에게 좋은 순간(이겼거나 업적을 땄을 때)에만 가입 권유 (막지 않기, 한 번에 한 번, 두 번 닫으면 그만).
  * 게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 지우면 사라짐 — 사실 그대로 알림
  */
 function GuestSave({ won, badges }: { won: boolean; badges: number }) {

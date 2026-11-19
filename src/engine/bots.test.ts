@@ -136,7 +136,7 @@ describe('봇', () => {
     const bot = v.players.find((p) => p.id === 'bot4')!;
     expect(bot.bot).toBe(3);
     expect(bot.status).toBe('on');
-    // 상대(봇) 재산은 원 단위로 보이지만(2026-11-17 결정) 보유 종목은 없음
+    // 상대(봇) 재산은 원 단위로 보이지만 보유 종목은 없음
     expect(bot.band).toBeNull();
     expect(JSON.stringify(bot)).not.toMatch(/holdings|symbol|qty/);
   });

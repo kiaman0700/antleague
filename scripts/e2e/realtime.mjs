@@ -16,7 +16,7 @@ await sleep(4500);
 
 const state = async (P = A) => (await P({ action: 'state', roomId })).b;
 let s = await state();
-// 칸 길이: 새 방(v11)은 1초 → 1분 = 60칸 (예전 5초 방은 12칸)
+// 칸 길이: 새 방(v11)은 1초 → 1분 = 60칸 (v10 이하 5초 방은 12칸)
 const tickMs = s.live?.tickMs ?? 5000;
 ok('장중 데이터가 있음 (1분 = 60칸, 1초 칸)', s.live && tickMs === 1000 && s.live.n === 60, JSON.stringify({ tick: s.live?.tick, n: s.live?.n, tickMs }));
 const lens = Object.values(s.live.krw).map((a) => a.length);

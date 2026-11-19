@@ -15,7 +15,7 @@ export function Sheet({ title, onClose, children, wide, guard }: { title: ReactN
   const rearmRef = useRef<() => void>(() => {});
   const soft = async () => {
     if (!guardRef.current || (await guardRef.current())) return closeRef.current();
-    // '계속 쓰기'를 골랐으면 뒤로 가기 기록을 다시 넣음 — 다음 뒤로 가기도 이 창부터 묻게 (예전엔 두 번째 뒤로 가기에 쓰던 글이 그냥 사라졌음)
+    // '계속 쓰기'를 골랐으면 뒤로 가기 기록을 다시 넣음 — 다음 뒤로 가기도 이 창부터 묻게 (안 넣으면 두 번째 뒤로 가기에 쓰던 글이 그냥 사라짐)
     rearmRef.current();
   };
   const boxRef = useDialogFocus<HTMLDivElement>();

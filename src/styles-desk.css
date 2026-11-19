@@ -302,7 +302,7 @@
   overflow: hidden;
 }
 .m-asum span {
-  flex: 1 1 auto; /* 글자 길이만큼 (예전엔 칸을 똑같이 나눠 '42만 9,1…'처럼 금액이 잘렸음) */
+  flex: 1 1 auto; /* 글자 길이만큼 (칸을 똑같이 나누면 '42만 9,1…'처럼 금액이 잘림) */
   min-width: 0;
   display: flex;
   flex-direction: column;

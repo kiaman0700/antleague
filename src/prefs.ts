@@ -42,7 +42,7 @@ export interface Layout {
   toastXY: { x: number; y: number } | null;
   /** 모바일 속보 알림 자유 위치 */
   mToastXY: { x: number; y: number } | null;
-  /** 보통 알림(샀어요·오류 등) 자유 위치 — 속보와 따로 (사용자 요청 2026-11-17). 없으면 아래쪽 가운데 */
+  /** 보통 알림(샀어요·오류 등) 자유 위치 — 속보와 따로. 없으면 아래쪽 가운데 */
   alertXY: { x: number; y: number } | null;
   /** 모바일 보통 알림 자유 위치 */
   mAlertXY: { x: number; y: number } | null;

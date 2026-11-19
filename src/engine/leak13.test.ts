@@ -57,7 +57,7 @@ describe('사건 결과가 미리 새지 않음 (검토 지적 3건)', () => {
       }
     }
     expect(n).toBeGreaterThan(20);
-    // 예전엔 92% 같은 방향 — 이제는 동전 던지기 근처
+    // v12 는 92% 같은 방향 — v13 은 동전 던지기 근처
     expect(same / n).toBeLessThan(0.75);
   });
 });

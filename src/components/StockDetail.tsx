@@ -71,7 +71,7 @@ export function StockDetail(props: Props) {
   const [full, setFull] = useState(false);
   // 크게 보기 차트도 Esc 로 닫힘 (겹친 창 순서대로 — 그 위에 사기 창이 떠 있으면 사기 창이 먼저)
   useEscape(() => setFull(false), full, true);
-  // 봉 간격(초) — 5·10·20·30초, 0 = 일봉. 장중/일별을 나누지 않고 한 차트에서 (사용자 요청 2026-11-17). 이 기기에 기억
+  // 봉 간격(초) — 5·10·20·30초, 0 = 일봉. 장중/일별을 나누지 않고 한 차트에서. 이 기기에 기억
   const [iv, setIvRaw] = useState<number>(() => {
     try {
       const v = localStorage.getItem("stockduel.chartIv");
@@ -711,7 +711,7 @@ export function TradePanel({
     if (kind === "limit") setLimitPct(sd === "buy" ? -0.03 : 0.03);
   };
   // 1주가 버튼 금액보다 비싸도 최소 1주는 더해지게
-  // 누른 금액을 모아서 그 돈으로 살 수 있는 만큼만 (한 번 누를 때마다 1주씩 늘던 문제 — 10만원을 눌러도 12만원짜리 1주가 담겼음)
+  // 누른 금액을 모아서 그 돈으로 살 수 있는 만큼만 (1주씩 늘리면 10만원을 눌러도 12만원짜리 1주가 담기므로)
   const addMoney = (w: number) => {
     const nb = (budget ?? qty * unitKrw) + w;
     setBudget(nb);
@@ -1018,7 +1018,7 @@ export function TradePanel({
   );
 }
 
-/** 봉 간격 선택지(초): 칸 길이로 나눠떨어지는 것만 보여 줌 + '일' (사용자 요청: 5·10·20·30초·일) */
+/** 봉 간격 선택지(초): 칸 길이로 나눠떨어지는 것만 보여 줌 + '일' (5·10·20·30초·일) */
 const IV_SEC: [number, string][] = [
   [5, "5초"],
   [10, "10초"],

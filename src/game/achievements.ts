@@ -15,7 +15,7 @@ export interface Badge {
 }
 
 export const BADGES: Badge[] = [
-  // 전설 (2026-11-17 추가 포함 — 목록 순서 = 귀한 순서, 칭호는 가장 앞의 것)
+  // 전설 (목록 순서 = 귀한 순서, 칭호는 가장 앞의 것)
   { id: 'bot_slayer', emoji: '🤖', name: '고수봇 사냥꾼', desc: '어려움(고수봇)이 있는 판에서 1위', rarity: 3 },
   { id: 'ret30', emoji: '💸', name: '대박', desc: '수익률 +30% 넘게 마감', rarity: 3 },
   { id: 'streak7', emoji: '📅', name: '연전연승', desc: '7일 연속 재산이 전날보다 늘어남', rarity: 3 },
@@ -61,7 +61,7 @@ export const BADGES: Badge[] = [
   { id: 'first_card', emoji: '🎴', name: '첫 카드', desc: '찬스 카드를 처음 씀', rarity: 1 },
   { id: 'first_trade', emoji: '🐣', name: '첫 거래', desc: '처음으로 주식을 사 봄', rarity: 1 },
   { id: 'tut_grad', emoji: '🎓', name: '개미 학교 졸업', desc: '튜토리얼 4단계(홈·게임·결과·미션)를 모두 끝냄', rarity: 1 },
-  // 웃픈 업적 (2026-11-17 사용자 요청: 안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
+  // 웃픈 업적 (안 좋은 경험으로도 받는 업적) — 칭호 고르기에서 맨 뒤
   { id: 'big_loss', emoji: '🫙', name: '깡통 계좌', desc: '거래하고 수익률 −20% 아래로 마감', rarity: 2, funny: true },
   { id: 'buy_high', emoji: '🏔️', name: '꼭지에서 산 개미', desc: '판 동안 10% 넘게 움직인 종목을 최고가 3% 안에서 매수', rarity: 1, funny: true },
   { id: 'punching_bag', emoji: '🩹', name: '동네북', desc: '한 판에 방해 카드를 3번 넘게 맞음', rarity: 2, funny: true },
@@ -79,8 +79,8 @@ export const AVATAR_ONLY = new Set(['lv5', 'lv10', 'lv15', 'dividend', 'global',
 export const givesTitle = (id: string) => Object.prototype.hasOwnProperty.call(BADGE_MAP, id) && !AVATAR_ONLY.has(id);
 export const BADGE_MAP: Record<string, Badge> = Object.fromEntries(BADGES.map((b) => [b.id, b]));
 
-/* ---------------- 업적 단계 (같은 업적을 여러 번 — 사용자 결정 2026-11-18, design/titles-tiers-v3.md) ---------------- */
-/** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 · 100번 (100번은 사용자 요청 2026-11-18) */
+/* ---------------- 업적 단계 (같은 업적을 여러 번 — design/titles-tiers-v3.md) ---------------- */
+/** 단계 기준 (딴 횟수): 1번 · 5번 · 20번 · 100번 */
 export const BADGE_TIER_AT = [1, 5, 20, 100] as const;
 /** 한 번만 의미 있는 업적(처음 해 봄·레벨·튜토리얼)은 단계 없음 */
 const NO_TIER = new Set(['first_trade', 'first_card', 'etf_fan', 'lv5', 'lv10', 'lv15', 'lv20', 'tut_first', 'tut_grad', 'league_queen', 'league_gold']);
@@ -219,7 +219,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const out: Record<string, string[]> = {};
   for (const p of inp.players) {
     // 기권한 사람은 업적 없음 (현금만 들고 기권해 투자왕·존버의 미학 등을 받던 빈틈)
-    // 봇도 업적이 없음 (업적을 모으는 사람이 아니라서 — 사용자 요청 2026-11-18)
+    // 봇도 업적이 없음 (업적을 모으는 사람이 아니라서)
     if (p.left || p.bot) {
       out[p.id] = [];
       continue;
@@ -227,13 +227,13 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     const got = new Set<string>();
     const ret = finalEq(p.id) / startCashFor(m.version) - 1;
     if (winner === p.id) got.add('winner');
-    // 한 번이라도 거래해야 (현금만 들고 시장이 내린 판에서 거저 받지 않게 — 사용자 결정 2026-11-17)
+    // 한 번이라도 거래해야 (현금만 들고 시장이 내린 판에서 거저 받지 않게)
     if (ret > indexRet && p.trades.length > 0) got.add('beat_market');
     if (p.trades.length >= 20) got.add('trader');
     if (p.filledOrders >= 3) got.add('limit_order');
     if ((solo && ret > 0 && p.trades.length <= 5 && p.trades.length > 0) || (winner === p.id && p.trades.length <= 5)) got.add('zen');
 
-    // ---- 2026-11-17 추가 ----
+    // ---- 거래·카드·종목 관련 ----
     const traded = p.trades.length > 0;
     if (p.trades.some((t) => t.side === 'buy')) got.add('first_trade');
     if (traded && ret > 0) got.add('plus');

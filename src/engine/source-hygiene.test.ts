@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * 소스 파일에 보이지 않는 제어 문자가 섞이지 않게 (2026-11-17: 편집 도구 때문에 정규식의 \1 이 제어 문자로 바뀌어
- * '같은 글자 반복' 비밀번호 검사가 몰래 꺼져 있던 일이 있었음)
+ * 소스 파일에 보이지 않는 제어 문자가 섞이지 않게 (정규식의 \1 이 제어 문자로 바뀌면
+ * '같은 글자 반복' 비밀번호 검사가 몰래 꺼짐)
  */
 const ROOTS = ['src', 'api', 'scripts', 'supabase'];
 const EXT = /\.(ts|tsx|mjs|js|css|sql|html)$/;

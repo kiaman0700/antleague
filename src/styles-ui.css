@@ -2615,7 +2615,7 @@ button.tag:hover,
 .mode-pick.compact .mp-desc {
   font-size: 12px;
 }
-/* 예전 큰 카드 모양 규칙 덮어쓰기 */
+/* 앞의 큰 카드 모양 규칙 덮어쓰기 */
 .mode-pick.compact {
   grid-template-columns: none;
 }

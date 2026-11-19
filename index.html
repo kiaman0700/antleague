@@ -36,7 +36,7 @@
     <div id="root"><div class="boot" role="status" aria-label="개미리그 불러오는 중"><img src="/brand/mark.svg" alt="" width="64" height="64" /><b>개미리그</b><i><span></span></i></div></div>
     <style>
       html, body { background: #111; }
-      /* (2026-11-19 조사) 빨리 뜨면 아무것도 안 보이게 — 로고·이름은 0.15초 뒤 살짝, 진행 막대는 0.4초가 넘을 때만 · 떠다니는 장식 없음 */
+      /* 빨리 뜨면 아무것도 안 보이게 — 로고·이름은 0.15초 뒤 살짝, 진행 막대는 0.4초가 넘을 때만 · 떠다니는 장식 없음 */
       .boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #111; color: #f2f2f2; font: 700 20px/1.2 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; letter-spacing: -0.01em; }
       .boot img, .boot b { animation: bootIn 0.35s 0.15s ease-out both; }
       .boot i { position: relative; width: 120px; height: 3px; border-radius: 3px; background: #262626; overflow: hidden; animation: bootFade 0.3s 0.4s ease-out both; }

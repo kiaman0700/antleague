@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildView, CURRENT_RULES_VERSION, type GameData } from './engine.js';
 
-/** 재산이 같으면 같은 순위 (예전엔 먼저 들어온 사람이 앞서 보였음 — 첫날 둘 다 0% 인데 '뒤지는 중') */
+/** 재산이 같으면 같은 순위 (먼저 들어온 사람이 앞서 보이면 첫날 둘 다 0% 인데 '뒤지는 중'이 됨) */
 const T0 = 1_900_000_000_000;
 function room(): GameData {
   const dl = T0 + 63_000;

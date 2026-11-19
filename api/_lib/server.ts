@@ -177,7 +177,7 @@ function db(): SupabaseClient {
 
 /**
  * Supabase 로 가는 요청: 읽기(GET·HEAD)만 연결 실패·502·503·504 때 최대 2번 다시 (0.25초·0.6초 뒤).
- * 배포 직후 새 서버가 처음 연결할 때 잠깐 실패하던 것 (2026-11-17 운영 점검에서 발견).
+ * 배포 직후 새 서버가 처음 연결할 때 잠깐 실패할 수 있음.
  * 쓰기(POST·PATCH·DELETE·RPC)는 이미 들어갔을 수 있어 다시 보내지 않음
  */
 export async function retryingFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -379,7 +379,7 @@ async function nickFor(uid: string, raw: unknown) {
 }
 
 /**
- * 이 방의 회원 자리 → 프로필 사진 id (회원/손님은 사진으로만 구분 — 2026-11-17 사용자 결정, 체크 표시 없음).
+ * 이 방의 회원 자리 → 프로필 사진 id (회원/손님은 사진으로만 구분, 체크 표시 없음).
  * 화면엔 자리 id → 사진 id 만 (user_id·아이디는 보내지 않음). 1분 캐시
  */
 const avatarCache = new Map<string, { at: number; map: Map<string, string> }>();
@@ -744,7 +744,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       return leaveSeat(roomId, playerId);
     }
 
-    // (2026-11-17) '다른 기기로 옮기기(이어하기 코드)'는 없앰 — 회원은 같은 아이디로 로그인하면 이어짐
+    // 다른 기기로 옮기는 이어하기 코드(rejoin)는 없음 — 회원은 같은 아이디로 로그인하면 이어짐
 
     case 'rematch': {
       // 한 판 더: 끝난 방과 같은 설정으로 새 방. 이미 누가 만들었으면 그 코드로 (같은 방 사람만)
@@ -1095,7 +1095,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const myDays = hist.error ? [] : ((hist.data ?? []) as { day: string }[]).map((r) => String(r.day).slice(0, 10));
       const streak = hist.error ? null : streakOf(myDays, day);
       // 친구들: 수락한 친구 중 오늘 한 사람만 (닉네임·수익률·끝냈는지 — 계정 id 는 안 보냄).
-      // '함께 n일'은 없앰 (사용자 2026-11-19: 오늘의 도전은 각자 하는 것)
+      // 오늘의 도전은 각자 하는 것이라 함께한 날 수는 세지 않음
       let friends: { nickname: string; ret: number | null; finished: boolean }[] = [];
       const fr = await sb.from('friendships').select('user_a, user_b').eq('status', 'accepted').or(`user_a.eq.${uid},user_b.eq.${uid}`);
       if (!fr.error && fr.data?.length) {
@@ -1130,7 +1130,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
     case 'dailyStart': {
       // 하루에 계정마다 한 번: 기록 줄(날짜·계정 기본키)을 먼저 넣어 자리를 차지한 뒤 방을 만듦
       rateLimit(uid + ':dailyStart', 6, 60_000);
-      // 회원만 (2026-11-18 사용자 결정) — 모두 같은 시장이라 손님(시크릿 창)으로 먼저 해 보고 가격을 안 뒤 회원으로 다시 하는 걸 막음
+      // 회원만 — 모두 같은 시장이라 손님(시크릿 창)으로 먼저 해 보고 가격을 안 뒤 회원으로 다시 하는 걸 막음
       const member = !!(await sb.from('profiles').select('user_id').eq('user_id', uid).maybeSingle()).data;
       if (!member) throw new GameError('오늘의 도전은 회원만 할 수 있어요. 회원가입하면 바로 할 수 있어요.', 403);
       const day = kstDay();
@@ -1905,7 +1905,7 @@ function tokenExpMs(token: string) {
 }
 
 /**
- * (060) 동시 접속 — FC온라인 방식 (사용자 결정 2026-11-19): 로그인은 여러 기기 가능.
+ * (060) 동시 접속 — FC온라인 방식: 로그인은 여러 기기 가능.
  * 다른 기기가 지금 접속 중(90초 안에 화면을 보며 씀)이면 'concurrent' → 화면이 '여기서 접속할까요?' 를 묻고 takeOver 로만 바꿈.
  * 'gone' = 이 세션이 로그아웃됨(다른 기기가 여기서 접속을 고름·로그아웃·비밀번호 변경).
  * 'ok' 만 10초 기억(그동안 DB 를 안 부름 — 접속 중 시각은 길어야 10초 늦게 적힘, 90초 기준이라 괜찮음)
@@ -1963,7 +1963,7 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
       return { status: 200, body: await accountAct(db(), 'ranking', body as Body, { id: '' }, rateLimit) };
     }
     if (!token || token.length > 4096) return { status: 401, body: { error: '로그인이 필요해요.' } };
-    // (최적화 2026-11-18) 1초마다 오는 '읽기만 하는 화면 갱신'은 방금(10초 안) 확인한 토큰이면 인증 서버를 다시 부르지 않음.
+    // (최적화) 1초마다 오는 '읽기만 하는 화면 갱신'은 방금(10초 안) 확인한 토큰이면 인증 서버를 다시 부르지 않음.
     // 거래·카드·계정 같은 행동은 늘 다시 확인. 세션 끊김(다른 곳 접속·비밀번호 변경)도 길어야 10초 안에 반영 — sessionOk 기억 시간과 같음
     const peekAction = body && typeof body === 'object' && typeof (body as Body).action === 'string' ? ((body as Body).action as string) : '';
     const readOnly = READ_ONLY_ACTIONS.has(peekAction);

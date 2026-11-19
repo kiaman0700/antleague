@@ -162,7 +162,7 @@ export function useDevice(): Device {
 }
 /**
  * 게임을 휴대폰 화면(아래 탭)으로 그릴지: 휴대폰은 늘, PC 는 창이 좁아도 안 함, 태블릿은 세로(좁을 때)만
- * (예전엔 창 폭 960px 로만 정해서 PC 창을 줄이면 휴대폰 화면이 나왔음)
+ * (창 폭만으로 정하면 PC 창을 줄였을 때 휴대폰 화면이 나오므로 기기로 판단)
  */
 export function useMobileLayout(): boolean {
   const device = useDevice();

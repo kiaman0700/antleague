@@ -163,7 +163,7 @@ function snsFace(seed: string) {
 export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen, daySec }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
-  // 뉴스와 찌라시는 따로 (사용자 요청 2026-11-17): 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
+  // 뉴스와 찌라시는 따로: 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
   const [mode, setMode] = useState<'news' | 'rumor'>('news');
   const [cat, setCat] = useState<'all' | number>('all');
   useEffect(() => setCat('all'), [day]);
@@ -173,7 +173,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
     const box = catsRef.current;
     const chip = box?.querySelector<HTMLElement>('.nc-today');
     if (box && chip) box.scrollLeft = Math.max(0, chip.offsetLeft - box.offsetLeft - box.clientWidth / 2 + chip.offsetWidth / 2);
-    // PC: 마우스 휠(위아래)로도 날짜 줄이 좌우로 넘어가게 (스크롤바를 숨겨 둬서 휠로는 못 넘기던 것)
+    // PC: 마우스 휠(위아래)로도 날짜 줄이 좌우로 넘어가게 (스크롤바를 숨겨 둬서 휠만으로는 못 넘기므로)
     if (!box) return;
     const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || box.scrollWidth <= box.clientWidth) return;

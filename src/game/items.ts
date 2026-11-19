@@ -248,12 +248,12 @@ export const PRICE_V8: Partial<Record<ItemKind, number>> = {
  */
 export const PRICE_V9: Partial<Record<ItemKind, number>> = { ...PRICE_V8, paper: 45_000, freeze: 20_000, blackout: 15_000, fake: 15_000, fee: 20_000 };
 /**
- * (v14) 설계서 design/cards-v14.md: 루머 감별기는 고른 소식 1개만 · 10만원(사용자 결정), 정보 카드는 하루 1장이 되면서
+ * (v14) 설계서 design/cards-v14.md: 루머 감별기는 고른 소식 1개만 · 10만원, 정보 카드는 하루 1장이 되면서
  * 시뮬에서 값보다 이득이 작던 내일 신문·애널리스트 콜 값을 내림
  */
 export const PRICE_V14: Partial<Record<ItemKind, number>> = { ...PRICE_V9, detector: 100_000, paper: 35_000, analyst: 25_000 };
 /**
- * (v16) 루머 감별기 10만 → 5만 (사용자 결정 2026-11-18, design/detector-price-check.md — 시뮬에서 10만은 사면 손해가 뚜렷).
+ * (v16) 루머 감별기 10만 → 5만 (design/detector-price-check.md — 시뮬에서 10만은 사면 손해가 뚜렷).
  * 판정은 그대로 고른 소식(뉴스 또는 찌라시) 1개
  */
 export const PRICE_V16: Partial<Record<ItemKind, number>> = { ...PRICE_V14, detector: 50_000 };

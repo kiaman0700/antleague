@@ -93,7 +93,7 @@ function sectorFlow(m: Market, sector: string, day: number, n: number) {
   return cached(`sf:${sk(m)}:${m.totalDays}:${sector}:${day}:${n}`, () => bridge(m, `${sk(m)}:sf:${sector}:${day}:${n}`, n, 0.009));
 }
 
-/** (v23) 장중 가격이 그날 고가·저가에 실제로 닿게 (2026-11-18: 일봉 저가에 걸어 둔 예약이 체결되지 않던 문제)
+/** (v23) 장중 가격이 그날 고가·저가에 실제로 닿게 (안 닿으면 일봉 저가에 걸어 둔 예약이 체결되지 않음)
  *  가장 높은·낮은 칸 둘레를 부드럽게 끌어올려/내려 고가·저가를 정확히 찍음. 시가·종가 칸은 그대로 */
 export const TOUCH_RANGE_VERSION = 23;
 function touchRange(p: number[], bar: Bar, round: (v: number) => number): number[] {

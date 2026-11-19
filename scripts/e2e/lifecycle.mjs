@@ -51,7 +51,7 @@ async function room(players, opts = {}) {
   await B({ action: 'trade', roomId, symbol: 'CORE', side: 'buy', qty: 2 });
   const s = (await A({ action: 'state', roomId })).b;
   const b = s.players.find((p) => p.id === ids[1]);
-  // 2026-11-17 결정: 상대 재산은 원 단위로 보임, 무엇을 샀는지는 안 보임
+  // 상대 재산은 원 단위로 보임, 무엇을 샀는지는 안 보임
   ok('상대 재산은 원 단위로 보임 (구간 아님)', typeof b.equity === 'number' && !b.band, String(b.equity));
   ok('상대가 산 종목·거래는 안 보임', !JSON.stringify(s).includes('"player_id":"' + ids[1] + '"') && (s.myTrades ?? []).length === 0);
   ok('상대의 오늘 거래 횟수는 안 보임', b.tradeCount === 0, String(b.tradeCount));
@@ -68,7 +68,7 @@ async function room(players, opts = {}) {
   ok('기권한 게임은 이어하기 목록에 안 나옴', back.s === 200 && (back.b === null || back.b.roomId !== roomId));
 }
 
-// ---- '다른 기기로 옮기기(이어하기 코드)'는 없앤 기능 (2026-11-17) — 서버가 받지 않아야 함 ----
+// ---- '다른 기기로 옮기기(이어하기 코드)'는 없앤 기능 — 서버가 받지 않아야 함 ----
 {
   const { us: [A, B], roomId, code } = await room(2);
   await A({ action: 'start', roomId });

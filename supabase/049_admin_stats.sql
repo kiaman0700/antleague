@@ -1,4 +1,4 @@
--- 049: 운영자 현황 집계 (2026-11-18) — 서버(비밀 키)만 부름. 숫자·종목 코드·카드 종류만 돌려줌 (계정 id·닉네임 없음).
+-- 049: 운영자 현황 집계 — 서버(비밀 키)만 부름. 숫자·종목 코드·카드 종류만 돌려줌 (계정 id·닉네임 없음).
 -- 시험 계정(test_users, profiles.is_test)과 봇 자리(user_id 없음)는 빼고 셈. 여러 번 실행해도 안전
 create or replace function public.admin_stats(days int default 14)
 returns jsonb

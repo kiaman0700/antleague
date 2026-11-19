@@ -74,7 +74,7 @@ export function CoachTour({
           : { bottom: 24, left }
     : { top: '50%', left: '50%', translate: '-50% -50%' };
   const last = i === steps.length - 1;
-  // body 에 바로 그림 — 로비 틀의 '자식은 모두 relative' 규칙 때문에 아래 메뉴 밑에 깔리던 것
+  // body 에 바로 그림 — 로비 틀 안에 두면 '자식은 모두 relative' 규칙 때문에 아래 메뉴 밑에 깔림
   return createPortal(
     <div className="tut-layer coach" aria-live="polite">
       {rect ? <div className="tut-spot" style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }} /> : <div className="tut-dim" />}

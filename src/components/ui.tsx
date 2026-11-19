@@ -151,7 +151,7 @@ export const balancedCols = (n: number) => (n <= 3 ? Math.max(1, n) : n === 4 ? 
 
 /**
  * 열린 창(모달·바텀시트·서랍·팝업) 쌓임 순서. Esc 는 맨 위(가장 나중에 열린) 창 하나만 닫음
- * (예전엔 창마다 따로 Esc 를 들어서, 서랍 위에 카드 창이 떠 있으면 Esc 한 번에 둘 다 닫혔음)
+ * (창마다 따로 Esc 를 들으면 서랍 위에 카드 창이 떠 있을 때 Esc 한 번에 둘 다 닫힘)
  */
 type Layer = { close: { current: () => void }; id?: number; popped?: boolean };
 const escStack: Layer[] = [];
@@ -358,11 +358,11 @@ export function useNetOnline() {
   return on;
 }
 
-/** 로비·대기실: 인터넷이 끊기면 위에 띠 (게임 화면의 끊김 띠와 같은 모양) — 예전엔 아무 표시 없이 버튼이 실패했음 */
+/** 로비·대기실: 인터넷이 끊기면 위에 띠 (게임 화면의 끊김 띠와 같은 모양) — 표시가 없으면 버튼이 이유 없이 실패한 것처럼 보임 */
 export function OfflineBanner() {
   const on = useNetOnline();
   if (on || typeof document === 'undefined') return null;
-  // body 에 바로 그림 — 로비 틀의 '자식은 모두 relative' 규칙에 걸려 화면 아래로 밀려났었음
+  // body 에 바로 그림 — 로비 틀의 '자식은 모두 relative' 규칙에 걸려 화면 아래로 밀리지 않게
   return createPortal(
     <div className="net-banner" role="alert">
       <Icon name="warn" size={14} /> 인터넷이 끊겼어요. 연결되면 다시 쓸 수 있어요

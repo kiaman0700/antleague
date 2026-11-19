@@ -77,7 +77,7 @@ export interface RoomInfo {
 interface MatchResult {
   id: string;
   winner_nickname: string | null;
-  results: { nickname: string; equity: number; ret: number; badges?: string[]; /** 봇 자리면 난이도 (2026-11-17부터 기록) */ bot?: number; left?: boolean; idle?: boolean }[];
+  results: { nickname: string; equity: number; ret: number; badges?: string[]; /** 봇 자리면 난이도 (오래된 기록엔 없음) */ bot?: number; left?: boolean; idle?: boolean }[];
   /** 내 기록에서: 판 종류 · 랭킹전 · 점수 변화 */
   kind?: string | null;
   ranked?: boolean | null;
@@ -222,7 +222,7 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
   );
 }
 
-/** 설정의 게스트 닉네임: 형식·회원 닉네임과 겹치는지 바로 알려 줌 (예전엔 방에 들어갈 때야 막혔음) */
+/** 설정의 게스트 닉네임: 형식·회원 닉네임과 겹치는지 바로 알려 줌 (방에 들어갈 때가 아니라 입력할 때) */
 function GuestNickField({ nick, setNick }: { nick: string; setNick: (v: string) => void }) {
   const check = useNickCheck(nick, online);
   return (
@@ -418,7 +418,7 @@ function BotStart({ onStart, onClose }: { onStart: (days: number, daySec: number
 }
 
 /** 오늘의 도전: 모두 같은 시장으로 하루 한 번 (10일 · 하루 1분), 회원 점수표 */
-/** 오늘의 도전은 회원만 (2026-11-18) — 손님에게는 안내와 가입·로그인 버튼만 (서버에 묻지 않아 손님 계정도 안 만듦) */
+/** 오늘의 도전은 회원만 — 손님에게는 안내와 가입·로그인 버튼만 (서버에 묻지 않아 손님 계정도 안 만듦) */
 function DailyMembersOnly({ onClose, onSignup, onLogin }: { onClose: () => void; onSignup: () => void; onLogin: () => void }) {
   return (
     <Modal title={<><Icon name="daily" size={18} /> 오늘의 도전</>} onClose={onClose}>
@@ -1105,7 +1105,7 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
   const [loadErr, setLoadErr] = useState(false);
   const load = () => {
-    // 6초 타이머가 처음 그릴 때의 online 값을 계속 쥐고 있어서, 끊긴 채 열면 다시 연결돼도 안 받던 것 → 지금 값으로
+    // 6초 타이머가 처음 그릴 때의 online 값을 쥐면 끊긴 채 열었을 때 다시 연결돼도 안 받으므로 지금 값으로
     if (!navigator.onLine) return;
     api<RoomInfo[]>('rooms')
       .then((r) => (setRooms(r), setLoadErr(false)))
@@ -1962,7 +1962,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
               <AccountChip account={account} online={online} onProfile={() => go('me')} onLogin={() => go('login')} onSignup={() => go('signup')} compact />
             </span>
           </div>
-          {/* 공지 줄: 위 메뉴 줄 바로 아래 따로 (사용자 2026-11-19 — 공지 때문에 '개미리그' 이름이 가려지지 않게) */}
+          {/* 공지 줄: 위 메뉴 줄 바로 아래 따로 (공지 때문에 '개미리그' 이름이 가려지지 않게) */}
           {online && <NoticeTicker />}
           <div className="lobby-body">
             <InAppBanner />

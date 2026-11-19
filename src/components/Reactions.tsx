@@ -31,7 +31,7 @@ export function ReactionButton({ onSend, muted, onMute }: { onSend: (r: { emoji?
       {open && (
         <div className="react-pop">
           {muted ? (
-            // 반응을 끈 동안은 보내기도 못 함 (사용자 2026-11-19: 받지 않으면서 보내기만 하는 건 맞지 않음)
+            // 반응을 끈 동안은 보내기도 못 함 (받지 않으면서 보내기만 하지 않게)
             <p className="react-off muted small">반응을 꺼 두었어요. 끈 동안은 다른 사람 반응이 안 보이고, 나도 보낼 수 없어요.</p>
           ) : (
             <>

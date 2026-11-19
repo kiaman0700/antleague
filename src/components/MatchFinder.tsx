@@ -50,7 +50,7 @@ interface Props {
   ui: string;
   onNeedNick: () => void;
   onLogin: () => void;
-  /** (예전) 매칭되면 — 이제는 로비 틀이 매칭 결과를 받아 게임으로 이동 */
+  /** 매칭되면 (지금은 쓰지 않음 — 로비 틀이 매칭 결과를 받아 게임으로 이동) */
   onMatched?: (m: Matched) => void;
   /** 일반전 파티 (2명이면 다인전으로만, 파티장만 찾기 시작, 파티원은 자동으로 따라감) */
   party?: { isLeader: boolean; searching: boolean; size: number; queue?: string | null; waiting?: boolean } | null;
@@ -412,7 +412,7 @@ export function playLabel(member: boolean, inParty = false) {
 }
 
 /**
- * 위 메뉴 '플레이'에 마우스를 올리면 뜨는 모드 고르기 (2026-11-17 사용자 요청).
+ * 위 메뉴 '플레이'에 마우스를 올리면 뜨는 모드 고르기.
  * 고르면 바로 저장(랭킹전·일반전 화면과 같은 값), '이대로 찾기'로 찾기 시작. 손님은 랭킹전 잠금, 파티면 일반전·다인전만
  */
 export function PlayPicker({ member, inParty, onFind, onLogin }: { member: boolean; inParty: boolean; onFind: () => void; onLogin: () => void }) {

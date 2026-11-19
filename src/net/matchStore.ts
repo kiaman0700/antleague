@@ -105,7 +105,7 @@ async function tick() {
     }
     const info: MatchInfo = { waitedSec: s.waitedSec ?? 0, inQueue: s.inQueue ?? 1, window: s.window ?? 100, similar: s.similar ?? 0, online: s.online ?? 0, etaSec: s.etaSec ?? null };
     // 서버가 센 대기 시간(초 단위로 버림)에 화면 시계를 맞추되, 2초 넘게 어긋날 때만 — 매번 맞추면 시작 시각이
-    // 1초 안에서 앞뒤로 흔들려 숫자가 2씩 뛰거나 멈춰 보였음. 연결이 돌아오면 오류 글자도 지움
+    // 1초 안에서 앞뒤로 흔들려 숫자가 2씩 뛰거나 멈춰 보임. 연결이 돌아오면 오류 글자도 지움
     const serverStart = Date.now() - info.waitedSec * 1000;
     // 보고 있는 화면에서 대기가 이어졌으면 '벗어나 있었음' 기록을 지움
     if (typeof document !== 'undefined' && document.visibilityState === 'visible') awayStart = 0;

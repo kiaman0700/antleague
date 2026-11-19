@@ -70,7 +70,7 @@ export function useRouter() {
     const path = pathOf(r);
     // 로비로 갈 때 초대 코드(?room=)는 유지
     const url = r.kind === 'lobby' && (!r.page || r.page === 'home') && location.search.includes('room=') ? path + location.search : path;
-    // 창(모달 등) 안에서 다른 화면으로 옮기면 그 창이 넣어 둔 기록 자리를 바꿈 — 쓸모없는 기록이 남아 뒤로 가기를 한 번 더 눌러야 하던 것
+    // 창(모달 등) 안에서 다른 화면으로 옮기면 그 창이 넣어 둔 기록 자리를 바꿈 — 쓸모없는 기록이 남아 뒤로 가기를 한 번 더 눌러야 하지 않게
     if (opts.replace || onLayerEntry()) history.replaceState(r, '', url);
     else history.pushState(r, '', url);
     setRoute(r);

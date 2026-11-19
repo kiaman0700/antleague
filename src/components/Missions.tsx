@@ -1,4 +1,4 @@
-/** 미션 2판 (설계서 design/missions-v2.md): 일일 6개 · 주간 3개 · 바꾸기(일일 하루 3번·주간 한 주 1번) · 레벨 막대. 판정·경험치는 서버만 */
+/** 미션 (설계서 design/missions-v2.md): 일일 6개 · 주간 3개 · 바꾸기(일일 하루 3번·주간 한 주 1번) · 레벨 막대. 판정·경험치는 서버만 */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
 import { useAccount } from '../net/account';
@@ -42,7 +42,7 @@ export interface MissionInfo {
 const EMPTY: MissionInfo = { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 };
 /**
  * 앱 전체가 함께 쓰는 미션 정보 (room 없는 것만): 메뉴바 버튼이 휴대폰·PC 두 곳 + 화면을 옮길 때마다 따로 물어
- * 요청 제한(429)에 걸리던 것 — 15초 안이면 받아 둔 것을 쓰고, 같은 때 여러 곳이 물어도 한 번만 보냄. 실패하면 받아 둔 것 유지
+ * 요청 제한(429)에 걸리므로 — 15초 안이면 받아 둔 것을 쓰고, 같은 때 여러 곳이 물어도 한 번만 보냄. 실패하면 받아 둔 것 유지
  */
 const shared: { at: number; who: string; data: MissionInfo | null; inflight: Promise<MissionInfo> | null } = { at: 0, who: '', data: null, inflight: null };
 function fetchShared(force: boolean, who: string): Promise<MissionInfo> {
@@ -230,7 +230,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         </p>
       )}
       {rerollErr && <p className="error small">{rerollErr}</p>}
-      {/* 미션 칸에는 미션만 — 경험치 상한·규칙 설명은 빼고(사용자 요청 2026-11-17), 레벨 막대는 noLevel 이 아닐 때만 */}
+      {/* 미션 칸에는 미션만 — 경험치 상한·규칙 설명은 빼고, 레벨 막대는 noLevel 이 아닐 때만 */}
       {info.member && !noLevel && <LevelBar info={info} />}
       {info.thisGame && (
         <p className="ms-gain">
@@ -283,7 +283,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
 }
 
 /**
- * 위 메뉴바에 고정하는 미션 버튼 (사용자 요청 2026-11-17): '미션 2/3' + 둥근 진행 표시.
+ * 위 메뉴바에 고정하는 미션 버튼: '미션 2/3' + 둥근 진행 표시.
  * 마우스를 올리거나(PC) 누르면(휴대폰·키보드) 오늘·이번 주 미션이 팝업으로 뜸. 열 때마다 새로 받아 옴. 레벨은 내 프로필 팝업에
  */
 export function MissionsButton({ onSignup, compact }: { onSignup?: () => void; compact?: boolean }) {
@@ -294,7 +294,7 @@ export function MissionsButton({ onSignup, compact }: { onSignup?: () => void; c
   const week = m.info?.week.list ?? [];
   const wDone = week.filter((x) => x.done).length;
   const wPct = week.length ? wDone / week.length : 0;
-  // 두 겹 링 (사용자 요청 2026-11-18): 안쪽 = 일일 미션, 바깥 = 주간 미션
+  // 두 겹 링: 안쪽 = 일일 미션, 바깥 = 주간 미션
   const ring = (r: number, p: number, cls: string) => {
     const len = 2 * Math.PI * r;
     return (

@@ -40,13 +40,13 @@ function shard(ox: number, oy: number, a: number, len: number, w: number): [stri
 }
 
 /**
- * 티어 엠블럼 3판 (2026-11-17 사용자 요청 '더 퀄리티 있게'): 금속 질감 테두리 + 깊은 안쪽 면(오르는 차트 선을 새김) + 여러 면으로 깎은 보석 + 아래 띠.
+ * 티어 엠블럼: 금속 질감 테두리 + 깊은 안쪽 면(오르는 차트 선을 새김) + 여러 면으로 깎은 보석 + 아래 띠.
  * 티어가 오를수록 방패 밖 장식이 늘어남 — 브론즈 방패만 · 실버 옆 날·어깨 못 · 골드 날개 · 플래티넘 위 첨탑 · 다이아몬드 수정 조각·은은한 빛 · 마스터 왕관과 큰 날개.
  * 같은 티어 안 단계(1 → 2 → 3, 3이 가장 높음)는 아래 띠의 보석 수(1~3)와 장식 길이로 보여 줌
  */
 export function TierEmblem({ rating, placed = true, size = 28, challenger }: { rating: number; placed?: boolean; size?: number; /** 챌린저면 #순위 (서버가 정함) */ challenger?: number }) {
   const t = tierOf(rating);
-  // 챌린저: 마스터 위 — 같은 방패 계열, 진주빛 금속 + 무지갯빛 후광 + 빨간 핵 보석 (사용자: 챌린저도 다른 티어와 비슷하게)
+  // 챌린저: 마스터 위 — 같은 방패 계열, 진주빛 금속 + 무지갯빛 후광 + 빨간 핵 보석
   const chal = placed && !!challenger;
   const base = chal ? '#cfc4ef' : placed ? t.color : '#7a7a7a';
   const light = mix(base, '#ffffff', 0.62);
@@ -63,7 +63,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
   const grow = dv * 0.9;
   const gold = `url(#${id}-au)`;
 
-  // 날개: 티어가 오를수록 깃이 많아지고 길어지며 화려해짐 (사용자 요청) — 실버 2 · 골드 3 · 플래티넘 3+안쪽 깃 · 다이아 4+안쪽 깃+끝 보석 · 마스터 5 · 챌린저 6
+  // 날개: 티어가 오를수록 깃이 많아지고 길어지며 화려해짐 — 실버 2 · 골드 3 · 플래티넘 3+안쪽 깃 · 다이아 4+안쪽 깃+끝 보석 · 마스터 5 · 챌린저 6
   const blades: [string, string][] = [];
   const inner: [string, string][] = [];
   const NB = [0, 2, 3, 3, 4, 5, 6][lv] ?? 0;
@@ -131,7 +131,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
           <stop offset="0.45" stopColor={base} />
           <stop offset="1" stopColor={dark} />
         </linearGradient>
-        {/* 마스터: 보라 금속 테두리·왕관·날개 (사용자: 금색 말고 마스터의 보라색 그대로 — 골드 티어와 헷갈리지 않게) */}
+        {/* 마스터: 보라 금속 테두리·왕관·날개 (금색은 골드 티어와 헷갈려서 보라색) */}
         {lv === 6 ? (
           <linearGradient id={`${id}-au`} x1="0" y1="0" x2="0.3" y2="1">
             <stop offset="0" stopColor="#ffffff" />
@@ -160,7 +160,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
         </radialGradient>
       </defs>
 
-      {/* 마스터: 단계가 없는 대신 가장 화려하게 (사용자 요청 2026-11-18) — 뒤에서 천천히 도는 빛줄기 */}
+      {/* 마스터: 단계가 없는 대신 가장 화려하게 — 뒤에서 천천히 도는 빛줄기 */}
       {/* 다이아몬드·마스터: 뒤 은은한 빛 */}
       {lv >= 4 && <circle cx="20" cy="18" r={lv >= 5 ? 26 : 23} fill={`url(#${id}-o)`} />}
       {lv === 6 && (
@@ -201,14 +201,14 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
       )}
       {lv === 3 && (
         <g fill={metal} stroke={deep} strokeWidth="0.6" strokeLinejoin="round">
-          {/* 플래티넘 첨탑: 다이아 수정보다 작게 (사용자 의견) */}
+          {/* 플래티넘 첨탑: 다이아 수정보다 작게 */}
           <path d={`M20 ${-1.2 - grow * 0.6} L22.2 3.6 L20 5.6 L17.8 3.6 Z`} />
           <path d={`M8.6 8.6 L${7.2 - grow * 0.3} ${2.6 - grow * 0.4} L11.6 6.4 Z`} />
           <path d={`M31.4 8.6 L${32.8 + grow * 0.3} ${2.6 - grow * 0.4} L28.4 6.4 Z`} />
         </g>
       )}
       {lv >= 5 && (
-        // 왕관 (다이아 원석보다 크게 — 사용자 의견): 봉우리 끝 보석, 가운데 큰 보석, 아래 테에 작은 구슬 줄. 챌린저는 진주 왕관 + 빨간 보석
+        // 왕관 (다이아 원석보다 크게): 봉우리 끝 보석, 가운데 큰 보석, 아래 테에 작은 구슬 줄. 챌린저는 진주 왕관 + 빨간 보석
         <g stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.6" strokeLinejoin="round" transform="translate(20 7.5) scale(1.22) translate(-20 -7.5)">
           <path d="M8.6 7 L7.4 -3.2 L12.6 1.2 L15.6 -5.2 L20 0.2 L24.4 -5.2 L27.4 1.2 L32.6 -3.2 L31.4 7 Q20 4 8.6 7 Z" fill={gold} />
           <path d="M9.6 5.2 Q20 2.6 30.4 5.2" fill="none" stroke="#f3ecff" strokeOpacity="0.75" strokeWidth="0.55" />
@@ -284,7 +284,7 @@ export function TierEmblem({ rating, placed = true, size = 28, challenger }: { r
           <path d="M2.5 42.6 L-1.5 46 L5 45.4 Z M37.5 42.6 L41.5 46 L35 45.4 Z" fill={lv === 6 ? '#8d84b3' : '#5a3aa8'} stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.5" />
           <path d="M4.5 37 Q20 43.5 35.5 37 L37.5 42.6 Q20 49.6 2.5 42.6 Z" fill={gold} stroke={lv === 6 ? '#3b3466' : '#24124f'} strokeWidth="0.6" />
           <path d="M6 39.4 Q20 45 34 39.4" fill="none" stroke="#f3ecff" strokeOpacity="0.6" strokeWidth="0.5" />
-          {/* 띠 보석: 마스터 4개 · 챌린저 좌우 2개씩 + 가운데 순위 (사용자 제안) */}
+          {/* 띠 보석: 마스터 4개 · 챌린저 좌우 2개씩 + 가운데 순위 */}
           {(lv === 6 ? [7.6, 12.9, 27.1, 32.4] : [8.8, 16.2, 23.8, 31.2]).map((x, k) => {
             const y = 43.3 - 2.9 * ((x - 20) / 15) ** 2;
             const r = 2.3;

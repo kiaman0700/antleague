@@ -169,7 +169,7 @@ export interface View {
     blackout: boolean;
   };
   /** 게임이 끝나면 모든 기록 공개 */
-  /** endDay: 상대가 모두 기권해 바로 끝난 판이면 실제로 한 마지막 날 — 결과 화면은 그 날 가격으로 멈춤 (사용자 결정 2026-11-18) */
+  /** endDay: 상대가 모두 기권해 바로 끝난 판이면 실제로 한 마지막 날 — 결과 화면은 그 날 가격으로 멈춤 */
   final: { seed: number; trades: Trade[]; items: ItemRow[]; players: { id: string; nickname: string; left?: boolean; bot?: number }[]; badges: Record<string, string[]>; endDay?: number | null } | null;
 }
 
@@ -259,7 +259,7 @@ export const LEGACY_TURN_SECONDS = 600;
  * 남은 시간이 이미 그보다 짧으면 그대로
  */
 export function graceRule(players: number, turnSeconds = 600): { need: number; seconds: number } {
-  // 카운트다운 길이는 하루 길이에 맞춤 (2026-11-17): 1대1 하루의 ⅓(20~90초), 3인 이상 ⅙(10~30초) — 1분 하루면 20초·10초
+  // 카운트다운 길이는 하루 길이에 맞춤: 1대1 하루의 ⅓(20~90초), 3인 이상 ⅙(10~30초) — 1분 하루면 20초·10초
   const t = turnSeconds > 0 ? turnSeconds : 600;
   return players <= 2 ? { need: 1, seconds: graceSecondsFor(players, t) } : { need: Math.ceil((players * 2) / 3), seconds: graceSecondsFor(players, t) };
 }
@@ -329,7 +329,7 @@ export function firstDayLead(version: number | undefined, turnSeconds: number, k
   if ((version ?? 1) < FIRST_PRE_VERSION || turnSeconds <= 0) return 0;
   return kind === 'bot' || kind === 'daily' ? SOLO_PRE_SECONDS : preSeconds(turnSeconds);
 }
-/** 혼자 하는 서버 판(봇전·오늘의 도전, v14+): 장 전은 사실상 무제한 — '장 시작'(준비 완료)을 눌러야 열림 (사용자 요청 2026-11-18) */
+/** 혼자 하는 서버 판(봇전·오늘의 도전, v14+): 장 전은 사실상 무제한 — '장 시작'(준비 완료)을 눌러야 열림 */
 export const SOLO_PRE_SECONDS = 6 * 3600;
 /** 그 방의 장 전 시간(초) */
 export function preSecondsFor(r: Pick<RoomRow, 'turn_seconds' | 'version' | 'kind'>) {
@@ -545,7 +545,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const items = itemsOf(d);
   const mine = items.players[meId] ?? base.myItems;
 
-  // 재산·수익률은 상대도 원 단위로 지금 가격 그대로 보여 줌 (사용자 결정 2026-11-17 — 예전엔 2%p 구간만).
+  // 재산·수익률은 상대도 원 단위로 지금 가격 그대로 보여 줌.
   // 무엇을 샀는지(보유 종목·거래·카드·주문)와 오늘 거래 횟수는 여전히 안 보냄
   const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), prices))]));
   base.players = players.map((p) => {
@@ -873,7 +873,7 @@ export function validateLeave(d: GameData, meId: string): { left_game: true; end
 
 /**
  * 상대가 모두 기권해 판이 바로 끝났으면 실제로 한 마지막 날 (마지막으로 기권한 날). 끝까지 한 판·기록이 없으면 null
- * — 그 뒤 날은 아무도 하지 않았으므로 업적 계산에 넣지 않음 (사용자 결정 2026-11-18)
+ * — 그 뒤 날은 아무도 하지 않았으므로 업적 계산에 넣지 않음
  */
 export function playedLastDay(d: GameData): number | null {
   if (d.players.length < 2) return null;
@@ -969,12 +969,12 @@ export function preAllReadyDeadline(d: GameData, now: number): number | null {
 
 export function finalResults(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt);
-  // 상대가 모두 기권해 바로 끝난 판: 재산·수익률도 실제로 한 마지막 날(기권한 날) 종가로 (사용자 결정 2026-11-18)
+  // 상대가 모두 기권해 바로 끝난 판: 재산·수익률도 실제로 한 마지막 날(기권한 날) 종가로
   const endDay = playedLastDay(d);
   const prices = priceMap(m, endDay ?? d.room.total_days - 1, true);
   const players = sortedPlayers(d);
   // 매칭(랭킹전·일반전)에서 끝까지 거래를 한 번도 안 한 사람은 기권처럼 순위 맨 뒤 — 시장이 떨어지는 판에서
-  // 아무것도 안 하고 1위·점수·업적을 받던 빈틈 (사용자 결정 2026-11-17). 봇전·연습·커스텀·친구 방은 그대로
+  // 아무것도 안 하고 1위·점수·업적을 받는 빈틈을 막음. 봇전·연습·커스텀·친구 방은 그대로
   const idleRule = d.room.kind === 'match';
   const isIdle = (p: PlayerRow) => idleRule && !p.left_game && !d.trades.some((t) => t.player_id === p.id);
   // 봇전도 거래 0회인 사람은 업적만 없음 (순위는 그대로) — 아무것도 안 하고 '깡통 계좌' 같은 업적을 받던 빈틈

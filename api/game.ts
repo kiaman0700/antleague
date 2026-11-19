@@ -47,7 +47,7 @@ export async function POST(request: Request): Promise<Response> {
   // 손님 계정 만들기 제한용 접속 IP (Vercel 이 붙여 주는 값)
   const ip = (request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown').split(',')[0].trim().slice(0, 64);
   // 자동 시험 도구(e2e) 표시 — 밸런스 통계에서 빼는 용도로만. 서버 비밀 키로 만든 값이어야 인정
-  // (예전엔 '1' 이면 누구나 붙일 수 있어 자기 판을 운영 통계에서 일부러 빼거나 섞을 수 있었음)
+  // (고정값이면 누구나 붙일 수 있어 자기 판을 운영 통계에서 일부러 빼거나 섞을 수 있으므로)
   const testRun = isTestKey(request.headers.get('x-stockduel-test'));
   // (060) 화면이 보이는 상태의 요청인지 — 뒤에 숨은 창의 요청은 '접속 중'으로 치지 않음 (자기 계정에만 영향)
   const active = request.headers.get('x-stockduel-vis') !== '0';

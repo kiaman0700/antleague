@@ -1,4 +1,4 @@
--- 059: '나의 투자 감각' 판별 기록 (밤샘 조사 2026-11-19) — 서버만, 회원 본인에게만 평균으로 보여 줌. 여러 번 실행해도 안전
+-- 059: '나의 투자 감각' 판별 기록 — 서버만, 회원 본인에게만 평균으로 보여 줌. 여러 번 실행해도 안전
 create table if not exists public.skill_log (
   user_id uuid not null references auth.users(id) on delete cascade,
   room_id uuid not null,

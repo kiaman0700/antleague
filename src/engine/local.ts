@@ -15,7 +15,7 @@ export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
  * 시간은 흐르지 않고(장 마감은 직접), 봇이 함께 함
  */
 /**
- * 튜토리얼도 늘 최신 규칙 (사용자 요청 2026-11-18 — 규칙이 바뀌면 튜토리얼도 같이).
+ * 튜토리얼도 늘 최신 규칙 (규칙이 바뀌면 튜토리얼 문구도 같이 고칠 것).
  * 장면(첫날 오르는 좋은 기업 뉴스)을 찾으려고 비밀값은 공개된 고정값 — 튜토리얼 시장은 숨길 게 없음
  */
 export const TUTORIAL_VERSION = CURRENT_RULES_VERSION;

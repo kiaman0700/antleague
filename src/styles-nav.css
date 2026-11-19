@@ -890,7 +890,7 @@ button.hr-row:hover {
   .close-modal .btn { min-height: 42px; }
 }
 
-/* 의견 보내기: 분류 4개를 한 줄에 (좁으면 2개씩) — 3+1 로 갈라지던 문제 */
+/* 의견 보내기: 분류 4개를 한 줄에 (좁으면 2개씩) — 3+1 로 갈라지지 않게 */
 .seg.fb-kind { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 420px) { .seg.fb-kind { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

@@ -418,7 +418,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // (v7) 장 전 시간: 어제 정리·찌라시·예약 주문. 지금 가격 거래와 장 마감은 장이 열린 뒤에
   const preUntil = !solo ? (room?.preUntil ?? null) : null;
   const preLeft = preUntil !== null ? Math.max(0, Math.ceil((preUntil - (now + offset)) / 1000)) : 0;
-  // 연습(혼자·봇전): 장 전 시간은 무제한 — '장 시작'을 눌러야 그날 장이 열림 (사용자 요청 2026-11-18)
+  // 연습(혼자·봇전): 장 전 시간은 무제한 — '장 시작'을 눌러야 그날 장이 열림
   const soloPre = solo && !session.tutorial && !session.demo && room?.status === 'playing' && room?.deadline == null && closing === null && !showResult;
   const inPre = (preUntil !== null && preLeft > 0 && closing === null) || soloPre;
   // 봇전·오늘의 도전(서버의 혼자 하는 판)도 장 전은 사실상 무제한 → '장 시작'으로 보여 줌
@@ -738,7 +738,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'SELECT';
       // 창(사기 창·서랍·크게 보기 차트·확인 창 등)이 떠 있으면 단축키는 그 뒤 화면에 쓰지 않음
-      // (예전엔 크게 보기 차트에서 Enter → 사기 창이 차트 뒤에 열려 안 보였음, 방향키는 뒤에서 종목을 바꿨음)
+      // (크게 보기 차트에서 Enter 면 사기 창이 차트 뒤에 열려 안 보이고, 방향키는 뒤에서 종목을 바꾸므로)
       const layered = hasOpenLayer() || !!document.querySelector('.modal-bg, .sheet-bg, .drawer-bg.open, .chart-full');
       if (layered && e.key !== 'Escape') return;
       if (e.key === '/' && !typing) {
@@ -1146,8 +1146,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           last={closing + 1 >= total}
           onNext={nextDay}
           // 장 전 시간이 진행 중이면 3초만 (찌라시·예약 주문 볼 시간을 덜 잡아먹게), 아니면 6초
-          // 자동으로 넘어가는 시간은 판 설정에 비례 (사용자 요청 2026-11-17): 장 전 시간이 있으면 그 20%, 없으면 하루 시간의 8% (3~8초).
-          // 마지막 날은 1분 뒤 결과 화면으로 (예전엔 버튼을 눌러야 해서 결산 팝업에 멈춰 있었음)
+          // 자동으로 넘어가는 시간은 판 설정에 비례: 장 전 시간이 있으면 그 20%, 없으면 하루 시간의 8% (3~8초).
+          // 마지막 날은 1분 뒤 결과 화면으로 (결산 팝업에 멈춰 있지 않게)
           autoSec={session.mode === 'multi' ? (closing + 1 >= total ? 60 : closeAutoSec(room?.turnSeconds ?? 60, room?.rulesVersion ?? 1)) : undefined}
           pre={session.mode === 'multi' && closing + 1 < total && !!room?.preUntil && room.preUntil > now + offset}
         />

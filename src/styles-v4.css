@@ -284,7 +284,7 @@ kbd {
 }
 .rp-day {
   position: relative;
-  /* 금액이 한 줄에 들어가게 (예: '-1만 5,150원'이 두 줄로 쪼개지던 것) */
+  /* 금액이 한 줄에 들어가게 (예: '-1만 5,150원'이 두 줄로 쪼개지지 않게) */
   flex: 0 0 auto;
   min-width: 82px;
   display: flex;

@@ -27,7 +27,7 @@ export async function copyText(t: string): Promise<boolean> {
   }
 }
 
-/** 휴대폰·태블릿은 공유 창, PC 는 바로 복사 (PC 에서 윈도 공유 창이 뜨던 것). 'shared'·'copied'·'cancel'·'fail' */
+/** 휴대폰·태블릿은 공유 창, PC 는 바로 복사 (PC 에서 윈도 공유 창이 뜨지 않게). 'shared'·'copied'·'cancel'·'fail' */
 export async function shareOrCopy(data: { title?: string; text: string; url?: string }): Promise<'shared' | 'copied' | 'cancel' | 'fail'> {
   const touch = document.documentElement.dataset.device !== 'pc';
   if (touch && navigator.share) {
