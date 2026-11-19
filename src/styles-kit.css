@@ -2011,7 +2011,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 /* PC 대기실: 빈 열 없이 자리 칸이 폭을 채움 */
 .wr-slots.slots { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 /* 테두리는 회색 — 보라는 '나' 칸만 */
-.wr-client .slot:not(.me), .wr-side .panel { border-color: var(--line-2) !important; }
+.wr-client .slot:not(.me):not(.ready), .wr-side .panel { border-color: var(--line-2) !important; }
 .wr-bar { border-top-color: var(--line-2) !important; }
 /* 코드 칸: 글자 사이를 넓힌 건 코드에만, 안내 글자는 보통 */
 .code-input::placeholder { letter-spacing: 0; }
