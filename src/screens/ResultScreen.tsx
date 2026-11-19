@@ -640,7 +640,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
         {chartEl}
         {marketEl}
         {ratingEl}
-        <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />
+        {session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}
         {dailyEl}
         {restEl}
         {matchKind === 'daily' && <ShareCard kind="오늘의 도전" rank={null} players={1} ret={me.ret} days={market.totalDays} daily={me.hist.slice(1).map((v, d) => v - me.hist[d])} isDaily />}
@@ -656,7 +656,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
           { key: 'review', label: '복기', body: <>{highlightsEl}{replayEl}{marketEl}</> },
           // 오늘의 도전은 점수표(순위·연속 기록)가 '순위' 칸에
           { key: 'rank', label: '순위', body: <>{dailyEl}{chartEl}</> },
-          { key: 'reward', label: '보상', body: <>{badgesEl}<GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />{restEl}</> },
+          { key: 'reward', label: '보상', body: <>{badgesEl}{session.mode !== 'solo' && <GuestSave won={iWon} badges={(final.badges[session.playerId] ?? []).length} />}{restEl}</> },
           {
             key: 'share',
             label: '공유',
@@ -806,7 +806,7 @@ function ShareCard({ kind, rank, players, ret, days, daily, isDaily = false }: {
         <span className="sc-bar" aria-label="날마다 재산이 오르면 빨강, 내리면 파랑">{bar}</span>
         <small className="muted">어떤 종목을 샀는지는 나오지 않아요</small>
       </div>
-      <button className="btn primary" onClick={share}>
+      <button className="btn" onClick={share}>
         공유하기
       </button>
       {done && <p className="muted small" role="status">{done}</p>}
@@ -851,7 +851,7 @@ function GuestSave({ won, badges }: { won: boolean; badges: number }) {
       <b>{won ? '이번 승리' : '이번 업적'}, 계속 남기고 싶다면</b>
       <p className="muted small">게스트 기록은 이 기기에만 있어서 기기를 바꾸거나 기록을 지우면 사라지고, 사흘 동안 활동이 없으면 자동으로 지워져요. 회원가입하면 지금 기록 그대로 옮겨지고 랭킹전·친구·칭호도 쓸 수 있어요.</p>
       <div className="row">
-        <button className="btn primary sm" onClick={signup}>
+        <button className="btn sm" onClick={signup}>
           회원가입하고 기록 남기기
         </button>
         <button className="btn ghost sm" onClick={close}>

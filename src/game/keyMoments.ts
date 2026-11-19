@@ -41,7 +41,8 @@ export function keyMoments(m: Market, myTrades: Trade[], lastDay = m.totalDays -
       const move = c / o - 1;
       const buys = myTrades.filter((t) => t.day === d && t.symbol === s && t.side === 'buy');
       const sells = myTrades.filter((t) => t.day === d && t.symbol === s && t.side === 'sell');
-      const breaking = n.at != null && n.verdict !== 'false' && !n.rumor;
+      // 장중 시황 기사는 이미 오른 걸 알려 주는 글이라 '놓친 속보'가 아님
+      const breaking = n.at != null && n.verdict !== 'false' && !n.rumor && n.label !== '시황';
       // 가짜·헛소문 기사를 믿고 그날 사서 그날 종가가 산 값보다 낮음
       if (n.verdict === 'false' && n.tone === 'good' && buys.length) {
         const loss = buys.reduce((a, t) => a + (c - t.price) * t.qty, 0);
