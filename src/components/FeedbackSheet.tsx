@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { api } from '../net/api';
 import { Icon } from './Icon';
 import { Sheet } from './PrefsPanel';
-import { OPERATOR } from './Legal';
+import { OPERATOR } from '../lib/operator';
 
 /** 운영자 연락 메일 (공개 동의된 VITE_OPERATOR_CONTACT 에서 메일 주소만) */
 const OPERATOR_EMAIL = OPERATOR.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/)?.[0] ?? '';

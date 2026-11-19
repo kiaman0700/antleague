@@ -4,12 +4,11 @@
  */
 import { Icon } from './Icon';
 import { Sheet } from './PrefsPanel';
+import { OPERATOR } from '../lib/operator';
+export { OPERATOR };
 
 export const LEGAL_VERSION = '2026-11-19';
 const LEGAL_DATE = '2026년 11월 19일';
-
-/** 운영자·개인정보 보호 책임자 (Vercel 환경변수 VITE_OPERATOR_CONTACT, 예: "홍길동 · contact@example.com") */
-export const OPERATOR = ((import.meta.env.VITE_OPERATOR_CONTACT as string | undefined) ?? '').trim().slice(0, 120);
 
 export type LegalKind = 'privacy' | 'terms';
 

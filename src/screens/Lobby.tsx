@@ -13,7 +13,6 @@ import { EmptyState, ErrorState, IconList, Loading, Toast, useDialogFocus, useEs
 import { flashLeft, peekFlash } from '../lib/flash';
 import { ask } from '../components/ConfirmHost';
 import { FitText } from '../components/FitText';
-import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FIND_AGAIN, loadPref as loadMatchPref, MatchFinder, playLabel, PlayPicker, PREF_EVENT } from '../components/MatchFinder';
 import { cancelMatch, followMatch, getMatch, mmss, okWhileMatching, queueText, useMatch } from '../net/matchStore';
 import { Avatar } from '../components/Avatar';
@@ -36,7 +35,9 @@ const Admin = lazy(() => import('./Admin').then((m) => ({ default: m.Admin })));
 const LoginPage = lazy(() => import('./Account').then((m) => ({ default: m.LoginPage })));
 const MyProfilePage = lazy(() => import('./Account').then((m) => ({ default: m.MyProfilePage })));
 const RankingPage = lazy(() => import('./Account').then((m) => ({ default: m.RankingPage })));
-import { LegalSheet, OPERATOR } from '../components/Legal';
+import { OPERATOR } from '../lib/operator';
+const LegalSheet = lazy(() => import('../components/Legal').then((m) => ({ default: m.LegalSheet })));
+import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
 import { PartyPanel, useParty, type PartyState } from '../components/PartyPanel';
@@ -2204,7 +2205,7 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
       <OfflineBanner />
       {online && <InviteCenter member={account.status === 'member'} onWaiting={onWaiting} onGame={onGame} onParty={() => { void reloadParty(); go('casual'); }} />}
       {modal === 'howto' && <HowTo onClose={() => setModal(null)} />}
-      {(modal === 'privacy' || modal === 'terms') && <LegalSheet kind={modal} onClose={() => setModal(null)} />}
+      {(modal === 'privacy' || modal === 'terms') && <Suspense fallback={null}><LegalSheet kind={modal} onClose={() => setModal(null)} /></Suspense>}
       {modal === 'feedback' && <FeedbackSheet onClose={() => setModal(null)} />}
     </div>
   );
