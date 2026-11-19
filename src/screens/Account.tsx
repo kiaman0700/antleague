@@ -3,7 +3,7 @@
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
 import { copyText } from '../lib/copy';
-import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname';
+import { nickNotice } from '../game/nickname';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, Loading, PwInput } from '../components/ui';
 import { Avatar } from '../components/Avatar';
@@ -37,7 +37,7 @@ function PageHead({ title, onBack, right, top, desc }: { title: string; onBack: 
   );
 }
 
-const nickInvalidMsg = (n: string) => (reservedNickname(n) ? RESERVED_NICK_MSG : '1~10자, 꺾쇠(<>) 없이 써 주세요');
+const nickInvalidMsg = (n: string) => nickNotice(n) ?? '1~10자, 꺾쇠(<>) 없이 써 주세요';
 
 
 function AvailMsg({ st, what, invalid }: { st: Avail; what: string; invalid: string }) {

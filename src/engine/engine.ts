@@ -5,7 +5,7 @@
  *  - 가격은 서버가 정한 값으로만 체결되고
  *  - 시드(미래 가격)·루머의 진실·상대의 보유 종목은 브라우저로 나가지 않는다.
  */
-import { reservedNickname, RESERVED_NICK_MSG } from '../game/nickname.js';
+import { foldWidth, nickNotice } from '../game/nickname.js';
 import { activeEffects, BONUS_TABLE, INFO_ONE_PER_DAY_VERSION, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
 import { computeAchievements } from '../game/achievements.js';
@@ -270,7 +270,7 @@ export const MAX_QTY = 1_000_000;
 
 export function cleanNickname(v: unknown): string {
   if (typeof v !== 'string') throw new GameError('닉네임을 입력해 주세요.');
-  const s = v.normalize('NFC').trim().replace(/\s+/g, ' ');
+  const s = foldWidth(v.normalize('NFC')).trim().replace(/\s+/g, ' ');
   // 제어문자·꺾쇠 금지, 1~10자
   if (!/^[^\p{C}<>]{1,10}$/u.test(s)) throw new GameError('닉네임은 1~10자로, 특수 제어문자 없이 입력해 주세요.');
   return s;
@@ -278,7 +278,8 @@ export function cleanNickname(v: unknown): string {
 /** 새로 정하는 닉네임(가입·바꾸기·게스트) — 운영자 흉내 이름도 막음. 이미 쓰던 이름은 그대로 둠 */
 export function newNickname(v: unknown): string {
   const s = cleanNickname(v);
-  if (reservedNickname(s)) throw new GameError(RESERVED_NICK_MSG);
+  const bad = nickNotice(s);
+  if (bad) throw new GameError(bad);
   return s;
 }
 export function cleanMode(v: unknown): UiMode {

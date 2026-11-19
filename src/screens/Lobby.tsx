@@ -1,4 +1,4 @@
-import { reservedNickname, RESERVED_NICK_MSG, titleProblem } from '../game/nickname';
+import { nickNotice, titleProblem } from '../game/nickname';
 import { parseRoomCode, hasConfusable } from '../lib/roomCode';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { LeagueResultNote } from './LeagueNote';
@@ -171,7 +171,7 @@ export function ModePicker({ value, onChange, onEdit }: { value: UiMode; onChang
 }
 
 const online = !!supabase;
-const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10 && !reservedNickname(n);
+const nickValid = (n: string) => n.trim().length >= 1 && n.trim().length <= 10 && !nickNotice(n);
 
 /** 닉네임·화면 모드 — 모든 로비 페이지가 같은 값을 씀(저장소에 보관) */
 function useProfile() {
@@ -230,7 +230,7 @@ function GuestNickField({ nick, setNick }: { nick: string; setNick: (v: string) 
       <span>게스트 닉네임 (랭킹에는 안 올라가요)</span>
       <input value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} autoComplete="off" />
       {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
-      {check === 'invalid' && <small className="error">{reservedNickname(nick) ? RESERVED_NICK_MSG : '1~10자, 글자·숫자로 정해 주세요.'}</small>}
+      {check === 'invalid' && <small className="error">{nickNotice(nick) ?? '1~10자, 글자·숫자로 정해 주세요.'}</small>}
     </label>
   );
 }

@@ -76,6 +76,12 @@ const impR = await G0({ action: 'create', nickname: 'Adm1n', mode: 'easy', total
 ok('게스트가 운영자 흉내 닉네임으로 방 만들기 거절', impR.s === 400 && /운영자/.test(impR.b?.error ?? ''), impR.b?.error);
 const promo = await G0({ action: 'create', nickname: '제목시험' + rnd.slice(0, 3), mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '리딩방 open.kakao.com' });
 ok('방 제목에 링크·홍보 문구 거절', promo.s === 400 && /링크/.test(promo.b?.error ?? ''), promo.b?.error);
+// 닮은 글자: 전각으로 쓴 회원 닉네임은 같은 이름(taken), 영어+러시아 글자 섞기는 invalid
+const wide = [...('A' + rnd)].map((c) => (c >= '!' && c <= '~' ? String.fromCharCode(c.charCodeAt(0) + 0xfee0) : c)).join('');
+const avW = (await G0({ action: 'checkAvailable', nickname: wide })).b;
+ok('전각으로 쓴 회원 닉네임은 이미 쓰는 이름', avW.nickname === 'taken', JSON.stringify(avW));
+const avM = (await G0({ action: 'checkAvailable', nickname: 'kiаman' })).b;
+ok('영어+러시아 글자 섞은 닉네임은 invalid', avM.nickname === 'invalid', JSON.stringify(avM));
 const av3 = (await G0({ action: 'checkAvailable', username: 'A!' })).b;
 ok('형식이 틀린 아이디는 invalid', av3.username === 'invalid');
 const samePw = await G0({ action: 'signup', username: 'e2epw' + rnd, password: 'e2epw' + rnd + '1', nickname: 'P' + rnd, agree14: true, agreePrivacy: true, agreeTerms: true });

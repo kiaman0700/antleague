@@ -37,3 +37,22 @@ export function titleProblem(t: string): string | null {
   if (PROMO.test(flat)) return '방 제목에는 링크·연락처·홍보 문구를 쓸 수 없어요.';
   return null;
 }
+
+/** 전각 영어·숫자·기호(ｋｉａｍａｎ, ＡＢＣ１)와 전각 빈칸을 보통 글자로 — 한글 자모는 건드리지 않음(NFKC 는 ㅋ 을 바꿔 버림) */
+export function foldWidth(n: string): string {
+  return n.replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/　/g, ' ');
+}
+
+/** 영어에 모양이 같은 러시아·그리스 글자를 섞은 이름(kiаman 의 а) — 다른 사람 흉내 */
+export function mixedScript(n: string): boolean {
+  return /\p{Script=Latin}/u.test(n) && /[\p{Script=Cyrillic}\p{Script=Greek}]/u.test(n);
+}
+
+export const MIXED_NICK_MSG = '영어와 러시아·그리스 글자를 섞은 닉네임은 쓸 수 없어요.';
+/** 새 닉네임의 문제(운영자 흉내·닮은 글자 섞기) — 없으면 null. 서버 newNickname 과 같은 말 */
+export function nickNotice(n: string): string | null {
+  const s = foldWidth(n.normalize('NFC'));
+  if (reservedNickname(s)) return RESERVED_NICK_MSG;
+  if (mixedScript(s)) return MIXED_NICK_MSG;
+  return null;
+}
