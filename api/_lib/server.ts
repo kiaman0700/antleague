@@ -2339,6 +2339,15 @@ export async function handle(body: unknown, token: string | null, ip = 'unknown'
     if (action === 'league') return { status: 200, body: await leagueInfo(db(), uid, b.seen === true) };
     if (action === 'tutorialState') return { status: 200, body: await tutorialState(uid) };
     if (action === 'tutorialMark') return { status: 200, body: await tutorialMark(uid, b) };
+    // 튜토리얼 단계별 숫자만 (어디서 그만두는지 보려고) — 계정·내용 없이 단계 번호와 사건만, 시험 계정은 안 셈
+    if (action === 'tutorialStep') {
+      rateLimit(uid + ':tutStep', 60, 60_000);
+      const step = Number(b.step);
+      const ev = typeof b.ev === 'string' && ['show', 'quit', 'done'].includes(b.ev) ? b.ev : null;
+      if (!Number.isInteger(step) || step < 0 || step > 40 || !ev) throw new GameError('잘못된 요청이에요.');
+      if (!testMarked.has(uid)) await db().rpc('tutorial_step_hit', { p_step: step, p_ev: ev }).then(() => {}, () => {});
+      return { status: 200, body: { ok: true } };
+    }
     if (SOCIAL_ACTIONS.includes(action)) return { status: 200, body: await socialAct(db(), action, b, uid, rateLimit) };
     if (INVITE_ACTIONS.includes(action)) return { status: 200, body: await inviteAct(action, b, uid) };
     if (PARTY_ACTIONS.includes(action)) return { status: 200, body: await partyAct(action, b, uid) };

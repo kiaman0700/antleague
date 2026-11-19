@@ -74,6 +74,20 @@ try {
     for (const x of r.rows) console.log(`${new Date(x.created_at).toLocaleString('ko-KR')}  [${x.action}] ${x.message}`);
     if (!r.rows.length) console.log('기록된 서버 오류가 없어요.');
     await c.end();
+  } else if (cmd === 'tutorial') {
+    // 튜토리얼 단계별 이탈 (069, 읽기만): 최근 N일 동안 단계마다 본 수·그만둔 수·끝낸 수 (숫자만)
+    const days = Number(process.argv[3]) || 14;
+    const c = await connect();
+    const r = await c.query(`select step, ev, sum(n)::int as n from public.tutorial_steps where day >= (now() at time zone 'Asia/Seoul')::date - $1::int group by step, ev order by step`, [days]);
+    const by = new Map();
+    for (const x of r.rows) by.set(x.step, { ...(by.get(x.step) ?? {}), [x.ev]: x.n });
+    if (!by.size) console.log(`최근 ${days}일 튜토리얼 기록이 없어요.`);
+    const first = by.get(0)?.show ?? 0;
+    for (const [step, v] of [...by].sort((a, b) => a[0] - b[0])) {
+      const show = v.show ?? 0;
+      console.log(`${String(step + 1).padStart(2)}단계  본 사람 ${String(show).padStart(4)}${first ? ` (${Math.round((show / first) * 100)}%)` : ''}  그만둠 ${v.quit ?? 0}${v.done ? `  끝냄 ${v.done}` : ''}`);
+    }
+    await c.end();
   } else if (cmd === 'feedback') {
     // 이용자가 보낸 의견 최근 30개 (읽기만). 기본은 안 읽은 것만(자동 시험 글은 읽음으로 저장됨), --all 이면 전부
     // 글 안의 제어문자(터미널 색·커서 조작)는 보여 주기 전에 지움

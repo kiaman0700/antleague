@@ -208,6 +208,14 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const activeRoom = session.mode === 'multi' ? session.roomId : null;
   useEffect(() => (activeRoom ? markActiveGame(activeRoom) : undefined), [activeRoom]);
   const [tutStep, setTutStep] = useState(0);
+  // 튜토리얼 어느 단계에서 그만두는지 숫자만 남김 (단계 번호·사건만, 실패해도 게임엔 영향 없음)
+  const tutTrack = (ev: 'show' | 'quit' | 'done', step = tutStep) => {
+    if (session.tutorial) void api('tutorialStep', { step, ev }).catch(() => {});
+  };
+  useEffect(() => {
+    if (session.tutorial && tutStep < TUTORIAL_STEPS.length) tutTrack('show');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep]);
   const [cardGuide, setCardGuide] = useState(false);
   // 서버가 보낸 '지금 칸까지의 장중 가격'을 오늘 막대에 합침 → 현재가·차트가 5초마다 움직임
   // (v15) 예고 기사에 적힌 발표 날짜도 일정에 (보이는 기사 제목만 읽음)
@@ -1444,18 +1452,21 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           onNext={() => setTutStep((x) => x + 1)}
           // X(그만하기) = 남은 튜토리얼 단계도 그만
           onExit={() => {
+            tutTrack(tutStep >= TUTORIAL_STEPS.length - 1 ? 'done' : 'quit');
             if (currentChapter()) stopTour();
             onExit();
           }}
           onFinish={
             chapter === 'game' && nextChapter() === 'result'
               ? () => {
+                  tutTrack('done');
                   markTutorialSeen();
                   finishChapter('game', 'done');
                   showTutorialResult();
                 }
               : chapter === 'game'
                 ? () => {
+                    tutTrack('done');
                     markTutorialSeen();
                     finishChapter('game', 'done');
                     onExit();

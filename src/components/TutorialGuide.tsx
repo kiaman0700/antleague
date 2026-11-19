@@ -49,19 +49,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     text: () => '100만원으로 시작해, 마지막 날 재산이 가장 많으면 이겨요.',
   },
   {
-    title: '내 재산',
-    text: () => '내 재산·현금·오늘 손익이 여기 보여요. 사고팔면 바로 바뀌어요.',
-    target: '.desk-score, .m-hero',
-  },
-  {
     title: '아침 뉴스',
-    text: () => '오늘 아침 뉴스를 읽어 보세요. 빨강 ▲은 좋은 소식, 파랑 ▼은 나쁜 소식이에요.',
-    target: '.news-panel',
-    tab: 'news',
-  },
-  {
-    title: '커뮤니티·SNS',
-    text: () => "'커뮤니티'에는 장이 열린 동안 소문 글이 올라와요. 보라 '인증' 글이 더 잘 맞아요.",
+    text: () => '뉴스가 가장 큰 힌트예요. 빨강 ▲ 좋은 소식, 파랑 ▼ 나쁜 소식.',
     target: '.news-panel',
     tab: 'news',
   },
@@ -75,12 +64,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     waitHint: '관련 종목 칩을 눌러 보세요',
   },
   {
-    title: '차트와 가격',
-    text: () => '고른 종목의 차트와 지금 가격이에요. 실제 대결에선 가격이 1초마다 움직여요.',
-    target: '.p-detail .detail, .m-page .detail',
-    tab: 'detail',
-  },
-  {
     title: '사 보기',
     text: (c) => `금액을 정하고 '사기'를 눌러 ${josa(c.symbolName, '을', '를')} 사 보세요.`,
     // 모바일: 사기 창(시트)이 열리면 그 창을 비추고 말풍선은 위로
@@ -88,12 +71,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tab: 'detail',
     wait: (c) => c.myTrades > 0,
     waitHint: '사기를 눌러 사 보세요',
-  },
-  {
-    title: '내 보유',
-    text: () => "'내 보유'에서 산 종목을 확인해요. 빨강 ▲은 번 돈, 파랑 ▼은 잃은 돈이에요.",
-    target: '.pinned',
-    tab: 'list',
   },
   {
     title: '증강 고르기',
@@ -135,19 +112,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     waitHint: "'2일차 시작'을 눌러 보세요",
   },
   {
-    title: '내 증강',
-    text: () => "고른 증강은 '증강' 칸에 있어요. 판 내내 켜져 있는 내 능력이에요.",
-    target: '.aug-panel',
-    tab: 'cards',
-  },
-  {
-    title: '순위',
-    text: () => '위 순위 칸에서 연습봇과 내 재산을 비교해요. 마지막 날 앞서면 이겨요.',
-    target: '.vs-box, .rank-strip, .mh-cmp',
-  },
-  {
     title: '튜토리얼 끝!',
-    text: () => '잘했어요. 이제 일반전에서 다른 사람과 겨뤄 보세요.',
+    text: () => '잘했어요! 위 순위 칸에서 연습봇과 재산을 비교해 보고, 이제 일반전에서 겨뤄 봐요.',
+    target: '.vs-box, .rank-strip, .mh-cmp',
   },
 ];
 
