@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>증강 아이콘 시안</title>
+<style>
+  body { margin: 0; background: #111; color: #f2f2f2; font-family: Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif; letter-spacing: -0.01em; word-break: keep-all; }
+  .doc { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  p { color: #c8c8c8; line-height: 1.6; margin: 0 0 20px; }
+  h2 { font-size: 15px; font-weight: 700; color: #c8c8c8; margin: 28px 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .cell { background: #1c1c1c; border: 1px solid #2e2e2e; border-radius: 14px; padding: 18px 10px 14px; text-align: center; }
+  .cell svg { width: 64px; height: 64px; }
+  .cell b { display: block; margin-top: 10px; font-size: 14px; }
+  .cell small { color: #9a9a9a; font-size: 12px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe3ea"/></linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a7a"/><stop offset="1" stop-color="#e5484d"/></linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa1ff"/><stop offset="1" stop-color="#2f6fe0"/></linearGradient>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b6aaff"/><stop offset="1" stop-color="#7a69f0"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd76a"/><stop offset="1" stop-color="#f0a92e"/></linearGradient>
+    <linearGradient id="n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fe0a0"/><stop offset="1" stop-color="#22b36d"/></linearGradient>
+    <linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3d4f"/><stop offset="1" stop-color="#25273a"/></linearGradient>
+    <linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6ee8e1"/><stop offset="1" stop-color="#16b3c0"/></linearGradient>
+    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb3c8"/><stop offset="1" stop-color="#ff7aa2"/></linearGradient>
+    <linearGradient id="y" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4a3"/><stop offset="1" stop-color="#ffc93d"/></linearGradient>
+    <g id="sh"><ellipse cx="24" cy="44.6" rx="14" ry="2" fill="#000" opacity=".32"/></g>
+  </defs>
+</svg>
+<div class="doc">
+  <h1>증강 아이콘 시안</h1>
+  <p>지금 쓰는 토스식 아이콘과 같은 방식으로 그렸어요: 48칸 격자, 같은 색 묶음(위가 밝고 아래가 진한 색), 바닥의 옅은 그림자, 흰 빛 반사 한 줄, 뒤 바탕 칸 없음. 맨 아래 줄은 비교용으로 지금 있는 아이콘이에요.</p>
+
+  <h2>돈</h2>
+  <div class="grid">
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><ellipse cx="24" cy="26" rx="16" ry="12.5" fill="url(#p)"/><circle cx="36" cy="18" r="4.2" fill="url(#p)"/><rect x="13" y="34" width="5" height="8" rx="2.5" fill="#ff7aa2"/><rect x="29" y="34" width="5" height="8" rx="2.5" fill="#ff7aa2"/><rect x="19" y="13.5" width="10" height="3" rx="1.5" fill="url(#d)"/><circle cx="24" cy="9" r="4.5" fill="url(#g)"/><circle cx="31" cy="23" r="1.8" fill="#25273a"/><path d="M12 20c2-3 5-4.6 9-5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/></svg><b>적금</b><small>적금 I·II·III</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><ellipse cx="24" cy="36" rx="15" ry="5.5" fill="#d98a14"/><rect x="9" y="30" width="30" height="6" fill="url(#g)"/><ellipse cx="24" cy="30" rx="15" ry="5.5" fill="url(#y)"/><ellipse cx="24" cy="26" rx="15" ry="5.5" fill="#d98a14"/><rect x="9" y="20" width="30" height="6" fill="url(#g)"/><ellipse cx="24" cy="20" rx="15" ry="5.5" fill="url(#y)"/><ellipse cx="24" cy="16" rx="15" ry="5.5" fill="#d98a14"/><rect x="9" y="10" width="30" height="6" fill="url(#g)"/><ellipse cx="24" cy="10" rx="15" ry="5.5" fill="url(#y)"/><path d="M14 9c3-1.6 7-2.2 11-2" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/></svg><b>목돈</b><small>비상금·목돈·큰돈</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><circle cx="24" cy="24" r="17" fill="url(#g)"/><circle cx="24" cy="24" r="12.5" fill="url(#y)"/><path d="M18.5 29.5l11-11" stroke="#a5650e" stroke-width="3" stroke-linecap="round"/><circle cx="19" cy="19.5" r="2.6" fill="none" stroke="#a5650e" stroke-width="2.4"/><circle cx="29" cy="28.5" r="2.6" fill="none" stroke="#a5650e" stroke-width="2.4"/><path d="M12 16c2-3.6 5.4-6 9.6-6.8" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.2" stroke-linecap="round"/></svg><b>이자</b><small>짠테크·현금왕·복리</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="8" y="20" width="32" height="21" rx="4" fill="url(#r)"/><rect x="6" y="14" width="36" height="9" rx="3.5" fill="url(#p)"/><rect x="21" y="14" width="6" height="27" fill="url(#g)"/><path d="M24 14c-5-9-13-5-8-1.5 2 1.4 5 1.5 8 1.5zm0 0c5-9 13-5 8-1.500-2 1.400-5 1.500-8 1.500z" fill="url(#y)"/><path d="M10 17.500h8" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.200" stroke-linecap="round"/></svg><b>배당</b><small>배당 사냥꾼</small></div>
+  </div>
+
+  <h2>버티기 · 거래</h2>
+  <div class="grid">
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M5 24C5 12 13.500 6 24 6s19 6 19 18c-3.200-3-6.300-3-9.500 0-3.200-3-6.300-3-9.500 0-3.200-3-6.300-3-9.500 0-3.200-3-6.300-3-9.500 0z" fill="url(#b)"/><path d="M24 6v32a4 4 0 0 1-8 0" fill="none" stroke="url(#d)" stroke-width="3.200" stroke-linecap="round"/><path d="M11 17c2.500-4 6-6.200 10.500-6.800" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.200" stroke-linecap="round"/></svg><b>보험</b><small>손실 쿠션·보험 가입</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><circle cx="24" cy="9" r="4.500" fill="none" stroke="url(#b)" stroke-width="3.600"/><path d="M24 13.500V40" stroke="url(#b)" stroke-width="4" stroke-linecap="round"/><path d="M16 20h16" stroke="url(#b)" stroke-width="4" stroke-linecap="round"/><path d="M8 28c1 8 7 12 16 12s15-4 16-12" fill="none" stroke="url(#b)" stroke-width="4" stroke-linecap="round"/><path d="M5 30l3-5 4 4.200zM43 30l-3-5-4 4.200z" fill="#2f6fe0"/><path d="M21.500 16v9" stroke="#fff" stroke-opacity=".55" stroke-width="1.800" stroke-linecap="round"/></svg><b>존버</b><small>존버 I·II</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M24 4c7 5 10 12 10 20v8H14v-8c0-8 3-15 10-20z" fill="url(#w)"/><path d="M24 4c3.600 2.600 6.200 5.600 7.800 9H16.200c1.600-3.400 4.200-6.400 7.800-9z" fill="url(#r)"/><circle cx="24" cy="20" r="4.200" fill="url(#b)"/><path d="M14 26l-7 8h7zM34 26l7 8h-7z" fill="url(#r)"/><path d="M20 34h8l-1.500 9-2.500-3-2.500 3z" fill="url(#y)"/><path d="M18.500 14c.6-2 1.800-3.800 3.500-5.400" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2" stroke-linecap="round"/></svg><b>레버리지</b><small>레버리지 놀이·한 방</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><circle cx="24" cy="26" r="16" fill="url(#w)"/><circle cx="24" cy="26" r="12" fill="url(#d)"/><rect x="20.500" y="4" width="7" height="6" rx="2" fill="url(#r)"/><path d="M24 26V17.500" stroke="url(#y)" stroke-width="3.200" stroke-linecap="round"/><path d="M24 26l6 3.500" stroke="#fff" stroke-width="2.600" stroke-linecap="round"/><circle cx="24" cy="26" r="2.400" fill="url(#r)"/><path d="M12 19c2-3.400 5-5.600 9-6.400" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2.200" stroke-linecap="round"/></svg><b>타이밍</b><small>타이밍의 신·되돌리기</small></div>
+  </div>
+
+  <h2>재미 · 따라잡기</h2>
+  <div class="grid">
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="7" y="9" width="24" height="24" rx="6" fill="url(#w)" transform="rotate(-10 19 21)"/><g fill="#25273a" transform="rotate(-10 19 21)"><circle cx="13.500" cy="15.500" r="2.200"/><circle cx="24.500" cy="15.500" r="2.200"/><circle cx="19" cy="21" r="2.200"/><circle cx="13.500" cy="26.500" r="2.200"/><circle cx="24.500" cy="26.500" r="2.200"/></g><rect x="22" y="20" width="21" height="21" rx="5.500" fill="url(#r)" transform="rotate(12 32 30)"/><g fill="#fff" transform="rotate(12 32 30)"><circle cx="27.500" cy="25.500" r="2"/><circle cx="37.500" cy="35.500" r="2"/></g><path d="M11 13.500c2-1.600 4.600-2.600 8-3" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/></svg><b>도박</b><small>슬롯머신·도박사</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M5 15a4 4 0 0 1 4-4h30a4 4 0 0 1 4 4v4a5 5 0 0 0 0 10v4a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4v-4a5 5 0 0 0 0-10z" fill="url(#g)"/><path d="M30 13v22" stroke="#a5650e" stroke-width="2" stroke-dasharray="3 3"/><path d="M17.500 17l2 4.200 4.600.6-3.400 3.200.9 4.600-4.100-2.300-4.100 2.300.9-4.600-3.400-3.200 4.600-.6z" fill="url(#w)"/><path d="M10 15h9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.200" stroke-linecap="round"/></svg><b>복권</b><small>복권 한 장·잭팟</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="6" y="30" width="10" height="11" rx="2.500" fill="url(#b)"/><rect x="19" y="22" width="10" height="19" rx="2.500" fill="url(#v)"/><rect x="32" y="13" width="10" height="28" rx="2.500" fill="url(#g)"/><path d="M8 22l10-9 6 4 12-11" fill="none" stroke="url(#r)" stroke-width="3.600" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 5.500h7.500V13" fill="none" stroke="url(#r)" stroke-width="3.600" stroke-linecap="round" stroke-linejoin="round"/><path d="M34.500 16.500v8" stroke="#fff" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/></svg><b>따라잡기</b><small>한 칸씩·꼴찌 탈출·추격자</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M5 30c0-9 6-15 15-15h8c9 0 15 6 15 15v3H5z" fill="url(#b)"/><rect x="3" y="31" width="42" height="9" rx="3" fill="url(#d)"/><rect x="24" y="18" width="15" height="10" rx="4" fill="url(#w)"/><path d="M33 6a7 7 0 1 0 8 9 8 8 0 0 1-8-9z" fill="url(#y)"/><text x="12" y="13" font-size="8" font-weight="800" fill="#b6aaff" font-family="sans-serif">z</text><text x="18" y="8" font-size="6" font-weight="800" fill="#b6aaff" font-family="sans-serif">z</text><path d="M9 26c1.400-3.400 4-5.600 8-6.600" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.200" stroke-linecap="round"/></svg><b>늦잠</b><small>늦잠 개미</small></div>
+  </div>
+
+  <h2>업종</h2>
+  <div class="grid">
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><g stroke="url(#d)" stroke-width="3" stroke-linecap="round"><path d="M16 5v6M24 5v6M32 5v6M16 37v6M24 37v6M32 37v6M5 16h6M5 24h6M5 32h6M37 16h6M37 24h6M37 32h6"/></g><rect x="9" y="9" width="30" height="30" rx="6" fill="url(#n)"/><rect x="16" y="16" width="16" height="16" rx="3.500" fill="url(#d)"/><path d="M20 28l3.500-4 2.500 2 3-4" fill="none" stroke="url(#y)" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13.500h8" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.200" stroke-linecap="round"/></svg><b>반도체</b><small>반도체 덕후</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="19" y="4" width="10" height="5" rx="2" fill="url(#d)"/><rect x="11" y="8" width="26" height="34" rx="6" fill="url(#w)"/><rect x="15" y="22" width="18" height="16" rx="3" fill="url(#n)"/><path d="M26 12l-6 9h5l-3 8 8-11h-5z" fill="url(#y)" stroke="#d98a14" stroke-width="1" stroke-linejoin="round"/><path d="M15 13v7" stroke="#fff" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/></svg><b>2차전지</b><small>배터리 충전</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M19 5h10v3h-1.500v9.500L38 36a5 5 0 0 1-4.400 7.400H14.400A5 5 0 0 1 10 36l10.500-18.500V8H19z" fill="url(#w)"/><path d="M15.500 30h17l4.200 7.400a3 3 0 0 1-2.600 4.400H13.900a3 3 0 0 1-2.600-4.400z" fill="url(#t)"/><circle cx="21" cy="35" r="2.200" fill="#fff" opacity=".8"/><circle cx="28" cy="37.500" r="1.500" fill="#fff" opacity=".8"/><circle cx="26.500" cy="24" r="1.800" fill="url(#t)"/><path d="M22.500 10v8" stroke="#fff" stroke-opacity=".9" stroke-width="2" stroke-linecap="round"/></svg><b>바이오</b><small>바이오 연구원</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><circle cx="24" cy="24" r="18" fill="url(#b)"/><path d="M12 15c3-1 5 1 4.500 4-.5 2.600-3 2.400-3.500 5-.4 2.400 2 3.400 1.800 6.200M27 7.500c-1.500 2.400.6 4 2.600 5 2.400 1.200 2.200 3.800.2 5.300-2.600 2-1.300 5.200 1.800 5 3.500-.2 4.700 2.600 3.400 5.700-.8 2-.2 4 1.400 5.300" fill="none" stroke="url(#n)" stroke-width="4.200" stroke-linecap="round"/><path d="M11 18c1.600-4.400 4.800-7.600 9.400-9" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.200" stroke-linecap="round"/></svg><b>미국</b><small>미국 직구·미국 원정대</small></div>
+  </div>
+
+  <h2>비교: 지금 쓰는 아이콘</h2>
+  <div class="grid">
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="6" y="9" width="36" height="33" rx="8" fill="url(#w)"/><path d="M6 18v-1a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v1z" fill="url(#r)"/><rect x="14" y="5" width="4" height="9" rx="2" fill="url(#d)"/><rect x="30" y="5" width="4" height="9" rx="2" fill="url(#d)"/><path d="M13 34l7-7 5 4 9-10" fill="none" stroke="url(#b)" stroke-width="3.600" stroke-linecap="round" stroke-linejoin="round"/><circle cx="34" cy="21" r="3.200" fill="url(#b)"/><path d="M11 13.200h9" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.200" stroke-linecap="round"/></svg><b>오늘의 도전</b><small>지금 있는 것</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><path d="M19 15L14 6M29 15l5-9" stroke="url(#d)" stroke-width="3" stroke-linecap="round"/><circle cx="13.500" cy="5.500" r="3.200" fill="url(#y)"/><circle cx="34.500" cy="5.500" r="3.200" fill="url(#p)"/><rect x="5" y="22" width="5" height="10" rx="2.500" fill="url(#v)"/><rect x="38" y="22" width="5" height="10" rx="2.500" fill="url(#v)"/><rect x="8" y="14" width="32" height="27" rx="11" fill="url(#v)"/><rect x="13" y="20" width="22" height="14" rx="7" fill="url(#d)"/><circle cx="19.500" cy="27" r="3" fill="url(#t)"/><circle cx="28.500" cy="27" r="3" fill="url(#t)"/><path d="M13.500 17.600c2-1.400 5-2 9-2" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.200" stroke-linecap="round"/></svg><b>봇전</b><small>지금 있는 것</small></div>
+    <div class="cell"><svg viewBox="0 0 48 48"><use href="#sh"/><rect x="6" y="10" width="36" height="30" rx="5" fill="url(#r)"/><path d="M6 15l18 12 18-12" fill="none" stroke="#c22e3c" stroke-width="2.600" stroke-linejoin="round"/><circle cx="24" cy="27" r="7.500" fill="url(#g)"/><path d="M21 25l1.500 5 1.500-3.500 1.500 3.500 1.500-5" fill="none" stroke="#a5650e" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14.500h8" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.200" stroke-linecap="round"/></svg><b>용돈 봉투</b><small>지금 있는 것</small></div>
+  </div>
+</div>
+</body>
+</html>
