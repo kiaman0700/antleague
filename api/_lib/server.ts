@@ -1897,6 +1897,11 @@ async function inviteAct(action: string, b: Body, uid: string): Promise<unknown>
           { room_id: room.id, user_id: inv.from_user, nickname: fromNick, mode: 'easy', ready: true, last_seen: new Date().toISOString() },
           { room_id: room.id, user_id: uid, nickname: me.nickname, mode, ready: true, last_seen: new Date().toISOString() },
         ]).select('id, user_id'), 'duel players') as { id: string; user_id: string }[];
+        // 같은 순간 다른 신청도 수락돼 한 사람이 두 판에 앉게 되는 경우: 자리를 넣은 뒤 다시 세어 겹치면 이 방을 없던 일로
+        for (const u of [inv.from_user, uid]) {
+          const seats = must(await sb.from('players').select('left_game, rooms!inner(status)').eq('user_id', u).in('rooms.status', ['playing', 'waiting']), 'duel seats') as unknown as { left_game: boolean; rooms: { status: string } }[];
+          if (seats.filter((x) => x.rooms.status === 'waiting' || !x.left_game).length > 1) throw new GameError('방금 다른 대결이 시작됐어요. 잠시 뒤 다시 신청해 주세요.', 409);
+        }
         const deadline = iso(Date.now() + (preset.turnSeconds + 5 + firstDayLead(CURRENT_RULES_VERSION, preset.turnSeconds)) * 1000); // (v14) 첫날 장 전 시간
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'duel start');
         const fromP = ins.find((x) => x.user_id === inv.from_user)!;
