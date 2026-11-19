@@ -139,12 +139,16 @@ ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin)
   await Q({ action: 'preReady', roomId: qb.roomId });
   await new Promise((r) => setTimeout(r, 3000));
   await Q({ action: 'trade', roomId: qb.roomId, symbol: 'CORE', side: 'buy', qty: 1 });
+  let lastEnd = '';
   for (let i = 0; i < 40 && qs?.room?.status !== 'finished'; i++) {
     const e = await Q({ action: 'endTurn', roomId: qb.roomId });
+    lastEnd = `${e.s} ${e.b?.error ?? ''}`;
+    // 요청 제한에 걸리면 잠깐 쉬고 다시 (같은 컴퓨터에서 여러 시험을 이어 돌릴 때)
+    if (e.s === 429) await new Promise((r) => setTimeout(r, 4000));
     if (e.s === 409 && /장이 열린 뒤/.test(e.b?.error ?? '')) await Q({ action: 'preReady', roomId: qb.roomId });
     qs = (await Q({ action: 'state', roomId: qb.roomId })).b;
   }
-  ok('번개 봇전 끝까지', qs?.room?.status === 'finished', `${qs?.room?.status} day ${qs?.room?.day}`);
+  ok('번개 봇전 끝까지', qs?.room?.status === 'finished', `${qs?.room?.status} day ${qs?.room?.day} · 마지막 마감 응답 ${lastEnd}`);
   const odd = (await Q({ action: 'botMatch', levels: [2], totalDays: 7, turnSeconds: 30, nickname: '이상', mode: 'easy' })).b;
   if (odd?.roomId) {
     const os = (await Q({ action: 'state', roomId: odd.roomId })).b;

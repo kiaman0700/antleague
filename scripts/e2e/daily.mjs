@@ -112,7 +112,10 @@ ok('도전 방은 방 목록에 안 나옴', !rooms.some((r) => /오늘의 도�
     await B({ action: 'friendRespond', id: mine.id, accept: true });
     const fi = (await A({ action: 'dailyInfo' })).b;
     const fB = (fi?.friends ?? []).find((x) => x.nickname === nB);
-    ok('친구들 칸에 오늘 한 친구 (함께 n일 없음)', !!fB && fB.together === undefined && fB.played === undefined, JSON.stringify(fi?.friends));
+    // 친구 칸은 오늘 끝낸 친구만 → B 가 오늘 도전을 못 했으면(다른 대결에 들어가 있는 등 시험 계정 상태) 이 검사는 건너뜀
+    const bDid = !!(await B({ action: 'dailyInfo' })).b?.played;
+    if (bDid) ok('친구들 칸에 오늘 한 친구 (함께 n일 없음)', !!fB && fB.together === undefined && fB.played === undefined, JSON.stringify(fi?.friends));
+    else console.log('ℹ️ 시험 계정 B 가 오늘 도전을 하지 않아 친구 칸 내용 검사는 건너뜀');
     ok('친구들 칸에 계정 id 없음', !/user_id|[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify(fi?.friends)));
     for (const x of [...((await A({ action: 'friends' })).b?.friends ?? [])]) await A({ action: 'friendRemove', id: x.id });
   } else ok('친구 신청 (시험 준비)', false, JSON.stringify(req.b) + ' ' + nB);
