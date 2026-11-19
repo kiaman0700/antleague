@@ -210,7 +210,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [tutStep, setTutStep] = useState(0);
   // 튜토리얼 어느 단계에서 그만두는지 숫자만 남김 (단계 번호·사건만, 실패해도 게임엔 영향 없음)
   const tutTrack = (ev: 'show' | 'quit' | 'done', step = tutStep) => {
-    if (session.tutorial) void api('tutorialStep', { step, ev }).catch(() => {});
+    // 개발 서버(이 컴퓨터에서 점검·시험)로 연 화면은 세지 않음 — 같은 DB 라 점검 도구가 열 때마다 1단계 숫자가 쌓였음
+    if (session.tutorial && !import.meta.env.DEV) void api('tutorialStep', { step, ev }).catch(() => {});
   };
   useEffect(() => {
     if (session.tutorial && tutStep < TUTORIAL_STEPS.length) tutTrack('show');
