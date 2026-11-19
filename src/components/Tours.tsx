@@ -8,35 +8,35 @@ import { Icon } from './Icon';
 import { useDialogFocus, useEscape } from './ui';
 
 export const HOME_STEPS: CoachStep[] = [
-  { title: '개미리그 홈이에요', text: '여럿이 같은 가상 주식시장에서 겨루는 게임이에요. 홈에 무엇이 있는지 하나씩 둘러볼게요.' },
+  { title: '개미리그 홈이에요', text: '같은 가상 주식시장에서 여럿이 겨루는 게임이에요. 홈을 하나씩 둘러볼게요.' },
   {
     title: '대결 종류',
-    text: '랭킹전(회원끼리 점수), 일반전(가볍게), 커스텀(친구와 방 만들기), 연습(혼자·봇)이 있어요.',
+    text: '여기서 대결 종류를 골라요. 처음이면 일반전이나 연습이 편해요.',
     target: '.cl-tabs-wrap, nav:has(> .cl-tab), div:has(> .cl-tab), .lobby-bottom',
   },
-  { title: '대결 찾기', text: '1대1·다인전, 신속·일반을 고르고 대결 찾기를 누르면 비슷한 사람과 바로 이어져요.', target: '.st-pick' },
-  { title: '빠른 메뉴', text: '기다림 없이 봇과 하는 봇전, 모두 같은 시장으로 겨루는 오늘의 도전(회원), 튜토리얼이 여기 있어요.', target: '.st-quick' },
-  { title: '미션', text: '오늘·이번 주 미션을 깨면 경험치를 받아 레벨이 올라요. 눌러서 지금 미션을 볼 수 있어요.', target: '.msb .hpop-btn' },
-  { title: '내 계정', text: '회원이면 프로필(사진·칭호·티어), 게스트면 로그인·회원가입이 여기 있어요.', target: '.acc-chip, .ln-login, .lt-right' },
-  { title: '친구', text: '회원끼리 친구를 맺으면 접속 상태가 보이고, 1대1을 신청하거나 파티로 같이 찾을 수 있어요.', target: '.cl-social-btn, .lobby-bottom button:nth-child(4)' },
-  { title: '설정·더보기', text: '화면 모드(초보·일반·커스텀), 효과음, 계정, 공지사항, 그리고 튜토리얼 다시 보기가 있어요.', target: '.cl-subs, .lobby-bottom button:last-child' },
-  { title: '이제 직접 해 볼까요?', text: '다음은 연습봇과 한 판이에요. 뉴스를 읽고 사고팔고 카드를 써 봐요. (약 3분, 시간이 멈춰 있어요)' },
+  { title: '대결 찾기', text: "인원과 길이를 고르고 '대결 찾기'를 눌러요. 비슷한 실력의 사람과 이어져요.", target: '.st-pick' },
+  { title: '빠른 메뉴', text: '기다리기 싫으면 여기서 봇전을 눌러요. 오늘의 도전과 튜토리얼도 여기 있어요.', target: '.st-quick' },
+  { title: '미션', text: '눌러서 오늘 미션을 봐요. 미션을 깨면 경험치를 받아 레벨이 올라요.', target: '.msb .hpop-btn' },
+  { title: '내 계정', text: '여기서 로그인하거나 내 프로필을 봐요. 회원이 되면 기록이 계속 남아요.', target: '.acc-chip, .ln-login, .lt-right' },
+  { title: '친구', text: '여기서 친구를 맺어요. 친구와 1대1을 하거나 같이 대결을 찾을 수 있어요.', target: '.cl-social-btn, .lobby-bottom button:nth-child(4)' },
+  { title: '설정·더보기', text: '화면·소리를 바꾸려면 여기를 눌러요. 튜토리얼도 여기서 다시 볼 수 있어요.', target: '.cl-subs, .lobby-bottom button:last-child' },
+  { title: '이제 직접 해 볼까요?', text: '연습봇과 한 판 해 봐요. 시간은 멈춰 있고, 약 3분 걸려요.' },
 ];
 
 export const RESULT_STEPS: CoachStep[] = [
-  { title: '결과 화면', text: '판이 끝나면 순위와 수익률이 나와요. 마지막 날 재산이 가장 많은 사람이 1위예요.', target: '.result .banner' },
-  { title: '참가자별 성적', text: '사람마다 재산·수익률·거래 횟수·최고의 한 수·쓴 카드가 보여요.', target: '.score-cards' },
-  { title: '이번 판 업적', text: '이번 판에서 딴 업적이에요. 업적을 모으면 칭호·프로필 사진을 받아요(처음 한 번은 경험치도).', target: '.result .panel:has(.badges), .result .panel:has(.badge-cols)' },
-  { title: '하루별 리플레이', text: '날짜를 누르면 그날 누가 무엇을 했는지 다시 볼 수 있어요. 다음 판을 위한 복기!', target: '.result .panel:has(.replay)' },
-  { title: '시장 성적', text: '이번 판에 많이 오른·내린 종목이에요. 어떤 뉴스가 맞았는지 돌아봐요.', target: '.result .panel:has(.stock-rank)' },
-  { title: '다음은?', text: '한 판 더 하거나 홈으로 가요. 홈으로 가면 마지막으로 미션·업적을 둘러볼게요.', target: '.center-actions' },
+  { title: '결과 화면', text: '여기서 이번 판 순위를 봐요. 마지막 날 재산이 가장 많은 사람이 1위예요.', target: '.result .banner' },
+  { title: '참가자별 성적', text: '사람마다 재산과 잘한 거래를 비교해 봐요.', target: '.score-cards' },
+  { title: '이번 판 업적', text: '이번 판에서 딴 업적이에요. 모으면 칭호와 프로필 사진을 받아요.', target: '.result .panel:has(.badges), .result .panel:has(.badge-cols)' },
+  { title: '하루별 리플레이', text: '날짜를 눌러 그날 무슨 일이 있었는지 다시 봐요. 다음 판에 도움이 돼요.', target: '.result .panel:has(.replay)' },
+  { title: '시장 성적', text: '많이 오르고 내린 종목을 봐요. 어떤 뉴스가 맞았는지 알 수 있어요.', target: '.result .panel:has(.stock-rank)' },
+  { title: '다음은?', text: "'홈으로'를 눌러요. 마지막으로 미션과 업적을 둘러볼게요.", target: '.center-actions' },
 ];
 
 export const GROWTH_STEPS: CoachStep[] = [
-  { title: '미션과 경험치', text: '일일 미션 6개·주간 미션 3개가 있어요. 판을 끝내면 서버가 확인해 경험치를 줘요. 마음에 안 드는 미션은 바꾸기도 돼요. 방금 끝낸 튜토리얼도 \'튜토리얼 완료하기\' 미션이라 경험치 100(레벨 1 → 2)을 받았어요(회원).', target: '.msb .hpop-btn' },
-  { title: '업적과 칭호', text: '업적 화면에서 모은 업적과 최근 전적을 봐요. 튜토리얼에서 딴 첫 거래·첫 카드·철벽 방어도 진짜 업적이에요. 같은 업적을 5번·20번·100번 따면 칭호가 노련한 → 전설의 → 신화의로, 사진 테두리가 은색 → 금색 → 무지개 보석으로 바뀌어요.', target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
-  { title: '랭킹과 티어', text: '회원은 랭킹전으로 점수를 올려 브론즈부터 마스터까지 티어를 올려요. 처음 2판은 배치예요.', target: '.cl-subs .cl-sub:nth-child(1), .lobby-bottom button:first-child' },
-  { title: '튜토리얼 끝!', text: "4단계를 모두 끝내서 업적 '개미 학교 졸업'(졸업모 개미 사진)을 받았어요. 이제 대결을 시작해 보세요. 튜토리얼은 연습 메뉴나 설정·더보기의 '튜토리얼'에서 단계별로 언제든 다시 볼 수 있어요." },
+  { title: '미션과 경험치', text: '미션을 눌러 오늘 할 일을 봐요. 판을 끝내면 경험치를 받아요.', target: '.msb .hpop-btn' },
+  { title: '업적과 칭호', text: "'업적'에서 모은 업적을 봐요. 방금 딴 첫 거래·첫 카드 업적도 여기 있어요.", target: '.cl-subs .cl-sub:nth-child(2), .lobby-bottom button:last-child' },
+  { title: '랭킹과 티어', text: '랭킹전에서 이기면 점수가 올라 티어가 바뀌어요. 처음 2판은 실력을 재는 판이에요.', target: '.cl-subs .cl-sub:nth-child(1), .lobby-bottom button:first-child' },
+  { title: '튜토리얼 끝!', text: "'대결 찾기'를 눌러 첫 대결을 해 봐요. '개미 학교 졸업' 업적도 받았어요." },
 ];
 
 /** 단계 목록: 단계마다 따로 다시 시작 + 처음부터 전부 */
