@@ -349,3 +349,29 @@ describe('v27 잃는 돈은 현금까지만', () => {
     }
   });
 });
+
+describe('v27 일찍 끝난 판·오늘의 도전', () => {
+  it('상대가 모두 기권해 3일차에 끝나면, 그 뒤 고르는 날의 증강·돈은 없음 (서버 재산 = 결과 화면)', () => {
+    const d = withAug('cash1');
+    d.players = d.players.map((p) => (p.id === 'b' ? { ...p, left_game: true, left_day: 2 } : p));
+    d.room.status = 'finished';
+    d.room.day = 10;
+    const st = deriveAugs(d);
+    expect(st.players.a.map((x) => x.day)).toEqual([0]);
+    const f = buildView(d, 'a', T0).final!;
+    expect(f.augs!.a).toHaveLength(1);
+    for (const x of f.augIncome!.a) expect(x.day).toBeLessThanOrEqual(2);
+    // 비상금 1.2만원(다음 날 아침)만 — 4·7일차 자동 증강 돈이 섞이지 않음
+    expect(buildView(d, 'a', T0).players.find((p) => p.id === 'a')!.equity).toBe(1_012_000);
+  });
+  it('오늘의 도전은 누구에게나 같은 보기 (자리 id 와 무관)', () => {
+    const mk = (id: string) => {
+      const d = game(0, 28, [id]);
+      d.room.kind = 'daily';
+      return deriveAugs(d).players[id][0].offer;
+    };
+    expect(mk('seat-1')).toEqual(mk('seat-2'));
+    const other = (id: string) => deriveAugs(game(0, 28, [id])).players[id][0].offer;
+    expect(new Set(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((x) => other(x).join())).size).toBeGreaterThan(1);
+  });
+});

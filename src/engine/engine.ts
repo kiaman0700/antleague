@@ -18,7 +18,7 @@ import { LIVE_NEWS_VERSION, liveNews } from '../game/liveNews.js';
 import { COMPANY_BAD, COMPANY_GOOD } from '../game/news.js';
 import { buyCost, computePortfolio, equityWith, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
 import { COMPANIES, STOCK_MAP, STOCK_SECTORS, STOCKS } from '../game/stocks.js';
-import { augOn, deriveAugs, ownedAugs, pendingSlot, type AugRow } from './augs.js';
+import { augEndDay, augOn, deriveAugs, ownedAugs, pendingSlot, type AugRow } from './augs.js';
 import { AUG_INFO, augFeeRate, augIncomeAll, augInfoLeft, augLevCap, augMaxOrders, augOrderRange, ruleSector, type AugIncome } from './augEffects.js';
 import type { AugTier } from '../game/augments.js';
 
@@ -967,14 +967,7 @@ export function validateLeave(d: GameData, meId: string): { left_game: true; end
  * — 그 뒤 날은 아무도 하지 않았으므로 업적 계산에 넣지 않음
  */
 export function playedLastDay(d: GameData): number | null {
-  if (d.players.length < 2) return null;
-  const staying = d.players.filter((p) => !p.left_game);
-  const humansLeftAll = d.players.some((p) => p.bot_level) && !staying.some((p) => !p.bot_level);
-  if (staying.length > 1 && !humansLeftAll) return null;
-  const days = d.players.filter((p) => p.left_game).map((p) => p.left_day);
-  if (!days.length || days.some((x) => typeof x !== 'number')) return null;
-  const last = Math.max(...(days as number[]));
-  return last < d.room.total_days - 1 ? last : null;
+  return augEndDay(d);
 }
 
 /**
@@ -1090,7 +1083,9 @@ export function finalResults(d: GameData) {
   const results = players.map((p) => {
     const equity = Math.round(equityWith(portfolioOf(d, p.id), prices));
     const idle = isIdle(p);
-    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game, ...(idle ? { idle: true } : {}), ...(p.bot_level ? { bot: p.bot_level } : {}) };
+    // 증강으로 받은 돈을 뺀 수익률 — 미션·투자 감각처럼 '거래 실력'을 보는 곳에서 씀 (순위는 증강 포함 재산)
+    const augSum = augOn(d.room.version) ? augIncomeOf(d, p.id).reduce((a, x) => a + x.amount, 0) : 0;
+    return { nickname: p.nickname, equity, ret: equity / startCashFor(d.room.version) - 1, tradeRet: (equity - augSum) / startCashFor(d.room.version) - 1, badges: badges[p.id] ?? [], left: !!p.left_game, ...(idle ? { idle: true } : {}), ...(p.bot_level ? { bot: p.bot_level } : {}) };
   });
   // 기권한 사람 → 거래 0회(매칭)인 사람 순으로 뒤로 (끝까지 거래한 사람끼리는 재산 순)
   const back = (r: { left: boolean; idle?: boolean }) => (r.left ? 2 : r.idle ? 1 : 0);

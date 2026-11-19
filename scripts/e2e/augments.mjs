@@ -14,7 +14,8 @@ let b = (await B({ action: 'state', roomId })).b;
 ok('새 방은 규칙 v27 이상', (a.room.rulesVersion ?? 0) >= 27, String(a.room.rulesVersion));
 ok('첫날 내 보기 3개', a.aug?.offer?.ids?.length === 3, JSON.stringify(a.aug));
 const mineIds = a.aug.offer.ids;
-ok('상대 화면엔 내 보기가 없음', !mineIds.some((id) => JSON.stringify(b).includes(`"${id}"`) && !b.aug.offer.ids.includes(id)));
+// 상대 화면 데이터의 증강 칸은 상대 자신의 보기·증강뿐 (내 보기 배열이 그대로 들어 있지 않음)
+ok('상대 화면엔 내 보기가 없음', b.aug.mine.length === 0 && JSON.stringify(b.aug.offer.ids) !== JSON.stringify(mineIds) && !JSON.stringify(b).includes(JSON.stringify(mineIds)), JSON.stringify(b.aug.offer.ids) + ' / ' + JSON.stringify(mineIds));
 {
   const t = JSON.stringify(a);
   const i = t.search(/"salt"|"seed":[1-9]/);

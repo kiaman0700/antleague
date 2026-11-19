@@ -73,6 +73,24 @@ export function heldSectorsBefore(d: GameData, pid: string, day: number): Sector
   return [...out];
 }
 
+/**
+ * 상대가 모두 기권해 일찍 끝난 판이면 실제로 한 마지막 날 (아니면 null) — 그 뒤 날의 고르기·증강 돈은 없던 것으로.
+ * 재산·업적을 그날 가격으로 멈추는 것과 같은 기준
+ */
+export function augEndDay(d: GameData): number | null {
+  if (d.players.length < 2) return null;
+  const staying = d.players.filter((p) => !p.left_game);
+  const humansLeftAll = d.players.some((p) => p.bot_level) && !staying.some((p) => !p.bot_level);
+  if (staying.length > 1 && !humansLeftAll) return null;
+  const days = d.players.filter((p) => p.left_game).map((p) => p.left_day);
+  if (!days.length || days.some((x) => typeof x !== 'number')) return null;
+  const last = Math.max(...(days as number[]));
+  return last < d.room.total_days - 1 ? last : null;
+}
+
+/** 보기·뽑기 운의 열쇠: 오늘의 도전은 모두 같은 시장으로 겨루니 증강 보기와 운도 모두 같게 */
+export const augSeatKey = (d: GameData, pid: string) => (d.room.kind === 'daily' ? 'daily' : pid);
+
 const saltOf = (d: GameData) => d.room.salt ?? d.room.id;
 
 const seatsOf = (d: GameData) => [...d.players].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).map((p) => p.id);
@@ -103,6 +121,7 @@ export function deriveAugs(d: GameData): AugState {
   const seats = seatsOf(d);
   const multi = d.players.length >= 2;
   const finished = r.status === 'finished' || r.day >= r.total_days;
+  const cut = finished ? augEndDay(d) : null;
   const rows = d.augs ?? [];
   const players: Record<string, AugSlot[]> = {};
   for (const pid of seats) {
@@ -110,12 +129,12 @@ export function deriveAugs(d: GameData): AugState {
     const owned: string[] = [];
     for (let n = 0; n < days.length; n++) {
       const day = days[n];
-      if (day > r.day || (r.status === 'waiting')) break;
+      if (day > (cut ?? r.day) || r.status === 'waiting') break;
       const prev = owned[n - 1];
       const tier = r.id === 'tutorial' && n === 0 ? 'silver' : shiftTier(tiers[n], prev === 'eye' ? 1 : prev === 'loan' ? -1 : 0);
       // 다른 자리 몫인 '한 명만' 증강은 처음부터 내 보기에 없음
       const takenUnique = UNIQUE_IDS.filter((u) => uniqueSeat(salt, u, n, seats) !== pid);
-      const ctx = { salt, seat: pid, n, picks: days.length, tier, daysLeft: r.total_days - day, multi, owned: [...owned], takenUnique, heldSectors: heldSectorsBefore(d, pid, day) };
+      const ctx = { salt, seat: augSeatKey(d, pid), n, picks: days.length, tier, daysLeft: r.total_days - day, multi, owned: [...owned], takenUnique, heldSectors: heldSectorsBefore(d, pid, day) };
       // 들어온 순서대로: 고르기 전 다시 뽑기만, 칸마다·모두 합쳐 한도 안에서만. 고른 뒤의 다시 뽑기는 무시
       const mine = rows.filter((x) => x.player_id === pid && x.n === n).sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
       const extra = owned.includes('principal') ? 2 : 0;
@@ -145,7 +164,7 @@ export function deriveAugs(d: GameData): AugState {
       const used = seq.length;
       let auto = false;
       if (!picked && (finished || r.day > day)) {
-        picked = offer.length ? offer[Math.floor(seeded(`${salt}:augauto:${pid}:${n}`)() * offer.length)] : null;
+        picked = offer.length ? offer[Math.floor(seeded(`${salt}:augauto:${augSeatKey(d, pid)}:${n}`)() * offer.length)] : null;
         auto = true;
       }
       const canReroll = offer.map((_, i) => !fixed && !picked && rerolls[i] < REROLL_PER_SLOT + extra && used < 3 * REROLL_PER_SLOT + extra);

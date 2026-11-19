@@ -213,13 +213,16 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
       // 그날 변화의 절반 넘게가 용돈 봉투 때문이면 뉴스 대신 그 이유를 보여 줌 (뉴스 덕분처럼 보이지 않게)
       const why = (d: number, dv: number) => {
         const b = r.bonusOn[d] ?? 0;
+        // (v27) 증강으로 그날 들어온(나간) 돈
+        const g = (final.augIncome?.[r.id] ?? []).filter((x) => x.day === d).reduce((sum, x) => sum + x.amount, 0);
+        if (g !== 0 && Math.sign(g) === Math.sign(dv) && Math.abs(g) * 2 >= Math.abs(dv)) return `증강으로 ${g > 0 ? '+' : ''}${wonShort(g)}`;
         return b !== 0 && Math.sign(b) === Math.sign(dv) && Math.abs(b) * 2 >= Math.abs(dv) ? `용돈 봉투로 ${b > 0 ? '+' : ''}${wonShort(b)}` : undefined;
       };
       if (best > 0) out.push({ icon: 'trend', title: `${r.nickname}의 최고의 날`, text: `${bd + 1}일차 +${wonShort(best)}`, day: bd, note: why(bd, best) });
       if (worst < 0) out.push({ icon: 'warn', title: `${r.nickname}의 최악의 날`, text: `${wd + 1}일차 ${wonShort(worst)}`, day: wd, note: why(wd, worst) });
     }
     return out;
-  }, [results, ranked, market, session.playerId]);
+  }, [results, ranked, market, session.playerId, final.augIncome]);
 
   // 한 판 더 버튼 아래 작은 글: 판 설정 (예: 10일 · 하루 1분 / 신속 · 약 10~14분)
   const days = dayInfo?.days ?? market.totalDays;

@@ -203,8 +203,11 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
   const last = m.totalDays - 1;
   const solo = inp.players.length < 2;
   const items = deriveItems(inp.seed, inp.players.map((p) => p.id), inp.items, last, full.totalDays, solo, m.version ?? 1);
-  const hist = Object.fromEntries(inp.players.map((p) => [p.id, equityHistory(p.trades, p.spends, m)]));
-  const finalEq = (id: string) => hist[id][hist[id].length - 1];
+  // 순위는 증강으로 받은 돈까지 넣은 재산으로, 수익률·연속 상승 같은 '투자 실력' 업적은 증강 돈을 뺀 재산으로
+  // (현금 증강만 받고 '플러스 마감'·'대박'·'연전연승'이 되지 않게)
+  const histAll = Object.fromEntries(inp.players.map((p) => [p.id, equityHistory(p.trades, p.spends, m)]));
+  const hist = Object.fromEntries(inp.players.map((p) => [p.id, p.spends.some((x) => x.aug) ? equityHistory(p.trades, p.spends.filter((x) => !x.aug), m) : histAll[p.id]]));
+  const finalEq = (id: string) => histAll[id][histAll[id].length - 1];
   const indexRet = m.index[last].close / KR_INDEX_BASE - 1;
   const ids = inp.players.map((p) => p.id);
   // 기권한 사람은 재산과 상관없이 맨 뒤 (화면 순위·랭킹 점수와 같게), 1위는 끝까지 한 사람 중에서만
@@ -227,7 +230,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
       continue;
     }
     const got = new Set<string>();
-    const ret = finalEq(p.id) / startCashFor(m.version) - 1;
+    const ret = hist[p.id][hist[p.id].length - 1] / startCashFor(m.version) - 1;
     if (winner === p.id) got.add('winner');
     // 한 번이라도 거래해야 (현금만 들고 시장이 내린 판에서 거저 받지 않게)
     if (ret > indexRet && p.trades.length > 0) got.add('beat_market');
@@ -273,7 +276,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if (!solo && winner === p.id) {
       const mid = Math.floor(m.totalDays / 2);
       // 중반에 1등이 아니었는데 우승
-      if (ids.some((x) => x !== p.id && hist[x][mid] > hist[p.id][mid])) got.add('comeback');
+      if (ids.some((x) => x !== p.id && histAll[x][mid] > histAll[p.id][mid])) got.add('comeback');
     }
 
     const used = Object.values(items.players[p.id]?.used ?? {}).reduce((a, n) => a + (n ?? 0), 0);
@@ -343,7 +346,7 @@ export function computeAchievements(inp: AchievementInput): Record<string, strin
     if (pfEnd.closed.some((c) => (STOCK_MAP[c.symbol]?.etf?.lev ?? 1) !== 1 && c.pnlPct <= -0.1)) got.add('lev_burn');
     if (!solo && winner !== p.id) {
       const mid = Math.floor(m.totalDays / 2);
-      if (ids.every((x) => x === p.id || hist[x][mid] < hist[p.id][mid])) got.add('choke');
+      if (ids.every((x) => x === p.id || histAll[x][mid] < histAll[p.id][mid])) got.add('choke');
     }
     out[p.id] = BADGES.filter((b) => got.has(b.id)).map((b) => b.id);
   }

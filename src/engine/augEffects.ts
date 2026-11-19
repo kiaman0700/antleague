@@ -6,7 +6,7 @@ import { seeded } from '../lib/rng.js';
 import { pricesAt, type Market } from '../game/market.js';
 import { computePortfolio, equityWith, startCashFor, type PaidDividend, type PortfolioState, type Trade } from '../game/portfolio.js';
 import { STOCK_MAP } from '../game/stocks.js';
-import { deriveAugs, ownedAugs, sectorCondOf, type AugState } from './augs.js';
+import { augEndDay, augSeatKey, deriveAugs, ownedAugs, sectorCondOf, type AugState } from './augs.js';
 import type { GameData } from './engine.js';
 
 export interface AugIncome {
@@ -80,7 +80,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
   const finished = r.status === 'finished' || r.day >= r.total_days;
   const lastT = d.trades.at(-1);
   const lastA = (d.augs ?? []).at(-1);
-  const key = `${r.id}:${r.salt ?? ''}:${r.total_days}:${r.version}:${r.status}:${r.day}:${d.trades.length}:${lastT?.id ?? lastT?.created_at ?? ''}:${(d.augs ?? []).length}:${lastA?.id ?? lastA?.created_at ?? ''}:${d.players.length}`;
+  const key = `${r.id}:${r.salt ?? ''}:${r.total_days}:${r.version}:${r.status}:${r.day}:${d.trades.length}:${lastT?.id ?? lastT?.created_at ?? ''}:${(d.augs ?? []).length}:${lastA?.id ?? lastA?.created_at ?? ''}:${d.players.map((p) => (p.left_game ? 1 : 0)).join('')}:${d.players.length}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const salt = r.salt ?? r.id;
@@ -112,18 +112,24 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
       if (NOW_CASH[a]) add(pid, s.day + 1, a, NOW_CASH[a]);
       if (LATER_CASH[a] && s.day + LATER_CASH[a][0] < total) add(pid, s.day + LATER_CASH[a][0], a, LATER_CASH[a][1]);
       if (a === 'payday') for (let k = 1; k <= 3; k++) if (s.day + 3 * k < total) add(pid, s.day + 3 * k, a, 10_000);
-      if ((a === 'lotto' || a === 'jackpot') && s.day + 1 < total) add(pid, s.day + 1, a, draw(AUG_TABLES[a], seeded(`${salt}:auglot:${pid}:${s.n}`)()));
+      if ((a === 'lotto' || a === 'jackpot') && s.day + 1 < total) add(pid, s.day + 1, a, draw(AUG_TABLES[a], seeded(`${salt}:auglot:${augSeatKey(d, pid)}:${s.n}`)()));
       // 슬롯머신·도박사는 아래 날마다 계산에서 (잃는 돈을 그때 현금까지만 하려고)
     }
   }
 
   // 날마다 장 마감 때 (마감한 날만 — 진행 중이면 오늘은 아직)
-  const lastClosed = finished ? total - 1 : r.day - 1;
+  // 상대가 모두 기권해 일찍 끝난 판은 실제로 한 날까지만
+  const cut = finished ? augEndDay(d) : null;
+  const lastClosed = finished ? (cut ?? total - 1) : r.day - 1;
+  const leftIds = new Set(d.players.filter((p) => p.left_game).map((p) => p.id));
+  /** 순위를 보는 증강은 기권하지 않은 사람끼리만 비교 */
+  const racers = Object.keys(st.players).filter((p) => !leftIds.has(p));
   const pf: Record<string, PortfolioState[]> = Object.fromEntries(pids.map((p) => [p, []]));
   const eqs: Record<string, number[]> = Object.fromEntries(pids.map((p) => [p, []]));
   const ranks: Record<string, number[]> = Object.fromEntries(pids.map((p) => [p, []]));
   const tradesOf = Object.fromEntries(pids.map((p) => [p, d.trades.filter((t) => t.player_id === p)])) as Record<string, Trade[]>;
   const multi = pids.length >= 2;
+  const racing = (pid: string) => !leftIds.has(pid);
   const gnet: Record<string, number> = {};
   for (let t = 0; t <= lastClosed; t++) {
     const close = pricesAt(m, t, true);
@@ -134,7 +140,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
       pf[pid][t] = p;
       eqs[pid][t] = equityWith(p, close);
     }
-    for (const pid of pids) ranks[pid][t] = 1 + pids.filter((q) => eqs[q][t] > eqs[pid][t]).length;
+    for (const pid of pids) ranks[pid][t] = 1 + racers.filter((q) => eqs[q][t] > eqs[pid][t]).length;
     // 다음 날 아침 슬롯머신·도박사 — 판 전체로 잃는 돈은 도박사 −6만·슬롯 −2만까지, 그리고 그때 현금까지만 (빚 없음)
     for (const pid of pids) {
       for (const sl of st.players[pid]) {
@@ -143,7 +149,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
         if ((a !== 'slot' && a !== 'gambler') || sl.day >= tt || tt >= total) continue;
         const k = `${pid}:${a}`;
         const net = gnet[k] ?? 0;
-        let v = draw(AUG_TABLES[a], seeded(`${salt}:augday:${pid}:${a}:${tt}`)());
+        let v = draw(AUG_TABLES[a], seeded(`${salt}:augday:${augSeatKey(d, pid)}:${a}:${tt}`)());
         const floor = a === 'gambler' ? -60_000 : -20_000;
         if (net + v < floor) v = floor - net;
         if (v < 0) v = Math.max(v, -Math.max(0, Math.floor(pf[pid][t].cash)));
@@ -152,11 +158,12 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
         if (v) out[pid].push({ day: tt, amount: v, aug: a });
       }
     }
-    const worst = Math.max(...pids.map((q) => ranks[q][t]));
-    const top = Math.max(...pids.map((q) => eqs[q][t]));
+    const worst = racers.length ? Math.max(...racers.map((q) => ranks[q][t])) : 1;
+    const top = racers.length ? Math.max(...racers.map((q) => eqs[q][t])) : 0;
     for (const pid of pids) {
       const mine = owned(pid, t);
       if (!mine.length) continue;
+      const mp = multi && racing(pid);
       const p = pf[pid][t];
       const eq = eqs[pid][t];
       const creditsToday = out[pid].filter((x) => x.day === t).reduce((a, x) => a + x.amount, 0);
@@ -192,17 +199,17 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
             if (todays.length) add(pid, nextDay, a, 2_000);
             break;
           case 'climb':
-            if (multi && t > a0 && ranks[pid][t] < ranks[pid][t - 1]) add(pid, nextDay, a, 15_000);
+            if (mp && t > a0 && ranks[pid][t] < ranks[pid][t - 1]) add(pid, nextDay, a, 15_000);
             break;
           case 'last1': case 'last2':
-            if (multi && ranks[pid][t] === worst && worst > 1) add(pid, nextDay, a, a === 'last1' ? 10_000 : 25_000);
+            if (mp && ranks[pid][t] === worst && worst > 1) add(pid, nextDay, a, a === 'last1' ? 10_000 : 25_000);
             break;
           case 'army':
             // 꼴찌이거나 1위와 10% 넘게 차이 나는 날 — 꼴찌 하나만 보면 판마다 너무 들쭉날쭉
-            if (multi && ((ranks[pid][t] === worst && worst > 1) || (top > 0 && (top - eq) / top > 0.1))) add(pid, nextDay, a, 15_000);
+            if (mp && ((ranks[pid][t] === worst && worst > 1) || (top > 0 && (top - eq) / top > 0.1))) add(pid, nextDay, a, 15_000);
             break;
           case 'chaser':
-            if (multi && top > 0 && (top - eq) / top > 0.1) add(pid, nextDay, a, 20_000);
+            if (mp && top > 0 && (top - eq) / top > 0.1) add(pid, nextDay, a, 20_000);
             break;
           case 'semi2': case 'battery2': case 'bio2': case 'crypto2': case 'us2': case 'us3': {
             const [k, rate] = SECTOR_RATE[a];
@@ -271,7 +278,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
       // 마지막 날 마감
       if (t === total - 1) {
         for (const { id: a } of mine) {
-          if (a === 'comeback' && multi && ranks[pid][t] === worst && worst > 1) add(pid, total, a, 100_000);
+          if (a === 'comeback' && mp && ranks[pid][t] === worst && worst > 1) add(pid, total, a, 100_000);
           if (a === 'oneshot') add(pid, total, a, eq / start - 1 > 0.05 ? 100_000 : -Math.min(20_000, Math.max(0, Math.floor(p.cash))));
           // 존버·물타기는 마지막 날 전날 마감 기준 — 마지막 날 다 팔아도 그동안 들고 버틴 몫은 받음
           const tb = Math.max(0, t - 1);
@@ -302,7 +309,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
     if (tr && out[u.player_id]) out[u.player_id].push({ day: u.day, amount: Math.round(tr.qty * tr.price * tr.fee), aug: 'undo' });
   }
 
-  const shown = finished ? out : Object.fromEntries(Object.entries(out).map(([p, xs]) => [p, xs.filter((x) => x.day <= r.day)]));
+  const shown = finished ? (cut === null ? out : Object.fromEntries(Object.entries(out).map(([p, xs]) => [p, xs.filter((x) => x.day <= cut)]))) : Object.fromEntries(Object.entries(out).map(([p, xs]) => [p, xs.filter((x) => x.day <= r.day)]));
   cache.set(key, shown);
   if (cache.size > 200) cache.delete(cache.keys().next().value!);
   return shown;

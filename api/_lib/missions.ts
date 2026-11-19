@@ -216,7 +216,7 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       kind: d.room.kind ?? 'custom',
       // 끝까지 하고 거래를 1번 이상 (짜고 바로 끝내는 판 막기)
       finished: !p.left_game && trades.length > 0,
-      ret: res.ret,
+      ret: res.tradeRet ?? res.ret,
       rank: idx + 1,
       players: d.players.length,
       won: fin.winner === p.nickname,
@@ -239,14 +239,15 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
           if (preRumors(m, t.day, d.room.salt ?? String(d.room.seed)).some((r) => r.sector === sec)) return true;
           return (d.room.version ?? 1) >= COMMUNITY_VERSION && !!d.room.salt && communityPosts(m, t.day, d.room.salt).some((p) => p.sector === sec);
         }),
-      indexRet: m.index.length ? m.index[m.index.length - 1].close / KR_INDEX_BASE - 1 : undefined,
+      // 상대가 모두 기권해 일찍 끝난 판은 실제로 한 마지막 날 지수로
+      indexRet: m.index.length ? m.index[Math.min(m.index.length - 1, playedLastDay(d) ?? m.index.length - 1)].close / KR_INDEX_BASE - 1 : undefined,
       // (v27) 정보 증강을 쓴 것도 같은 종류로 (내일 헤드라인·강한 업종·오를지 내릴지·진위 판정)
       ...gameExtras(d, p.id, trades, [...uses.map((i) => i.kind), ...augActs.filter((x) => x.action === 'use').map((x) => x.aug)]),
     };
     // '나의 투자 감각' 기록 (059) — 끝까지 하고 거래한 판만, 실패해도 미션엔 영향 없음
     if (game.finished) {
       try {
-        const sk = gameSkill(m, trades, res.ret, playedLastDay(d) ?? d.room.total_days - 1);
+        const sk = gameSkill(m, trades, res.tradeRet ?? res.ret, playedLastDay(d) ?? d.room.total_days - 1);
         const ins = await sb.from('skill_log').insert({ user_id: uid, room_id: d.room.id, catches: sk.catches, news_buys: sk.newsBuys, news_true: sk.newsTrue, max_weight: Math.round(sk.maxWeight * 1000) / 1000, beat: Math.round(sk.beat * 10000) / 10000 });
         if (ins.error && !/duplicate|unique|skill_log/i.test(ins.error.message)) console.error('[api] skill_log', ins.error.message);
       } catch (e) {
@@ -372,7 +373,7 @@ function gameExtras(d: GameData, playerId: string, trades: GameData['trades'], u
         }
       }
     }
-    if (qty > 0 && since >= 0) maxHoldDays = Math.max(maxHoldDays, d.room.total_days - 1 - since);
+    if (qty > 0 && since >= 0) maxHoldDays = Math.max(maxHoldDays, (playedLastDay(d) ?? d.room.total_days - 1) - since);
   }
   return {
     sells: trades.filter((t) => t.side === 'sell').length,
