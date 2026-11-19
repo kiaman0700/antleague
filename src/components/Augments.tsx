@@ -1,24 +1,24 @@
 /** 증강(규칙 v27) 화면: 고르기 창 · 내 증강 · 결과 화면의 모두의 증강 */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AUG_MAP, type AugTag, type AugTier } from '../game/augments';
 import type { AugView } from '../engine/engine';
 import type { AugIncome } from '../engine/augEffects';
 import type { Trade } from '../game/portfolio';
 import { STOCK_MAP } from '../game/stocks';
-import { Icon, type IconName } from './Icon';
+import { Icon } from './Icon';
+import { AugArt } from './AugArt';
 import { DialogBox, useEscape } from './ui';
 import { won } from '../lib/format';
 
 export const TIER_NAME: Record<AugTier, string> = { silver: '실버', gold: '골드', prism: '프리즘' };
-const TAG_ICON: Record<AugTag, IconName> = { money: 'coins', info: 'news', trade: 'activity', sector: 'grid', hold: 'shield', catchup: 'trend', fun: 'sparkles' };
 const TAG_NAME: Record<AugTag, string> = { money: '돈', info: '정보', trade: '거래', sector: '업종', hold: '버티기', catchup: '따라잡기', fun: '재미' };
 
 export function AugBadge({ id, size = 18 }: { id: string; size?: number }) {
   const a = AUG_MAP[id];
   if (!a) return null;
   return (
-    <span className={`aug-badge t-${a.tier}`} style={{ width: size + 10, height: size + 10 }} aria-hidden>
-      <Icon name={TAG_ICON[a.tag]} size={size} />
+    <span className={`aug-badge t-${a.tier}`} style={{ width: size + 12, height: size + 12 }} aria-hidden>
+      <AugArt id={id} size={size} />
     </span>
   );
 }
@@ -38,6 +38,15 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
   const [sel, setSel] = useState<string | null>(null);
   useEscape(onHide, true, true);
   const chosen = sel && offer.ids.includes(sel) ? sel : null;
+  // 처음 뜬 카드는 차례로 올라오고, 다시 뽑아 새로 들어온 카드만 그 칸에서 바뀌는 움직임
+  const firstIds = useRef(new Set(offer.ids));
+  const listRef = useRef<HTMLDivElement>(null);
+  const confirm = () => {
+    if (!chosen) return;
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-aug="${chosen}"] .aug-badge`);
+    if (el) flyToMine(el);
+    onPick(chosen);
+  };
   return (
     <div className="modal-bg aug-bg" onClick={onHide}>
       <DialogBox className={`modal aug-pick t-${offer.tier}`} aria-label={`${TIER_NAME[offer.tier]} 증강 고르기`} onClick={(e) => e.stopPropagation()}>
@@ -54,14 +63,14 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             <Icon name="chart" size={16} /> 시세 보기
           </button>
         </div>
-        <div className="aug-list" role="radiogroup" aria-label="증강 3개">
+        <div ref={listRef} className={'aug-list' + (chosen ? ' has-sel' : '')} role="radiogroup" aria-label="증강 3개">
           {offer.ids.map((id, i) => {
             const a = AUG_MAP[id];
             if (!a) return null;
             const c = conds(id);
             const on = chosen === id;
             return (
-              <div key={id} className={'aug-opt' + (on ? ' on' : '')}>
+              <div key={id} data-aug={id} className={'aug-opt' + (on ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
                 <button className="aug-card" role="radio" aria-checked={on} aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째`} onClick={() => setSel(id)} disabled={busy}>
                   <AugBadge id={id} size={20} />
                   <span className="aug-body">
@@ -84,12 +93,74 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             );
           })}
         </div>
-        <button className="btn primary block aug-go" disabled={!chosen || busy} onClick={() => chosen && onPick(chosen)}>
+        <button key={chosen ?? 'none'} className={'btn primary block aug-go' + (chosen ? ' ready' : '')} disabled={!chosen || busy} onClick={confirm}>
           {chosen ? `'${AUG_MAP[chosen].name}' 고르기` : '하나를 눌러 고르세요'}
         </button>
       </DialogBox>
     </div>
   );
+}
+
+const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * 고른 증강 그림이 '내 증강' 자리(PC 옆 칸 띠·휴대폰 아래 '증강' 탭)로 날아감 — 처음·끝 자리를 재고 transform 만 움직임(FLIP).
+ * 창이 닫혀도 따로 떠 있는 복사본이라 끊기지 않음. 움직임 줄이기면 하지 않음
+ */
+function flyToMine(from: HTMLElement) {
+  if (reduced() || typeof document === 'undefined') return;
+  const target = [...document.querySelectorAll<HTMLElement>('.aug-strip, .bottom-nav [data-tab="cards"]')].find((x) => x.offsetParent !== null);
+  if (!target) return;
+  const a = from.getBoundingClientRect();
+  const b = target.getBoundingClientRect();
+  const ghost = from.cloneNode(true) as HTMLElement;
+  Object.assign(ghost.style, { position: 'fixed', left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`, margin: '0', zIndex: '130', pointerEvents: 'none' });
+  document.body.appendChild(ghost);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+  const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const anim = ghost.animate(
+    [
+      { transform: 'translate(0,0) scale(1.15)', opacity: 1 },
+      { transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 40}px) scale(0.9)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.45)`, opacity: 0.2 },
+    ],
+    { duration: 520, easing: 'cubic-bezier(0.05,0.7,0.1,1)' },
+  );
+  anim.onfinish = () => {
+    ghost.remove();
+    target.classList.remove('aug-land');
+    void target.offsetWidth;
+    target.classList.add('aug-land');
+    window.setTimeout(() => target.classList.remove('aug-land'), 400);
+  };
+}
+
+/** 금액이 바뀌면 예전 값에서 새 값까지 굴러 올라감 (700ms) */
+export function useCountUp(value: number) {
+  const [shown, setShown] = useState(value);
+  const prev = useRef(value);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = value;
+    if (from === value || reduced()) return setShown(value);
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 700);
+      const e = 1 - Math.pow(1 - k, 3);
+      setShown(Math.round(from + (value - from) * e));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return shown;
+}
+
+function Got({ value }: { value: number }) {
+  const v = useCountUp(value);
+  if (!value) return null;
+  return <span className={'aug-got ' + (value > 0 ? 'plus' : 'minus')}>{v > 0 ? '+' : ''}{won(v)}</span>;
 }
 
 /** 창을 접었을 때 다시 여는 띠 */
@@ -131,7 +202,7 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
                 </b>
                 <span className="aug-desc">{a.desc}</span>
               </span>
-              {got !== 0 && <span className={'aug-got ' + (got > 0 ? 'plus' : 'minus')}>{got > 0 ? '+' : ''}{won(got)}</span>}
+              <Got value={got} />
             </li>
           );
         })}
@@ -196,8 +267,8 @@ export function AugStrip({ aug, onOpen }: { aug: AugView; onOpen: () => void }) 
 /** 결과 화면: 모두의 증강과 그 증강으로 번 돈 */
 export function AugReveal({ players, augs, income }: { players: { id: string; nickname: string }[]; augs: Record<string, { id: string; auto: boolean }[]>; income?: Record<string, AugIncome[]> }) {
   return (
-    <div className="aug-reveal">
-      <h3>모두의 증강</h3>
+    <div className="panel pad aug-reveal">
+      <h3>{players.length > 1 ? '모두의 증강' : '이번 판 증강'}</h3>
       <ul>
         {players.map((p) => {
           const xs = augs[p.id] ?? [];

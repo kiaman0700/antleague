@@ -2158,3 +2158,48 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .aug-strip-go { margin-left: auto; color: var(--text-3, #9a9a9a); }
 .aug-reroll { font-size: 13px; padding: 4px 10px; }
 .aug-rec { margin-left: 8px; font-size: 12px; font-weight: 700; color: #c9c0ff; border: 1px solid #6b58ee; border-radius: 6px; padding: 1px 6px; vertical-align: 1px; }
+
+/* ── 증강 움직임: transform·opacity 만. 큰 순간은 프리즘 등장과 고른 뒤 날아가기 둘뿐 ── */
+:root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-emph: cubic-bezier(0.05, 0.7, 0.1, 1); }
+@keyframes aug-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes aug-pop-in { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes aug-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes aug-swap-in { from { transform: translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes aug-sweep { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(320%) skewX(-18deg); } }
+@keyframes aug-badge-in { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes aug-go-pop { 0% { transform: scale(0.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+@keyframes aug-land { 0% { transform: scale(1); } 45% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes aug-pill-in { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@keyframes aug-gold-edge { from { border-color: var(--line, #2e2e2e); } to { border-color: color-mix(in srgb, var(--t-gold) 45%, #2e2e2e); } }
+
+.modal.aug-pick { animation: aug-pop-in 220ms var(--ease-out); }
+.aug-opt.enter { animation: aug-rise 240ms var(--ease-out) both; animation-delay: calc(80ms + var(--i, 0) * 60ms); }
+.aug-opt.swap { animation: aug-swap-in 220ms var(--ease-out) both; }
+.aug-opt.enter .aug-badge { animation: aug-badge-in 320ms var(--ease-out) both; animation-delay: calc(160ms + var(--i, 0) * 60ms); }
+/* 골드: 카드 테두리에 금빛이 천천히 배어남 (빛 번짐 없이 선 색만) */
+.aug-opt.t-gold { animation-name: aug-rise, aug-gold-edge; animation-duration: 240ms, 500ms; animation-delay: calc(80ms + var(--i, 0) * 60ms), calc(320ms + var(--i, 0) * 60ms); animation-fill-mode: both, forwards; animation-timing-function: var(--ease-out), ease-out; }
+.aug-opt.t-gold.swap { animation-name: aug-swap-in, aug-gold-edge; animation-delay: 0ms, 120ms; }
+/* 프리즘: 카드가 다 나온 뒤 흰 띠가 한 번만 스침 */
+.aug-opt.t-prism { position: relative; overflow: hidden; border-color: color-mix(in srgb, var(--t-prism) 45%, #2e2e2e); }
+.aug-opt.t-prism::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 36%; background: rgba(255, 255, 255, 0.12); transform: translateX(-120%) skewX(-18deg); pointer-events: none; }
+.aug-opt.t-prism.enter::after { animation: aug-sweep 650ms var(--ease-out) both; animation-delay: calc(420ms + var(--i, 0) * 60ms); }
+.aug-opt.t-prism.swap::after { animation: aug-sweep 650ms var(--ease-out) both 160ms; }
+/* 누름·고름 */
+.aug-card { transition: transform 120ms var(--ease-out); }
+.aug-card:active:not(:disabled) { transform: scale(0.97); }
+/* 들어오는 움직임(transform·opacity)과 겹치지 않게 고름은 translate·안쪽 흐림으로 */
+.aug-opt { transition: translate 160ms var(--ease-out), border-color 160ms; }
+.aug-opt > * { transition: opacity 160ms var(--ease-out); }
+.aug-list.has-sel .aug-opt:not(.on) > * { opacity: 0.55; }
+.aug-opt.on { translate: 0 -3px; }
+.aug-go.ready { animation: aug-go-pop 260ms var(--ease-out); }
+.aug-land { animation: aug-land 380ms var(--ease-out); }
+.aug-pill { animation: aug-pill-in 240ms var(--ease-out); }
+@media (max-width: 860px) {
+  .modal.aug-pick { animation: aug-sheet-up 260ms var(--ease-out); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal.aug-pick, .aug-opt, .aug-opt.enter, .aug-opt.swap, .aug-opt .aug-badge, .aug-go.ready, .aug-land, .aug-pill { animation: none !important; transition: opacity 150ms !important; }
+  .aug-opt.t-prism::after { display: none; }
+  .aug-opt.on { translate: none; }
+}

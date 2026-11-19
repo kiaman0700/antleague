@@ -16,6 +16,7 @@ import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AugPanel, AugPick, AugPill, AugStrip } from '../components/Augments';
 import { augFeeRate, augLevCap } from '../engine/augEffects';
+import { AUG_MAP } from '../game/augments';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton, loadReactMute, saveReactMute } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
@@ -557,6 +558,25 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     return set;
   }, [news, day]);
   const change = useCallback((sym: string) => (market ? quote(market, sym, displayDay, displayClosed).ch : 0), [market, displayDay, displayClosed]);
+
+  // (v27) 증강으로 돈이 들어온 날 한 번 알림 (처음 화면을 열 때 이미 있던 것은 조용히)
+  const augSeen = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const inc = view?.aug?.income;
+    if (!inc) return;
+    const keys = inc.map((x) => `${x.aug}:${x.day}:${x.amount}`);
+    if (augSeen.current === null) {
+      augSeen.current = new Set(keys);
+      return;
+    }
+    const fresh = inc.filter((x, i) => !augSeen.current!.has(keys[i]));
+    keys.forEach((k) => augSeen.current!.add(k));
+    if (!fresh.length) return;
+    const sum = fresh.reduce((a, x) => a + x.amount, 0);
+    const names = [...new Set(fresh.map((x) => AUG_MAP[x.aug]?.name ?? x.aug))].join('·');
+    showToast(`증강 ${names} ${sum >= 0 ? '+' : ''}${wonShort(sum)}`, sum >= 0 ? 'ok' : 'warn');
+    if (sum > 0) play('item');
+  }, [view?.aug?.income]);
 
   // ---------- 알림 ----------
   const seen = useRef<Set<string> | null>(null);
@@ -1727,7 +1747,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
 
         <nav className="bottom-nav five">
           {layout.mTabs.map((t, i) => (
-            <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
+            <button key={t} data-tab={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
               <span>
                 <Icon name={TAB_ICON[t]} size={22} />
               </span>
