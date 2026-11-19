@@ -136,7 +136,7 @@ function Row({ m, onReroll, busy }: { m: MissionItem; onReroll?: () => void; bus
         <span className="sr-only">{m.done ? ' (완료)' : ' (아직)'}</span>
         {m.modes && m.modes.length < ALL_MODES && <span className="ms-modes">{m.modes.join(' · ')}</span>}
       </span>
-      <b className="ms-xp">+{m.xp}</b>
+      <b className="ms-xp">{m.done ? `+${m.xp} 받음` : `+${m.xp}`}</b>
       {onReroll && !m.done && (
         <button className="ms-reroll" onClick={onReroll} disabled={busy} aria-label={`${m.title} 다른 미션으로 바꾸기`} title="다른 미션으로 바꾸기">
           <Icon name="refresh" size={14} />
@@ -232,8 +232,14 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
         <h3>
           일일 미션 <small className="muted">{doneN}/{info.today.list.length}</small>
         </h3>
-        <small className={info.today.endsAt - Date.now() < 3_600_000 ? "ms-soon" : "muted"}>갱신까지 {left(info.today.endsAt)}</small>
+        {/* 곧 바뀌어도 색으로 재촉하지 않음 */}
+        <small className="muted">{info.today.endsAt - Date.now() < 3_600_000 ? '곧 새 미션' : `갱신까지 ${left(info.today.endsAt)}`}</small>
       </div>
+      {doneN > 0 && doneN === info.today.list.length && (
+        <p className="ms-all-done">
+          <Icon name="check" size={14} /> 오늘 미션 끝! 수고했어요
+        </p>
+      )}
       {canReroll && (
         <p className="ms-reroll-left muted small">
           <Icon name="refresh" size={12} /> 일일 미션 바꾸기 <b>{info.rerolls!.day}</b>번 남음 <span className="muted">(하루 3번)</span>
@@ -265,7 +271,7 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
       </ul>
       <div className="ms-head ms-week">
         <h4>주간 미션</h4>
-        <small className={info.week.endsAt - Date.now() < 3_600_000 ? "ms-soon" : "muted"}>갱신까지 {left(info.week.endsAt)}</small>
+        <small className="muted">{info.week.endsAt - Date.now() < 3_600_000 ? '곧 새 미션' : `갱신까지 ${left(info.week.endsAt)}`}</small>
       </div>
       {canReroll && (
         <p className="ms-reroll-left muted small">

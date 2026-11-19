@@ -2551,3 +2551,18 @@ details.study-card.is-read > summary h3 { color: #c8c8c8; }
 .sb-group { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
 .sb-group > .sb-group-head { grid-column: 1 / -1; }
 details.study-card { min-height: 0 !important; margin: 0 !important; }
+
+/* 리그: 경계 줄에 구역 이름, 승급까지 한 줄, 내 줄 보라 띠, 숫자 자리 폭 고정 */
+.lg-line::after { content: attr(data-label); position: absolute; right: 0; top: -9px; padding: 0 6px; font-size: 11px; font-weight: 700; font-style: normal; background: var(--surface, #1c1c1c); color: #2fb36b; }
+.lg-line.is-down::after { color: #e0566b; }
+.lg-list li.me { box-shadow: inset 3px 0 0 #8b7bff; }
+.lg-score { font-variant-numeric: tabular-nums; }
+.lg-goal { margin-left: auto; font-size: 14px; color: #c8c8c8; }
+.lg-goal b { color: #f2f2f2; font-variant-numeric: tabular-nums; }
+.lg-goal.ok { color: #2fb36b; font-weight: 700; }
+.lg-list li:nth-child(n + 9) { animation: none !important; }
+/* 미션: 끝낸 줄은 지운 것처럼 보이는 취소선 대신 흐린 글자 + 체크, 다 깨면 한 줄 */
+.ms-row.done .ms-title { text-decoration: none !important; color: #9a9a9a; }
+.ms-row.done .ms-xp { color: #8b7bff; font-size: 12px; }
+.ms-all-done { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; padding: 8px 12px; border-radius: 10px; background: rgba(107, 88, 238, 0.12); color: #d4ccff; font-size: 13px; font-weight: 700; }
+@media (max-width: 860px) { .ms-reroll { min-width: 44px; min-height: 44px; } }

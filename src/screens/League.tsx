@@ -117,6 +117,16 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
               <small className="muted">이번 주 끝까지</small>
               <b>{left((info.endsAt ?? now) - now)}</b>
             </div>
+            {/* 승급까지 몇 점인지 한 줄 (강등 쪽은 숫자로 겁주지 않고 부드럽게) */}
+            {(() => {
+              const g = info.group ?? [];
+              const meAt = g.findIndex((r) => r.me);
+              const promote = info.promote ?? 0;
+              if (meAt < 0 || !promote || g.length < 2) return null;
+              if (meAt < promote) return <span className="lg-goal ok">승급 칸 안이에요</span>;
+              const need = g[promote - 1].score - g[meAt].score + 1;
+              return <span className="lg-goal">승급까지 <b>{need.toLocaleString('ko-KR')}</b> 경험치</span>;
+            })()}
           </section>
           <section className="panel pad">
             <h3>
@@ -138,16 +148,16 @@ export function League({ go }: { go: (p: LobbyPage) => void }) {
                         {r.nickname}
                         {r.me && <em> (나)</em>}
                       </span>
-                      <b className="lg-score">{r.score.toLocaleString('ko-KR')} XP</b>
-                      {(i === (info.promote ?? 0) - 1 || ((info.demote ?? 0) > 0 && i === n - (info.demote ?? 0) - 1)) && <i className="lg-line" aria-hidden />}
+                      <b className="lg-score">{r.score.toLocaleString('ko-KR')}</b>
+                      {/* 구역 경계에 이름 (아래 범례 대신 표 안에서 바로) */}
+                      {i === (info.promote ?? 0) - 1 && i < n - 1 && <i className="lg-line" data-label="↑ 승급" aria-hidden />}
+                      {(info.demote ?? 0) > 0 && i === n - (info.demote ?? 0) - 1 && <i className="lg-line is-down" data-label="↓ 강등" aria-hidden />}
                     </li>
                   );
                 })}
               </ol>
             )}
-            {!!info.group?.length && <p className="muted small lg-legend">
-              <span className="lg-dot lg-up" /> 승급 · <span className="lg-dot lg-down" /> 강등
-            </p>}
+            {!!info.group?.length && <p className="muted small lg-legend">점수 = 이번 주에 얻은 경험치</p>}
           </section>
           <section className="panel pad">
             <h3>
