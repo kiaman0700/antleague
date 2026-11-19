@@ -1968,5 +1968,15 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 @media (prefers-reduced-motion: reduce) { .toast, .ui-toast { animation: none !important; } }
 
 /* ===== 묶음(업종) 사이 구분: 묶음이 바뀌는 자리에 끝까지 긋는 선 + 여백, 묶음 제목은 한 단계 또렷하게 ===== */
-.stock-list > div:has(> .group-head):not(:first-child) { margin-top: 10px; border-top: 1px solid var(--line-2); }
-.stock-list .group-head { font-size: 13px; font-weight: 700; color: var(--text-2, #c8c8c8); padding: 14px 10px 6px; display: flex; align-items: center; gap: 6px; }
+/* 줄 사이 선(1px)과 다른 종류여야 보임 → 토스처럼 끝에서 끝까지 8px 띠. 띠 색은 바탕과 반대로(휴대폰은 밝게, PC 칸 안은 어둡게) */
+:root { --group-band: var(--surface); }
+.game.desk { --group-band: var(--bg); }
+.stock-list > div:has(> .group-head):not(:first-child) { margin: 8px -6px 0; padding: 0 6px; border-top: 8px solid var(--group-band); }
+.m-page .stock-list > div:has(> .group-head):not(:first-child) { margin-left: -18px; margin-right: -18px; padding: 0 18px; }
+.stock-list .group-head { font-size: 14px; font-weight: 800; color: var(--text-2, #c8c8c8); padding: 14px 10px 6px; display: flex; align-items: center; gap: 6px; }
+/* 카드가 떨어져 있는 목록은 띠 대신 제목 위 큰 간격 + 진한 제목 */
+.sec-title:not(:first-child) { margin-top: 24px; }
+.sec-title { font-size: 14px; font-weight: 800; color: var(--text-2, #c8c8c8); }
+.ms-week { margin-top: 12px; padding-top: 16px; border-top: 1px solid var(--line-2); }
+.ms-week h4 { font-size: 15px; font-weight: 800; }
+.cg-group:not(:first-child) { margin-top: 24px; }
