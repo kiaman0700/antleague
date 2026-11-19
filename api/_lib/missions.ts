@@ -4,6 +4,7 @@
  * - 판정: 판이 끝날 때(maybeAdvance) 서버가 그 판의 거래·카드·주문·결과로만. 화면이 '했어요'라고 보내는 요청은 없음
  * - (계정, 판) 기록(mission_rooms)으로 같은 판은 한 번만, 하루 경험치 상한
  */
+import { countsForStreak, myStreak, recordPlayDay } from './streaks.js';
 import { leagueAdd, leagueRank } from './league.js';
 import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -193,6 +194,8 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
   const botLevels = d.players.filter((p) => p.bot_level).map((p) => p.bot_level as number);
   for (const p of humans) {
     const uid = p.user_id;
+    // 연속 기록은 손님도 (랭킹전·일반전·오늘의 도전을 끝까지 + 거래 1번 이상)
+    if (countsForStreak(d.room.kind, !!p.left_game, d.trades.filter((t) => t.player_id === p.id).length)) await recordPlayDay(sb, uid, d.room.id, now);
     if (!members.has(uid) || p.left_game) continue;
     // 같은 판은 한 번만 (기본키) — 먼저 넣은 요청만 진행
     const claim = await sb.from('mission_rooms').insert({ user_id: uid, room_id: d.room.id });
@@ -331,6 +334,8 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     thisGame,
     // 결과 화면: 이번 주 리그 내 순위
     league,
+    // 연속 기록 (손님도) — 숫자만
+    streak: await myStreak(sb, uid, now),
     // 튜토리얼 완료하기 (한 번) — 회원은 받았는지, 게스트는 끝냈는지
     tutorial: { done: member ? tutGot : tutDone, xp: TUTORIAL_XP },
     // 남은 바꾸기 횟수 (회원·041 적용 뒤에만)

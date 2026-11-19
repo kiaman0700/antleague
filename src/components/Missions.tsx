@@ -1,4 +1,5 @@
 /** 미션 (설계서 design/missions-v2.md): 일일 6개 · 주간 3개 · 바꾸기(일일 하루 3번·주간 한 주 1번) · 레벨 막대. 판정·경험치는 서버만 */
+import { StreakFlame, StreakLine, StreakResult, type StreakInfo } from './Streak';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../net/api';
 import { useAccount } from '../net/account';
@@ -37,6 +38,8 @@ export interface MissionInfo {
   rerolls?: { day: number; week: number } | null;
   /** (051) 튜토리얼 완료하기 — 일일·주간과 따로, 계정마다 한 번 */
   tutorial?: { done: boolean; xp: number };
+  /** 연속 기록 (061) */
+  streak?: StreakInfo | null;
 }
 
 const EMPTY: MissionInfo = { member: false, xp: 0, level: { level: 1, into: 0, need: 100 }, today: { endsAt: 0, list: [] }, week: { endsAt: 0, list: [] }, todayXp: 0, cap: 0 };
@@ -207,6 +210,8 @@ export function MissionsPanel({ enabled = true, onSignup, retry = 0, src, noLeve
     );
   return (
     <section className="panel pad missions" aria-label="미션">
+      {/* 결과 화면: 이 판으로 오늘 연속 기록이 인정됐으면 · 메뉴 팝업: 연속·최고와 규칙 */}
+      {room ? <StreakResult s={info.streak} /> : <StreakLine s={info.streak} showRule />}
       {/* 튜토리얼을 아직 안 한 사람에게만: 끝내면 레벨 1 → 2 경험치 (한 번) */}
       {info.tutorial && !info.tutorial.done && !room && (
         <div className="ms-tut">
@@ -321,6 +326,7 @@ export function MissionsButton({ onSignup, compact }: { onSignup?: () => void; c
               {done}/{list.length}
             </b>
           )}
+          <StreakFlame s={m.info?.streak} />
         </>
       }
     >

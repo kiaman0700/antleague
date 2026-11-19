@@ -60,6 +60,8 @@ export interface AccountState {
   badges: Record<string, number>;
   /** '나의 투자 감각' (서버가 내 최근 판으로 계산한 평균, 회원만) */
   skills?: SkillInfo;
+  /** 연속 기록 (061) */
+  streak?: { streak: number; best: number; playedToday: boolean } | null;
 }
 export interface SkillSummary {
   games: number;
@@ -107,9 +109,9 @@ export function refreshAccount(): Promise<void> {
 }
 
 function loadProfile(): Promise<void> {
-  return api<{ profile: MyProfile | null; recent?: MatchRow[]; badges?: Record<string, number>; skills?: SkillInfo }>('profile')
+  return api<{ profile: MyProfile | null; recent?: MatchRow[]; badges?: Record<string, number>; skills?: SkillInfo; streak?: { streak: number; best: number; playedToday: boolean } }>('profile')
     .then((r) => {
-      set({ status: r.profile ? 'member' : 'guest', profile: r.profile, recent: r.recent ?? [], badges: r.badges ?? {}, skills: r.skills });
+      set({ status: r.profile ? 'member' : 'guest', profile: r.profile, recent: r.recent ?? [], badges: r.badges ?? {}, skills: r.skills, streak: r.streak ?? null });
       // 회원이면 게임에서 쓰는 닉네임도 프로필 닉네임으로
       if (r.profile) saveNick(r.profile.nickname);
     })

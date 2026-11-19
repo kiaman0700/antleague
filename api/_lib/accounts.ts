@@ -6,6 +6,7 @@
  * - 랭킹: 회원끼리 붙은 멀티 대결만 점수(Elo, 시작 1000) 반영 — 게스트와의 판은 전적만
  * 모든 읽기·쓰기는 서버만 (profiles·match_players 는 브라우저 권한 없음)
  */
+import { myStreak } from './streaks.js';
 import { challengerMap } from './challenger.js';
 import { dropGuestCode } from './guestCodes.js';
 import { createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -244,7 +245,8 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
       }
       // '나의 투자 감각' (059, 내 것만 평균)
       const skills = await mySkills(sb, uid).catch(() => null);
-      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}), ...(decay ? { decay } : {}) }, recent, badges, ...(skills?.all ? { skills } : {}) };
+      const streak = await myStreak(sb, uid).catch(() => null);
+      return { profile: { ...pub, ranked_games: p.ranked_games ?? 0, rankPos: placed && !unlisted ? (above.count ?? 0) + 1 : null, ...(chal ? { chal } : {}), ...(decay ? { decay } : {}) }, recent, badges, ...(skills?.all ? { skills } : {}), ...(streak ? { streak } : {}) };
     }
 
     case 'updateProfile': {

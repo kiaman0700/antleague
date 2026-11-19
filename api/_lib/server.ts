@@ -4,7 +4,7 @@
  * 비밀 키(SUPABASE_SECRET_KEY)는 서버 환경변수에만 있고 브라우저 번들에는 절대 들어가지 않는다.
  */
 import { leagueInfo } from './league.js';
-import { streakOf } from '../../src/game/streak.js';
+import { myStreak } from './streaks.js';
 import { titleProblem } from '../../src/game/nickname.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -1089,11 +1089,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         const st = seat.data as { id: string; left_game: boolean | null; rooms: { code: string; status: string } } | null;
         if (st && !st.left_game && st.rooms.status === 'playing') resume = { roomId: my.room_id, playerId: st.id, code: st.rooms.code };
       }
-      // 연속 기록 (최근 120일 기록 날짜로 서버가 계산)
-      const since = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
-      const hist = await sb.from('daily_runs').select('day').eq('user_id', uid).gte('day', since);
-      const myDays = hist.error ? [] : ((hist.data ?? []) as { day: string }[]).map((r) => String(r.day).slice(0, 10));
-      const streak = hist.error ? null : streakOf(myDays, day);
+      // 연속 기록은 랭킹전·일반전·오늘의 도전을 함께 셈 (play_days)
+      const streak = await myStreak(sb, uid);
       // 친구들: 수락한 친구 중 오늘 한 사람만 (닉네임·수익률·끝냈는지 — 계정 id 는 안 보냄).
       // 오늘의 도전은 각자 하는 것이라 함께한 날 수는 세지 않음
       let friends: { nickname: string; ret: number | null; finished: boolean }[] = [];

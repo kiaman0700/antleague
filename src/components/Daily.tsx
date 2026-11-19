@@ -1,3 +1,4 @@
+import { STREAK_RULE, StreakResult, type StreakInfo } from './Streak';
 import { Icon } from './Icon';
 /** 오늘의 도전 (설계서 design/bots-daily.md 3단계): 오늘 점수표 · 내 순위 */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,15 +20,15 @@ export interface DailyInfo {
   /** 친구들의 오늘 기록 (친구만, 닉네임·수익률) */
   friends?: { nickname: string; ret: number | null; finished: boolean }[];
   /** 연속 기록 (서버 계산) */
-  streak?: { streak: number; best: number; freezes: number; playedToday: boolean };
+  streak?: StreakInfo | null;
 }
 
-/** 연속 기록 표시: '🔥' 대신 아이콘 + 'n일 연속' + 얼리기 */
+/** 연속 기록 칩: 'n일 연속' (최고 기록은 칩 설명에) */
 export function StreakChip({ s }: { s?: DailyInfo['streak'] }) {
   if (!s || s.streak <= 0) return null;
   return (
-    <span className="streak-chip" title={`가장 긴 기록 ${s.best}일 · 7일마다 얼리기 1개(최대 2개) — 하루 놓쳐도 얼리기로 이어져요`}>
-      <Icon name="flame" size={13} /> {s.streak}일 연속{s.freezes > 0 ? ` · 얼리기 ${s.freezes}` : ''}
+    <span className="streak-chip" title={`최고 ${s.best}일 · ${STREAK_RULE}`}>
+      <Icon name="flame" size={13} /> {s.streak}일 연속
     </span>
   );
 }
@@ -115,11 +116,7 @@ export function DailyResult() {
   return (
     <div className="panel pad daily-result">
       <h3>오늘의 도전 순위 <StreakChip s={info.streak} /></h3>
-      {info.streak && info.streak.streak > 0 && (
-        <p className="small streak-note">
-          {info.streak.streak}일째 이어서 도전 중! {info.streak.streak % 7 === 0 ? '얼리기를 하나 받았어요 — 하루 놓쳐도 이어져요.' : `${7 - (info.streak.streak % 7)}일 더 하면 얼리기를 받아요.`}
-        </p>
-      )}
+      <StreakResult s={info.streak} />
       <p className="muted small">
         {info.myRank ? `오늘 ${info.total}명 중 ${info.myRank}위예요.` : !info.finished ? '기록을 저장하는 중이에요.' : info.member ? '이 계정 기록은 점수표에 오르지 않아요.' : '게스트 기록은 점수표에 오르지 않아요. 회원으로 하면 순위에 올라가요.'} 내일 0시에 새 시장이 열려요.
       </p>

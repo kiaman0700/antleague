@@ -65,16 +65,21 @@ if (sa.s === 200 && sb.s === 200) {
   const add = await A({ action: 'addBot', roomId: sa.b.roomId, level: 2 });
   ok('도전 방엔 봇 못 넣음', add.s === 403 || add.s === 409, add.b?.error);
 
-  // B: 중간에 나가면 그때 재산으로 기록되고 그날은 끝
+  // B: 중간에 나가면 그때 재산으로 기록되고 그날은 끝 — 끝까지 안 했으니 연속 기록은 인정 안 됨
+  const ibBefore = (await B({ action: 'dailyInfo' })).b;
   const lv = await B({ action: 'leave', roomId: sb.b.roomId });
   const ib = (await B({ action: 'dailyInfo' })).b;
-  ok('연속 기록: 오늘 도전하면 1일 이상, 오늘 한 것으로 표시', (ib.streak?.streak ?? 0) >= 1 && ib.streak?.playedToday === true, JSON.stringify(ib.streak));
+  ok('연속 기록: 중간에 나간 도전은 인정 안 됨 (오늘 표시 그대로)', ib.streak?.playedToday === ibBefore.streak?.playedToday && ib.streak?.freezes === undefined, JSON.stringify([ibBefore.streak, ib.streak]));
   ok('중간에 나가도 기록됨 (오늘 끝)', lv.s === 200 && ib.finished === true && typeof ib.myRet === 'number', JSON.stringify({ f: ib.finished, r: ib.myRet }));
   const bAgain = await B({ action: 'dailyStart', nickname: '도전B', mode: 'easy' });
   ok('나간 뒤 다시 시작 불가 (409)', bAgain.s === 409);
 
-  // A: 끝까지
-  let s = va;
+  // A: 거래 1번 하고 끝까지 → 연속 기록 인정
+  await A({ action: 'preReady', roomId: sa.b.roomId });
+  await new Promise((r) => setTimeout(r, 1500));
+  const tr = await A({ action: 'trade', roomId: sa.b.roomId, symbol: 'CORE', side: 'buy', qty: 1 });
+  ok('도전 중 거래', tr.s === 200, tr.b?.error);
+  let s = (await A({ action: 'state', roomId: sa.b.roomId })).b;
   for (let i = 0; i < 60 && s.room.status !== 'finished'; i++) {
     // 날마다 장 전 시간(혼자 판은 6시간)이 있어 먼저 '장 시작'(준비 완료) → 장 마감. 요청 제한(20초 40번)에 안 걸리게 천천히
     if (s.room.preUntil) await A({ action: 'preReady', roomId: sa.b.roomId });
@@ -85,6 +90,9 @@ if (sa.s === 200 && sb.s === 200) {
   ok('혼자 끝까지 진행', s.room.status === 'finished', `day=${s.room.day}`);
   const ia = (await A({ action: 'dailyInfo' })).b;
   ok('끝나면 점수 기록', ia.finished === true && typeof ia.myRet === 'number', JSON.stringify({ f: ia.finished, r: ia.myRet }));
+  ok('연속 기록: 거래하고 끝까지 하면 오늘 인정 (1일 이상)', ia.streak?.playedToday === true && ia.streak.streak >= 1 && ia.streak.best >= ia.streak.streak, JSON.stringify(ia.streak));
+  const ms = (await A({ action: 'missions' })).b;
+  ok('미션 응답에도 같은 연속 기록', JSON.stringify(ms.streak) === JSON.stringify(ia.streak), JSON.stringify(ms.streak));
   ok('시험 회원 기록은 공개 점수표에 안 오름', !(ia.top ?? []).some((r) => r.me) && ia.myRank === null);
   const re = await A({ action: 'rematch', roomId: sa.b.roomId });
   ok('오늘의 도전은 한 판 더 불가 (409)', re.s === 409, re.b?.error);

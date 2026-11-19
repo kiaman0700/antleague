@@ -1820,3 +1820,19 @@ p { text-wrap: pretty; }
 .cc-modal h3 { margin: 0 0 8px; font-size: 18px; }
 /* 버튼이 하나뿐인 확인 창은 가로 전체 (두 칸 격자의 왼쪽에 치우치지 않게) */
 .confirm-actions > .btn:only-child { grid-column: 1 / -1; }
+
+/* 연속 기록 (Streak.tsx) — 오늘 아직이면 불꽃만 흐리게 */
+.stk-flame { display: inline-flex; align-items: center; gap: 2px; color: #f5b83d; font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; }
+.stk-flame.wait { color: #8a8a8a; }
+.msb .stk-flame { margin-left: 2px; }
+.stk-line { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--line-2, #2a2a2a); line-height: 1.5; }
+.stk-line .stk-flame { flex: none; width: 26px; height: 26px; justify-content: center; border-radius: 99px; background: #2a2116; }
+.stk-line .stk-flame.wait { background: #242424; }
+.stk-line b { font-size: 14px; }
+.stk-next { display: block; color: #f2e2b8; font-weight: 600; }
+.stk-rule { display: block; margin-top: 2px; }
+.stk-panel .stk-line { margin: 0; padding: 0; border: 0; }
+.stk-result { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: #2a2116; color: #f5b83d; }
+.stk-result b { color: #f2e2b8; }
+.stk-result.mile { background: #3a2410; }
+.stk-result.mile b { color: #f5b83d; }

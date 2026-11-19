@@ -2,6 +2,7 @@
  * 회원 화면: 로그인·회원가입·비밀번호 찾기 (/login), 마이프로필 (/me), 랭킹 (/ranking)
  * 마이프로필은 홈에서만 들어옴 (게임 중엔 제한 시간 때문에 다른 화면으로 나가지 않게)
  */
+import { StreakLine } from '../components/Streak';
 import { copyText } from '../lib/copy';
 import { nickNotice } from '../game/nickname';
 import { useEffect, useState } from 'react';
@@ -558,6 +559,12 @@ export function MyProfilePage({ onBack, onLogin, onRanking, onRecords }: { onBac
           <b>{p.best_ret === null ? '-' : pct(p.best_ret, 1)}</b>
         </div>
       </section>
+
+      {acc.streak && (
+        <section className="panel pad stk-panel" aria-label="연속 기록">
+          <StreakLine s={acc.streak} showRule />
+        </section>
+      )}
 
       {acc.skills && <SkillPanel s={acc.skills} />}
 
