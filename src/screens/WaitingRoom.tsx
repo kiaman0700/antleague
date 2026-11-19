@@ -333,12 +333,26 @@ export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Pr
 
       <footer className="wr-bar">
         <div className="wr-status">
-          <b>
-            준비 {readyCount}/{view.players.length}
-          </b>
-          <span className="wr-ready-bar" aria-hidden>
-            <i style={{ width: `${view.players.length ? (readyCount / view.players.length) * 100 : 0}%` }} />
-          </span>
+          {/* 혼자일 땐 '준비 1/1'이 다 된 것처럼 보이므로, 시작할 수 있는 인원(2명)이 모이기 전엔 들어온 사람 수를 */}
+          {view.players.length < 2 ? (
+            <>
+              <b>
+                {view.players.length}/{room.maxPlayers}명 모임
+              </b>
+              <span className="wr-ready-bar" aria-hidden>
+                <i style={{ width: `${(view.players.length / Math.max(1, room.maxPlayers)) * 100}%` }} />
+              </span>
+            </>
+          ) : (
+            <>
+              <b>
+                준비 {readyCount}/{view.players.length}
+              </b>
+              <span className="wr-ready-bar" aria-hidden>
+                <i style={{ width: `${(readyCount / view.players.length) * 100}%` }} />
+              </span>
+            </>
+          )}
           <small className="muted">{isHost ? (canStart ? (awayNames ? `${awayNames} 님이 자리에 없어요. 그래도 시작할 수 있어요` : '모두 준비됐어요. 게임을 시작해 주세요') : view.players.length < 2 ? '한 명 더 들어오면 시작할 수 있어요' : `${notReady.map((p) => p.nickname).join(', ')} 님이 준비하길 기다려요`) : me?.ready ? '방장이 시작하면 바로 게임이 열려요' : '준비가 되면 준비 완료를 눌러 주세요'}</small>
           {(err || error) && <p className="error">{err || error}</p>}
         </div>

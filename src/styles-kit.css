@@ -2616,3 +2616,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 :root[data-device="tablet"] .nt-bar { max-width: 760px; }
 .tl-cell .tl-plus { position: absolute; top: -5px; right: -6px; white-space: nowrap; letter-spacing: -0.04em; font-style: normal; font-size: 8px; line-height: 1; font-weight: 800; color: var(--text-2, #c8c8c8); }
 .tl-cell.has > span { position: relative; }
+/* 빈 자리 두 버튼(친구 초대·봇 추가)을 같은 높이·같은 줄에 — 봇 추가만 위 여백이 있어 2px 내려가 보였음 */
+.slot-acts { align-items: center; }
+.slot .slot-acts .slot-add-bot { margin-top: 0; }
