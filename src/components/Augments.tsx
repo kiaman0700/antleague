@@ -63,7 +63,7 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             <Icon name="chart" size={16} /> 시세 보기
           </button>
         </div>
-        <div ref={listRef} className={'aug-list' + (chosen ? ' has-sel' : '')} role="radiogroup" aria-label="증강 3개">
+        <div ref={listRef} className={'aug-list aug-row3' + (chosen ? ' has-sel' : '')} role="radiogroup" aria-label="증강 3개">
           {offer.ids.map((id, i) => {
             const a = AUG_MAP[id];
             if (!a) return null;
@@ -72,19 +72,21 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             return (
               <div key={id} data-aug={id} className={'aug-opt' + (on ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
                 <button className="aug-card" role="radio" aria-checked={on} aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째`} onClick={() => setSel(id)} disabled={busy}>
-                  <AugBadge id={id} size={20} />
-                  <span className="aug-body">
-                    <b className="aug-name">
-                      {a.name}
-                      {recommend === id && <span className="aug-rec">처음이라면 추천</span>}
-                    </b>
-                    <span className="aug-desc">{a.desc}</span>
-                    <span className="aug-meta">
-                      {TAG_NAME[a.tag]}
-                      {c.map((x) => ' · ' + x)}
-                    </span>
+                  <span className={`aug-tier t-${a.tier}`}>{TIER_NAME[a.tier]}</span>
+                  <AugBadge id={id} size={30} />
+                  <b className="aug-name">{a.name}</b>
+                  {recommend === id && <span className="aug-rec">처음이라면 추천</span>}
+                  <span className="aug-desc">{a.desc}</span>
+                  <span className="aug-meta">
+                    {TAG_NAME[a.tag]}
+                    {c.map((x) => ' · ' + x)}
                   </span>
                   {on && <Icon name="check" size={18} className="aug-check" />}
+                  {/* 카드 뒷면 — 처음 뜰 때·다시 뽑을 때 뒤집히며 사라짐 */}
+                  <span className={`aug-back t-${a.tier}`} aria-hidden>
+                    <AugBackArt />
+                    <span className="aug-back-tier">{TIER_NAME[a.tier]}</span>
+                  </span>
                 </button>
                 {!recommend && <button className="btn ghost small aug-reroll" disabled={busy || !offer.canReroll[i]} onClick={() => (setSel(null), onReroll(i))} aria-label={`${i + 1}번째 칸 다시 뽑기`}>
                   <Icon name="refresh" size={14} /> {offer.canReroll[i] ? '다시 뽑기' : '다시 뽑기 끝'}
@@ -98,6 +100,16 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
         </button>
       </DialogBox>
     </div>
+  );
+}
+
+/** 카드 뒷면 무늬: 개미리그 V자 차트 한 줄 (등급 색은 CSS) */
+function AugBackArt() {
+  return (
+    <svg viewBox="0 0 40 40" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 12 L17 27 L22 21 L34 8" />
+      <path d="M28 8 L34 8 L34 14" />
+    </svg>
   );
 }
 
