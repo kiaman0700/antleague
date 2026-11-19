@@ -1805,3 +1805,7 @@ p { text-wrap: pretty; }
 .lg-tiers > span:not(.on) .lg-badge b { color: var(--text-3, #9a9a9a); }
 .title-tag { color: color-mix(in srgb, var(--gold) 82%, #fff); }
 .gs-invite { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: rgba(107, 88, 238, 0.14); border: 1px solid rgba(139, 123, 255, 0.35); color: var(--text, #f2f2f2); font-size: 13px; line-height: 1.5; }
+
+/* 의견 보내기: 개인정보 요청 안내 */
+.fb-privacy { margin: 8px 0 0; line-height: 1.55; }
+.fb-privacy a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

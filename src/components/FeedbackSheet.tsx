@@ -9,6 +9,10 @@ import { useState } from 'react';
 import { api } from '../net/api';
 import { Icon } from './Icon';
 import { Sheet } from './PrefsPanel';
+import { OPERATOR } from './Legal';
+
+/** 운영자 연락 메일 (공개 동의된 VITE_OPERATOR_CONTACT 에서 메일 주소만) */
+const OPERATOR_EMAIL = OPERATOR.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/)?.[0] ?? '';
 
 export type FeedbackKind = 'bug' | 'idea' | 'privacy' | 'etc';
 
@@ -62,7 +66,7 @@ export function FeedbackSheet({ onClose, initialKind = 'bug', initialText = '', 
       {state === 'done' ? (
         <div className="fb-done">
           <Icon name="check" size={28} />
-          <p>보내 주셔서 고마워요! 운영자가 꼼꼼히 읽고 고칠게요.</p>
+          <p>{kind === 'privacy' ? '보내 주셔서 고마워요. 운영자가 확인할게요.' : '보내 주셔서 고마워요! 운영자가 꼼꼼히 읽고 고칠게요.'}</p>
           <button className="btn primary" onClick={onClose}>
             닫기
           </button>
@@ -80,7 +84,19 @@ export function FeedbackSheet({ onClose, initialKind = 'bug', initialText = '', 
           <small className="muted">
             {text.length}/1000 · 이름·연락처 같은 개인정보는 적지 말아 주세요. 고치는 데 필요한 화면 크기·브라우저 종류는 자동으로 함께 보내져요.
           </small>
-          {err && <p className="error">{err}</p>}
+          {kind === 'privacy' && (
+            <p className="fb-privacy muted small">
+              회원 탈퇴·내 데이터 지우기는 마이프로필(손님은 업적 화면) 맨 아래에서 바로 할 수 있어요. 여기 보낸 글에는 답장을 드릴 수 없어요
+              {OPERATOR_EMAIL ? (
+                <>
+                  . 답이 필요하면 메일로 보내 주세요: <a href={`mailto:${OPERATOR_EMAIL}`}>{OPERATOR_EMAIL}</a>
+                </>
+              ) : (
+                '.'
+              )}
+            </p>
+          )}
+          {err && <p className="error" role="alert">{err}</p>}
           <div className="modal-actions">
             <button className="btn ghost" onClick={onClose}>
               취소
