@@ -1,3 +1,4 @@
+import { useFlip } from '../lib/flip';
 import { useEffect as useEffectT, useState as useStateT } from 'react';
 import { useDialogFocus, useEscape } from './ui';
 import { FitText } from './FitText';
@@ -65,10 +66,12 @@ export function rankRows(players: PublicPlayer[], meId: string, myEquity: number
 
 /** PC 점수줄: 가로 순위 칩 */
 export function RankStrip({ rows }: { rows: RankRow[] }) {
+  // 순위가 바뀌면 칸이 새 자리로 미끄러짐
+  const flip = useFlip<HTMLDivElement>(rows.map((r) => r.id).join(','));
   return (
-    <div className="rank-strip" role="list" aria-label="순위">
+    <div ref={flip} className="rank-strip" role="list" aria-label="순위">
       {rows.map((r, i) => (
-        <div key={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + ((r.rank ?? i + 1) === 1 ? ' lead' : '')}>
+        <div key={r.id} data-flip={r.id} role="listitem" className={'rank-chip' + (r.me ? ' me' : '') + ((r.rank ?? i + 1) === 1 ? ' lead' : '')}>
           <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
           <PlayerPic r={r} size={26} />
           <span className="rn">
@@ -143,11 +146,12 @@ export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds 
 
 /** 모바일 시트 / 어디서나 쓰는 세로 순위표 */
 export function RankList({ rows }: { rows: RankRow[] }) {
+  const flip = useFlip<HTMLDivElement>(rows.map((r) => r.id).join(','));
   return (
-    <div className="rank-list">
+    <div ref={flip} className="rank-list">
       <p className="muted small">상대의 재산과 수익률은 보이지만, 무엇을 샀는지는 보이지 않아요.</p>
       {rows.map((r, i) => (
-        <div key={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
+        <div key={r.id} data-flip={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>
           <PlayerPic r={r} size={30} />
           <span className="rn">
