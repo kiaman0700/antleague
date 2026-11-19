@@ -1105,16 +1105,29 @@ function Rooms({ go, onWaiting }: Pick<Props, 'go' | 'onWaiting'>) {
 
   const [loadErr, setLoadErr] = useState(false);
   const load = () => {
-    if (!online) return;
+    // 6초 타이머가 처음 그릴 때의 online 값을 계속 쥐고 있어서, 끊긴 채 열면 다시 연결돼도 안 받던 것 → 지금 값으로
+    if (!navigator.onLine) return;
     api<RoomInfo[]>('rooms')
       .then((r) => (setRooms(r), setLoadErr(false)))
       .catch(() => (setRooms((x) => x ?? []), setLoadErr(true)));
   };
   useEffect(() => {
-    load();
-    const id = setInterval(load, 6000);
-    return () => clearInterval(id);
+    // 처음 받기는 아래 [online] 효과가 함 (두 번 묻지 않게)
+    // 창이 보일 때만 6초마다 (뒤에 숨은 창이 계속 묻지 않게), 다시 보이면 바로 새로
+    const id = setInterval(() => document.visibilityState === 'visible' && load(), 6000);
+    const onVis = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 인터넷이 다시 연결되면 바로 새로
+  useEffect(() => {
+    if (online) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const shown = (rooms ?? []).filter((r) => filter === 'all' || (filter === 'private' ? r.isPrivate : !r.isPrivate));
 
