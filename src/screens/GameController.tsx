@@ -1796,7 +1796,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               <small className={tone(q.ch)}>{pct(q.ch)}</small>
             </div>
             {!tradeState.allowed && tradeState.reason && <small className="mt-why">{tradeState.reason}</small>}
-            <button className="btn sell" disabled={!tradeState.allowed || held === 0} title={held === 0 ? '아직 갖고 있는 주식이 없어요' : undefined} onClick={() => setSheet('sell')}>
+            {/* 가진 주식이 없을 때: 꺼 두기만 하면 휴대폰에서는 눌러도 반응이 없어 까닭을 몰랐음 → 흐리게 두고 누르면 짧게 알림 */}
+            <button
+              className={'btn sell' + (tradeState.allowed && held === 0 ? ' is-off' : '')}
+              disabled={!tradeState.allowed}
+              aria-disabled={held === 0 || undefined}
+              onClick={() => (held === 0 ? showToast('아직 갖고 있는 주식이 없어요. 먼저 사야 팔 수 있어요', 'warn') : setSheet('sell'))}
+            >
               {easy ? '팔기' : '매도'}
             </button>
             <button className="btn buy" disabled={!tradeState.allowed} onClick={() => setSheet('buy')}>
