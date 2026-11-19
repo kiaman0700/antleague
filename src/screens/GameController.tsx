@@ -630,7 +630,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       const a = rows[rows.length - 1].payload?.amount;
       bonusSeen.current = rows.length;
       if (typeof a === 'number') {
-        play(a >= 0 ? 'win' : 'error');
+        play(a >= 0 ? 'win' : 'lose');
         showToast(a >= 0 ? `용돈 봉투! 현금 +${wonShort(a)}` : `앗, 봉투에서 ${wonShort(-a)}이 빠져나갔어요`, a >= 0 ? 'ok' : 'warn');
       }
     }

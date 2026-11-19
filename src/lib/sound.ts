@@ -4,6 +4,8 @@ import { loadMute, saveMute } from '../session';
 type Sfx = 'buy' | 'sell' | 'news' | 'close' | 'item' | 'attack' | 'blocked' | 'win' | 'lose' | 'react' | 'tap' | 'error';
 
 let ctx: AudioContext | null = null;
+/** 모든 소리가 거쳐 가는 전체 음량 — 여러 소리가 겹쳐도 한꺼번에 너무 커지지 않게 */
+let master: GainNode | null = null;
 let muted = loadMute();
 
 export const isMuted = () => muted;
@@ -20,8 +22,12 @@ function ac() {
     const C = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;
     ctx = new C();
+    master = ctx.createGain();
+    master.gain.value = 0.7;
+    master.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  // 아이폰은 다른 앱을 다녀오면 'interrupted' 로 멈춰 있음
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
   return ctx;
 }
 
@@ -37,7 +43,7 @@ function tone(freq: number, start: number, dur: number, type: OscillatorType = '
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(a.destination);
+  o.connect(g).connect(master ?? a.destination);
   o.start(t0);
   o.stop(t0 + dur + 0.02);
 }
@@ -52,8 +58,16 @@ const VIBE: Partial<Record<Sfx, number | number[]>> = {
   react: 15,
 };
 
+/** 같은 소리는 0.4초에 한 번, 다른 소리도 0.08초 안에 겹치면 건너뜀 (속보·알림이 한꺼번에 와도 한 번만) */
+const lastAt = new Map<Sfx, number>();
+let lastAny = 0;
+
 export function play(s: Sfx) {
   if (muted) return;
+  const now = performance.now();
+  if (now - (lastAt.get(s) ?? -1e9) < 400 || now - lastAny < 80) return;
+  lastAt.set(s, now);
+  lastAny = now;
   try {
     switch (s) {
       case 'buy':

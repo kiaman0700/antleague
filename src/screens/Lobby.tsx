@@ -2200,7 +2200,7 @@ function SoundSetting() {
       <div className="ms-row">
         <span>
           <b>효과음</b>
-          <small className="muted">장 마감, 체결, 매칭 때 소리가 나요</small>
+          <small className="muted">게임 중 알림과 버튼 소리 · 끄면 진동도 꺼져요</small>
         </span>
         <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} aria-label="효과음" onClick={() => (setMuted(!m), setM(!m))}>
           <i />

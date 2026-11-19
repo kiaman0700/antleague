@@ -134,7 +134,11 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   useEffect(() => {
     if (played.current || solo) return;
     played.current = true;
-    play(winner?.id === session.playerId ? 'win' : 'lose');
+    // 1위만 축하, 위쪽 절반은 담담하게, 아래쪽만 아쉬운 소리 (다인전 2위가 진 소리를 듣지 않게)
+    const n = final.players.length;
+    const r = rankOf(session.playerId);
+    play(winner?.id === session.playerId ? 'win' : n > 2 && r < n / 2 ? 'close' : 'lose');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solo, winner, session.playerId]);
 
   const indexRet = market.index[last].close / KR_INDEX_BASE - 1;
