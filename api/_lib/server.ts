@@ -719,7 +719,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       let psRes = await sb.from('players').select('id, room_id, user_id, last_seen, bot_level').in('room_id', rooms.map((r) => r.id));
       if (psRes.error && /last_seen|bot_level/.test(psRes.error.message)) psRes = (await sb.from('players').select('id, room_id, user_id').in('room_id', rooms.map((r) => r.id))) as typeof psRes;
       const ps = must(psRes, 'quick players') as { id: string; room_id: string; user_id: string | null; last_seen?: string | null; bot_level?: number | null }[];
-      const blk = ((await sb.from('blocks').select('blocker, blocked').or(`blocker.eq.${uid},blocked.eq.${uid}`).limit(500)).data ?? []) as { blocker: string; blocked: string }[];
+      // 차단 목록을 못 읽으면 막힌 사람과 만날 수 있으니 그냥 지나가지 않고 멈춤
+      const blk = must(await sb.from('blocks').select('blocker, blocked').or(`blocker.eq.${uid},blocked.eq.${uid}`).limit(500), 'quick blocks') as { blocker: string; blocked: string }[];
       const avoid = new Set(blk.map((x) => (x.blocker === uid ? x.blocked : x.blocker)));
       const cands = rooms
         .map((r) => ({ r, mine: ps.filter((p) => p.room_id === r.id) }))
@@ -1575,7 +1576,7 @@ async function friendOf(uid: string, friendId: unknown): Promise<string> {
   const r = (await sb.from('friendships').select('user_a, user_b, status').eq('id', friendId).maybeSingle()).data as { user_a: string; user_b: string; status: string } | null;
   if (!r || r.status !== 'accepted' || (r.user_a !== uid && r.user_b !== uid)) throw new GameError('친구를 찾을 수 없어요.', 404);
   const other = r.user_a === uid ? r.user_b : r.user_a;
-  const blk = (await sb.from('blocks').select('id').or(`and(blocker.eq.${uid},blocked.eq.${other}),and(blocker.eq.${other},blocked.eq.${uid})`).limit(1)).data ?? [];
+  const blk = must(await sb.from('blocks').select('id').or(`and(blocker.eq.${uid},blocked.eq.${other}),and(blocker.eq.${other},blocked.eq.${uid})`).limit(1), 'friend blocks') as { id: string }[];
   // 차단 관계면 (상대가 나를 차단한 경우 포함) 조용히 아무 일도 없게 — 차단 사실을 알 수 없도록 성공처럼 보임
   if (blk.length) throw Object.assign(new GameError('보냈어요.', 200), { silent: true });
   return other;
@@ -1587,7 +1588,7 @@ async function areFriends(a: string, b: string) {
   const pr = a < b ? { user_a: a, user_b: b } : { user_a: b, user_b: a };
   const f = (await sb.from('friendships').select('status').eq('user_a', pr.user_a).eq('user_b', pr.user_b).maybeSingle()).data as { status: string } | null;
   if (!f || f.status !== 'accepted') return false;
-  const blk = (await sb.from('blocks').select('id').or(`and(blocker.eq.${a},blocked.eq.${b}),and(blocker.eq.${b},blocked.eq.${a})`).limit(1)).data ?? [];
+  const blk = must(await sb.from('blocks').select('id').or(`and(blocker.eq.${a},blocked.eq.${b}),and(blocker.eq.${b},blocked.eq.${a})`).limit(1), 'pair blocks') as { id: string }[];
   return blk.length === 0;
 }
 

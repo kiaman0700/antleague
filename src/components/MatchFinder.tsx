@@ -9,6 +9,10 @@ import { SPEED_PRESET, waitLabel, type QueueKind, type QueueSize, type QueueSpee
 import { Icon } from './Icon';
 import { loadNick } from '../session';
 import { StageChart } from './StageChart';
+import { useAccount } from '../net/account';
+import { useMissions } from './Missions';
+import { ToonIcon } from './ToonIcon';
+import { pct, tone } from '../lib/format';
 
 export type { Matched };
 
@@ -205,6 +209,8 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
   );
 
   const preset = SPEED_PRESET[pref.speed];
+  const acc = useAccount();
+  const returning = acc.status === 'member' && ((acc.profile?.games ?? 0) > 0 || acc.recent.length > 0);
   const minutes = preset.minutes.replace('약 ', '');
   const nWait = waitingIn(sizeEff, pref.speed);
   const findLabel = joining ? '준비 중…' : inParty && !party!.isLeader ? '파티장만 찾을 수 있어요' : inParty && party!.waiting ? '파티원이 돌아오길 기다려요' : stage ? '대결 찾기' : `${kind === 'ranked' ? '랭킹전' : '일반전'} ${inParty ? '파티로 ' : ''}찾기`;
@@ -214,16 +220,21 @@ export function MatchFinder({ member, loading, fixedKind, guard, nickname, nickO
     return (
       <section className={'mf-stage' + (searching ? ' is-searching' : '')} aria-label={`${kind === 'ranked' ? '랭킹전' : '일반전'} 대결 찾기`}>
         <StageChart />
-        <div className="st-copy">
+        <div className={'st-copy' + (returning ? ' is-back' : '')}>
           <span className="st-eyebrow">{kind === 'ranked' ? '랭킹전 · 이기면 점수가 올라요' : '일반전 · 점수 없이 가볍게'}</span>
-          <h1 className="st-title">
+          <h1 className={'st-title' + (returning ? ' sm' : '')}>
             {sizeEff === 'duel' ? '두 명이 겨루는' : '3~4명이 겨루는'}
-            <br />
+            {returning ? ' ' : <br />}
             {minutes} 한 판
           </h1>
-          <p className="st-desc">
-            같은 시장, 같은 뉴스. {preset.days}일 동안 하루 {preset.turnSeconds}초씩 사고팔아 마지막 날 재산이 많은 사람이 이겨요.
-          </p>
+          {/* 다시 온 사람은 규칙 설명 대신 내 진행 한 줄 (처음 온 사람에게만 설명) */}
+          {returning ? (
+            <ProgressStrip />
+          ) : (
+            <p className="st-desc">
+              같은 시장, 같은 뉴스. {preset.days}일 동안 하루 {preset.turnSeconds}초씩 사고팔아 마지막 날 재산이 많은 사람이 이겨요.
+            </p>
+          )}
         </div>
         <div className="st-pick">
           <div className="st-field">
@@ -456,5 +467,35 @@ export function PlayPicker({ member, inParty, onFind, onLogin }: { member: boole
         <Icon name="search" size={16} /> 이대로 찾기
       </button>
     </section>
+  );
+}
+
+/** 다시 온 회원: 오늘 미션 · 연속 기록 · 지난 판 — 값이 없는 칩은 빼고, 자리는 늘 잡아 둠(불러와도 화면이 튀지 않게) */
+function ProgressStrip() {
+  const acc = useAccount();
+  const { info } = useMissions(true);
+  const today = info?.today.list ?? [];
+  const done = today.filter((m) => m.done).length;
+  const s = acc.streak;
+  const last = acc.recent[0];
+  return (
+    <div className="st-strip" aria-label="내 진행">
+      {today.length > 0 && (
+        <span className={'st-chip' + (done === today.length ? ' all' : '')} aria-label={`오늘 미션 ${today.length}개 중 ${done}개 완료`}>
+          {done === today.length ? '미션 완료' : `미션 ${done}/${today.length}`}
+        </span>
+      )}
+      {s && s.streak > 0 && (
+        <span className={'st-chip' + (s.playedToday ? '' : ' wait')} aria-label={`연속 ${s.streak}일${s.playedToday ? '' : ', 오늘은 아직'}`}>
+          <ToonIcon name="flame" size={16} /> 연속 {s.streak}일
+        </span>
+      )}
+      {last && (
+        <span className="st-chip" aria-label={`지난 판 ${last.players}명 중 ${last.rank}위, 수익률 ${pct(last.ret, 1)}`}>
+          지난 판 {last.players > 1 ? `${last.rank}위 ` : ''}
+          <b className={tone(last.ret)}>{pct(last.ret, 1)}</b>
+        </span>
+      )}
+    </div>
   );
 }

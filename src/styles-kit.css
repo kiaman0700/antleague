@@ -2063,3 +2063,13 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .result .banner .crown { display: none; }
 .result .banner h1 { font-size: 18px; margin: 0 0 2px; }
 .result .banner p { font-size: 14px; margin: 2px 0 0; }
+
+/* 다시 온 회원: 제목은 작게 한 줄, 설명 대신 진행 칩 (설명은 처음 온 사람에게만) */
+.st-copy.is-back { gap: 4px; }
+.st-title.sm { font-size: clamp(26px, 2.6vw, 36px) !important; line-height: 1.2; }
+.st-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 32px; }
+.st-chip { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--surface-3); color: var(--text-2, #c8c8c8); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st-chip.all { border-color: rgba(139, 123, 255, 0.6); color: #fff; }
+.st-chip.wait svg { opacity: 0.45; }
+:root:not([data-device="pc"]) .st-chip { height: 36px; }
+:root:not([data-device="pc"]) .st-title.sm { font-size: 24px !important; }
