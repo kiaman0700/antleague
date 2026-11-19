@@ -66,3 +66,14 @@
 .rbar.is-down .rbar-track > i { background: #6a6a74; }
 .rbar small { color: #a6a6ae; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .rbar-em { animation: none; } }
+
+/* 결과 화면: 띠 → 수익률 → 나머지 칸이 차례로 (한 번만, 짧게). 움직임 줄이기면 그대로 */
+@keyframes rsIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.result.rs-wide .banner { animation: rsIn 300ms ease-out both; }
+.result.rs-wide .rs-main > .panel, .result.rs-wide .rs-side > * { animation: rsIn 320ms ease-out both; }
+.result.rs-wide .rs-main > .panel:nth-child(1) { animation-delay: 150ms; }
+.result.rs-wide .rs-side > :nth-child(1) { animation-delay: 1100ms; }
+.result.rs-wide .rs-side > :nth-child(2) { animation-delay: 1250ms; }
+.result.rs-wide .rs-side > :nth-child(n + 3) { animation-delay: 1400ms; }
+.result.rs-wide .rs-main > .panel:nth-child(n + 2) { animation-delay: 1250ms; }
+@media (prefers-reduced-motion: reduce) { .result.rs-wide .banner, .result.rs-wide .rs-main > .panel, .result.rs-wide .rs-side > * { animation: none; } }

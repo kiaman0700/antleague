@@ -331,11 +331,12 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
   // 공유 카드의 날마다 오름·내림 칸: 증강으로 들어온 돈은 빼고 (투자로 번 날만 빨강)
   const myAug = final.augIncome?.[me.id] ?? [];
   const tradeDeltas = me.hist.slice(1).map((v, d) => v - me.hist[d] - myAug.filter((x) => x.day === d).reduce((sum, x) => sum + x.amount, 0));
+  // 결과의 핵심 숫자는 0에서 차오르며 나타남 (띠가 먼저 뜬 뒤)
+  const retShown = useRiseTo(me.ret, 350, 900);
   const heroEl = (
-    <div className="panel rs-hero orn orn-amethyst orn-thin">
-      <OrnCorners tone="amethyst" plain />
+    <div className="panel rs-hero">
       <span className="rh-rank">{solo ? (matchKind === 'daily' ? '오늘의 도전' : '연습') + ' · 내 수익률' : `${myRank0 + 1}위 · ${results.length}명 중`}</span>
-      <b className={'rh-ret ' + tone(me.ret)}>{pct(me.ret)}</b>
+      <b className={'rh-ret ' + tone(me.ret)}>{pct(retShown)}</b>
       <span className="rh-won">
         {won(me.equity)} <em className={tone(gain)}>({gain >= 0 ? '+' : '−'}{wonShort(Math.abs(gain))})</em>
       </span>
@@ -933,4 +934,22 @@ function GuestSave({ won, badges }: { won: boolean; badges: number }) {
       </div>
     </div>
   );
+}
+
+/** 0에서 목표 값까지 한 번 차오름 (기다렸다가, 끝으로 갈수록 느리게). 움직임 줄이기면 바로 목표 값 */
+function useRiseTo(target: number, delay: number, dur: number) {
+  const [v, setV] = useState(() => (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? target : 0));
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return setV(target);
+    let raf = 0;
+    const t0 = performance.now() + delay;
+    const step = (t: number) => {
+      const k = Math.min(1, Math.max(0, (t - t0) / dur));
+      setV(target * (1 - (1 - k) ** 3));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, delay, dur]);
+  return v;
 }
