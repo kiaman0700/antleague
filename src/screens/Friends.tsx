@@ -214,7 +214,7 @@ export function FriendsPage({ onSignup, onLogin }: { onSignup: () => void; onLog
                   </small>
                 </span>
                 <span className="fr-act">
-                  <button className="btn sm primary" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: true }), `${f.nickname} 님과 친구가 됐어요!`)}>
+                  <button className="btn sm" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: true }), `${f.nickname} 님과 친구가 됐어요!`)}>
                     수락
                   </button>
                   <button className="btn sm ghost" disabled={busy} onClick={() => run(() => api('friendRespond', { id: f.id, accept: false }))}>

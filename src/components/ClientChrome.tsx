@@ -209,7 +209,7 @@ export function SocialPanel({
   return (
     <aside className="cl-social" aria-label="친구·파티">
       <div className="cs-head">
-        <b>소셜</b>
+        <b>친구</b>
         {member && <small className="muted">{friends.filter((f) => f.status !== 'offline').length}명 접속 중</small>}
         <span className="grow" />
         {member && (

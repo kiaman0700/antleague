@@ -82,7 +82,8 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
     await api('partyLeave').catch(() => {});
     await reload();
   };
-  const online = (friends?.friends ?? []).filter((f) => f.status !== 'offline');
+  // 게임 중인 친구는 바로 답할 수 없어서 접속 중인 친구만
+  const online = (friends?.friends ?? []).filter((f) => f.status === 'online');
 
   return (
     <section className="panel pad party-panel">
@@ -122,7 +123,7 @@ export function PartyPanel({ party, reload }: { party: PartyState | null; reload
       {open && canInvite && (
         <div className="party-invite">
           {!friends && <Loading inline />}
-          {friends && online.length === 0 && <p className="muted small">지금 접속 중인 친구가 없어요.</p>}
+          {friends && online.length === 0 && <p className="muted small">{friends.friends.length === 0 ? '아직 친구가 없어요. 친구 화면에서 먼저 친구를 추가해 주세요.' : '지금 접속 중인 친구가 없어요.'}</p>}
           <ul className="fr-list">
             {online.map((f) => (
               <li key={f.id} className="fr-row">
