@@ -261,10 +261,12 @@ function rateLimit(key: string, max: number, windowMs: number) {
 }
 
 /* ---------------- DB 헬퍼 ---------------- */
-function must<T>(res: { data: T | null; error: { message: string } | null }, what: string): T {
+function must<T>(res: { data: T | null; error: { message: string; code?: string } | null }, what: string): T {
   if (res.error) {
     console.error(`[db] ${what}:`, res.error.message);
-    throw new Error('db');
+    // 오류 기록(server_errors)에는 어느 조회인지(코드 속 이름)와 DB 오류 번호만 — DB 문구는 값이 섞일 수 있어 남기지 않음.
+    // 'db' 한 단어만 남아 무엇이 실패했는지 알 수 없었음
+    throw new Error(`db ${what}${res.error.code ? ' ' + String(res.error.code).slice(0, 8) : ''}`);
   }
   return res.data as T;
 }
