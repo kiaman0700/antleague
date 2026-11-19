@@ -923,13 +923,14 @@ export function TradePanel({
           </small>
         )}
         <div className="qty-meta">
+          {/* 예약 가격이 범위를 벗어났으면 그 가격으로 계산한 '최대 n주'는 틀린 숫자라 감춤 (1원을 넣으면 최대 99만 주로 보였음) */}
           <small className="muted">
-            최대 {num(maxQty)}주 · 1주{" "}
+            {kind === "limit" && limitText && !limitOk ? <>예약 가격을 먼저 맞춰 주세요</> : <>최대 {num(maxQty)}주 · 1주{" "}
             {kind === "limit" && limitNative > 0
               ? fmtN(limitNative)
               : isUS
                 ? `${fmtUsd(native)} ≈ ${num(price)}원`
-                : `${num(price)}원`}
+                : `${num(price)}원`}</>}
           </small>
           <div className="steppers">
             <button
@@ -968,7 +969,7 @@ export function TradePanel({
               <button
                 key={l}
                 onClick={() => addMoney(w)}
-                disabled={!trade.allowed || maxQty === 0}
+                disabled={!trade.allowed || maxQty === 0 || (kind === "limit" && !!limitText && !limitOk)}
               >
                 {l}
               </button>
@@ -977,7 +978,7 @@ export function TradePanel({
               <button
                 key={f}
                 onClick={() => setFrac(f)}
-                disabled={!trade.allowed || maxQty === 0}
+                disabled={!trade.allowed || maxQty === 0 || (kind === "limit" && !!limitText && !limitOk)}
               >
                 {easy
                   ? f === 0.5
@@ -990,7 +991,7 @@ export function TradePanel({
             ))}
         <button
           onClick={() => setFrac(1)}
-          disabled={!trade.allowed || maxQty === 0}
+          disabled={!trade.allowed || maxQty === 0 || (kind === "limit" && !!limitText && !limitOk)}
         >
           {easy ? (side === "buy" ? "살 수 있는 만큼" : "전부") : "최대"}
         </button>
