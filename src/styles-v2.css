@@ -87,3 +87,9 @@
 @media (prefers-reduced-motion: reduce) {
   :root[data-ui='v2'] :is(.st-btn.btn, .cl-play, .wr-go, .btn.primary, .end-turn, .m-end2, .st-qbtn) { transition: none; }
 }
+
+/* ── 제목용 글꼴: 큰 제목과 화면 이름에만 (본문·표 숫자는 Pretendard 그대로) ── */
+:root[data-ui='v2'] { --disp: 'Black Han Sans', Pretendard, sans-serif; }
+:root[data-ui='v2'] :is(.st-title, .hub-head h1, .page-head h2, .aug-stage .aug-name) { font-family: var(--disp); font-weight: 400; letter-spacing: 0; }
+:root[data-ui='v2'] .st-title { line-height: 1.12; }
+:root[data-ui='v2'] :is(.st-btn.btn, .cl-play > span) { font-family: var(--disp); font-weight: 400; letter-spacing: 0.01em; }
