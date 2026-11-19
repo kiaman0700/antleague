@@ -1164,8 +1164,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       inlineTrade={false}
     />
   );
-  const newsPanel = (
+  const newsPanelFor = (only?: 'news' | 'rumor') => (
     <NewsPanel
+      only={only}
       daySec={(view.room.rulesVersion ?? 1) >= GAME_TIME_VERSION ? (view.room.turnSeconds > 0 ? view.room.turnSeconds : 180) : undefined}
       posts={view.community}
       pastPosts={market?.community}
@@ -1189,6 +1190,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       totalDays={total}
     />
   );
+  const newsPanel = newsPanelFor();
   const assets = (
     <>
       <AssetsPanel ui={ui} portfolio={portfolio} prices={prices} equity={equity} start={START_CASH} onSelect={selectStock} />
@@ -1255,7 +1257,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {newsBig && !mobile && (
         <Sheet title={<>오늘의 소식</>} onClose={() => setNewsBig(false)} wide>
           {/* 관련 종목·업종을 누르면 그 차트로 가면서 창을 닫음 */}
-          <div className="news-big" onClickCapture={(e) => (e.target as Element).closest(".rel-chip, .rb-sec, .linkish-soft") && setTimeout(() => setNewsBig(false), 0)}>{newsPanel}</div>
+          <div className="news-big" onClickCapture={(e) => (e.target as Element).closest(".rel-chip, .rb-sec, .linkish-soft") && setTimeout(() => setNewsBig(false), 0)}>
+            {/* 넓은 화면은 뉴스와 커뮤니티를 나란히 (크게 보기인데 한쪽씩 바꿔 보면 오른쪽 칸과 다를 게 없었음), 좁으면 예전처럼 하나 */}
+            <div className="nb-two">{newsPanelFor('news')}{newsPanelFor('rumor')}</div>
+            <div className="nb-one">{newsPanel}</div>
+          </div>
         </Sheet>
       )}
       {exitAsk && (

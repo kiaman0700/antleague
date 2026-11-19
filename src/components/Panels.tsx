@@ -19,6 +19,8 @@ import type { PublicPost } from '../game/community';
 /* ------------------------------ 뉴스 ------------------------------ */
 
 interface NewsProps {
+  /** 한쪽만 고정해서 보여 줌 (크게 보기에서 뉴스·커뮤니티를 나란히 둘 때) — 맨 위 [뉴스|커뮤니티] 고르기는 숨김 */
+  only?: 'news' | 'rumor';
   /** (v20) 오늘 장중에 올라온 커뮤니티·SNS 글 / 지난 날 글 / 장이 열려 있는지 */
   posts?: PublicPost[];
   pastPosts?: PublicPost[];
@@ -162,11 +164,12 @@ function snsFace(seed: string) {
   };
 }
 
-export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen, daySec }: NewsProps) {
+export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSector, spy, scout, blackout, prices, change, onSelect, onSelectSector, fresh, rumors, pre, totalDays, posts, pastPosts, marketOpen, daySec }: NewsProps) {
   const isFresh = (n: NewsEvent) => !!fresh?.has(n.day + ':' + n.headline);
   const [showOld, setShowOld] = useState(false);
   // 뉴스와 찌라시는 따로: 맨 위 [뉴스|찌라시], 뉴스 안에서 전체 / n일차
-  const [mode, setMode] = useState<'news' | 'rumor'>('news');
+  const [modeRaw, setMode] = useState<'news' | 'rumor'>(only ?? 'news');
+  const mode = only ?? modeRaw;
   const [cat, setCat] = useState<'all' | number>('all');
   useEffect(() => setCat('all'), [day]);
   // 날짜 칩 줄: 오늘 칩이 줄 가운데에 오게 (긴 게임에서 오늘이 오른쪽 밖에 숨지 않게 — 그 줄만 옆으로 움직임)
@@ -254,14 +257,14 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
   return (
     <div className="news-panel">
       {/* 맨 위: 뉴스 / 찌라시 (정식 기사와 소문을 따로) */}
-      <div className="news-mode" role="tablist" aria-label="뉴스와 커뮤니티">
+      {only ? <h4 className="news-only-h">{only === 'news' ? '뉴스' : '커뮤니티·소문'}</h4> : <div className="news-mode" role="tablist" aria-label="뉴스와 커뮤니티">
         <button role="tab" aria-selected={mode === 'news'} className={mode === 'news' ? 'on' : ''} onClick={() => setMode('news')}>
           뉴스{dot(mode === 'news' ? 0 : unreadOf(day))}
         </button>
         <button role="tab" aria-selected={mode === 'rumor'} className={mode === 'rumor' ? 'on' : ''} onClick={() => setMode('rumor')}>
           커뮤니티{rumorCount > 0 && mode !== 'rumor' && unreadRumors === 0 ? <span className="nm-count">{rumorCount}</span> : dot(mode === 'rumor' ? 0 : unreadRumors)}
         </button>
-      </div>
+      </div>}
       {/* 뉴스: 전체(맨 앞 고정) · 1~마지막 날 (아직 안 온 날은 꺼짐) */}
       {mode === 'news' && (
         <div className="news-cats" role="tablist" aria-label="날짜">

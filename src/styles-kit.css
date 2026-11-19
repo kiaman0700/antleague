@@ -2636,3 +2636,14 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .chart-full .pc-svg .now-mark rect, .chart-full .pc-svg .now-mark text { transform-box: fill-box; transform-origin: center; transform: scale(0.66); }
   .chart-full .pc-seg button, .chart-full .pc-tools button { font-size: 14px; }
 }
+
+/* 뉴스 크게 보기: 넓은 화면은 뉴스(왼쪽)·커뮤니티(오른쪽)를 나란히, 칸마다 따로 내림 */
+.news-big .nb-two { display: none; }
+.news-only-h { margin: 0 0 10px; font-size: 16px; font-weight: 800; }
+@media (min-width: 1180px) {
+  .sheet-modal.wide:has(.nb-two) { max-width: 1160px; width: calc(100vw - 80px); }
+  .news-big .nb-one { display: none; }
+  .news-big .nb-two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; height: calc(86vh - 96px); }
+  .news-big .nb-two > .news-panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; scrollbar-width: thin; }
+  .news-big .nb-two > .news-panel + .news-panel { border-left: 1px solid var(--line, #242424); padding-left: 24px; }
+}
