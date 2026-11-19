@@ -1850,3 +1850,16 @@ p { text-wrap: pretty; }
 .theme-card small { display: block; color: var(--text-3, #9a9a9a); font-size: 12px; }
 .theme-card b { display: block; font-size: 15px; }
 .theme-card .theme-text { display: block; margin-top: 2px; color: var(--text-2, #c8c8c8); font-size: 13px; }
+
+/* 움직임 공통 값 (토스·애플·머티리얼 조사): 들어옴 감속 · 나감 가속 · 자리 이동, 길이 100·180·260·380ms */
+:root {
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
+}
+/* 로비 화면끼리 옮길 때 짧게 겹쳐 바뀜 (View Transitions, 지원 안 하면 그냥 바뀜) */
+::view-transition-old(root) { animation-duration: 140ms; animation-timing-function: var(--ease-in); }
+::view-transition-new(root) { animation-duration: 200ms; animation-timing-function: var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}

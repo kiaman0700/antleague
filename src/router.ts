@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { LobbyPage } from './screens/Lobby';
 import type { Session } from './session';
 import { onLayerEntry } from './components/ui';
@@ -49,13 +50,30 @@ function initial(): Route {
   return routeFromPath(location.pathname);
 }
 
+/** 화면 전환 겹치기를 써도 되는지 (지원 브라우저 + 움직임 줄이기 아님 + 창이 보임) */
+function canFade() {
+  const d = document as Document & { startViewTransition?: unknown };
+  return typeof d.startViewTransition === 'function' && document.visibilityState === 'visible' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function startFade(update: () => void) {
+  try {
+    (document as Document & { startViewTransition: (cb: () => void) => unknown }).startViewTransition(update);
+  } catch {
+    update();
+  }
+}
+
 export function useRouter() {
   const [route, setRoute] = useState<Route>(initial);
+  const routeRef = useRef(route);
+  routeRef.current = route;
 
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
       const st = e.state as Route | null;
-      setRoute(st && st.kind ? st : routeFromPath(location.pathname));
+      const next = st && st.kind ? st : routeFromPath(location.pathname);
+      if (next.kind === 'lobby' && routeRef.current.kind === 'lobby' && canFade()) startFade(() => flushSync(() => setRoute(next)));
+      else setRoute(next);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -73,8 +91,13 @@ export function useRouter() {
     // 창(모달 등) 안에서 다른 화면으로 옮기면 그 창이 넣어 둔 기록 자리를 바꿈 — 쓸모없는 기록이 남아 뒤로 가기를 한 번 더 눌러야 하지 않게
     if (opts.replace || onLayerEntry()) history.replaceState(r, '', url);
     else history.pushState(r, '', url);
-    setRoute(r);
-    window.scrollTo(0, 0);
+    const apply = () => {
+      setRoute(r);
+      window.scrollTo(0, 0);
+    };
+    // 로비 화면끼리 옮길 때만 짧게 겹쳐 바꿈(View Transitions) — 게임 화면은 무거워서 그냥 바꿈, 움직임 줄이기면 그냥 바꿈
+    if (r.kind === 'lobby' && routeRef.current.kind === 'lobby' && canFade()) startFade(() => flushSync(apply));
+    else apply();
   }, []);
 
   return { route, navigate };
