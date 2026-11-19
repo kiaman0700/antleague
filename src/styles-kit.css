@@ -865,8 +865,9 @@ html[data-device="pc"] .hpop-pop { position: absolute; top: 100%; left: auto; ri
 
 /* ---- PC 1대1 점수 칸: 양 끝에 사람 사진 (회원 사진 / 손님 / 봇) ---- */
 .vs-box { grid-template-columns: auto auto minmax(0, 1fr) auto auto; gap: 12px; }
-.vs-box:has(.score-solo) { grid-template-columns: auto minmax(0, 1fr); }
-.vs-box .score-solo { grid-column: auto; }
+/* 혼자 하는 판: 사진 · 내 재산 · 판 이름이 한 줄 (두 칸이면 판 이름이 사진 아래 줄로 떨어졌음) */
+.vs-box:has(.score-solo) { grid-template-columns: auto auto minmax(0, 1fr); }
+.vs-box .score-solo { grid-column: auto; justify-self: start; align-self: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; white-space: nowrap; }
 .vs-box > .pf-av { align-self: center; }
 /* 순위 칸·순위 목록·대기실 사진 */
 .rank-chip .rk-av, .rank-row .rk-av { flex: none; }
