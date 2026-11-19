@@ -686,7 +686,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     <div className="result slides">
       <ResultSlides
         slides={[
-          { key: 'sum', label: '요약', body: <>{heroEl}{bannerEl}{ratingEl}{momentsEl}</> },
+          { key: 'sum', label: '요약', body: <>{bannerEl}{heroEl}{ratingEl}{momentsEl}</> },
           { key: 'review', label: '복기', body: <>{lessonsEl}{highlightsEl}{replayEl}</> },
           // 혼자 한 판은 순위 대신 '시장'(나 대 종합지수), 오늘의 도전은 점수표(순위·연속 기록)
           solo && matchKind !== 'daily'
