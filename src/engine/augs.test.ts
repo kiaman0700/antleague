@@ -330,3 +330,22 @@ describe('v27 점검에서 나온 빈틈', () => {
     }
   });
 });
+
+describe('v27 잃는 돈은 현금까지만', () => {
+  it('도박사·슬롯머신을 가진 채 현금을 거의 다 주식에 넣어도 현금이 0 아래로 안 내려감', async () => {
+    const { computePortfolio } = await import('../game/portfolio.js');
+    for (const id of ['gambler', 'slot']) {
+      const d = withAug(id);
+      const m = marketFor(33, 10, 27, d.room.salt);
+      const price = m.bars.CORE[0].open;
+      d.trades.push({ id: 'all', player_id: 'a', day: 0, symbol: 'CORE', side: 'buy', qty: Math.floor(995_000 / (price * 1.001)), price, fee: 0.001, created_at: '0' });
+      d.room.status = 'finished';
+      d.room.day = 10;
+      const inc = augIncomeAll(d, m, m.dividends).a;
+      for (let t = 0; t < 10; t++) {
+        const pf = computePortfolio(d.trades.filter((x) => x.player_id === 'a'), inc.map((x) => ({ day: x.day, cost: -x.amount, aug: true })), t, m.dividends, 1_000_000);
+        expect(pf.cash).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
