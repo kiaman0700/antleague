@@ -938,7 +938,7 @@ function SkillPanel({ s }: { s: import('../net/account').SkillInfo }) {
       <h3>
         나의 투자 감각 <small className="muted">최근 {a.games}판</small>
       </h3>
-      <ul className="sk-list">
+      <ul className={'sk-list' + (a.games < 5 ? ' sk-early' : '')}>
         {rows.map((r) => (
           <li key={r.k} title={r.tip}>
             <span className="sk-k">{r.k}</span>
@@ -950,7 +950,12 @@ function SkillPanel({ s }: { s: import('../net/account').SkillInfo }) {
           </li>
         ))}
       </ul>
-      <p className="muted small">나만 보여요. 랭킹 점수와 따로, 뉴스를 읽고 고르는 실력이에요.</p>
+      {/* 몇 판뿐이면 한 판의 운이 그대로 보이므로 아직 맛보기라고 알림 */}
+      {a.games < 5 ? (
+        <p className="muted small sk-few">아직 {a.games}판이라 운이 많이 섞여 있어요. 5판쯤 쌓이면 내 실력이 더 잘 보여요.</p>
+      ) : (
+        <p className="muted small">나만 보여요. 랭킹 점수와 따로, 뉴스를 읽고 고르는 실력이에요.</p>
+      )}
     </section>
   );
 }

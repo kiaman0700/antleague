@@ -2709,3 +2709,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .old-more { display: block; margin: 6px auto 0; font-size: 13px; }
 /* 지난 소문 진위 딱지: 세로로 쌓는 칸 안이라 칸 너비만큼 늘어나 막대처럼 보였음 → 글자 크기만큼 */
 .old-body .old-verdict { align-self: flex-start; margin-left: 0; }
+/* 나의 투자 감각: 판이 적을 땐 막대를 조금 흐리게 (아직 맛보기) */
+.sk-list.sk-early .sk-bar i { opacity: 0.55; }
