@@ -28,6 +28,23 @@ export const TEST_KEY = createHmac('sha256', env.SUPABASE_SECRET_KEY ?? '').upda
 // 동시 접속을 시험하는 곳(guestcode)만 '1'(화면이 보이는 요청)을 직접 보냄
 export const VIS = '0';
 
+/**
+ * 시험 요청 하나. 같은 시험 회원을 다른 곳(사람이 연 브라우저 등)에서 쓰는 중이라 409 concurrent 가 오면
+ * 사람처럼 '여기서 접속'(takeOver)을 고르고 한 번 다시 보냄 — 동시 접속 자체를 시험하는 guestcode.mjs 는 이걸 안 씀
+ */
+export async function apiPost(body, tok) {
+  const go = async (b) => {
+    const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(b) });
+    return { s: r.status, b: await r.json().catch(() => null) };
+  };
+  let res = await go(body);
+  if (res.s === 409 && res.b?.code === 'concurrent' && tok && body?.action !== 'takeOver') {
+    await go({ action: 'takeOver' });
+    res = await go(body);
+  }
+  return res;
+}
+
 export const BASE = (process.env.BASE ?? 'http://localhost:5173').replace(/\/$/, '');
 
 /**
@@ -120,7 +137,9 @@ export async function user() {
       headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, authorization: 'Bearer ' + tok },
       body: JSON.stringify(body),
     });
-    return { s: r.status, b: await r.json().catch(() => null) };
+    const res0 = { s: r.status, b: await r.json().catch(() => null) };
+    if (res0.s === 409 && res0.b?.code === 'concurrent' && body?.action !== 'takeOver') return apiPost(body, tok);
+    return res0;
   };
   // (규칙 v7) 장 전 시간에는 '장 마감'이 막힘 → 테스트에서 날을 넘길 땐 그 방 사람 모두 '준비 완료'를 누른 뒤 다시 마감
   const U = async (body) => {

@@ -1,13 +1,10 @@
 // 회원: 가입(게스트 → 정식) · 로그인 · 프로필 · 닉네임 강제 · 회원 표시 · 랭킹 점수 · 비밀번호 찾기 · 탈퇴
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
-import { ok, done, BASE, TEST_KEY, VIS } from './lib.mjs';
+import { ok, done, BASE, TEST_KEY, VIS , apiPost } from './lib.mjs';
 
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
-const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
-  return { s: r.status, b: await r.json().catch(() => null) };
-};
+const post = (body, tok) => apiPost(body, tok);
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 /** 아이디 → 로그인 주소 (서버에 물어봄, 화면과 같은 흐름) */
 const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;

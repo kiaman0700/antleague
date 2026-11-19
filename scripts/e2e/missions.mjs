@@ -1,13 +1,10 @@
 // 미션 (design/missions.md): 서버가 끝난 판으로만 판정 · 같은 판 두 번 안 셈 · 게스트는 경험치 없음 · 정보가 새지 않음
 import { createClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
-import { ok, done, BASE, user, TEST_KEY, VIS } from './lib.mjs';
+import { ok, done, BASE, user, TEST_KEY, VIS , apiPost } from './lib.mjs';
 
 const env = Object.fromEntries(fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
-const post = async (body, tok) => {
-  const r = await fetch(BASE + '/api/game', { method: 'POST', headers: { 'content-type': 'application/json', 'x-stockduel-test': TEST_KEY, 'x-stockduel-vis': VIS, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
-  return { s: r.status, b: await r.json().catch(() => null) };
-};
+const post = (body, tok) => apiPost(body, tok);
 const client = () => createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 const loginEmail = async (u) => (await post({ action: 'loginEmail', username: u })).b.email;
 const SAVE = 'scripts/e2e/.members.json';
