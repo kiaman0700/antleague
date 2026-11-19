@@ -1624,10 +1624,11 @@ body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-are
 
 /* ---------- 움직임 — 0.2~0.6초, 움직임 줄이기 설정이면 끔 ---------- */
 /* 종목 가격이 바뀔 때 잠깐 반짝 */
-.sprice b.tick-up, .sprice b.tick-down { border-radius: 4px; animation: tickUp 0.45s ease-out; }
-.sprice b.tick-down { animation-name: tickDown; }
-@keyframes tickUp { from { background: rgba(217, 54, 75, 0.2); } to { background: transparent; } }
-@keyframes tickDown { from { background: rgba(37, 99, 235, 0.22); } to { background: transparent; } }
+/* 장중엔 매초 수십 줄이 반짝여서, 바탕색을 바꾸는 대신 겹 칸의 투명도만 바꿈 (그리기 비용이 거의 없음) */
+.sprice b.tick-up, .sprice b.tick-down { position: relative; }
+.sprice b.tick-up::after, .sprice b.tick-down::after { content: ''; position: absolute; inset: -1px -3px; border-radius: 4px; background: rgba(217, 54, 75, 0.22); opacity: 0; pointer-events: none; will-change: opacity; animation: tickFade 0.45s ease-out; }
+.sprice b.tick-down::after { background: rgba(37, 99, 235, 0.24); }
+@keyframes tickFade { from { opacity: 1; } to { opacity: 0; } }
 /* 새 커뮤니티 글: 위에서 내려오며 잠깐 빛남 */
 .cf-post { animation: cf-in 0.35s ease-out, cfGlow 1.4s ease-out; }
 @keyframes cfGlow { from { background: rgba(139, 123, 255, 0.14); } to { background: transparent; } }
@@ -1640,7 +1641,7 @@ body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-are
 .ig-steps li { animation: snsIn 0.35s ease-out both; }
 .ig-steps li:nth-child(2) { animation-delay: 60ms; } .ig-steps li:nth-child(3) { animation-delay: 120ms; } .ig-steps li:nth-child(4) { animation-delay: 180ms; } .ig-steps li:nth-child(5) { animation-delay: 240ms; }
 @media (prefers-reduced-motion: reduce) {
-  .sprice b.tick-up, .sprice b.tick-down, .cf-post, .news-card.fresh, .lg-list li, .ig-steps li { animation: none; }
+  .sprice b.tick-up::after, .sprice b.tick-down::after, .cf-post, .news-card.fresh, .lg-list li, .ig-steps li { animation: none; }
 }
 /* 결과 화면 업적: 하나씩 '뿅' (귀한 업적은 한 번 반짝) */
 .result .badges .badge { animation: badgePop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; animation-delay: calc(0.15s + var(--k, 0) * 0.12s); }
