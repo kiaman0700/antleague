@@ -288,3 +288,4 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - (2026-11-19 아침) 튜토리얼: 단계에 `pulse`(눌러야 할 것 하나를 보라 고리로 깜빡임 `.tut-pulse` — 관련 종목 칩 `data-sym`, 카드 `.gcard[data-kind]`) · 위에 뜬 창(.modal-bg > .modal)이 있으면 말풍선이 비켜 가고(자리가 좁으면 `compact`) 비춘 테두리는 숨김 · PC 순위 줄 5명+ 는 작은 사진 빼고 금액 칸 넓힘
 - e2e `social` 이 로컬에서 429(친구 신청 계정당 1시간 20번, 서버 메모리)로 실패하면 같은 개발 서버로 여러 번 돌린 탓 — `BASE=https://antleague.vercel.app npm run e2e -- social` 로 확인 (2026-11-19 두 번 그랬고 운영은 통과)
 - (2026-11-19 아침) 비밀방 비밀번호 칸 PwInput(보기 버튼) · 초대 링크(?room=)로 온 처음 방문자에게 시작 창 맨 위 안내 · 로그인 탭 바꾸면 비밀번호 칸 비움
+- 새 갈래를 GitHub 에 올리면 Vercel 이 미리보기 배포를 함(하루 100번에 셈) — 승인 전 준비 작업은 갈래를 로컬에만 두거나, vercel.json `git.deploymentEnabled` 에 그 갈래 이름을 false 로. 2026-11-19 `bot-xp-cap`(봇전 경험치 하루 100, 승인 대기) 을 올려 미리보기 1번 씀
