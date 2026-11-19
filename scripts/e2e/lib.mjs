@@ -147,10 +147,22 @@ export async function user() {
       if (!roomUsers.has(body.roomId)) roomUsers.set(body.roomId, new Set());
       roomUsers.get(body.roomId).add(raw);
     }
-    const res = await raw(body);
+    let res = await raw(body);
+    // (규칙 v27) 고르는 날엔 증강을 먼저 골라야 마감 → 테스트는 첫 번째 보기를 고르고 다시
+    if (body?.action === 'endTurn' && res.s === 409 && /증강을 먼저/.test(res.b?.error ?? '')) {
+      const st = (await raw({ action: 'state', roomId: body.roomId })).b;
+      if (st?.aug?.offer) await raw({ action: 'pickAug', roomId: body.roomId, aug: st.aug.offer.ids[0] });
+      res = await raw(body);
+    }
     if (body?.action === 'endTurn' && res.s === 409 && /장이 열린 뒤/.test(res.b?.error ?? '')) {
       for (const u of roomUsers.get(body.roomId) ?? []) await u({ action: 'preReady', roomId: body.roomId });
-      return raw(body);
+      let again = await raw(body);
+      if (again.s === 409 && /증강을 먼저/.test(again.b?.error ?? '')) {
+        const st = (await raw({ action: 'state', roomId: body.roomId })).b;
+        if (st?.aug?.offer) await raw({ action: 'pickAug', roomId: body.roomId, aug: st.aug.offer.ids[0] });
+        again = await raw(body);
+      }
+      return again;
     }
     // (규칙 v14) 첫날에도 장 전 시간 → 지금 가격 거래가 막히면 모두 '준비 완료' 후 다시, 그래도 안 열리면 장이 열릴 때까지 기다림
     if (body?.action === 'trade' && res.s === 409 && /장이 열리지/.test(res.b?.error ?? '')) {
@@ -174,6 +186,7 @@ export async function user() {
   }
   await U({ action: 'queueLeave' });
   U.token = tok; // 실시간 채널 시험용
+  U.raw = raw;
   return U;
 }
 

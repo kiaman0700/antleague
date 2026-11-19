@@ -2104,7 +2104,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .aug-tier { font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 6px; border: 1px solid currentColor; color: var(--t-silver); vertical-align: 2px; }
 .aug-tier.t-gold { color: var(--t-gold); }
 .aug-tier.t-prism { color: var(--t-prism); }
-.aug-bg { z-index: 120; }
+.aug-bg { z-index: 85; } /* 튜토리얼(90) 말풍선이 이 창을 설명할 수 있게 그 아래 */
 .modal.aug-pick { max-width: 560px; width: calc(100% - 32px); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .aug-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .aug-head h3 { margin: 0 0 4px; font-size: 18px; }
@@ -2157,3 +2157,4 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .aug-strip-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .aug-strip-go { margin-left: auto; color: var(--text-3, #9a9a9a); }
 .aug-reroll { font-size: 13px; padding: 4px 10px; }
+.aug-rec { margin-left: 8px; font-size: 12px; font-weight: 700; color: #c9c0ff; border: 1px solid #6b58ee; border-radius: 6px; padding: 1px 6px; vertical-align: 1px; }

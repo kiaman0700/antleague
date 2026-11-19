@@ -22,6 +22,9 @@ export interface TutorialCtx {
   viewDay: number;
   /** 연습봇 카드에 대한 실제 알림 문구 */
   botNotice: string;
+  /** (v27) 증강을 골랐는지 · 고른 첫 증강 */
+  augPicked: boolean;
+  augId: string;
 }
 
 export interface TutorialStep {
@@ -93,27 +96,27 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tab: 'list',
   },
   {
-    title: '찬스 카드',
-    text: () => '찬스 카드는 정보를 주거나, 상대를 방해하거나, 나를 지켜 줘요. 지금 루머 감별기와 방패가 있어요.',
-    target: '.p-cards, .m-page .cards',
-    tab: 'cards',
-    extra: 'cards',
+    title: '증강 고르기',
+    text: () => '증강은 이번 판 내내 켜져 있는 내 능력이에요. 3개 중 1개만 골라요. 처음이라면 "귀동냥"을 추천해요 — 소식 하나가 진짜인지 알려 줘요.',
+    target: '.aug-pick',
+    wait: (c) => c.augPicked,
+    waitHint: '하나를 누르고 아래 "고르기" 버튼을 눌러 보세요',
   },
   {
-    title: '루머 감별기 써 보기',
+    title: '소식 진위 보기',
     text: (c) =>
-      c.otherInfoUsed
-        ? '오늘은 다른 정보 카드를 써서 감별기는 내일 쓸 수 있어요. 정보 카드는 하루 한 장이에요.'
-        : '루머 감별기 카드를 써 보세요. 고른 뉴스 하나가 진짜인지 알려 줘요.',
-    target: '.p-cards, .m-page .cards',
-    pulse: (c) => (c.detectorUsed || c.otherInfoUsed ? '' : '.gcard[data-kind="detector"]'),
+      c.augId === 'verdict1'
+        ? "'증강' 칸에서 '소식 진위 보기'를 누르고 확인할 소식을 골라 보세요."
+        : "고른 증강은 '증강' 칸에 있어요. 실제 대결에서는 이렇게 정해진 날마다 하나씩 더 골라요.",
+    target: '.aug-panel',
+    pulse: (c) => (c.augId === 'verdict1' && !c.detectorUsed ? '.aug-uses button' : ''),
     tab: 'cards',
-    wait: (c) => c.detectorUsed || c.otherInfoUsed,
-    waitHint: '루머 감별기 카드를 누르고 "사용하기" → 확인할 소식을 골라 보세요',
+    wait: (c) => c.augId !== 'verdict1' || c.detectorUsed,
+    waitHint: "'소식 진위 보기'를 누르고 소식 하나를 골라 보세요",
   },
   {
     title: '감별 결과',
-    text: () => "고른 뉴스에 '사실'이나 '가짜' 표시가 붙었어요. 뉴스엔 가짜도 섞여 있어서 이렇게 확인해요.",
+    text: (c) => (c.augId === 'verdict1' ? "고른 소식에 '사실'이나 '가짜' 표시가 붙었어요. 뉴스엔 가짜도 섞여 있어서 이렇게 확인해요." : '뉴스엔 가짜도 섞여 있어요. 진위를 알려 주는 증강이 있으면 확인할 수 있어요.'),
     target: '.detector-sum, .news-panel',
     tab: 'news',
   },
@@ -132,9 +135,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     waitHint: "'2일차 시작'을 눌러 보세요",
   },
   {
-    title: '연습봇의 공격!',
-    text: (c) => `연습봇이 방해 카드를 썼지만 방패가 막았어요. 방패는 누르지 않아도 나를 지켜 줘요.`,
-    target: '.p-cards, .m-page .cards',
+    title: '내 증강',
+    text: () => "고른 증강과 그걸로 받은 돈은 '증강' 칸에서 볼 수 있어요. 실제 대결에서는 골드·프리즘 증강도 나와요.",
+    target: '.aug-panel',
     tab: 'cards',
   },
   {

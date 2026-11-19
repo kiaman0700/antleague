@@ -1,7 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const store = new Map<string, string>();
 vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
-const { makeTutorial, soloAct, soloView, TUTORIAL_BOT } = await import('./local.js');
+const { makeTutorial, soloAct: rawAct, soloView, TUTORIAL_BOT } = await import('./local.js');
+const { deriveAugs, pendingSlot } = await import('./augs.js');
+/** 안내대로 첫 증강은 추천(귀동냥), 그 뒤는 첫 보기 — 고른 뒤 마감 */
+const soloAct: typeof rawAct = (s, action, payload) => {
+  if (action === 'endTurn') {
+    const p = pendingSlot(deriveAugs(s.data), 'me', s.data.room.day);
+    if (p) s = rawAct(s, 'pickAug', { aug: p.offer[0] });
+  }
+  return rawAct(s, action, payload);
+};
 
 describe('튜토리얼 게임', () => {
   beforeEach(() => store.clear());
@@ -10,20 +19,18 @@ describe('튜토리얼 게임', () => {
     const v = soloView(t);
     expect(v.players.map((p) => p.nickname)).toContain(TUTORIAL_BOT.nickname);
     expect(v.market!.news.some((n) => n.day === 0 && n.symbol === t.tutorial!.symbol && n.tone === 'good')).toBe(true);
-    // 무료 카드가 더 있을 수 있으니 '최소 1장'
-    expect(v.myItems.inventory.detector ?? 0).toBeGreaterThanOrEqual(1);
-    expect(v.myItems.inventory.shield ?? 0).toBeGreaterThanOrEqual(1);
+    // 첫 증강 보기는 늘 같은 쉬운 실버 3개, 다시 뽑기 없음
+    expect(v.aug?.offer?.ids).toEqual(['verdict1', 'cash1', 'nofee']);
+    expect(v.aug?.offer?.tier).toBe('silver');
+    expect(v.aug?.offer?.canReroll).toEqual([false, false, false]);
     expect(v.room.deadline).toBeNull(); // 시간이 흐르지 않음
   });
-  it('장 마감하면 봇도 같이 마감해 다음 날로, 봇의 수수료 폭탄을 내 방패가 막는다', () => {
-    const t0 = makeTutorial('나');
-    const shields = soloView(t0).myItems.inventory.shield ?? 0;
-    const t = soloAct(t0, 'endTurn', {});
+  it('장 마감하면 봇도 같이 마감해 다음 날로, 연습봇은 방해하지 않음', () => {
+    const t = soloAct(makeTutorial('나'), 'endTurn', {});
     expect(t.data.room.day).toBe(1);
     const v = soloView(t);
-    expect(v.notices.some((n) => n.text.includes('방패가') && n.text.includes('수수료 폭탄'))).toBe(true);
     expect(v.effectsToday).not.toContain('fee');
-    expect(v.myItems.inventory.shield ?? 0).toBe(shields - 1);
+    expect(v.aug?.mine.map((x) => x.id)).toEqual(['verdict1']);
   });
   it('안내대로 첫날 그 종목을 사서 끝까지 들고 있으면 연습봇을 이긴다 (첫 판이 패배로 끝나지 않게)', () => {
     let t = makeTutorial('나');

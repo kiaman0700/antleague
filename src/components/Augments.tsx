@@ -34,7 +34,7 @@ function conds(id: string) {
 }
 
 /** 고르기 창: 3개 중 하나를 누르고 '이걸로 고르기' — 장이 흐르는 중이라 실수로 바로 정해지지 않게 두 번 */
-export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide }: { offer: NonNullable<AugView['offer']>; busy: boolean; endsIn: string | null; onPick: (id: string) => void; onReroll: (slot: number) => void; onHide: () => void }) {
+export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recommend }: { offer: NonNullable<AugView['offer']>; recommend?: string; busy: boolean; endsIn: string | null; onPick: (id: string) => void; onReroll: (slot: number) => void; onHide: () => void }) {
   const [sel, setSel] = useState<string | null>(null);
   useEscape(onHide, true, true);
   const chosen = sel && offer.ids.includes(sel) ? sel : null;
@@ -65,7 +65,10 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide }: { off
                 <button className="aug-card" role="radio" aria-checked={on} aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째`} onClick={() => setSel(id)} disabled={busy}>
                   <AugBadge id={id} size={20} />
                   <span className="aug-body">
-                    <b className="aug-name">{a.name}</b>
+                    <b className="aug-name">
+                      {a.name}
+                      {recommend === id && <span className="aug-rec">처음이라면 추천</span>}
+                    </b>
                     <span className="aug-desc">{a.desc}</span>
                     <span className="aug-meta">
                       {TAG_NAME[a.tag]}
@@ -74,9 +77,9 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide }: { off
                   </span>
                   {on && <Icon name="check" size={18} className="aug-check" />}
                 </button>
-                <button className="btn ghost small aug-reroll" disabled={busy || !offer.canReroll[i]} onClick={() => (setSel(null), onReroll(i))} aria-label={`${i + 1}번째 칸 다시 뽑기`}>
+                {!recommend && <button className="btn ghost small aug-reroll" disabled={busy || !offer.canReroll[i]} onClick={() => (setSel(null), onReroll(i))} aria-label={`${i + 1}번째 칸 다시 뽑기`}>
                   <Icon name="refresh" size={14} /> {offer.canReroll[i] ? '다시 뽑기' : '다시 뽑기 끝'}
-                </button>
+                </button>}
               </div>
             );
           })}
@@ -215,6 +218,41 @@ export function AugReveal({ players, augs, income }: { players: { id: string; ni
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+export const AUG_RULES_TEXT = '정해진 날(10일 판이면 1·4·7일차)마다 증강 3개 중 1개를 골라요. 고른 증강은 판 끝까지 켜져 있어요. 칸마다 한 번 다시 뽑을 수 있고, 그날 장이 끝날 때까지 안 고르면 하나가 무작위로 정해져요. 같은 판 사람들은 같은 등급(실버·골드·프리즘)을 받고, 상대가 무엇을 골랐는지는 판이 끝나야 보여요.';
+
+/** 공부 화면: 등급별 증강 도감 */
+export function AugGuideBody() {
+  const tiers: AugTier[] = ['silver', 'gold', 'prism'];
+  return (
+    <div className="aug-guide">
+      {tiers.map((t) => (
+        <section key={t} className="panel pad">
+          <h3>
+            <span className={`aug-tier t-${t}`}>{TIER_NAME[t]}</span> {Object.values(AUG_MAP).filter((a) => a.tier === t).length}개
+          </h3>
+          <ul className="aug-mine">
+            {Object.values(AUG_MAP)
+              .filter((a) => a.tier === t)
+              .map((a) => (
+                <li key={a.id}>
+                  <AugBadge id={a.id} />
+                  <span className="aug-body">
+                    <b className="aug-name">{a.name}</b>
+                    <span className="aug-desc">{a.desc}</span>
+                    <span className="aug-meta">
+                      {TAG_NAME[a.tag]}
+                      {conds(a.id).map((x) => ' · ' + x)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import type { GameData } from './engine.js';
 export const AUG_VERSION = 27;
 /** 칸마다 다시 뽑기 1번 (개미 학교 교장이 있으면 다음 고르기부터 2번 더) */
 export const REROLL_PER_SLOT = 1;
+/** 튜토리얼 첫 보기: 소식 진위 1번(추천) · 다음 날 현금 · 수수료 없음 */
+export const TUTORIAL_OFFER = ['verdict1', 'cash1', 'nofee'];
 
 export interface AugRow {
   id?: string;
@@ -110,7 +112,7 @@ export function deriveAugs(d: GameData): AugState {
       const day = days[n];
       if (day > r.day || (r.status === 'waiting')) break;
       const prev = owned[n - 1];
-      const tier = shiftTier(tiers[n], prev === 'eye' ? 1 : prev === 'loan' ? -1 : 0);
+      const tier = r.id === 'tutorial' && n === 0 ? 'silver' : shiftTier(tiers[n], prev === 'eye' ? 1 : prev === 'loan' ? -1 : 0);
       // 다른 자리 몫인 '한 명만' 증강은 처음부터 내 보기에 없음
       const takenUnique = UNIQUE_IDS.filter((u) => uniqueSeat(salt, u, n, seats) !== pid);
       const ctx = { salt, seat: pid, n, picks: days.length, tier, daysLeft: r.total_days - day, multi, owned: [...owned], takenUnique, heldSectors: heldSectorsBefore(d, pid, day) };
@@ -119,7 +121,9 @@ export function deriveAugs(d: GameData): AugState {
       const extra = owned.includes('principal') ? 2 : 0;
       const seq: number[] = [];
       const rerolls = [0, 0, 0];
-      let offer = augmentOffer(ctx, seq);
+      // 튜토리얼 첫 고르기는 늘 같은 쉬운 실버 3개 (다시 뽑기 없음)
+      const fixed = r.id === 'tutorial' && n === 0 ? TUTORIAL_OFFER : null;
+      let offer = fixed ?? augmentOffer(ctx, seq);
       /** 동시에 온 고르기와 다시 뽑기: 고르기를 보낸 순간 보기에 있던 것이면 인정 */
       const seenOffers = new Set(offer);
       let picked: string | null = null;
@@ -131,7 +135,7 @@ export function deriveAugs(d: GameData): AugState {
           }
           continue;
         }
-        if (x.action !== 'reroll' || x.slot == null || !(x.slot >= 0 && x.slot < offer.length)) continue;
+        if (fixed || x.action !== 'reroll' || x.slot == null || !(x.slot >= 0 && x.slot < offer.length)) continue;
         if (rerolls[x.slot] >= REROLL_PER_SLOT + extra || seq.length >= 3 * REROLL_PER_SLOT + extra) continue;
         rerolls[x.slot]++;
         seq.push(x.slot);
@@ -144,7 +148,7 @@ export function deriveAugs(d: GameData): AugState {
         picked = offer.length ? offer[Math.floor(seeded(`${salt}:augauto:${pid}:${n}`)() * offer.length)] : null;
         auto = true;
       }
-      const canReroll = offer.map((_, i) => !picked && rerolls[i] < REROLL_PER_SLOT + extra && used < 3 * REROLL_PER_SLOT + extra);
+      const canReroll = offer.map((_, i) => !fixed && !picked && rerolls[i] < REROLL_PER_SLOT + extra && used < 3 * REROLL_PER_SLOT + extra);
       slots.push({ n, day, tier, offer, rerolls, canReroll, picked, auto });
       if (picked) owned.push(picked);
       else break;

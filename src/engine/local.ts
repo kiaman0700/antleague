@@ -18,8 +18,7 @@ export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
  * 튜토리얼도 늘 최신 규칙 (규칙이 바뀌면 튜토리얼 문구도 같이 고칠 것).
  * 장면(첫날 오르는 좋은 기업 뉴스)을 찾으려고 비밀값은 공개된 고정값 — 튜토리얼 시장은 숨길 게 없음
  */
-/** 튜토리얼 장면은 카드 규칙으로 짜여 있음 — 증강(v27) 튜토리얼을 만들 때까지 v26 */
-export const TUTORIAL_VERSION = Math.min(CURRENT_RULES_VERSION, 26);
+export const TUTORIAL_VERSION = CURRENT_RULES_VERSION;
 /** v4+ 시장은 비밀값으로만 만들어져서, 장면을 찾을 때 비밀값을 바꿔 가며 찾음 (공개 값) */
 const tutorialSalt = (n: number) => `tutorial-${n}`;
 
@@ -47,7 +46,8 @@ export function makeTutorial(nickname: string): SoloSave {
     ],
     trades: [],
     // 나: 루머 감별기·방패를 들고 시작 (카드 연습용)
-    items: [
+    // (v27 부터 카드 대신 증강 — 첫 고르기 보기는 augs.ts 의 튜토리얼 보기로 정해짐)
+    items: TUTORIAL_VERSION >= 27 ? [] : [
       { id: 'tut-i1', player_id: 'me', day: 0, kind: 'detector', action: 'buy', cost: 0, created_at: now },
       { id: 'tut-i2', player_id: 'me', day: 0, kind: 'shield', action: 'buy', cost: 0, created_at: now },
     ],
@@ -61,7 +61,7 @@ export function makeTutorial(nickname: string): SoloSave {
 
 /** 봇의 정해진 행동: 둘째 날 아침에 나에게 수수료 폭탄 (내 방패가 막는 걸 보여 줌) */
 function botActs(d: GameData) {
-  if (d.room.day === 1) {
+  if (d.room.day === 1 && (d.room.version ?? 1) < 27) {
     const at = new Date().toISOString();
     d.items.push({ id: 'tut-b2', player_id: TUTORIAL_BOT.id, day: 1, kind: 'fee', action: 'buy', cost: 0, created_at: at });
     d.items.push({ id: 'tut-b3', player_id: TUTORIAL_BOT.id, day: 1, kind: 'fee', action: 'use', cost: 0, payload: { target: 'me' }, created_at: at });

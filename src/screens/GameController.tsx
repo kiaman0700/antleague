@@ -1159,20 +1159,24 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     symbolName: tutorialInfo ? STOCK_MAP[tutorialInfo.symbol]?.name ?? '' : '',
     headline: tutorialInfo?.headline ?? '',
     myTrades: view?.myTrades.length ?? 0,
-    detectorUsed: (view?.myItems.used.detector ?? 0) > 0,
+    detectorUsed: (view?.myItems.used.detector ?? 0) > 0 || (!!view?.aug?.mine.some((x) => x.id === 'verdict1') && view.aug.left.detector === 0),
     // 다른 정보 카드를 먼저 써서 오늘은 감별기를 못 씀 (정보 카드 하루 1장) — 튜토리얼이 막히지 않게
     otherInfoUsed: (view?.myItems.used.detector ?? 0) === 0 && [...usedToday].some((k) => ITEM_MAP[k]?.type === 'info'),
     serverDay: serverDay ?? 0,
     closing: closing !== null,
     viewDay: viewDay ?? 0,
     botNotice: view?.notices.find((n) => n.text.includes('방패가'))?.text ?? '',
+    augPicked: (view?.aug?.mine.length ?? 0) > 0,
+    augId: view?.aug?.mine[0]?.id ?? '',
   };
   const augOffer = view.aug?.offer ?? null;
   const augEnds = remaining !== null && remaining > 0 ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
-  const showAugPick = !!augOffer && room?.status === 'playing' && closing === null && !showResult && viewDay === serverDay;
+  // 튜토리얼은 '증강 고르기' 단계가 되어야 창을 띄움 (앞 단계 설명을 가리지 않게)
+  const tutAugAt = TUTORIAL_STEPS.findIndex((x) => x.title === '증강 고르기');
+  const showAugPick = !!augOffer && room?.status === 'playing' && closing === null && !showResult && viewDay === serverDay && !(session.tutorial && tutStep < tutAugAt);
   const overlays = (
     <>
-      {showAugPick && augHidden !== augOffer.n && <AugPick key={augOffer.n} offer={augOffer} busy={busy} endsIn={augEnds} onPick={pickAug} onReroll={rerollAug} onHide={() => setAugHidden(augOffer.n)} />}
+      {showAugPick && augHidden !== augOffer.n && <AugPick key={augOffer.n} offer={augOffer} recommend={session.tutorial && augOffer.n === 0 ? 'verdict1' : undefined} busy={busy} endsIn={augEnds} onPick={pickAug} onReroll={rerollAug} onHide={() => setAugHidden(augOffer.n)} />}
       {showAugPick && augHidden === augOffer.n && <AugPill tier={augOffer.tier} endsIn={augEnds} onOpen={() => setAugHidden(null)} />}
       {/* 연결이 끊기면 바로 알림 (가격이 멈춘 걸 모르고 기다리지 않게) */}
       {session.mode === 'multi' && (!online || error) && (

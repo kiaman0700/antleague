@@ -387,7 +387,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
               ) : rumorToday.some((n) => n.verdict) ? (
                 // (v14) 고른 소문 하나만 판정
                 <>
-                  루머 감별기로 고른 소문: <b className={rumorToday.find((n) => n.verdict)!.verdict === 'false' ? 'up' : ''}>{rumorToday.find((n) => n.verdict)!.verdict === 'false' ? '가짜' : '사실'}</b>
+                  진위를 확인한 소문: <b className={rumorToday.find((n) => n.verdict)!.verdict === 'false' ? 'up' : ''}>{rumorToday.find((n) => n.verdict)!.verdict === 'false' ? '가짜' : '사실'}</b>
                 </>
               ) : (
                 '오늘 루머 감별기는 다른 소식을 확인했어요'
@@ -498,7 +498,7 @@ export function NewsPanel({ ui, day, news, tomorrow, rumorCheck, bestSector, spy
       {today.length === 0 && !blackout && <p className="muted small news-empty">오늘 아침엔 새 뉴스가 없어요. 장중 속보가 뜨면 여기 맨 위에 나와요.</p>}
       {rumorCheck && !blackout && today.length > 0 && (
         <div className="detector-sum">
-          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '루머 감별기로 고른 기사를 확인했어요 (아래 표시)' : '루머 감별기로 고른 소식은 다른 칸(커뮤니티)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
+          <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '진위를 확인한 기사예요 (아래 표시)' : '진위를 확인한 소식은 다른 칸(커뮤니티)에 있어요') : <>루머 감별기: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
         </div>
       )}
       {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}
@@ -956,7 +956,7 @@ const STEPS = [
   { t: '① 아침 뉴스를 읽어요', d: '매일 아침 뉴스가 나와요. 좋은 뉴스(▲)가 난 회사·업종은 오르는 경우가 많아요. 뉴스 아래 관련 종목에 거래처·같은 업종은 같이, 경쟁사는 반대로 움직일 수 있다고 표시돼요. [루머]는 틀릴 수도 있어요.' },
   { t: '② 종목을 골라 사고팔아요', d: '종목 목록에서 회사를 누르면 설명과 차트가 나와요. 사기·팔기를 누르고 금액 버튼으로 쉽게 살 수 있어요. 장이 열려 있는 동안 가격이 1초마다 움직여요.' },
   { t: '③ 장 마감을 눌러요', d: '다 골랐으면 "장 마감"을 눌러요. 모두 누르면(또는 시간이 다 되면) 하루가 끝나요.' },
-  { t: '④ 찬스 카드로 승부를 뒤집어요', d: '카드를 누르면 크게 보이고 \'사용하기\'가 나와요. 내일 뉴스를 미리 보거나 상대를 방해할 수 있고, 최대 5장까지 가질 수 있어요. 점선 밑줄 단어를 누르면 뜻이 나와요.' },
+  { t: '④ 증강을 골라요', d: '정해진 날마다 증강 3개 중 1개를 골라요. 판 끝까지 켜져 있는 내 능력이에요. 고른 증강은 "증강" 칸에서 다시 보고, 정보 증강은 거기서 써요.' },
   { t: '⑤ 장 전 시간', d: '날마다(첫날 포함) 장이 열리기 전에 커뮤니티 글을 보고 예약 주문을 걸어 둘 수 있어요. 다 했으면 \'준비 완료\' — 모두 누르면 장이 바로 열려요.' },
   { t: '⑥ 며칠 걸친 사건', d: '[단독] 기사에 "○일차 발표 예정"이 붙으면 일정에도 떠요. 발표 날까지 기대감에 오르다가 그날 장중 속보로 크게 움직여요. 이미 많이 올랐으면 좋은 결과에도 떨어질 수 있어요.' },
 ];

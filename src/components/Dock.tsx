@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PcPanel, PcZone } from '../prefs';
 import { Icon } from './Icon';
 
-export const PANEL_LABEL: Record<PcPanel, string> = { timeline: '날짜 줄', list: '종목 목록', detail: '차트·주문', news: '소식', cards: '찬스 카드' };
+export const PANEL_LABEL: Record<PcPanel, string> = { timeline: '날짜 줄', list: '종목 목록', detail: '차트·주문', news: '소식', cards: '증강' };
 const ZONE_LABEL: Record<PcZone, string> = { top: '위 줄', left: '왼쪽 칸', center: '가운데 칸', right: '오른쪽 칸' };
 /** 칸 너비: 넓은 조각(차트)이 있는 칸은 넓게 */
 const WIDE: PcPanel[] = ['detail'];

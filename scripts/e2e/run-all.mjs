@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 
 const TESTS = [
-  'three-players', 'cards', 'orders', 'idempotency', 'testkey', 'dbfunc', 'turn-rules', 'realtime', 'lifecycle', 'attacks', 'admin', 'accounts', 'matching',
+  'three-players', 'augments', 'orders', 'idempotency', 'testkey', 'dbfunc', 'turn-rules', 'realtime', 'lifecycle', 'admin', 'accounts', 'matching',
   'injection', 'merge', 'social', 'avatar', 'reactions', 'db-direct', 'realtime-privacy', 'history-privacy', 'bots', 'daily', 'missions', 'guestcode', 'tutorial', 'quickjoin',
 ];
 const only = process.argv.slice(2);
