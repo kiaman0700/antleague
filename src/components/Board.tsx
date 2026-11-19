@@ -106,6 +106,8 @@ export function RankStrip({ rows }: { rows: RankRow[] }) {
   );
 }
 
+const mmssShort = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
 /** 오늘 누가 장 마감을 눌렀는지 + 카운트다운 조건 안내 */
 export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds = 600 }: { rows: RankRow[]; countdown: boolean; compact?: boolean; leftSec?: number | null; turnSeconds?: number }) {
   // 나간·자리 비운 사람은 기다리지 않으므로 마감 인원 계산에서 뺌
@@ -114,6 +116,7 @@ export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds 
   const rows = all.filter((r) => r.status === 'on').sort(order);
   const gone = all.filter((r) => r.status !== 'on').sort(order);
   const done = rows.filter((r) => r.ended).length;
+  const meDone = rows.some((r) => r.me && r.ended);
   // 남은 시간이 카운트다운(하루 길이에 맞춤)보다 짧으면 카운트다운은 의미가 없으니 안내하지 않음
   const graceSec = graceSeconds(rows.length, turnSeconds);
   const hint = !countdown && rows.length >= 2 && done < rows.length && (leftSec == null || leftSec > graceSec) ? `${graceText(rows.length, turnSeconds)} 카운트다운` : null;
@@ -139,7 +142,13 @@ export function EndStatus({ rows: all, countdown, compact, leftSec, turnSeconds 
         ))}
       </span>
       {hint && <small className="es-hint">{hint}</small>}
-      {countdown && <small className="es-hint hurry"><Icon name="timer" size={12} /> 카운트다운 중!</small>}
+      {/* 얼마나 기다릴지 알면 덜 불안함 — 이미 화면에 있는 남은 시간만 씀 */}
+      {!countdown && meDone && done < rows.length && leftSec != null && leftSec > 0 && <small className="es-hint">늦어도 {mmssShort(leftSec)} 뒤 다음 날 · 기다리는 동안 소식·차트는 볼 수 있어요</small>}
+      {countdown && (
+        <small className="es-hint hurry">
+          <Icon name="timer" size={12} /> 카운트다운 중{leftSec != null && leftSec > 0 ? ` · ${mmssShort(leftSec)} 뒤 다음 날` : ''}
+        </small>
+      )}
     </div>
   );
 }
