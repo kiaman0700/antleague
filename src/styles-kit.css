@@ -2614,7 +2614,7 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 
 /* 태블릿: 공지 줄 글자 시작을 아래 메뉴 화면 내용(가운데 728px)과 같은 선에 (640px 이면 안쪽으로 40px 들어가 어긋났음) */
 :root[data-device="tablet"] .nt-bar { max-width: 760px; }
-.tl-cell .tl-plus { position: absolute; top: -5px; right: -6px; white-space: nowrap; letter-spacing: -0.04em; font-style: normal; font-size: 8px; line-height: 1; font-weight: 800; color: var(--text-2, #c8c8c8); }
+.tl-cell .tl-plus { position: absolute; top: -5px; right: -6px; white-space: nowrap; letter-spacing: -0.04em; font-style: normal; font-size: 9px; line-height: 1; font-weight: 800; color: var(--text-2, #c8c8c8); }
 .tl-cell.has > span { position: relative; }
 /* 빈 자리 두 버튼(친구 초대·봇 추가)을 같은 높이·같은 줄에 — 봇 추가만 위 여백이 있어 2px 내려가 보였음 */
 .slot-acts { align-items: center; }
@@ -2662,7 +2662,7 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .close-held .ch-item { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* 내 증강 칸 제목, 빈 칸은 '4일'처럼 두 글자라 조금 작게 */
 .aug-panel-h { margin: 0 0 8px; font-size: 16px; font-weight: 800; }
-.aug-slot.empty .aug-slot-in { font-size: calc(var(--s, 30px) * 0.3); letter-spacing: -0.03em; }
+.aug-slot.empty .aug-slot-in { font-size: max(10px, calc(var(--s, 30px) * 0.3)); letter-spacing: -0.03em; }
 /* PC 서랍은 위에 이미 '내 증강' 제목이 있으므로 안쪽 제목은 숨김 */
 .drawer .aug-panel-h { display: none; }
 /* 빈 증강 칸: 다른 칸 규칙의 위아래 여백이 붙어 세로로 긴 타원이 됐음 → 동그라미 그대로 */
