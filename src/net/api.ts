@@ -187,6 +187,8 @@ export function useLiveView(roomId: string | null): LiveView {
   const fastRef = useRef(false);
   /** 끝난 판: 결과 화면에선 '다시 하기 방' 소식만 기다리므로 천천히 */
   const doneRef = useRef(false);
+  // 혼자 하는 판(사람 1명 — 봇전·오늘의 도전)의 장 전: 내가 '장 시작'을 누르기 전엔 서버에서 바뀌는 게 없음 → 천천히 (내 행동 뒤엔 바로 새로 받음)
+  const calmRef = useRef(false);
   /** 지금까지 받은 오늘 장중 가격 — 다음엔 새로 생긴 칸만 받아 이어 붙임 */
   const liveRef = useRef<View['live']>(null);
   const postsRef = useRef<{ key: string; list: NonNullable<View['community']> } | null>(null);
@@ -237,8 +239,11 @@ export function useLiveView(roomId: string | null): LiveView {
         keyRef.current = v.marketKey;
       }
       setView(v);
-      fastRef.current = !!v.live && (v.live.tickMs ?? 5000) <= 1000;
+      // 장 전에는 가격이 안 움직이므로 1초 갱신을 하지 않음 (장 전에도 live 가 와서 장 전 내내 1초마다 물었음)
+      const pre = (v.room.preUntil ?? 0) > v.serverNow;
+      fastRef.current = !pre && !!v.live && (v.live.tickMs ?? 5000) <= 1000;
       doneRef.current = v.room.status === 'finished';
+      calmRef.current = v.room.status === 'playing' && pre && v.players.filter((p) => !p.bot).length === 1;
       failRef.current = 0;
       setError(null);
     } catch (e) {
@@ -271,7 +276,7 @@ export function useLiveView(roomId: string | null): LiveView {
     const loop = () => {
       // 창이 뒤에 있으면 10초마다(자리 비움 판정 90초보다 짧게), 요청 제한에 걸렸으면 5초마다
       const hidden = document.visibilityState === 'hidden';
-      const base = hidden ? 10_000 : doneRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
+      const base = hidden ? 10_000 : doneRef.current || calmRef.current ? 8000 : Date.now() < slowUntil.current ? 5000 : fastRef.current ? 1000 : 2500;
       // 실패가 이어지면 1→2→4→8초로 벌리고 그 안에서 섞음 (끊겼다 돌아온 사람들이 한꺼번에 몰리지 않게)
       const f = failRef.current;
       const ms = f > 0 ? Math.max(base, Math.random() * Math.min(8000, 1000 * 2 ** f)) : base;
