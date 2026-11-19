@@ -2714,3 +2714,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .sk-list.sk-early .sk-bar i { opacity: 0.55; }
 /* 휴대폰 오늘의 도전: 진행 줄 아래 판 이름 · 오늘의 시장 */
 .m-kind-tag { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--accent-text, #b9adff); }
+
+/* 대기실 아래 버튼 글자는 한 줄 (왼쪽 안내가 길어져도 버튼이 좁아지지 않게) */
+.wr-go { white-space: nowrap; flex-shrink: 0; }
