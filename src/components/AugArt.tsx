@@ -24,7 +24,7 @@ const ART: Record<string, ToonName> = {
   climb: 'ranked', last1: 'ranked', last2: 'ranked', chaser: 'ranked', army: 'ranked', comeback: 'ranked',
   // 업종
   semi1: 'study', semi2: 'study', battery1: 'quick', battery2: 'quick', bio1: 'binary', bio2: 'binary', crypto1: 'pump', crypto2: 'pump',
-  us1: 'war', us2: 'war', us3: 'war', etf1: 'rooms', rule: 'rooms',
+  us1: 'usa', us2: 'usa', us3: 'usa', etf1: 'rooms', rule: 'rooms',
 };
 
 export function AugArt({ id, size }: { id: string; size: number }) {

@@ -6,7 +6,7 @@
  */
 import { seeded } from '../lib/rng.js';
 import type { Market, NewsEvent } from './market.js';
-import { clockOf, communityPosts, GAME_TIME_VERSION, gameTime, PLATFORMS } from './community.js';
+import { clockOf, communityPosts, FAIR_WHEN_VERSION, GAME_TIME_VERSION, gameTime, PLATFORMS } from './community.js';
 import { dayTicks } from './intraday.js';
 import { COMPANIES, SECTOR_MAP, STOCK_MAP } from './stocks.js';
 
@@ -58,7 +58,8 @@ export function liveNews(m: Market, day: number, key: string, n: number, daySec?
   }
   // 소문 기사: 반응이 큰 커뮤니티 글 (회사 이름 글만)
   const posts = communityPosts(m, day, key, ds)
-    .filter((p) => p.symbol && !p.verified && p.at < 0.9)
+    // (v29) 이미 공개된 소식에 대한 반응 글은 빼고 (그것만 인용하면 늘 '진짜'라 소문 기사가 쓸모없음)
+    .filter((p) => p.symbol && !p.verified && p.at < 0.9 && !((m.version ?? 1) >= FAIR_WHEN_VERSION && p.re))
     .sort((a, b) => b.likes - a.likes);
   const nRumor = Math.floor(rng() * 3);
   for (const p of posts.slice(0, nRumor)) {

@@ -8,7 +8,7 @@
 import { foldWidth, hasHiddenChars, nickNotice } from '../game/nickname.js';
 import { activeEffects, BONUS_TABLE, INFO_ONE_PER_DAY_VERSION, canBuy, canUse, deriveItems, drawBonus, holdLimit, itemCost, FEE_BOMB_RATE, hashString, ITEM_MAP, ITEMS, SCOUT_ACCURACY, spendsFromRows, type Effect, type ItemKind, type ItemRow, type PlayerItems } from '../game/items.js';
 import { generateMarket, relatedForCompany, type Bar, type Market, type NewsEvent } from '../game/market.js';
-import { computeAchievements } from '../game/achievements.js';
+import { computeAchievements, cutMarket } from '../game/achievements.js';
 import { dayTicks, indexTicks, releaseTick, tickMsFor, ticksPerDay } from '../game/intraday.js';
 import { mulberry32, seeded } from '../lib/rng.js';
 import { preRumors, publicRumors, type PublicRumor } from '../game/rumors.js';
@@ -337,7 +337,7 @@ function cleanKind(v: unknown): ItemKind {
 
 const marketCache = new Map<string, Market>();
 /** 이 판의 시장 규칙 버전 (예전 방 = 1, 새 방 = 2) */
-export const CURRENT_RULES_VERSION = 28;
+export const CURRENT_RULES_VERSION = 29;
 /** v7: 날과 날 사이 '장 전 시간' (어제 정리·찌라시·예약 주문). 첫날은 없음 */
 export const PREMARKET_VERSION = 7;
 /** 장 전 시간(초): 신속 20초 · 일반 30초 · 그 밖엔 하루 시간의 ⅓ (15~45초) */
@@ -722,6 +722,14 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   const marketKey = `${r.status}:${r.day}:${releasedNow}:${hashKey(`${keySalt ?? r.id}|${meId}|${r.day}|${rumorCheck ? 1 : 0}|${detectorPick ?? ''}|${fakes.length}|${blackout ? 1 : 0}`)}`;
   base.marketKey = marketKey;
   if (clientMarketKey !== marketKey) base.market = sliceMarket(m, day, finished, { rumorCheck, fakes, blackout, tick: open ? clock.tick : 0, n: clock.n, pick: detectorPick, daySec: daySecOf(r) });
+  // 오늘의 도전은 모두 같은 시장이라, 중간에 그만둔 사람에게 끝난 판의 남은 날(가격·뉴스·글)을 보여 주면
+  // 다른 계정으로 그만두고 미래를 본 뒤 본 계정으로 할 수 있음 → 그만둔 날까지만
+  const meRow = d.players.find((p) => p.id === meId);
+  const dailyCut = finished && r.kind === 'daily' && meRow?.left_game && typeof meRow.left_day === 'number' && meRow.left_day < r.total_days - 1 ? meRow.left_day : null;
+  if (dailyCut !== null && base.market) {
+    const mk = base.market;
+    base.market = { ...cutMarket(mk, dailyCut), halts: mk.halts?.filter((h) => h.day <= dailyCut), community: mk.community?.filter((p) => p.day <= dailyCut) };
+  }
   if (open) {
     // 화면이 이미 가진 칸은 다시 보내지 않음 (1초 가격이면 매초 64KB → 1KB 안팎). 그래도 지금 칸까지만
     const from = liveFrom && liveFrom.day === day && Number.isInteger(liveFrom.from) && liveFrom.from > 0 && liveFrom.from <= clock.tick + 1 ? liveFrom.from : 0;
@@ -736,7 +744,7 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
   }
 
   if (finished) {
-    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game, ...(p.bot_level ? { bot: p.bot_level } : {}) })), badges: finalResults(d).badges, endDay: playedLastDay(d) };
+    base.final = { seed: r.seed, trades: d.trades, items: d.items, players: players.map((p) => ({ id: p.id, nickname: p.nickname, left: !!p.left_game, ...(p.bot_level ? { bot: p.bot_level } : {}) })), badges: finalResults(d).badges, endDay: dailyCut ?? playedLastDay(d) };
     if (augOn(r.version)) {
       const st = deriveAugs(d);
       const m2 = marketFor(r.seed, r.total_days, r.version ?? 1, r.salt, r.theme);

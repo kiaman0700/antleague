@@ -39,8 +39,16 @@ export interface MatchState {
 
 let st: MatchState = { phase: 'idle', queue: null, startedAt: 0, info: null, err: '', notice: '', matched: null };
 const subs = new Set<() => void>();
+const SEARCH_KEY = 'stockduel.searching';
 const set = (p: Partial<MatchState>) => {
   st = { ...st, ...p };
+  // 찾는 중이었다는 표시: 새로 고침 직후 그사이 잡힌 판을 놓치지 않게 (아래 recoverAfterReload)
+  try {
+    if (st.phase === 'searching' || st.phase === 'linking') sessionStorage.setItem(SEARCH_KEY, String(Date.now()));
+    else if (st.phase === 'idle') sessionStorage.removeItem(SEARCH_KEY);
+  } catch {
+    /* 저장소를 못 쓰면 표시 없이 */
+  }
   subs.forEach((f) => f());
 };
 export const getMatch = () => st;
@@ -275,3 +283,36 @@ export function queueText(q: string | null) {
   return `${kind === 'ranked' ? '랭킹전' : '일반전'} · ${size === 'duel' ? '1대1' : '다인전'} · ${speed === 'quick' ? '신속' : '일반'}`;
 }
 export const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`;
+
+/**
+ * 찾는 중에 새로 고침하면 창을 닫을 때 대기표를 지우지만, 그 순간 이미 상대가 잡혀 방을 만드는 중이었으면 판이 생김.
+ * 새로 고친 창에서 한 번 물어 그 판으로 들어감 (서버는 매칭 결과를 2분 동안 다시 줌)
+ */
+function recoverAfterReload() {
+  let at = 0;
+  try {
+    at = Number(sessionStorage.getItem(SEARCH_KEY) ?? 0);
+    sessionStorage.removeItem(SEARCH_KEY);
+  } catch {
+    return;
+  }
+  if (!at || Date.now() - at > 120_000) return;
+  const ask = async (left: number) => {
+    if (st.phase !== 'idle' || st.matched) return;
+    try {
+      const s = await api<{ status: string } & Partial<Matched>>('queueStatus');
+      if (st.phase !== 'idle' || st.matched) return;
+      if (s.status === 'matched' && s.roomId && s.playerId) {
+        play('win');
+        set({ matched: { roomId: s.roomId, playerId: s.playerId, code: s.code ?? '', nickname: s.nickname ?? '', mode: s.mode ?? 'easy', at: Date.now() } });
+        return;
+      }
+      // 방을 만드는 중이면 조금 뒤 다시 (최대 몇 번)
+      if (s.status !== 'none' && left > 0) setTimeout(() => void ask(left - 1), 1500);
+    } catch {
+      /* 못 물으면 그만 — 로비의 다시 입장 안내가 이어 받음 */
+    }
+  };
+  setTimeout(() => void ask(4), 1200);
+}
+if (typeof window !== 'undefined') recoverAfterReload();

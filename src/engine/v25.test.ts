@@ -16,7 +16,7 @@ describe('v25 모든 소식에 커뮤니티 반응', () => {
       expect(m.version).toBeGreaterThanOrEqual(REACT_VERSION);
       for (let d = 0; d < m.totalDays; d++) {
         const posts = communityPosts(m, d, m.salt!);
-        const reacts = posts.filter((p) => p.id.includes('-n'));
+        const reacts = posts.filter((p) => p.src === 'n');
         for (const p of reacts) {
           expect(p.hype).toBe(0);
           expect(p.real).toBe(true);
@@ -36,9 +36,9 @@ describe('v25 모든 소식에 커뮤니티 반응', () => {
     for (let i = 0; i < 20; i++) {
       const m = mk(i);
       const d = 3;
-      const a = communityPosts(m, d, m.salt! + 'x').filter((p) => p.id.includes('-n'));
+      const a = communityPosts(m, d, m.salt! + 'x').filter((p) => p.src === 'n');
       const flipped = { ...m, news: m.news.map((n) => (n.day === d ? { ...n, fake: !n.fake, realTone: n.realTone === 'good' ? ('bad' as const) : ('good' as const) } : n)) };
-      const b = communityPosts(flipped, d, m.salt! + 'x').filter((p) => p.id.includes('-n'));
+      const b = communityPosts(flipped, d, m.salt! + 'x').filter((p) => p.src === 'n');
       expect(JSON.stringify(b.map((p) => [p.at, p.text, p.likes, p.tone]))).toBe(JSON.stringify(a.map((p) => [p.at, p.text, p.likes, p.tone])));
     }
   });
@@ -62,7 +62,7 @@ describe('v25 모든 소식에 커뮤니티 반응', () => {
 
   it('v24 판의 커뮤니티 글은 그대로 (반응 글 없음)', () => {
     const m = mk(1, 24);
-    for (let d = 0; d < 5; d++) expect(communityPosts(m, d, m.salt!).some((p) => p.id.includes('-n'))).toBe(false);
+    for (let d = 0; d < 5; d++) expect(communityPosts(m, d, m.salt!).some((p) => p.src === 'n')).toBe(false);
   });
 
   it('관계(거래처·경쟁사·ETF) 반응: 경쟁사 글은 방향이 반대', () => {
@@ -70,7 +70,7 @@ describe('v25 모든 소식에 커뮤니티 반응', () => {
     for (let i = 0; i < 40; i++) {
       const m = mk(i);
       for (let d = 0; d < m.totalDays; d++) {
-        const posts = communityPosts(m, d, m.salt!).filter((p) => p.id.includes('-n') && /경쟁사/.test(p.text));
+        const posts = communityPosts(m, d, m.salt!).filter((p) => p.src === 'n' && /경쟁사/.test(p.text));
         for (const p of posts) {
           const n = m.news.find((x) => x.day === d && x.symbol && x.rel?.[p.symbol!] === 'rival' && p.text.includes(x.symbol ? '' : ''));
           if (n) {

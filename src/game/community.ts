@@ -34,6 +34,8 @@ export interface Verified {
 }
 export interface Post {
   id: string;
+  /** 서버 안에서만: 어떤 반응 글인지 (r 속보 반응 · e 사건 반응 · n 소식 반응) — 화면에 안 보냄 */
+  src?: 'r' | 'e' | 'n';
   day: number;
   /** 올라온 시각 (하루 중 0~1) */
   at: number;
@@ -82,6 +84,8 @@ export function clockOf(at: number) {
 export const GAME_TIME_VERSION = 22;
 /** (v25) 모든 공개 소식에 커뮤니티가 반응 (소식과 커뮤니티가 서로 이어지게) */
 export const REACT_VERSION = 25;
+/** (v29) 가짜 글의 때·올라온 시각을 진짜 글과 같은 모양으로 — 문구·시각만으로 진위가 드러나던 것 막기 */
+export const FAIR_WHEN_VERSION = 29;
 export function gameTime(at: number, daySec: number): string {
   const t = Math.round(Math.max(0, Math.min(1, at)) * daySec);
   if (t <= 0) return '장 시작';
@@ -194,6 +198,30 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
   const ahead = m.news.filter((n) => (n.day === day + 1 || n.day === day + 2) && n.day < m.totalDays && n.kind !== 'macro' && (n.symbol || n.sector) && isReal(n));
   const tomorrow = ahead;
   const out: Post[] = [];
+  // (v29) 가짜 글 때 고르기 전용 난수 — 예전 판 글은 그대로
+  const fair = (m.version ?? 1) >= FAIR_WHEN_VERSION;
+  const r29 = seeded(`${key}:sns29:${day}`);
+  // 진짜 글이 짚는 장중 시각은 실제 속보 시각이라, 가짜도 같은 시각들 중에서 고름
+  const breakAts = m.news.filter((n) => n.at != null && n.at > 0.14 && !n.rumor).map((n) => n.at!);
+  const morningShare = (() => {
+    const f = m.news.filter((n) => n.kind !== 'macro' && !n.rumor && (n.symbol || n.sector));
+    return f.length ? f.filter((n) => n.at == null).length / f.length : 0.7;
+  })();
+  const fakeWhen = (): { at: number; when: When } => {
+    const pickAt = () => (breakAts.length ? breakAts[Math.floor(r29() * breakAts.length)] : 0.15 + r29() * 0.8);
+    const days = [day + 1, day + 2].filter((x) => x < m.totalDays);
+    if (!days.length || r29() < 0.6) {
+      // 오늘 장중: 진짜 속보 글과 같은 식 (짚은 시각보다 앞에서, 짚은 시각까지 남은 때로 '곧'·'오늘 n초쯤')
+      const t = pickAt();
+      const at = 0.03 + r29() * Math.max(0.02, t - 0.1);
+      return { at, when: t - at < 0.18 ? { kind: 'soon', target: { day, at: t } } : { kind: 'today', target: { day, at: t } } };
+    }
+    const at = 0.3 + r29() * 0.65;
+    const td = days[Math.floor(r29() * days.length)];
+    const ta = r29() < morningShare ? 0 : pickAt();
+    if (td === day + 1) return { at, when: ta > 0 ? { kind: 'tday', target: { day: td, at: ta } } : { kind: 'tomorrow', target: { day: td, at: 0 } } };
+    return { at, when: { kind: 'day', target: { day: td, at: ta } } };
+  };
   for (let i = 0; i < count; i++) {
     let real = rng() < 0.4;
     let at = 0.03 + rng() * 0.9;
@@ -230,6 +258,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
       else if (day + 2 < m.totalDays) when = { kind: 'day', target: { day: day + 2 + Math.floor(rng() * Math.max(1, Math.min(4, m.totalDays - day - 2))), at: 0.5 } };
       else when = { kind: 'close', target: { day, at: 0.97 } };
     }
+    if (fair && !real) ({ at, when } = fakeWhen());
     // 검증 계정: 진위가 정해진 뒤 진위에 따라 (진짜 40% · 가짜 8%) → 검증 글은 약 75% 진짜
     const verifiedRoll = rng();
     const isVerified = verifiedRoll < (real ? 0.4 : 0.08);
@@ -280,7 +309,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
       const lines = good
         ? [`방금 속보 봤음? ${name} 바로 튀어 오름 ㄷㄷ`, `${name} 속보 떴다!! 늦은 건가…`, `와 ${name} 실화냐 속보 보자마자 들어갈걸`]
         : [`방금 속보 봤음? ${name} 바로 고꾸라짐 ㅠㅠ`, `${name} 속보 떴다… 물린 사람 손`, `${name} 악재 속보 실화냐 손절각`];
-      out.push({ id: `${day}-r${out.length}`, day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0, re: true });
+      out.push({ id: `${day}-r${out.length}`, src: 'r', day, at: Math.min(0.99, n.at! + 0.01 + r2() * 0.04), platform: pf, author: NICKS[Math.floor(r2() * NICKS.length)], verified: null, text: lines[Math.floor(r2() * lines.length)], symbol: n.symbol!, sector: STOCK_MAP[n.symbol!].sector, tone: good ? 'good' : 'bad', target: { day, at: n.at! }, likes: Math.floor(30 + r2() * 600), replies: Math.floor(r2() * 120), real: true, hype: 0, re: true });
     }
   }
   // (v24) 그날 나온 큰 사건 뉴스에 반응하는 글 — 사건의 원인·결과를 짚음(전쟁 → 유가·정유·항공, 테마 과열, 상장 폐지, 유상증자, 공매도 보고서).
@@ -290,7 +319,7 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
     const nick = () => NICKS[Math.floor(r4() * NICKS.length)];
     const plat = (): Platform => PLATFORM_IDS[Math.floor(r4() * PLATFORM_IDS.length)];
     const add = (afterAt: number, text: string, sector: string, tone: 'good' | 'bad', symbol?: string) =>
-      out.push({ id: `${day}-e${out.length}`, day, at: Math.min(0.97, afterAt + 0.01 + r4() * 0.12), platform: plat(), author: nick(), verified: null, text, symbol, sector, tone, target: { day, at: afterAt }, likes: Math.floor(80 + r4() * 900), replies: Math.floor(10 + r4() * 200), real: true, hype: 0, re: true });
+      out.push({ id: `${day}-e${out.length}`, src: 'e', day, at: Math.min(0.97, afterAt + 0.01 + r4() * 0.12), platform: plat(), author: nick(), verified: null, text, symbol, sector, tone, target: { day, at: afterAt }, likes: Math.floor(80 + r4() * 900), replies: Math.floor(10 + r4() * 200), real: true, hype: 0, re: true });
     for (const n of m.news.filter((x) => x.day === day && !x.rumor)) {
       const at0 = n.at ?? 0.02;
       const h = n.headline;
@@ -326,6 +355,8 @@ export function communityPosts(m: Market, day: number, key: string, daySec?: num
   }
   if ((m.version ?? 1) >= REACT_VERSION) reactAll(m, day, key, out);
   out.sort((a, b) => a.at - b.at);
+  // 번호는 올라온 차례로 새로 매김: 만든 차례 번호를 쓰면 아직 안 보이는 속보의 반응 글 자리가 번호 틈으로 드러남
+  out.forEach((p, i) => (p.id = `${day}-${i}`));
   if (cache.size > 2000) cache.clear();
   cache.set(ck, out);
   return out;
@@ -458,6 +489,7 @@ function reactAll(m: Market, day: number, key: string, out: Post[]) {
       const hot = big ? 2 : 1;
       const post: Post = {
         id: `${day}-n${out.length}`,
+        src: 'n',
         day,
         at,
         platform: pick(plats),

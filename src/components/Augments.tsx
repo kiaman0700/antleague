@@ -7,7 +7,7 @@ import type { Trade } from '../game/portfolio';
 import { STOCK_MAP } from '../game/stocks';
 import { Icon, type IconName } from './Icon';
 import { AugArt } from './AugArt';
-import { AugCrest, AugGems } from './AugFrame';
+import { AugCorner, AugCrest, AugGems, AugMedal } from './AugFrame';
 import { DialogBox, useEscape } from './ui';
 import { won } from '../lib/format';
 
@@ -77,8 +77,14 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
               <div key={id} data-aug={id} className={'aug-opt' + (picked === id ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
                 <AugCrest tier={a.tier} />
                 <button className="aug-card" aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째. 누르면 바로 선택`} onClick={() => choose(id)} disabled={busy || !!picked}>
+                  {(['tl', 'tr', 'bl', 'br'] as const).map((p) => (
+                    <AugCorner key={p} tier={a.tier} pos={p} />
+                  ))}
                   <span className="aug-pic" aria-hidden>
-                    <AugArt id={id} size={72} />
+                    <AugMedal tier={a.tier} />
+                    <span className="aug-pic-in">
+                      <AugArt id={id} size={72} />
+                    </span>
                   </span>
                   <b className="aug-name">{a.name}</b>
                   {recommend === id && <span className="aug-rec">처음이라면 추천</span>}

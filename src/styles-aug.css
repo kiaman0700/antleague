@@ -1,0 +1,132 @@
+/*
+ * 증강 고르기 카드 틀 (마지막에 덧씌움). 티어 엠블럼과 같은 금속·보석 재질:
+ * 두꺼운 금속 테두리(위가 밝고 아래가 어두운 + 가운데 반사 띠) · 안쪽 홈 · 모서리 장식 · 위 방패와 날개 · 그림 뒤 메달 · 아래 보석 판.
+ * 안의 그림은 정해 둔 토스식 아이콘 그대로. 모든 모양은 둥글게.
+ */
+.aug-stage .aug-row3 { padding-top: 34px; gap: 22px; }
+.aug-stage .aug-row3 .aug-opt { position: relative; --cs: 1; }
+
+.aug-stage .aug-row3 .aug-card {
+  --metal: linear-gradient(170deg, #ffffff 0%, #e8ecf2 12%, #aeb6c3 30%, #f7f9fc 43%, #939cab 56%, #626a79 78%, #353a44 100%);
+  --body: radial-gradient(120% 46% at 50% 24%, color-mix(in srgb, var(--tc) 13%, transparent), transparent 70%), linear-gradient(180deg, #24262c 0%, #18191d 34%, #111114 100%);
+  position: relative;
+  overflow: visible;
+  min-height: 384px;
+  padding: 44px 18px 30px;
+  gap: 0;
+  border: 6px solid transparent;
+  border-radius: 22px;
+  background: var(--body) padding-box, var(--metal) border-box;
+  box-shadow:
+    0 0 0 1.5px #08080a,
+    0 18px 40px rgba(0, 0, 0, 0.7),
+    0 4px 10px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1.5px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.06),
+    inset 0 18px 30px -18px rgba(255, 255, 255, 0.08);
+  transition: transform 180ms var(--ease-out), box-shadow 180ms;
+}
+.aug-stage .aug-row3 .t-gold .aug-card {
+  --metal: linear-gradient(170deg, #fffbe8 0%, #ffe08a 12%, #dca331 30%, #fff0b3 43%, #c4861b 56%, #83540e 80%, #4a2f07 100%);
+  --body: radial-gradient(120% 46% at 50% 24%, color-mix(in srgb, var(--tc) 13%, transparent), transparent 70%), linear-gradient(180deg, #2c2414 0%, #1c1810 34%, #121110 100%);
+}
+.aug-stage .aug-row3 .t-prism .aug-card {
+  --body: radial-gradient(120% 46% at 50% 24%, color-mix(in srgb, var(--tc) 15%, transparent), transparent 70%), linear-gradient(180deg, #2a2438 0%, #1b1825 34%, #121117 100%);
+  border: 6px solid transparent;
+  background:
+    var(--body) padding-box,
+    linear-gradient(170deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.35) 46%, rgba(0, 0, 0, 0) 54%, rgba(0, 0, 0, 0.45) 100%) border-box,
+    conic-gradient(from var(--aug-ang), #fff3b0, #ffb3dc, #c5b3ff, #9fe0ff, #b4f5d6, #fff3b0) border-box;
+  animation: aug-prism 8s linear infinite;
+}
+/* 안쪽 가는 금속 선 (홈 안의 두 번째 테두리) */
+.aug-stage .aug-row3 .aug-card::before {
+  display: block;
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--tc) 38%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 0;
+}
+.aug-stage .aug-row3 .aug-card > * { position: relative; z-index: 1; }
+.aug-stage .aug-row3 .aug-card:hover:not(:disabled),
+.aug-stage .aug-row3 .aug-card:focus-visible { transform: translateY(-6px); filter: none; box-shadow: 0 0 0 1.5px #08080a, 0 26px 48px rgba(0, 0, 0, 0.75), 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 0 0 1.5px rgba(0, 0, 0, 0.85), inset 0 0 0 3px rgba(255, 255, 255, 0.1), inset 0 18px 30px -18px rgba(255, 255, 255, 0.12); }
+.aug-stage .aug-row3 .aug-card:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.aug-stage .aug-row3 .aug-opt.on .aug-card { box-shadow: 0 0 0 1.5px #08080a, 0 0 0 4px #8b7bff, 0 18px 40px rgba(0, 0, 0, 0.7), inset 0 0 0 1.5px rgba(0, 0, 0, 0.85); }
+
+/* 위 방패·날개: 카드 위 테두리에 걸침, 카드와 함께 떠오름 */
+.aug-stage .aug-row3 .aug-crest {
+  position: absolute;
+  top: calc(-44px * var(--cs));
+  left: 50%;
+  width: calc(196px * var(--cs));
+  height: calc(90px * var(--cs));
+  margin: 0;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.7));
+  transition: transform 180ms var(--ease-out);
+}
+.aug-stage .aug-row3 .aug-opt:has(.aug-card:hover:not(:disabled)) .aug-crest,
+.aug-stage .aug-row3 .aug-opt:has(.aug-card:focus-visible) .aug-crest { transform: translateX(-50%) translateY(-6px); }
+
+/* 모서리 장식: 테두리 위에 얹힘 */
+.aug-corner { position: absolute; width: calc(46px * var(--cs)); height: calc(46px * var(--cs)); z-index: 2; pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6)); }
+.aug-stage .aug-row3 .aug-card > .aug-corner { position: absolute; z-index: 2; }
+.aug-corner.c-tl { top: -9px; left: -9px; }
+.aug-corner.c-tr { top: -9px; right: -9px; transform: scaleX(-1); }
+.aug-corner.c-bl { bottom: -9px; left: -9px; transform: scaleY(-1); }
+.aug-corner.c-br { bottom: -9px; right: -9px; transform: scale(-1, -1); }
+
+/* 그림 뒤 메달 */
+.aug-stage .aug-row3 .aug-pic { position: relative; width: calc(124px * var(--cs)); height: calc(124px * var(--cs)); margin: 0 auto; display: flex; align-items: center; justify-content: center; flex: none; }
+.aug-stage .aug-pic .aug-medal { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55)); }
+.aug-pic-in { position: relative; display: flex; }
+.aug-stage .aug-pic .aug-pic-in svg { width: calc(70px * var(--cs)); height: calc(70px * var(--cs)); }
+
+/* 이름 · 금속 줄 · 설명 */
+.aug-stage .aug-row3 .aug-name { margin-top: 16px; padding: 0 6px; font-size: 19px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+.aug-stage .aug-row3 .aug-rule {
+  width: 92px;
+  height: 6px;
+  margin: 12px 0 12px;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 2px, transparent 2.5px),
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--tc) 70%, transparent) 22%, var(--tc) 42%, #fff 50%, var(--tc) 58%, color-mix(in srgb, var(--tc) 70%, transparent) 78%, transparent 100%) center / 100% 2px no-repeat;
+}
+.aug-stage .aug-row3 .aug-desc { padding: 0 8px; font-size: 14.5px; line-height: 1.6; color: #dadade; }
+
+/* 아래 줄: 종류 글자는 가운데, 보석 판은 아래 테두리에 걸침 */
+.aug-stage .aug-row3 .aug-foot { margin-top: auto; padding: 14px 8px 4px; background: none; border: 0; border-radius: 0; justify-content: center; color: #a6a6ae; font-size: 12px; position: static; }
+/* 종류 글자 위 가는 금속 줄 (가운데가 밝음) */
+.aug-stage .aug-row3 .aug-foot::before { content: ''; position: absolute; left: 18%; right: 18%; margin-top: -14px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tc) 55%, transparent), transparent); }
+.aug-stage .aug-row3 .aug-foot .aug-gems { position: absolute; left: 50%; bottom: -21px; transform: translateX(-50%); z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7)); }
+.aug-stage .aug-row3 .aug-reroll { margin-top: 18px; }
+
+/* 고를 때·바뀔 때 움직임은 예전 그대로, 프리즘 테두리만 천천히 돎 */
+@media (prefers-reduced-motion: reduce) {
+  .aug-stage .aug-row3 .aug-card, .aug-stage .aug-row3 .aug-crest { transition: none; }
+  .aug-stage .aug-row3 .t-prism .aug-card { animation: none; }
+}
+
+/* 휴대폰: 카드가 좁아 장식을 비율대로 줄임 */
+@media (max-width: 860px) {
+  .aug-stage .aug-row3 { padding-top: 22px; gap: 10px; }
+  .aug-stage .aug-row3 .aug-opt { --cs: 0.58; }
+  .aug-stage .aug-row3 .aug-card { min-height: 280px; padding: 26px 6px 22px; border-width: 4px; border-radius: 16px; }
+  .aug-stage .aug-row3 .aug-card::before { inset: 4px; border-radius: 10px; }
+  .aug-corner.c-tl { top: -6px; left: -6px; }
+  .aug-corner.c-tr { top: -6px; right: -6px; }
+  .aug-corner.c-bl { bottom: -6px; left: -6px; }
+  .aug-corner.c-br { bottom: -6px; right: -6px; }
+  .aug-stage .aug-row3 .aug-name { margin-top: 10px; font-size: 14px; }
+  .aug-stage .aug-row3 .aug-rule { width: 56px; margin: 8px 0; }
+  .aug-stage .aug-row3 .aug-desc { padding: 0 2px; font-size: 12px; line-height: 1.45; }
+  .aug-stage .aug-row3 .aug-foot { padding: 10px 2px 2px; font-size: 10.5px; }
+  .aug-stage .aug-row3 .aug-foot .aug-gems { bottom: -17px; transform: translateX(-50%) scale(0.75); }
+}

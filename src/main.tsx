@@ -20,6 +20,7 @@ import './styles-nav.css';
 import './styles-client.css';
 import './styles-kit.css';
 import './styles-v2.css';
+import './styles-aug.css';
 import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';
 

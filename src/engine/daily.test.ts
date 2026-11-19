@@ -37,3 +37,22 @@ describe('오늘의 도전: 정보가 새지 않는다', () => {
     expect(s.includes(SALT)).toBe(false);
   });
 });
+
+describe('오늘의 도전: 중간에 그만두면 끝난 판 화면도 그만둔 날까지만', () => {
+  it('첫날 그만두면 2일차 뒤 가격·뉴스·글이 화면 데이터에 없음 (다른 계정으로 미래를 미리 보는 것 막기)', () => {
+    const d = daily();
+    d.players[0] = { ...d.players[0], left_game: true, left_day: 0 };
+    d.room = { ...d.room, status: 'finished', day: 10, deadline: null, day_deadline: null };
+    const v = buildView(d, 'me', T0 + 5_000);
+    expect(v.market!.totalDays).toBe(1);
+    expect(Object.values(v.market!.bars).every((b) => b.length === 1)).toBe(true);
+    expect(v.market!.news.every((n) => n.day === 0)).toBe(true);
+    expect((v.market!.community ?? []).every((p) => p.day === 0)).toBe(true);
+    expect(v.final!.endDay).toBe(0);
+  });
+  it('끝까지 한 판은 그대로 전부', () => {
+    const d = daily();
+    d.room = { ...d.room, status: 'finished', day: 10, deadline: null, day_deadline: null };
+    expect(buildView(d, 'me', T0 + 5_000).market!.totalDays).toBe(10);
+  });
+});

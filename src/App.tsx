@@ -8,6 +8,7 @@ import { supabase } from './lib/supabase';
 import { useRouter, type Route } from './router';
 // 게임 화면(차트·엔진 등 큼)은 따로 불러옴 → 첫 화면(로비)이 빨리 뜸. 로비가 뜬 뒤 미리 받아 둬서 게임에 들어갈 땐 기다림 없음
 const loadGame = () => import('./screens/GameController');
+const AugPreview = import.meta.env.DEV ? lazy(() => import('./screens/AugPreview')) : null;
 const GameControllerLazy = lazy(() => loadGame().then((m) => ({ default: m.GameController })));
 function GameController(props: React.ComponentProps<typeof GameControllerLazy>) {
   return (
@@ -50,6 +51,12 @@ async function resolvePath(path: string): Promise<{ route: Route; url?: string }
 }
 
 export default function App() {
+  if (AugPreview && typeof location !== 'undefined' && location.search.includes('augpreview'))
+    return (
+      <Suspense fallback={null}>
+        <AugPreview />
+      </Suspense>
+    );
   const { route, navigate } = useRouter();
   // 튜토리얼·화면 편집은 로비 주소지만 게임 화면이라 Lobby 가 제목을 못 정함 → 여기서
   const lobbyGame = route.kind === 'lobby' && (route.page === 'tutorial' || route.page === 'customize') ? route.page : null;
