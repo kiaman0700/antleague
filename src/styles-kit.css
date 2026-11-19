@@ -2686,3 +2686,9 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
   .desk .aug-strip .aug-strip-label { white-space: nowrap; flex: none; }
   .desk .aug-strip .aug-strip-item { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* 설정·더보기(PC 틀, 좁은 폭 861~1279px): 오른쪽 메뉴를 두 칸으로 나누면 칸이 130px 남짓이라 글자가 세로로 꺾였음 → 한 칸에 하나씩 */
+@media (min-width: 861px) and (max-width: 1279px) {
+  .more-menus > .more-links { grid-template-columns: minmax(0, 1fr) !important; }
+  .more-menus > .more-links > .more-h + .more-row + .more-row::before { display: block; }
+}
