@@ -11,6 +11,7 @@ import { LineChart } from '../components/Chart';
 import { BADGE_MAP, cutMarket, titleOf } from '../game/achievements';
 import { PLAYER_COLORS } from '../components/Board';
 import { josa, type View } from '../engine/engine';
+import { AugReveal } from '../components/Augments';
 import { deriveItems, ITEM_MAP, spendsFromRows, type ItemKind } from '../game/items';
 import { KR_INDEX_BASE, type Market } from '../game/market';
 import { computePortfolio, equityHistory, startCashFor } from '../game/portfolio';
@@ -94,7 +95,8 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
     const items = deriveItems(final.seed, final.players.map((p) => p.id), final.items, last, market.totalDays, final.players.length < 2, market.version ?? 1);
     return people.map((p) => {
       const trades = final.trades.filter((t) => t.player_id === p.id);
-      const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id));
+      // (v27) 증강으로 받은 돈도 현금 변화로
+      const spends = spendsFromRows(final.items.filter((r) => r.player_id === p.id)).concat((final.augIncome?.[p.id] ?? []).map((x) => ({ day: x.day, cost: -x.amount })));
       const pf = computePortfolio(trades, spends, Infinity, [], START_CASH);
       const hist = equityHistory(trades, spends, market);
       const equity = hist[hist.length - 1];
@@ -389,7 +391,8 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
         })}
       </div>
     </>;
-  const badgesEl = <>
+  const augEl = final.augs ? <AugReveal players={final.players} augs={final.augs} income={final.augIncome} /> : null;
+  const badgesEl = <>{augEl}
       <div className="panel pad">
         <h3>이번 판 업적</h3>
         {/* 봇은 업적을 모으지 않으니 사람 것만 (봇 업적에 내 업적이 묻히지 않게) */}

@@ -140,6 +140,9 @@ import {
   validatePlaceOrder,
   validateTrade,
   validateUseItem,
+  validatePickAug,
+  validateRerollAug,
+  validateUseAug,
   validatePreReady,
   preAllReadyDeadline,
   type GameData,
@@ -148,6 +151,7 @@ import {
   type RoomRow,
   MAX_PLAYERS,
 } from '../../src/engine/engine.js';
+import type { AugRow } from '../../src/engine/augs.js';
 import type { ItemRow } from '../../src/game/items.js';
 import { SOCIAL_ACTIONS, socialAct, touchSeen } from './social.js';
 import { accountAct, getProfile, loginEmail, nicknameFree, recordMatch, resetPassword } from './accounts.js';
@@ -263,13 +267,14 @@ function newCode() {
 
 async function loadGame(roomId: string): Promise<GameData> {
   const sb = db();
-  const [room, secret, players, trades, items, orders] = await Promise.all([
+  const [room, secret, players, trades, items, orders, augs] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
     sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step, left_day').eq('room_id', roomId),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
+    sb.from('augments').select('id, player_id, n, day, action, aug, slot, payload, created_at').eq('room_id', roomId).order('created_at'),
   ]);
   // 007 마이그레이션 전이면 나감·접속 컬럼 없이 다시 읽음
   let pl = players as { data: unknown; error: { message: string } | null };
@@ -315,6 +320,8 @@ async function loadGame(roomId: string): Promise<GameData> {
     items: (must(items, 'items') as ItemRow[]).map((i) => ({ ...i, cost: Number(i.cost) })),
     // orders 테이블이 아직 없으면(마이그레이션 전) 빈 목록으로
     orders: ((orders.error && /orders/.test(orders.error.message) ? [] : must(orders, 'orders')) as OrderRow[]).map((o) => ({ ...o, limit_price: Number(o.limit_price), fee: Number(o.fee), fill_price: o.fill_price == null ? null : Number(o.fill_price) })),
+    // 064 전이면 빈 목록 (v27 방이 없으므로 같음)
+    augs: (augs.error && /augments/.test(augs.error.message) ? [] : must(augs, 'augments')) as AugRow[],
   };
 }
 
@@ -354,7 +361,7 @@ export function cleanReqId(v: unknown): string | null {
 /** 마이그레이션 전(칸 없음)이면 번호 없이 예전처럼 */
 let reqCols = true;
 const noReqCol = (e: { message: string } | null) => !!e && /req_id/.test(e.message);
-async function findByReq<T>(table: 'trades' | 'items' | 'orders', playerId: string, reqId: string | null, cols: string): Promise<T | null> {
+async function findByReq<T>(table: 'trades' | 'items' | 'orders' | 'augments', playerId: string, reqId: string | null, cols: string): Promise<T | null> {
   if (!reqId || !reqCols) return null;
   const res = await db().from(table).select(cols).eq('player_id', playerId).eq('req_id', reqId).maybeSingle();
   if (noReqCol(res.error)) {
@@ -569,7 +576,13 @@ async function moveBots(d0: GameData, now = Date.now()): Promise<boolean> {
     const items = run.items.filter((i) => i.player_id === botId).map((i) => ({ room_id: d.room.id, ...i }));
     if (trades.length) must(await db().from('trades').insert(trades), 'bot trades');
     if (items.length) must(await db().from('items').insert(items), 'bot items');
-    d = { ...d, trades: [...d.trades, ...run.trades], items: [...d.items, ...run.items], players: d.players.map((p) => (p.id === botId ? { ...p, bot_step: step, ...(ends ? { ended_day: d.room.day } : {}) } : p)) };
+    const augs = run.augs.filter((x) => x.player_id === botId).map((x) => ({ room_id: d.room.id, ...x }));
+    if (augs.length) {
+      const ins = await db().from('augments').insert(augs);
+      // 같은 차례를 다른 요청이 먼저 넣었으면(유니크) 그대로 둠
+      if (ins.error && (ins.error as { code?: string }).code !== '23505') must(ins, 'bot augs');
+    }
+    d = { ...d, trades: [...d.trades, ...run.trades], items: [...d.items, ...run.items], augs: [...(d.augs ?? []), ...run.augs], players: d.players.map((p) => (p.id === botId ? { ...p, bot_step: step, ...(ends ? { ended_day: d.room.day } : {}) } : p)) };
     changed = true;
     if (ends) ended = true;
   }
@@ -1418,6 +1431,42 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       if (await insertOnce('items', { room_id: roomId, ...row }, reqId, 'item')) {
         const won = await findByReq<{ kind: string; action: string }>('items', playerId, reqId, 'kind, action');
         if (won) return sameItem(won);
+      }
+      return { ok: true };
+    }
+
+    case 'pickAug':
+    case 'rerollAug':
+    case 'useAug': {
+      const reqId = cleanReqId(b.reqId);
+      const { roomId, playerId } = await myPlayerId(b.roomId, uid);
+      const before = await findByReq<{ action: string }>('augments', playerId, reqId, 'action');
+      if (before) {
+        // 같은 요청 번호로 다른 행동을 보내면 거절 (다른 행동들과 같게)
+        if (before.action !== { pickAug: 'pick', rerollAug: 'reroll', useAug: 'use' }[action]) throw reqMismatch();
+        return { ok: true, dup: true };
+      }
+      const d = await loadGame(roomId);
+      const now = Date.now();
+      let row: AugRow;
+      let undo: Trade | undefined;
+      if (action === 'pickAug') row = validatePickAug(d, playerId, now, b);
+      else if (action === 'rerollAug') row = validateRerollAug(d, playerId, now, b);
+      else ({ row, undo } = validateUseAug(d, playerId, now, b));
+      await bumpPlayer(d, playerId);
+      const ins = await sb.from('augments').insert({ room_id: roomId, ...row, ...(reqId ? { req_id: reqId } : {}) });
+      if (ins.error) {
+        // 같은 요청이 두 번 왔거나, 같은 차례를 동시에 두 번 고른 경우 — DB 유니크가 하나만 남김
+        if ((ins.error as { code?: string }).code === '23505') return { ok: true, dup: true };
+        must(ins, 'aug');
+      }
+      if (undo) {
+        const ins = await sb.from('trades').insert({ room_id: roomId, ...undo });
+        if (ins.error) {
+          // 반대 거래가 안 들어가면 증강 쓰기도 없던 일로
+          await sb.from('augments').delete().eq('player_id', playerId).eq('action', 'use').eq('aug', 'undo');
+          must(ins, 'undo trade');
+        }
       }
       return { ok: true };
     }

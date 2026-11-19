@@ -1,3 +1,4 @@
+import { deriveAugs, pendingSlot } from './augs.js';
 import { describe, expect, it } from 'vitest';
 import { buildView, CURRENT_RULES_VERSION, dayClock, graceDeadline, nextRoomState, preAllReadyDeadline, validateEndTurn, type GameData } from './engine.js';
 import { BOT_END_AT, botCheckpoints, runBots } from './bots.js';
@@ -90,6 +91,8 @@ describe('봇', () => {
     const d2 = mk(2);
     const now = tickAt(d2, 10);
     apply(d2, runBots(d2, now));
+    const pend = pendingSlot(deriveAugs(d2), 'a', d2.room.day);
+    if (pend) (d2.augs ??= []).push({ player_id: 'a', n: pend.n, day: d2.room.day, action: 'pick', aug: pend.offer[0] });
     d2.players = d2.players.map((p) => (p.id === 'a' ? { ...p, ended_day: validateEndTurn(d2, 'a', now).day } : p));
     const g2 = graceDeadline(d2, now)!;
     d2.room = { ...d2.room, deadline: g2 };

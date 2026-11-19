@@ -205,6 +205,8 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
     }
     const trades = d.trades.filter((t) => t.player_id === p.id);
     const uses = d.items.filter((i) => i.player_id === p.id && i.action === 'use');
+    // (v27) 카드 대신 증강: 직접 고른 증강과 쓴 증강을 '카드 쓰기'로 셈
+    const augActs = (d.augs ?? []).filter((x) => x.player_id === p.id && (x.action === 'pick' || x.action === 'use'));
     const idx = fin.results.findIndex((r) => r.nickname === p.nickname);
     const res = fin.results[idx];
     if (!res) continue;
@@ -221,8 +223,8 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
       botLevels,
       trades: trades.length,
       boughtBreaking: trades.some((t) => t.side === 'buy' && m.news.some((n) => n.day === t.day && n.symbol === t.symbol && n.at != null)),
-      detectorUses: uses.filter((i) => i.kind === 'detector').length,
-      cardUses: uses.length,
+      detectorUses: uses.filter((i) => i.kind === 'detector').length + augActs.filter((x) => x.action === 'use' && x.aug === 'detector').length,
+      cardUses: uses.length + augActs.length,
       filledOrders: d.orders.filter((o) => o.player_id === p.id && o.status === 'filled').length,
       ranked: !!d.room.ranked,
       boughtKr: trades.some((t) => t.side === 'buy' && STOCK_MAP[t.symbol]?.currency !== 'USD' && !STOCK_MAP[t.symbol]?.etf),

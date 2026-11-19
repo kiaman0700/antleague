@@ -14,6 +14,7 @@ import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, set
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, PlayerPic, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
+import { AugPanel, AugPick, AugPill, AugStrip } from '../components/Augments';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton, loadReactMute, saveReactMute } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
@@ -63,7 +64,7 @@ const soloQuit = { current: false };
 
 /** 둘이서: 서버(/api/game) · 혼자: 브라우저 안의 같은 엔진 */
 /** 두 번 처리되면 안 되는 행동 (돈·카드·예약) */
-const ONCE_ACTIONS = new Set(['trade', 'buyItem', 'useItem', 'placeOrder']);
+const ONCE_ACTIONS = new Set(['trade', 'buyItem', 'useItem', 'placeOrder', 'pickAug', 'rerollAug', 'useAug']);
 function newReqId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const b = crypto.getRandomValues(new Uint8Array(16));
@@ -323,6 +324,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const [targetPick, setTargetPick] = useState<ItemKind | null>(null);
   const [fakeTarget, setFakeTarget] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<null | 'assets' | 'cards'>(null);
+  /** 접어 둔 증강 고르기 (몇 번째 고르기를 접었는지) */
+  const [augHidden, setAugHidden] = useState<number | null>(null);
   const [bubbles, setBubbles] = useState<(Reaction & { mine?: boolean })[]>([]);
   const [muted, setMutedState] = useState(isMuted());
   const [now, setNow] = useState(Date.now());
@@ -449,7 +452,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
 
   // ---------- 내 상태 ----------
   const myItemRows: ItemRow[] = view?.myItemRows ?? [];
-  const spends = useMemo(() => spendsFromRows(myItemRows), [myItemRows]);
+  const augIncome = view?.aug?.income;
+  // (v27) 증강으로 받은 돈은 서버가 계산해 보내 줌 — 카드 구매와 같은 자리(현금 변화)로 더함
+  const spends = useMemo(() => spendsFromRows(myItemRows).concat((augIncome ?? []).map((x) => ({ day: x.day, cost: -x.amount }))), [myItemRows, augIncome]);
   const paidDivs = useMemo(() => (market?.dividends ?? []).filter((d) => d.perShare > 0), [market]);
   // 시작 돈: 방 규칙 버전마다 (v6 부터 100만원)
   const START_CASH = startCashFor(view?.room.rulesVersion);
@@ -669,7 +674,36 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       play('item');
       showToast(`${ITEM_MAP[kind].name} 카드를 샀어요`);
     });
+  const useAug = (kind: string, given?: Record<string, string>) => {
+    let payload: Record<string, string> = { ...(given ?? {}) };
+    if (kind === 'scout' && !payload.symbol) payload = { ...payload, symbol: selected };
+    if (kind === 'detector' && !payload.pick) return setDetectorPick(true);
+    run('useAug', { kind, payload }, () => {
+      play('item');
+      if (kind === 'undo') return showToast('그 거래를 없던 일로 했어요. 수수료도 돌려받아요');
+      if (kind === 'timing') return showToast('오늘 장이 끝나면 그날 최저가로 다시 계산해 차액을 받아요');
+      showToast('결과가 소식 칸에 나왔어요');
+      setTab('news');
+      setDrawer(null);
+      const cls = ({ paper: 'paper', analyst: 'analyst', scout: 'scout' } as Record<string, string>)[kind];
+      if (cls)
+        window.setTimeout(() => {
+          const el = document.querySelector(`.reveal.${cls}`);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          el?.classList.add('flash');
+          window.setTimeout(() => el?.classList.remove('flash'), 1600);
+        }, 250);
+    });
+  };
+  const pickAug = (aug: string) =>
+    run('pickAug', { aug }, () => {
+      play('item');
+      setAugHidden(null);
+      showToast('증강을 골랐어요. 내 증강 칸에서 다시 볼 수 있어요');
+    });
+  const rerollAug = (slot: number) => run('rerollAug', { slot }, () => play('tap'));
   const useCard = (kind: ItemKind, given?: ItemRow['payload']) => {
+    if (view?.aug) return useAug(kind, (given ?? undefined) as Record<string, string> | undefined);
     let payload: NonNullable<ItemRow['payload']> = { ...(given ?? {}) };
     const needsTarget = rivals && (ITEM_MAP[kind].type === 'attack' || kind === 'spy');
     if (needsTarget && !payload.target) {
@@ -717,6 +751,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   };
   const endTurn = () => {
     if (!canAct) return;
+    if (view?.aug?.offer) {
+      setAugHidden(null);
+      return showToast('오늘 증강을 먼저 골라 주세요', 'warn');
+    }
     // 튜토리얼: 안내가 '장 마감' 단계에 오기 전에는 하루를 넘기지 않음 (설명 순서가 꼬이지 않게)
     if (session.tutorial && tutStep < TUTORIAL_STEPS.findIndex((x) => x.title === '장 마감')) {
       showToast('안내를 따라오면 곧 장 마감을 눌러 볼 거예요', 'warn');
@@ -1089,7 +1127,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       <OrdersAndDividends orders={myOrders} day={day} portfolio={portfolio} canAct={canAct} onCancel={cancelOrder} onSelect={selectStock} />
     </>
   );
-  const cards = (
+  const augMode = !!view.aug;
+  const todayTrades = (view.myTrades ?? []).filter((t) => t.day === day && t.id);
+  const cardTray = (onOpen: () => void) =>
+    view.aug ? <AugStrip aug={view.aug} onOpen={onOpen} /> : <CardTray version={view.room.rulesVersion ?? 1} blockReason={cardBlock} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={cardCanAct} busy={busy} onUse={(k) => useCard(k)} onOpen={onOpen} />;
+  const cards = view.aug ? (
+    <AugPanel aug={view.aug} day={day} totalDays={total} selected={selected} todayTrades={todayTrades} canAct={cardCanAct} busy={busy} onUse={useAug} />
+  ) : (
     <CardsPanel
       version={view.room.rulesVersion ?? 1}
       solo={!rivals}
@@ -1123,8 +1167,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     viewDay: viewDay ?? 0,
     botNotice: view?.notices.find((n) => n.text.includes('방패가'))?.text ?? '',
   };
+  const augOffer = view.aug?.offer ?? null;
+  const augEnds = remaining !== null && remaining > 0 ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
+  const showAugPick = !!augOffer && room?.status === 'playing' && closing === null && !showResult && viewDay === serverDay;
   const overlays = (
     <>
+      {showAugPick && augHidden !== augOffer.n && <AugPick key={augOffer.n} offer={augOffer} busy={busy} endsIn={augEnds} onPick={pickAug} onReroll={rerollAug} onHide={() => setAugHidden(augOffer.n)} />}
+      {showAugPick && augHidden === augOffer.n && <AugPill tier={augOffer.tier} endsIn={augEnds} onOpen={() => setAugHidden(null)} />}
       {/* 연결이 끊기면 바로 알림 (가격이 멈춘 걸 모르고 기다리지 않게) */}
       {session.mode === 'multi' && (!online || error) && (
         <div className="net-banner" role="alert">
@@ -1636,7 +1685,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 </div>
               ))}
               {newsPanel}
-              <CardTray version={view.room.rulesVersion ?? 1} blockReason={cardBlock} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={cardCanAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setTab('cards')} />
+              {cardTray(() => setTab('cards'))}
             </>
           )}
           {tab === 'assets' && (
@@ -1669,9 +1718,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               <span>
                 <Icon name={TAB_ICON[t]} size={22} />
               </span>
-              {t === 'assets' ? (easy ? '내 재산' : '자산') : TAB_LABEL[t]}
+              {t === 'assets' ? (easy ? '내 재산' : '자산') : t === 'cards' && augMode ? '증강' : TAB_LABEL[t]}
               {t === 'news' && tab !== 'news' && unreadToday(news, day) > 0 && <i className="nav-count hot">{unreadToday(news, day)}</i>}
-              {t === 'cards' && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
+              {t === 'cards' && !augMode && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
+              {t === 'cards' && augMode && view.aug?.offer && <i className="nav-dot gold" />}
               {t === 'assets' && myOrders.some((o) => o.status === 'open' && o.day === day) && <i className="nav-dot gold" />}
               {editing && (
                 <span className="nav-move" onClick={(e) => e.stopPropagation()}>
@@ -1864,7 +1914,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </section>
           ) : (
             <section className="pane p-cards">
-              <CardTray version={view.room.rulesVersion ?? 1} blockReason={cardBlock} mine={view.myItems} day={day} totalDays={total} usedToday={usedToday} canAct={cardCanAct} busy={busy} onUse={(k) => useCard(k)} onOpen={() => setDrawer('cards')} />
+              {cardTray(() => setDrawer('cards'))}
             </section>
           )
         }
@@ -1882,7 +1932,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       <Drawer open={drawer === 'assets'} title={easy ? '내 재산' : '자산'} onClose={() => setDrawer(null)}>
         {assets}
       </Drawer>
-      <Drawer open={drawer === 'cards'} title="찬스 카드 · 상점" onClose={() => setDrawer(null)}>
+      <Drawer open={drawer === 'cards'} title={augMode ? '내 증강' : '찬스 카드 · 상점'} onClose={() => setDrawer(null)}>
         {cards}
       </Drawer>
       {overlays}

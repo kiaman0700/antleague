@@ -79,7 +79,8 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
   const r = d.room;
   const finished = r.status === 'finished' || r.day >= r.total_days;
   const lastT = d.trades.at(-1);
-  const key = `${r.id}:${r.salt ?? ''}:${r.total_days}:${r.version}:${r.status}:${r.day}:${d.trades.length}:${lastT?.id ?? lastT?.created_at ?? ''}:${(d.augs ?? []).length}:${d.players.length}`;
+  const lastA = (d.augs ?? []).at(-1);
+  const key = `${r.id}:${r.salt ?? ''}:${r.total_days}:${r.version}:${r.status}:${r.day}:${d.trades.length}:${lastT?.id ?? lastT?.created_at ?? ''}:${(d.augs ?? []).length}:${lastA?.id ?? lastA?.created_at ?? ''}:${d.players.length}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const salt = r.salt ?? r.id;
@@ -91,12 +92,15 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
     const cap = AUG_CAP[aug];
     const k = `${pid}:${aug}`;
     let a = Math.round(amount);
+    // 마지막 날 마감 뒤에 받는 돈은 마지막 날 몫으로 (그래프·최종 재산이 같은 날에 끝나게). 판이 끝나야만 계산되는 돈이라 미리 새지 않음
+    day = Math.min(day, r.total_days - 1);
     if (cap !== undefined && a > 0) a = Math.min(a, cap - (used[k] ?? 0));
     if (!a) return;
     used[k] = (used[k] ?? 0) + a;
     out[pid].push({ day, amount: a, aug });
   };
-  const owned = (pid: string, t: number) => (st.players[pid] ?? []).filter((s) => s.picked && s.day <= t).map((s) => ({ id: s.picked!, day: s.day, n: s.n }));
+  // 날마다 받는 효과는 고른 다음 날부터 — 고르는 날 장 끝 무렵 그날 결과를 보고 보상을 고르지 못하게
+  const owned = (pid: string, t: number) => (st.players[pid] ?? []).filter((s) => s.picked && s.day < t).map((s) => ({ id: s.picked!, day: s.day, n: s.n }));
   const total = r.total_days;
 
   // 날짜가 정해진 돈 (바로·며칠 뒤·확률표)
@@ -104,7 +108,8 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
     for (const s of st.players[pid]) {
       if (!s.picked) continue;
       const a = s.picked;
-      if (NOW_CASH[a]) add(pid, s.day, a, NOW_CASH[a]);
+      // 고른 돈도 다음 날 아침에 — 상대에게 공개되는 재산이 고른 순간 뛰어 무엇을 골랐는지 드러나지 않게
+      if (NOW_CASH[a]) add(pid, s.day + 1, a, NOW_CASH[a]);
       if (LATER_CASH[a] && s.day + LATER_CASH[a][0] < total) add(pid, s.day + LATER_CASH[a][0], a, LATER_CASH[a][1]);
       if (a === 'payday') for (let k = 1; k <= 3; k++) if (s.day + 3 * k < total) add(pid, s.day + 3 * k, a, 10_000);
       if ((a === 'lotto' || a === 'jackpot') && s.day + 1 < total) add(pid, s.day + 1, a, draw(AUG_TABLES[a], seeded(`${salt}:auglot:${pid}:${s.n}`)()));
@@ -289,7 +294,7 @@ export function augIncomeAll(d: GameData, m: Market, divs: PaidDividend[], st: A
 }
 
 /** 수수료율 — 증강이 없으면 base 그대로 */
-export function augFeeRate(owned: string[], ctx: { symbol: string; side: 'buy' | 'sell'; held: number; boughtToday: number; biggest: string | null; ruleSector: string | null }, base: number): number {
+export function augFeeRate(owned: string[], ctx: { symbol: string; side: 'buy' | 'sell'; qty: number; held: number; boughtToday: number; biggest: string | null; ruleSector: string | null }, base: number): number {
   if (!owned.length) return base;
   const { symbol, side } = ctx;
   const cond = sectorCondOf(symbol);
@@ -298,7 +303,8 @@ export function augFeeRate(owned: string[], ctx: { symbol: string; side: 'buy' |
   if (cond === 'us' && owned.includes('us3')) return 0;
   if (ctx.ruleSector && owned.includes('rule') && STOCK_MAP[symbol]?.sector === ctx.ruleSector) return 0;
   if (owned.includes('average') && side === 'buy' && ctx.held > 0) return 0;
-  if (owned.includes('scalp') && side === 'sell') return ctx.boughtToday > 0 ? 0 : base * 2;
+  // 단타: 오늘 산 만큼 안에서 판 것만 0, 그보다 많이 팔면(들고 있던 주식) 2배
+  if (owned.includes('scalp') && side === 'sell') return ctx.qty <= ctx.boughtToday ? 0 : base * 2;
   if (owned.includes('allin') && ctx.biggest && ctx.biggest !== symbol) return base * 2;
   return base;
 }

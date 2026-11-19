@@ -3,7 +3,7 @@
  * 시험 회원(profiles.is_test) 판은 is_test 로 표시. 실패해도 게임 진행에는 영향 없음
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cardStats, type finalResults, type GameData } from '../../src/engine/engine.js';
+import { augStats, cardStats, type finalResults, type GameData } from '../../src/engine/engine.js';
 import { STOCK_MAP } from '../../src/game/stocks.js';
 import { isPlaced, tierOf } from '../../src/game/tier.js';
 import { levelOf } from '../../src/game/missions.js';
@@ -26,6 +26,12 @@ export async function recordGameStats(sb: SupabaseClient, d: GameData, fin: Retu
     cs = cardStats(d);
   } catch (e) {
     console.error('[api] cardStats', (e as Error).message);
+  }
+  let as: ReturnType<typeof augStats> = {};
+  try {
+    as = augStats(d);
+  } catch (e) {
+    console.error('[api] augStats', (e as Error).message);
   }
   const rows = d.players.map((p) => {
     const idx = fin.results.findIndex((r) => r.nickname === p.nickname);
@@ -66,6 +72,7 @@ export async function recordGameStats(sb: SupabaseClient, d: GameData, fin: Retu
       cards_hit: cs[p.id]?.hit ?? {},
       shield_blocks: cs[p.id]?.blocked ?? 0,
       mirror_hits: cs[p.id]?.mirrored ?? 0,
+      ...(as[p.id] ? { aug_log: as[p.id] } : {}),
       opp_diff: pr?.rating != null && others.length ? Math.round(pr.rating - others.reduce((a, b) => a + b, 0) / others.length) : null,
     };
   });

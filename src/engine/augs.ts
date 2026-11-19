@@ -21,7 +21,7 @@ export interface AugRow {
   /** 고른 증강 / 다시 뽑기 전에 그 칸에 있던 증강 / 쓴 증강 */
   aug: string;
   slot?: number | null;
-  payload?: { symbol?: string; pick?: string; sector?: string; trade?: string } | null;
+  payload?: { symbol?: string; pick?: string; sector?: string; trade?: string; acc?: string } | null;
   created_at?: string;
 }
 
@@ -114,14 +114,31 @@ export function deriveAugs(d: GameData): AugState {
       // 다른 자리 몫인 '한 명만' 증강은 처음부터 내 보기에 없음
       const takenUnique = UNIQUE_IDS.filter((u) => uniqueSeat(salt, u, n, seats) !== pid);
       const ctx = { salt, seat: pid, n, picks: days.length, tier, daysLeft: r.total_days - day, multi, owned: [...owned], takenUnique, heldSectors: heldSectorsBefore(d, pid, day) };
-      const mine = rows.filter((x) => x.player_id === pid && x.n === n);
-      const rerolls = [0, 0, 0];
-      for (const x of mine) if (x.action === 'reroll' && x.slot != null && x.slot >= 0 && x.slot < 3) rerolls[x.slot]++;
-      const offer = augmentOffer(ctx, rerolls);
+      // 들어온 순서대로: 고르기 전 다시 뽑기만, 칸마다·모두 합쳐 한도 안에서만. 고른 뒤의 다시 뽑기는 무시
+      const mine = rows.filter((x) => x.player_id === pid && x.n === n).sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''));
       const extra = owned.includes('principal') ? 2 : 0;
-      const used = rerolls.reduce((a, b) => a + b, 0);
-      const pickRow = mine.find((x) => x.action === 'pick' && offer.includes(x.aug));
-      let picked = pickRow?.aug ?? null;
+      const seq: number[] = [];
+      const rerolls = [0, 0, 0];
+      let offer = augmentOffer(ctx, seq);
+      /** 동시에 온 고르기와 다시 뽑기: 고르기를 보낸 순간 보기에 있던 것이면 인정 */
+      const seenOffers = new Set(offer);
+      let picked: string | null = null;
+      for (const x of mine) {
+        if (x.action === 'pick') {
+          if (seenOffers.has(x.aug)) {
+            picked = x.aug;
+            break;
+          }
+          continue;
+        }
+        if (x.action !== 'reroll' || x.slot == null || !(x.slot >= 0 && x.slot < offer.length)) continue;
+        if (rerolls[x.slot] >= REROLL_PER_SLOT + extra || seq.length >= 3 * REROLL_PER_SLOT + extra) continue;
+        rerolls[x.slot]++;
+        seq.push(x.slot);
+        offer = augmentOffer(ctx, seq);
+        for (const id of offer) seenOffers.add(id);
+      }
+      const used = seq.length;
       let auto = false;
       if (!picked && (finished || r.day > day)) {
         picked = offer.length ? offer[Math.floor(seeded(`${salt}:augauto:${pid}:${n}`)() * offer.length)] : null;

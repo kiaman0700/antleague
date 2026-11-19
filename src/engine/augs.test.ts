@@ -184,13 +184,13 @@ const goDay = (d: GameData, day: number) => {
 const incomeOf = (d: GameData, aug: string) => (buildView(d, 'a', T0).aug?.income ?? []).filter((x) => x.aug === aug).reduce((a, x) => a + x.amount, 0);
 
 describe('v27 효과: 돈', () => {
-  it('비상금: 고르자마자 내 재산 +1.2만원 (상대 화면의 내 재산도 같은 값)', () => {
+  it('비상금: 다음 날 아침 내 재산 +1.2만원 (고른 날엔 재산이 뛰지 않아 상대가 고른 순간을 모름)', () => {
     const d = withAug('cash1');
-    const v = buildView(d, 'a', T0);
+    expect(incomeOf(d, 'cash1')).toBe(0);
+    expect(buildView(d, 'b', T0).players.find((p) => p.id === 'a')!.equity).toBe(1_000_000);
+    goDay(d, 1);
     expect(incomeOf(d, 'cash1')).toBe(12_000);
-    const me = v.players.find((p) => p.id === 'a')!;
-    expect(me.equity).toBe(1_012_000);
-    expect(buildView(d, 'b', T0).players.find((p) => p.id === 'a')!.equity).toBe(1_012_000);
+    expect(buildView(d, 'a', T0).players.find((p) => p.id === 'a')!.equity).toBeGreaterThanOrEqual(1_012_000);
   });
   it('적금 I: 3일 뒤에야 들어오고, 그 전엔 화면 데이터에 금액이 없음', () => {
     const d = withAug('save1');
@@ -289,5 +289,44 @@ describe('v27 효과: 정보·되돌리기', () => {
     d.trades.push({ ...undo!, id: 'tx2', created_at: 'b' });
     expect(buildView(d, 'a', now).players.find((p) => p.id === 'a')!.equity).toBeGreaterThanOrEqual(1_000_000 - 1);
     expect(err(() => validateUseAug(d, 'a', now, { kind: 'undo', payload: { trade: 'tx1' } }))).toMatch(/한 번만/);
+  });
+});
+
+describe('v27 점검에서 나온 빈틈', () => {
+  it('고른 뒤에 들어온 다시 뽑기는 무시, 고르기를 보낸 순간 보기에 있던 것이면 인정', () => {
+    const d = game(0);
+    const before = buildView(d, 'a', T0).aug!.offer!.ids;
+    // 같은 순간: 고르기(0번 칸)와 0번 칸 다시 뽑기가 함께 들어옴 — 다시 뽑기가 먼저 기록
+    d.augs!.push({ player_id: 'a', n: 0, day: 0, action: 'reroll', aug: before[0], slot: 0, created_at: '1' });
+    d.augs!.push({ player_id: 'a', n: 0, day: 0, action: 'pick', aug: before[0], slot: 0, created_at: '2' });
+    expect(deriveAugs(d).players.a[0].picked).toBe(before[0]);
+    expect(buildView(d, 'a', T0).aug!.offer).toBeNull();
+  });
+  it('날마다 받는 효과는 고른 다음 날부터 (고른 날 결과를 보고 고르지 못하게)', () => {
+    const d = withAug('insure');
+    // 고른 날 크게 잃은 것처럼: 비싸게 사고 하루가 지남
+    d.trades.push({ id: 'x', player_id: 'a', day: 0, symbol: 'CORE', side: 'buy', qty: 5, price: 500_000, fee: 0.001, created_at: '0' });
+    goDay(d, 1);
+    expect(incomeOf(d, 'insure')).toBe(0);
+  });
+  it('되돌리기: 그 종목 오늘 마지막 거래만, 피한 손실은 7만원까지', () => {
+    const d = goDay(withAug('undo'), 1);
+    const now = d.room.day_deadline! - 20_000;
+    const p = validateTrade(d, 'a', now, { symbol: 'CORE', side: 'buy', qty: 3 }).price;
+    // 아주 비싸게 산 기록 (지금 가격보다 훨씬 위) → 되돌려도 7만원 넘게는 못 피함
+    d.trades.push({ id: 'b1', player_id: 'a', day: 1, symbol: 'CORE', side: 'buy', qty: 3, price: p + 100_000, fee: 0.001, created_at: 'a' });
+    d.trades.push({ id: 'b2', player_id: 'a', day: 1, symbol: 'CORE', side: 'buy', qty: 1, price: p, fee: 0.001, created_at: 'b' });
+    expect(err(() => validateUseAug(d, 'a', now, { kind: 'undo', payload: { trade: 'b1' } }))).toMatch(/마지막 거래만/);
+    d.trades.pop();
+    const { undo } = validateUseAug(d, 'a', now, { kind: 'undo', payload: { trade: 'b1' } });
+    expect(3 * (undo!.price - p)).toBeLessThanOrEqual(70_000 + 1);
+  });
+  it('상대 화면 데이터엔 내 증강 이름이 하나도 없음 (고른 날·다음 날 모두)', () => {
+    const d = withAug('jackpot');
+    for (const day of [0, 1, 2]) {
+      goDay(d, day);
+      const t = JSON.stringify(buildView(d, 'b', T0));
+      expect(t).not.toContain('jackpot');
+    }
   });
 });

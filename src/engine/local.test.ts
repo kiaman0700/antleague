@@ -4,7 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const store = new Map<string, string>();
 vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
 
-const { newSolo, soloAct, soloSync } = await import('./local.js');
+const { newSolo, soloAct: rawAct, soloSync } = await import('./local.js');
+const { deriveAugs, pendingSlot } = await import('./augs.js');
+/** 증강 고르는 날이면 먼저 하나 고르고 마감 (v27 — 고르기 전엔 마감 불가) */
+const soloAct: typeof rawAct = (s, action, payload) => {
+  if (action === 'endTurn') {
+    const p = pendingSlot(deriveAugs(s.data), 'me', s.data.room.day);
+    if (p) s = rawAct(s, 'pickAug', { aug: p.offer[0] });
+  }
+  return rawAct(s, action, payload);
+};
 
 describe('혼자 연습: 실시간 장', () => {
   beforeEach(() => store.clear());

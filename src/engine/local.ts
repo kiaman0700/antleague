@@ -1,5 +1,5 @@
 /** 연습 모드: 서버 대신 브라우저에서 같은 엔진을 돌린다 (혼자 하는 거라 조작해도 손해 볼 사람이 없음) */
-import { buildView, CURRENT_RULES_VERSION, dayClock, graceDeadline, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, GameError, type GameData, type View } from './engine.js';
+import { buildView, CURRENT_RULES_VERSION, dayClock, graceDeadline, marketFor, nextRoomState, resolveOrders, validateBuyItem, validateCancelOrder, validateEndTurn, validatePlaceOrder, validateTrade, validateUseItem, validatePickAug, validateRerollAug, validateUseAug, GameError, type GameData, type View } from './engine.js';
 import { STOCK_MAP } from '../game/stocks.js';
 import { botInfo, MAX_BOTS, runBots, type BotRun } from './bots.js';
 import { DEFAULT_SOLO_DAY, SOLO_DAY_OPTIONS, dayDeadlines, loadSolo, saveSolo, validSave, type SoloSave } from './soloStore.js';
@@ -18,7 +18,8 @@ export const TUTORIAL_BOT = { id: 'bot', nickname: '연습봇' };
  * 튜토리얼도 늘 최신 규칙 (규칙이 바뀌면 튜토리얼 문구도 같이 고칠 것).
  * 장면(첫날 오르는 좋은 기업 뉴스)을 찾으려고 비밀값은 공개된 고정값 — 튜토리얼 시장은 숨길 게 없음
  */
-export const TUTORIAL_VERSION = CURRENT_RULES_VERSION;
+/** 튜토리얼 장면은 카드 규칙으로 짜여 있음 — 증강(v27) 튜토리얼을 만들 때까지 v26 */
+export const TUTORIAL_VERSION = Math.min(CURRENT_RULES_VERSION, 26);
 /** v4+ 시장은 비밀값으로만 만들어져서, 장면을 찾을 때 비밀값을 바꿔 가며 찾음 (공개 값) */
 const tutorialSalt = (n: number) => `tutorial-${n}`;
 
@@ -123,6 +124,7 @@ function applyBots(d: GameData, run: BotRun) {
   if (!Object.keys(run.steps).length && !run.ends.length) return false;
   for (const t of run.trades) d.trades.push({ ...t, id: uid() });
   for (const it of run.items) d.items.push({ ...it, id: uid() });
+  for (const a of run.augs) (d.augs ??= []).push({ ...a, id: uid() });
   d.players = d.players.map((p) => (run.steps[p.id] !== undefined ? { ...p, bot_step: run.steps[p.id], ...(run.ends.includes(p.id) ? { ended_day: d.room.day } : {}) } : p));
   return true;
 }
@@ -213,6 +215,18 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'useItem':
       d.items.push({ ...validateUseItem(d, 'me', now, payload), id: uid(), created_at });
       break;
+    case 'pickAug':
+      (d.augs ??= []).push({ ...validatePickAug(d, 'me', now, payload), id: uid(), created_at });
+      break;
+    case 'rerollAug':
+      (d.augs ??= []).push({ ...validateRerollAug(d, 'me', now, payload), id: uid(), created_at });
+      break;
+    case 'useAug': {
+      const { row, undo } = validateUseAug(d, 'me', now, payload);
+      (d.augs ??= []).push({ ...row, id: uid(), created_at });
+      if (undo) d.trades.push({ ...undo, id: uid(), created_at });
+      break;
+    }
     case 'placeOrder':
       d.orders.push({ ...validatePlaceOrder(d, 'me', now, payload), id: uid(), created_at });
       break;

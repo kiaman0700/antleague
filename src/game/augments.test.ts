@@ -97,10 +97,19 @@ describe('보기 3개', () => {
     for (let i = 0; i < 200; i++) {
       const c = { ...base, seat: 'r' + i };
       const a = augmentOffer(c);
-      const b = augmentOffer(c, [0, 1, 0]);
+      const b = augmentOffer(c, [1]);
       expect(b[0]).toBe(a[0]);
       expect(b[2]).toBe(a[2]);
       expect(b[1]).not.toBe(a[1]);
+    }
+  });
+  it('다시 뽑기는 누른 순서대로 — 나중에 다른 칸을 뽑아도 앞서 뽑은 칸은 그대로', () => {
+    for (let i = 0; i < 500; i++) {
+      const c = { ...base, seat: 'q' + i };
+      const one = augmentOffer(c, [1]);
+      const two = augmentOffer(c, [1, 0]);
+      expect(two[1]).toBe(one[1]);
+      expect(two[2]).toBe(one[2]);
     }
   });
   it('다른 salt(다른 방)면 보기가 달라짐', () => {

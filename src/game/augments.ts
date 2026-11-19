@@ -40,30 +40,30 @@ const ML: AugStage[] = ['mid', 'late'];
 const E: AugStage[] = ['early'];
 
 const sectorPair = (key: SectorCond, label: string): [AugDef, AugDef] => [
-  { id: `${key}1`, name: `${label} I`, tier: 'silver', tag: 'sector', family: key, sector: key, when: ALL, desc: `${label} 종목 수수료 없음 + 바로 현금 +1만원` },
+  { id: `${key}1`, name: `${label} I`, tier: 'silver', tag: 'sector', family: key, sector: key, when: ALL, desc: `${label} 종목 수수료 없음 + 다음 날 아침 현금 +1만원` },
   { id: `${key}2`, name: `${label} II`, tier: 'gold', tag: 'sector', family: key, sector: key, when: ML, desc: `${label} 수수료 없음 + ${label}이(가) 오른 날 그 평가이익의 5% (최대 3만원)` },
 ];
 
 export const AUGMENTS: AugDef[] = [
   // ── 실버 ──
-  { id: 'cash1', name: '비상금', tier: 'silver', tag: 'money', when: ALL, desc: '바로 현금 +1.2만원' },
+  { id: 'cash1', name: '비상금', tier: 'silver', tag: 'money', when: ALL, desc: '다음 날 아침 현금 +1.2만원' },
   { id: 'save1', name: '적금 I', tier: 'silver', tag: 'money', family: 'save', needDays: 3, when: EM, desc: '3일 뒤 현금 +1.5만원' },
   { id: 'int1', name: '짠테크 I', tier: 'silver', tag: 'money', family: 'int', when: EM, excl: ['king'], desc: '장 마감 때 현금의 0.12% 이자 (거래한 날만, 판당 최대 1.5만원)' },
   { id: 'cushion1', name: '손실 쿠션 I', tier: 'silver', tag: 'hold', family: 'cushion', when: ALL, desc: '하루 손실이 3% 넘으면 넘은 부분의 30% 환급 (판당 최대 1.5만원)' },
   { id: 'hodl1', name: '존버 I', tier: 'silver', tag: 'hold', family: 'hodl', needDays: 3, when: EM, excl: ['scalp'], desc: '3일 넘게 든 종목 평가이익의 30%를 판 끝에 (최대 1.5만원)' },
   { id: 'div', name: '배당 사냥꾼', tier: 'silver', tag: 'money', when: EM, desc: '받는 배당 ×2 (최대 2만원) + 배당 기준일 미리 알림' },
-  { id: 'nofee', name: '수수료 면제권', tier: 'silver', tag: 'trade', family: 'fee', when: ALL, desc: '판 끝까지 수수료 없음 + 바로 현금 +1만원' },
-  { id: 'orders', name: '예약 달인', tier: 'silver', tag: 'trade', when: ALL, desc: '예약 주문 하루 10개·범위 ±40% + 바로 현금 +1만원' },
-  { id: 'lev', name: '레버리지 놀이', tier: 'silver', tag: 'trade', when: ML, excl: ['king'], desc: '레버리지·인버스 한도 30% → 60% + 바로 현금 +1만원' },
+  { id: 'nofee', name: '수수료 면제권', tier: 'silver', tag: 'trade', family: 'fee', when: ALL, desc: '판 끝까지 수수료 없음 + 다음 날 아침 현금 +1만원' },
+  { id: 'orders', name: '예약 달인', tier: 'silver', tag: 'trade', when: ALL, desc: '예약 주문 하루 10개·범위 ±40% + 다음 날 아침 현금 +1만원' },
+  { id: 'lev', name: '레버리지 놀이', tier: 'silver', tag: 'trade', when: ML, excl: ['king'], desc: '레버리지·인버스 한도 30% → 60% + 다음 날 아침 현금 +1만원' },
   { id: 'verdict1', name: '귀동냥', tier: 'silver', tag: 'info', family: 'verdict', when: ALL, desc: '소식 진위 판정 1번' },
   { id: 'scout1', name: '차트쟁이', tier: 'silver', tag: 'info', family: 'scout', when: ALL, desc: '오를지 내릴지 1번 (맞을 확률 70%)' },
   { id: 'memo', name: '메모광', tier: 'silver', tag: 'info', when: EM, desc: '저장한 커뮤니티 글은 진위가 공개되는 날 알림 + 소식 진위 판정 1번' },
-  { id: 'review', name: '복기 노트', tier: 'silver', tag: 'info', when: E, desc: '장 마감 때 오늘 잘한·아쉬운 거래 하나씩 + 바로 현금 +1만원' },
-  { id: 'calendar', name: '일정 수첩', tier: 'silver', tag: 'info', when: EM, desc: '다음 사건 발표 날을 일정에 모아 표시 + 바로 현금 +1만원' },
-  { id: 'loan', name: '외상 투자', tier: 'silver', tag: 'fun', family: 'tierShift', when: EM, desc: '바로 현금 +2만원, 대신 내 다음 증강 등급이 한 단계 낮아짐' },
+  { id: 'review', name: '복기 노트', tier: 'silver', tag: 'info', when: E, desc: '장 마감 때 오늘 잘한·아쉬운 거래 하나씩 + 다음 날 아침 현금 +1만원' },
+  { id: 'calendar', name: '일정 수첩', tier: 'silver', tag: 'info', when: EM, desc: '다음 사건 발표 날을 일정에 모아 표시 + 다음 날 아침 현금 +1만원' },
+  { id: 'loan', name: '외상 투자', tier: 'silver', tag: 'fun', family: 'tierShift', when: EM, desc: '다음 날 아침 현금 +2만원, 대신 내 다음 증강 등급이 한 단계 낮아짐' },
   { id: 'lotto', name: '복권 한 장', tier: 'silver', tag: 'fun', when: ALL, desc: '다음 날 공개 확률표에서 0~4만원 (기대 1.2만원)' },
   { id: 'attend', name: '출석 체크', tier: 'silver', tag: 'fun', when: EM, desc: '장 마감을 누를 때마다 2천원 (판당 최대 1.5만원)' },
-  { id: 'sleepy', name: '늦잠 개미', tier: 'silver', tag: 'fun', when: ALL, desc: '다음 날 첫 1/3 동안 거래 못 함, 대신 바로 현금 +2만원' },
+  { id: 'sleepy', name: '늦잠 개미', tier: 'silver', tag: 'fun', when: ALL, desc: '다음 날 첫 1/3 동안 거래 못 함, 대신 다음 날 아침 현금 +2만원' },
   { id: 'climb', name: '한 칸씩', tier: 'silver', tag: 'catchup', multi: true, when: ML, desc: '장 마감 때 순위가 어제보다 오르면 5천원 (판당 최대 1.5만원)' },
   { id: 'last1', name: '꼴찌 탈출', tier: 'silver', tag: 'catchup', family: 'last', multi: true, when: ML, desc: '장 마감 때 꼴찌면 3천원 (판당 최대 1.5만원)' },
   ...sectorPair('semi', '반도체 덕후'),
@@ -71,9 +71,9 @@ export const AUGMENTS: AugDef[] = [
   ...sectorPair('bio', '바이오 연구원'),
   ...sectorPair('crypto', '코인 개미'),
   ...sectorPair('us', '미국 직구'),
-  { id: 'etf1', name: 'ETF 적립', tier: 'silver', tag: 'sector', family: 'etf', sector: 'etf', when: ALL, desc: 'ETF 수수료 없음 + 바로 현금 +1만원' },
+  { id: 'etf1', name: 'ETF 적립', tier: 'silver', tag: 'sector', family: 'etf', sector: 'etf', when: ALL, desc: 'ETF 수수료 없음 + 다음 날 아침 현금 +1만원' },
   // ── 골드 ──
-  { id: 'cash2', name: '목돈', tier: 'gold', tag: 'money', when: ALL, desc: '바로 현금 +3만원' },
+  { id: 'cash2', name: '목돈', tier: 'gold', tag: 'money', when: ALL, desc: '다음 날 아침 현금 +3만원' },
   { id: 'save2', name: '적금 II', tier: 'gold', tag: 'money', family: 'save', needDays: 3, when: EM, desc: '3일 뒤 현금 +3.8만원' },
   { id: 'int2', name: '짠테크 II', tier: 'gold', tag: 'money', family: 'int', when: EM, excl: ['king'], desc: '장 마감 현금의 0.3% 이자 (거래한 날만, 최대 3.5만원)' },
   { id: 'cushion2', name: '손실 쿠션 II', tier: 'gold', tag: 'hold', family: 'cushion', when: ALL, desc: '−3% 넘는 손실의 50% 환급 (최대 3만원)' },
@@ -95,7 +95,7 @@ export const AUGMENTS: AugDef[] = [
   { id: 'eye', name: '투자의 안목', tier: 'gold', tag: 'fun', family: 'tierShift', when: EM, desc: '내 다음 증강 등급이 한 단계 높아짐' },
   { id: 'guru', name: '커뮤니티 고수', tier: 'gold', tag: 'info', when: EM, desc: "인증 계정 글에 '지난번에 맞혔는지' 표시 + 소식 진위 판정 2번" },
   // ── 프리즘 ──
-  { id: 'cash3', name: '큰돈', tier: 'prism', tag: 'money', when: ALL, desc: '바로 현금 +6만원' },
+  { id: 'cash3', name: '큰돈', tier: 'prism', tag: 'money', when: ALL, desc: '다음 날 아침 현금 +6만원' },
   { id: 'save3', name: '적금 III', tier: 'prism', tag: 'money', family: 'save', needDays: 4, when: E, desc: '4일 뒤 현금 +7.5만원' },
   { id: 'compound', name: '복리의 마법', tier: 'prism', tag: 'money', needDays: 5, when: E, desc: '매일 마감 때 (현금+주식)의 0.1% (최대 7만원)' },
   { id: 'insure', name: '보험 가입', tier: 'prism', tag: 'hold', family: 'cushion', when: ALL, desc: '−3% 넘는 손실 100% 환급 (최대 7만원)' },
@@ -114,7 +114,7 @@ export const AUGMENTS: AugDef[] = [
   { id: 'gambler', name: '도박사', tier: 'prism', tag: 'fun', family: 'daily-gamble', needDays: 4, when: E, desc: '매일 아침 공개 확률표 −2만~+4만원 (기대 +6천)' },
   { id: 'oneshot', name: '한 방', tier: 'prism', tag: 'fun', when: EM, desc: '마지막 날 수익률 +10% 넘으면 +10만원, 아니면 −2만원' },
   { id: 'artisan', name: '장인 정신', tier: 'prism', tag: 'trade', when: EM, desc: '하루 거래 3번 이하인 날 그날 수익의 10% (최대 6만원)' },
-  { id: 'principal', name: '개미 학교 교장', tier: 'prism', tag: 'fun', when: EM, desc: '바로 현금 +3만원 + 다음 고르기부터 다시 뽑기 +2' },
+  { id: 'principal', name: '개미 학교 교장', tier: 'prism', tag: 'fun', when: EM, desc: '다음 날 아침 현금 +3만원 + 다음 고르기부터 다시 뽑기 +2' },
 ];
 export const AUG_MAP: Record<string, AugDef> = Object.fromEntries(AUGMENTS.map((a) => [a.id, a]));
 
@@ -207,10 +207,10 @@ export function eligible(a: AugDef, c: OfferCtx): boolean {
 }
 
 /**
- * 보기 3개. 칸마다 다시 뽑은 횟수(rerolls[i])가 있으면 그 칸만 새로 — 같은 입력이면 늘 같은 보기(새로고침해도 같음).
- * 3개가 모두 같은 종류가 되지 않게, 같은 집안이 두 칸에 나오지 않게.
+ * 보기 3개. 다시 뽑기는 누른 순서(rerolls = 칸 번호 목록)대로 한 칸씩 — 같은 입력이면 늘 같은 보기(새로고침해도 같음),
+ * 다시 뽑은 칸 말고는 그대로. 3개가 모두 같은 종류가 되지 않게, 같은 집안이 두 칸에 나오지 않게.
  */
-export function augmentOffer(c: OfferCtx, rerolls: number[] = [0, 0, 0]): string[] {
+export function augmentOffer(c: OfferCtx, rerolls: number[] = []): string[] {
   let pool = AUGMENTS.filter((a) => eligible(a, c));
   // 후보가 모자라면 한 등급 아래에서 채움 (드문 경우)
   if (pool.length < 3) {
@@ -236,14 +236,14 @@ export function augmentOffer(c: OfferCtx, rerolls: number[] = [0, 0, 0]): string
     out[slot] = cand[Math.floor(seeded(`${c.salt}:aug:${c.seat}:${c.n}:${slot}:0`)() * cand.length)].id;
     seen[slot].add(out[slot]!);
   }
-  // 다시 뽑기: 그 칸만 새로 (다른 두 칸은 그대로) — 이미 나왔던 것은 다시 안 나옴
-  for (let slot = 0; slot < 3; slot++) {
-    for (let k = 1; k <= (rerolls[slot] ?? 0); k++) {
-      const cand = candFor(out, slot, seen[slot]);
-      if (!cand.length) break;
-      out[slot] = cand[Math.floor(seeded(`${c.salt}:aug:${c.seat}:${c.n}:${slot}:${k}`)() * cand.length)].id;
-      seen[slot].add(out[slot]!);
-    }
+  const k = [0, 0, 0];
+  for (const slot of rerolls) {
+    if (!(slot >= 0 && slot < 3)) continue;
+    k[slot]++;
+    const cand = candFor(out, slot, seen[slot]);
+    if (!cand.length) continue;
+    out[slot] = cand[Math.floor(seeded(`${c.salt}:aug:${c.seat}:${c.n}:${slot}:${k[slot]}`)() * cand.length)].id;
+    seen[slot].add(out[slot]!);
   }
   return out.filter((x): x is string => !!x);
 }

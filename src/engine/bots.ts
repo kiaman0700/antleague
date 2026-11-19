@@ -4,7 +4,9 @@
  * 모든 행동은 validate* 를 거쳐 실제 규칙(카드 제한·거래 정지·수수료 폭탄·레버리지 제한)이 그대로 적용된다.
  * 서버(커스텀 방)와 브라우저(봇전)가 같은 코드를 쓴다. 무작위는 봇 전용 난수(seeded) — 시장 난수와 섞이지 않음.
  */
-import { buildView, dayClock, GameError, graceSecondsFor, inPremarket, portfolioOf, validateBuyItem, validateTrade, validateUseItem, type GameData, type View } from './engine.js';
+import { buildView, dayClock, GameError, graceSecondsFor, inPremarket, portfolioOf, validateBuyItem, validatePickAug, validateTrade, validateUseItem, type GameData, type View } from './engine.js';
+import { augOn, deriveAugs, pendingSlot, type AugRow } from './augs.js';
+import { AUG_MAP, type AugTag } from '../game/augments.js';
 import { ITEM_MAP, itemCost, type ItemKind, type ItemRow } from '../game/items.js';
 import type { Market, NewsEvent } from '../game/market.js';
 import { maxBuyQty, FEE_RATE, startCashFor, type Holding, type Trade } from '../game/portfolio.js';
@@ -307,6 +309,8 @@ export interface BotRun {
   /** 새로 생긴 거래·카드 (서버는 DB 에 넣고, 브라우저는 그대로 붙임) */
   trades: Trade[];
   items: ItemRow[];
+  /** (v27) 봇이 고른 증강 */
+  augs: AugRow[];
   /** 봇마다 마지막으로 움직인 칸 (day*100 + 칸 번호, 장 마감했으면 day*100+99) */
   steps: Record<string, number>;
   /** 오늘 장 마감을 누른 봇 */
@@ -328,7 +332,7 @@ export const stepKey = (day: number, cp: number) => day * 100 + cp;
  * - 지나간 칸만 움직임 (앞으로 올 가격은 절대 안 씀). 카운트다운으로 하루가 일찍 끝나면 못 한 칸은 그냥 지나감
  */
 export function runBots(d: GameData, now: number, opts: { salt?: string; only?: string } = {}): BotRun {
-  const out: BotRun = { trades: [], items: [], steps: {}, ends: [] };
+  const out: BotRun = { trades: [], items: [], augs: [], steps: {}, ends: [] };
   const r = d.room;
   if (r.status !== 'playing' || inPremarket(r, now)) return out;
   const bots = d.players.filter((p) => p.bot_level && !p.left_game && p.ended_day < r.day && (!opts.only || p.id === opts.only));
@@ -336,7 +340,7 @@ export function runBots(d: GameData, now: number, opts: { salt?: string; only?: 
   const clk = dayClock(r, now);
   const { n, tick } = clk;
   // 복사본: 봇이 움직이며 생긴 줄을 바로 반영해 다음 판단(다음 봇 포함)에 쓰임
-  const w: GameData = { ...d, trades: [...d.trades], items: [...d.items], orders: [...d.orders] };
+  const w: GameData = { ...d, trades: [...d.trades], items: [...d.items], orders: [...d.orders], augs: [...(d.augs ?? [])] };
   let seq = 0;
   const stamp = (at: number) => new Date(at + (seq++ % 900)).toISOString();
   for (const b of bots) {
@@ -359,6 +363,20 @@ export function runBots(d: GameData, now: number, opts: { salt?: string; only?: 
     // 마감할 때는 마지막 정리(isLast: 들고 갈지·현금으로 바꿀지)를 한 번 하고 마감
     if (ending && stepKey(r.day, lastI) > doneStep && level >= 2) due.push({ t: tick, i: lastI });
     if (!due.length && !ending) continue;
+    // (v27) 고르는 날이면 먼저 증강 하나 (지금 보기 안에서만)
+    if (augOn(r.version)) {
+      const slot = pendingSlot(deriveAugs(w), b.id, r.day);
+      if (slot) {
+        const id = botPickAug(slot.offer, level, seeded(`${opts.salt ?? r.id}:botaug:${b.id}:${slot.n}`));
+        try {
+          const row = { ...validatePickAug(w, b.id, Math.min(now, clk.endAt - 1), { aug: id }), created_at: stamp(now) };
+          w.augs!.push(row);
+          out.augs.push(row);
+        } catch (e) {
+          if (!(e instanceof GameError)) throw e;
+        }
+      }
+    }
     for (const { t, i } of due) {
       const isLast = i === lastI;
       const at = Math.min(now, clk.endAt - 1);
@@ -446,4 +464,21 @@ export function runBots(d: GameData, now: number, opts: { salt?: string; only?: 
     }
   }
   return out;
+}
+
+/** 봇이 쓰는 증강 가치 — 봇은 정보 증강을 쓰지 않으므로 낮게, 바로 받는 돈·버티기를 높게 */
+const BOT_AUG_TAG: Record<AugTag, number> = { money: 3, hold: 2, catchup: 2, sector: 1.5, trade: 1, fun: 1, info: 0.3 };
+const BOT_AUG_TIER = { silver: 0, gold: 1, prism: 2 };
+
+/** 셋 중 하나: 쉬움은 거의 무작위, 어려움은 거의 가장 좋은 것 (점수에 온도를 준 확률) */
+export function botPickAug(offer: string[], level: number, rng: () => number): string {
+  const temp = level <= 1 ? 50 : level === 2 ? 1 : 0.25;
+  const score = (id: string) => (AUG_MAP[id] ? BOT_AUG_TAG[AUG_MAP[id].tag] + BOT_AUG_TIER[AUG_MAP[id].tier] : 0);
+  const w = offer.map((id) => Math.exp(score(id) / temp));
+  let x = rng() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < offer.length; i++) {
+    if (x < w[i]) return offer[i];
+    x -= w[i];
+  }
+  return offer[offer.length - 1];
 }

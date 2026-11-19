@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>아이콘 시안</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #111; color: #f2f2f2; font: 15px/1.5 Pretendard, -apple-system, "Apple SD Gothic Neo", sans-serif; letter-spacing: -0.01em; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: #9a9a9a; margin: 0 0 24px; }
+  section { margin: 0 0 28px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  h2 b { color: #a99bff; margin-right: 6px; }
+  .desc { color: #9a9a9a; font-size: 13px; margin: 0 0 12px; }
+  .row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  .tile { background: #1c1c1c; border: 1px solid #262626; border-radius: 16px; padding: 16px 10px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 18px; min-height: 128px; }
+  .tile span { font-weight: 700; font-size: 14px; }
+  .tile small { display: block; color: #9a9a9a; font-weight: 400; font-size: 12px; }
+  .size { display: flex; gap: 14px; align-items: center; margin-top: 10px; color: #9a9a9a; font-size: 12px; }
+  .size div { display: flex; gap: 10px; align-items: center; background: #1c1c1c; border-radius: 12px; padding: 8px 12px; }
+  @media (max-width: 700px) { .row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<main>
+  <h1>메뉴 아이콘 시안</h1>
+  <p class="lead">같은 6개 아이콘을 세 가지 방식으로 그렸어요. 모두 아이콘 뒤 바탕 칸은 없어요. 아래 작은 줄은 메뉴바·아래 탭 크기(20px)에서의 모습이에요.</p>
+  <div id="out"></div>
+</main>
+<script>
+const NAMES = [['daily','오늘의 도전','모두 같은 시장'],['bot','봇전','기다림 없이 바로'],['practice','혼자 연습','원하는 속도로'],['study','공부','투자 기초'],['create','방 만들기','친구와 한 판'],['ranked','랭킹전','점수와 티어']];
+
+// 색 묶음: A 한 가지 색(애플), B 여러 색 + 입체(토스), C 여러 색 평면
+const PAL = {
+  A: { mono: true },
+  B: { grad: true },
+  C: { grad: false },
+};
+
+function defs(id) {
+  return `<defs>
+    <linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe3ea"/></linearGradient>
+    <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a7a"/><stop offset="1" stop-color="#e5484d"/></linearGradient>
+    <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5aa1ff"/><stop offset="1" stop-color="#2f6fe0"/></linearGradient>
+    <linearGradient id="${id}v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b6aaff"/><stop offset="1" stop-color="#7a69f0"/></linearGradient>
+    <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd76a"/><stop offset="1" stop-color="#f0a92e"/></linearGradient>
+    <linearGradient id="${id}n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fe0a0"/><stop offset="1" stop-color="#22b36d"/></linearGradient>
+    <linearGradient id="${id}d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3d4f"/><stop offset="1" stop-color="#25273a"/></linearGradient>
+  </defs>`;
+}
+
+// 색 고르기: A 는 흰색 두 단계, B 는 그라데이션, C 는 단색
+function C(p, id, key) {
+  const flat = { w: '#f2f4f7', r: '#f04452', b: '#3182f6', v: '#9583ff', g: '#ffc23d', n: '#2fca7e', d: '#2f3142', k: '#16171f', y: '#ffd43b', p: '#ff8fb1', c: '#62e3ee' };
+  if (p.mono) return key === 'k' ? '#1c1c1c' : ['w','b','r','n','g','v','y','p','c'].includes(key) ? '#f2f2f2' : '#f2f2f2';
+  if (p.grad && 'wrbvgnd'.includes(key)) return `url(#${id}${key})`;
+  return flat[key];
+}
+// A 에서 옅은 층 (두 번째 단계)
+const soft = (p) => (p.mono ? ' opacity=".42"' : '');
+
+function icon(name, p, id, size) {
+  const c = (k) => C(p, id, k);
+  const s = soft(p);
+  const shadow = p.grad ? `<ellipse cx="24" cy="44.5" rx="15" ry="2.2" fill="#000" opacity=".35"/>` : '';
+  let body = '';
+  if (name === 'daily') body = `
+    ${shadow}
+    <rect x="6" y="9" width="36" height="33" rx="8" fill="${c('w')}"${s}/>
+    <path d="M6 18v-1a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v1z" fill="${c('r')}"/>
+    <rect x="14" y="5" width="4" height="9" rx="2" fill="${p.mono ? '#f2f2f2' : c('d')}"/>
+    <rect x="30" y="5" width="4" height="9" rx="2" fill="${p.mono ? '#f2f2f2' : c('d')}"/>
+    <path d="M13 34l7-7 5 4 9-10" fill="none" stroke="${p.mono ? '#1c1c1c' : c('b')}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="34" cy="21" r="3.2" fill="${p.mono ? '#1c1c1c' : c('b')}"/>
+    ${p.grad ? '<path d="M10 20h28" stroke="#fff" stroke-opacity=".6" stroke-width="1.5"/>' : ''}`;
+  if (name === 'bot') body = `
+    ${shadow}
+    <path d="M19 15L14 6M29 15l5-9" stroke="${p.mono ? '#f2f2f2' : c('d')}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="13.5" cy="5.5" r="3.2" fill="${p.mono ? '#f2f2f2' : c('y')}"/>
+    <circle cx="34.5" cy="5.5" r="3.2" fill="${p.mono ? '#f2f2f2' : c('p')}"/>
+    <rect x="5" y="22" width="5" height="10" rx="2.5" fill="${c('v')}"${s}/>
+    <rect x="38" y="22" width="5" height="10" rx="2.5" fill="${c('v')}"${s}/>
+    <rect x="8" y="14" width="32" height="27" rx="11" fill="${c('v')}"/>
+    <rect x="13" y="20" width="22" height="14" rx="7" fill="${p.mono ? '#1c1c1c' : c('d')}"/>
+    <circle cx="19.5" cy="27" r="3" fill="${p.mono ? '#f2f2f2' : c('c')}"/>
+    <circle cx="28.5" cy="27" r="3" fill="${p.mono ? '#f2f2f2' : c('c')}"/>
+    ${p.grad ? '<path d="M13 17.5c2-1.5 5-2 9-2" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-linecap="round" fill="none"/>' : ''}`;
+  if (name === 'practice') body = `
+    ${shadow}
+    <circle cx="22" cy="25" r="18" fill="${c('w')}"${s}/>
+    <circle cx="22" cy="25" r="13" fill="${p.mono ? '#1c1c1c' : c('r')}"/>
+    <circle cx="22" cy="25" r="8.5" fill="${p.mono ? '#f2f2f2' : c('w')}"${s}/>
+    <circle cx="22" cy="25" r="4.2" fill="${p.mono ? '#f2f2f2' : c('r')}"/>
+    <path d="M22 25L39 8" stroke="${p.mono ? '#f2f2f2' : c('d')}" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M35 5l2.5 6.5L44 14l-6 1-1.5 6-2.5-6.5L27.5 12z" fill="${p.mono ? '#f2f2f2' : c('b')}" transform="translate(-1.5 -1) scale(.95)"/>`;
+  if (name === 'study') body = `
+    ${shadow}
+    <path d="M24 12c-5-4-12-5-19-3.5v29c7-1.5 14-.5 19 3.5z" fill="${c('w')}"/>
+    <path d="M24 12c5-4 12-5 19-3.5v29c-7-1.5-14-.5-19 3.5z" fill="${c('w')}"${s}/>
+    <path d="M4 10v30c7.5-1.6 14.5-.6 20 3.6 5.5-4.2 12.5-5.2 20-3.6V10" fill="none" stroke="${p.mono ? '#f2f2f2' : c('n')}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M28 31l4-5 4 3 4.5-7" fill="none" stroke="${p.mono ? '#1c1c1c' : c('r')}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9 18c3.5-.6 7-.3 10.5 1M9 24c3.5-.6 7-.3 10.5 1" stroke="${p.mono ? '#1c1c1c' : '#b9c0cc'}" stroke-width="2.4" stroke-linecap="round" fill="none"/>`;
+  if (name === 'create') body = `
+    ${shadow}
+    <rect x="8" y="5" width="26" height="37" rx="5" fill="${c('v')}"${s}/>
+    <rect x="12" y="9" width="18" height="33" rx="3" fill="${p.mono ? '#f2f2f2' : c('d')}"${p.mono ? ' opacity=".42"' : ''}/>
+    <circle cx="25.5" cy="26" r="2.2" fill="${p.mono ? '#f2f2f2' : c('y')}"/>
+    <circle cx="35" cy="34" r="10" fill="${p.mono ? '#f2f2f2' : c('n')}"/>
+    <path d="M35 29v10M30 34h10" stroke="${p.mono ? '#1c1c1c' : '#fff'}" stroke-width="3.4" stroke-linecap="round"/>`;
+  if (name === 'ranked') body = `
+    ${shadow}
+    <path d="M13 6h22v13a11 11 0 0 1-22 0z" fill="${c('g')}"/>
+    <path d="M13 10H7v3a7.5 7.5 0 0 0 7.2 7.5M35 10h6v3a7.5 7.5 0 0 1-7.2 7.5" fill="none" stroke="${c('g')}" stroke-width="3.4"/>
+    <rect x="21" y="29" width="6" height="7" fill="${c('g')}"${s}/>
+    <rect x="13" y="35" width="22" height="7" rx="3" fill="${p.mono ? '#f2f2f2' : c('d')}"${s}/>
+    <path d="M24 11.5l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z" fill="${p.mono ? '#1c1c1c' : '#fff6d6'}"/>
+    ${p.grad ? '<path d="M16 9v8" stroke="#fff" stroke-opacity=".6" stroke-width="2.4" stroke-linecap="round"/>' : ''}`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">${p.grad ? defs(id) : ''}${body}</svg>`;
+}
+
+const SETS = [
+  ['A', '애플 방식 — 한 가지 색, 채운 모양', '애플 SF Symbols 처럼 흰색 한 가지에 진하기만 두 단계. 차분하고 화면 어디에나 어울려요.'],
+  ['B', '토스 방식 — 여러 색 + 입체감', '토스 앱 아이콘처럼 색이 많고 옅은 그라데이션·빛 반사·그림자로 살짝 도톰해 보여요. 가장 화려해요.'],
+  ['C', '여러 색 평면 — B 모양을 그라데이션 없이', 'B 와 같은 모양과 색이지만 평평하게 칠했어요. 화려함과 깔끔함 사이.'],
+];
+let n = 0;
+document.getElementById('out').innerHTML = SETS.map(([k, t, d]) => `
+  <section>
+    <h2><b>${k}</b>${t}</h2>
+    <p class="desc">${d}</p>
+    <div class="row">${NAMES.map(([id, nm, sm]) => `<div class="tile">${icon(id, PAL[k], 'g' + (n++), 44)}<span>${nm}<small>${sm}</small></span></div>`).join('')}</div>
+    <div class="size"><div>${NAMES.map(([id]) => icon(id, PAL[k], 'g' + (n++), 20)).join('')}</div> 메뉴바·아래 탭 크기</div>
+  </section>`).join('');
+</script>
+</body>
+</html>
