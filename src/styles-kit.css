@@ -2619,3 +2619,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 빈 자리 두 버튼(친구 초대·봇 추가)을 같은 높이·같은 줄에 — 봇 추가만 위 여백이 있어 2px 내려가 보였음 */
 .slot-acts { align-items: center; }
 .slot .slot-acts .slot-add-bot { margin-top: 0; }
+/* 증강 고르기 안내 글: 뒤 화면 글자(일정 칩·숫자)와 겹쳐 읽기 어려웠음 → 글 뒤에 바탕 */
+.aug-cap { text-wrap: balance; align-self: center; max-width: 100%; padding: 6px 12px; border-radius: 12px; background: rgba(17, 17, 17, 0.92); border: 1px solid #2e2e2e; text-shadow: none; }
+@media (max-width: 600px) { .aug-float { background: rgba(0, 0, 0, 0.66); } }
