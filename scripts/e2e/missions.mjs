@@ -118,7 +118,8 @@ const doneXp = all(after).filter((m) => m.done && !all(before).find((x) => x.id 
 // 판 경험치 (design/game-xp.md): 봇전 10~20, 하루 상한 600, 새 업적 +20 (처음엔 0)
 const tg = (await A({ action: 'missions', room: g1.roomId })).b;
 const gameGain = (tg.thisGame?.xp ?? 0) + (tg.thisGame?.firstWin ?? 0);
-ok('봇전 판 경험치 기록 (10~20, 상한이면 0)', !!tg.thisGame && tg.thisGame.firstWin === 0 && (tg.thisGame.xp === 0 ? tg.gameToday >= tg.gameCap - 20 : tg.thisGame.xp >= 10 && tg.thisGame.xp <= 20), JSON.stringify(tg.thisGame));
+ok('봇전 하루 상한: 이 판 전에 이미 상한이면 이 판 경험치 0, 아니면 상한을 넘지 않게', typeof tg.botToday === 'number' && (tg.botToday - (tg.thisGame?.xp ?? 0) >= (tg.botCap ?? 100) ? (tg.thisGame?.xp ?? 0) === 0 : tg.botToday <= (tg.botCap ?? 100)), `${tg.botToday}/${tg.botCap} 이번 판 ${tg.thisGame?.xp}`);
+ok('봇전 판 경험치 기록 (10~20, 판 상한·봇전 하루 100 상한이면 0)', !!tg.thisGame && tg.thisGame.firstWin === 0 && (tg.thisGame.xp === 0 ? tg.gameToday >= tg.gameCap - 20 || tg.botToday >= (tg.botCap ?? 100) - 20 : tg.thisGame.xp >= 10 && tg.thisGame.xp <= 20), JSON.stringify(tg.thisGame));
 const extra = after.xp - before.xp - doneXp - gameGain;
 ok('경험치 = 미션 + 판 (+ 새 업적 20씩)', extra >= 0 && extra % 20 === 0 && after.todayXp <= after.cap && tg.gameToday <= tg.gameCap, `xp ${before.xp}→${after.xp}, 미션 ${doneXp}, 판 ${gameGain}, 업적 ${extra}`);
 const other = (await A({ action: 'missions', room: '00000000-0000-0000-0000-000000000000' })).b;

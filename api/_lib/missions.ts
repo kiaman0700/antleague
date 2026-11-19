@@ -9,7 +9,7 @@ import { createHmac } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { finalResults, GameError, marketFor, playedLastDay, portfolioOf, PREMARKET_VERSION, type GameData } from '../../src/engine/engine.js';
 import { gameSkill } from '../../src/game/skill.js';
-import { BADGE_XP, DAILY_XP_CAP, levelNeed, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
+import { BADGE_XP, BOT_XP_CAP, DAILY_XP_CAP, levelNeed, FIRST_WIN_XP, GAME_XP_CAP, MISSION_MAP, MODE_LABEL, REROLLS, capXp, firstWinEligible, gameXp, levelOf, missionGain, missionPeriods, pickMissions, rerollPick, type MissionGame } from '../../src/game/missions.js';
 import { KR_INDEX_BASE } from '../../src/game/market.js';
 import { preRumors } from '../../src/game/rumors.js';
 import { COMMUNITY_VERSION, communityPosts } from '../../src/game/community.js';
@@ -102,6 +102,13 @@ async function gameXpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
   if (r.error) return null;
   return ((r.data ?? []) as { key: string; xp: number }[]).filter((x) => !x.key.startsWith('badge:') && !x.key.startsWith('league:') && x.key !== 'tutorial').reduce((s, x) => s + (x.xp ?? 0), 0);
 }
+/** 오늘 봇전 판 경험치 (xp_log 의 판 기록 중 내용이 '봇전'으로 시작하는 것) */
+async function botXpToday(sb: SupabaseClient, uid: string, dayEndsAt: number) {
+  const since = new Date(dayEndsAt - 86_400_000).toISOString();
+  const r = await sb.from('xp_log').select('key, xp, detail').eq('user_id', uid).like('key', 'game:%').gte('created_at', since);
+  if (r.error) return 0;
+  return ((r.data ?? []) as { xp: number; detail: string | null }[]).filter((x) => (x.detail ?? '').startsWith('봇전')).reduce((s, x) => s + (x.xp ?? 0), 0);
+}
 /** 기록 한 줄을 먼저 넣고(이미 있으면 안 줌) 그만큼 경험치를 더함 */
 async function grant(sb: SupabaseClient, uid: string, key: string, xp: number, detail: string) {
   const ins = await sb.from('xp_log').insert({ user_id: uid, key, xp, detail: detail.slice(0, 80) });
@@ -142,7 +149,9 @@ async function grantGameXp(sb: SupabaseClient, uid: string, roomId: string, game
   const parts = gameXp(game);
   if (parts.length) {
     const want = parts.reduce((s, x) => s + x.xp, 0);
-    const xp = capXp(want, budget);
+    // 봇전은 하루 BOT_XP_CAP 까지만 (판 상한 안에서 따로)
+    const botLeft = game.kind === 'bot' ? Math.max(0, BOT_XP_CAP - (await botXpToday(sb, uid, dayEndsAt))) : Infinity;
+    const xp = capXp(want, Math.min(budget, botLeft));
     if (await grant(sb, uid, 'game:' + roomId, xp, parts.map((x) => `${x.label} ${x.xp}`).join(' · '))) budget -= xp;
   }
   if (firstWinEligible(game) && budget > 0) await grant(sb, uid, 'firstwin:' + day, capXp(FIRST_WIN_XP, budget), 'room:' + roomId); // 어느 판에서 받았는지 (결과 화면 표시용)
@@ -296,6 +305,7 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
   }
   const todayXp = member ? await xpToday(sb, uid, ms.dayEndsAt) : 0;
   const gameToday = member ? ((await gameXpToday(sb, uid, ms.dayEndsAt)) ?? 0) : 0;
+  const botToday = member ? await botXpToday(sb, uid, ms.dayEndsAt) : 0;
   // 결과 화면: 이 판에서 받은 판 경험치 (내 것만)
   let thisGame: { xp: number; detail: string; firstWin: number } | null = null;
   let league: Awaited<ReturnType<typeof leagueRank>> = null;
@@ -318,6 +328,8 @@ export async function missionState(sb: SupabaseClient, uid: string, now = Date.n
     cap: DAILY_XP_CAP,
     gameToday,
     gameCap: GAME_XP_CAP,
+    botToday,
+    botCap: BOT_XP_CAP,
     thisGame,
     // 결과 화면: 이번 주 리그 내 순위
     league,

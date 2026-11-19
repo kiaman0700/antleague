@@ -377,6 +377,8 @@ export function missionGain(id: string, g: MissionGame): number {
 
 /* ---- 판 경험치 (설계서 design/game-xp.md) — 미션과 따로, 판마다 한 번, 판정·지급은 서버만 ---- */
 export const GAME_XP_CAP = 600;
+/** 봇전에서 받는 판 경험치는 하루 이만큼까지 (30초 번개 봇전 반복으로 리그 점수를 쉽게 올리지 못하게) — 판 경험치 상한 600 안에서 */
+export const BOT_XP_CAP = 100;
 export const FIRST_WIN_XP = 50;
 export const BADGE_XP = 20;
 /** 이 판으로 받는 경험치 항목 (커스텀·친구 1대1·기권·거래 없음은 없음) */
