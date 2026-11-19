@@ -154,7 +154,7 @@ for (const r of routes) {
     await page.waitForTimeout(1200);
   }
   // (v27) 첫날 증강 고르기 창도 점검한 뒤, 접어서 게임 화면 탭을 봄
-  const augA = r === 'practice' && (await page.locator('.aug-pick').count()) ? await page.evaluate(audit) : null;
+  const augA = r === 'practice' && (await page.locator('.aug-stage').count()) ? await page.evaluate(audit) : null;
   if (augA) await page.locator('.aug-hide').first().click().catch(() => {});
   if (augA) await page.waitForTimeout(400);
   const a = await page.evaluate(audit);

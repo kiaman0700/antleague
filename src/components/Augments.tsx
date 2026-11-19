@@ -5,12 +5,13 @@ import type { AugView } from '../engine/engine';
 import type { AugIncome } from '../engine/augEffects';
 import type { Trade } from '../game/portfolio';
 import { STOCK_MAP } from '../game/stocks';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { AugArt } from './AugArt';
 import { DialogBox, useEscape } from './ui';
 import { won } from '../lib/format';
 
 export const TIER_NAME: Record<AugTier, string> = { silver: '실버', gold: '골드', prism: '프리즘' };
+const TAG_ICON: Record<AugTag, IconName> = { money: 'coins', info: 'news', trade: 'activity', sector: 'grid', hold: 'shield', catchup: 'trend', fun: 'sparkles' };
 const TAG_NAME: Record<AugTag, string> = { money: '돈', info: '정보', trade: '거래', sector: '업종', hold: '버티기', catchup: '따라잡기', fun: '재미' };
 
 export function AugBadge({ id, size = 18 }: { id: string; size?: number }) {
@@ -23,6 +24,11 @@ export function AugBadge({ id, size = 18 }: { id: string; size?: number }) {
   );
 }
 
+/** 설명 속 숫자(금액·%·횟수)를 굵게 — 카드에서 핵심 값이 먼저 보이게 */
+function hl(text: string) {
+  return text.split(/([+−-]?\d[\d.,]*(?:\s?(?:만원|천원|원|%|번|일|개|배|주))?)/g).map((part, i) => (i % 2 ? <em key={i} className="aug-num">{part}</em> : part));
+}
+
 /** 증강 이름 옆 조건 표시 (⏳ 시간 · 👥 여럿 · 🎯 업종) — 글자로 */
 function conds(id: string) {
   const a = AUG_MAP[id];
@@ -33,83 +39,82 @@ function conds(id: string) {
   return out;
 }
 
-/** 고르기 창: 3개 중 하나를 누르고 '이걸로 고르기' — 장이 흐르는 중이라 실수로 바로 정해지지 않게 두 번 */
+/**
+ * 증강 고르기 (롤토체스 구성): 상자 없이 세로 카드 3장이 게임 화면 위에 뜸. 등급은 테두리 색으로만,
+ * 한 번 눌러 바로 선택, 카드마다 아래에 새로고침, 맨 아래 가운데 숨기기. 안 고르면 장이 끝날 때 무작위
+ */
 export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recommend }: { offer: NonNullable<AugView['offer']>; recommend?: string; busy: boolean; endsIn: string | null; onPick: (id: string) => void; onReroll: (slot: number) => void; onHide: () => void }) {
-  const [sel, setSel] = useState<string | null>(null);
+  /** 고른 카드 — 빛나며 커지고 나머지가 사라지는 동안 잠깐 */
+  const [picked, setPicked] = useState<string | null>(null);
   useEscape(onHide, true, true);
-  const chosen = sel && offer.ids.includes(sel) ? sel : null;
-  // 처음 뜬 카드는 차례로 올라오고, 다시 뽑아 새로 들어온 카드만 그 칸에서 바뀌는 움직임
+  // 처음 뜬 카드는 함께 나타나고, 새로고침으로 들어온 카드만 그 칸에서 바뀌는 움직임
   const firstIds = useRef(new Set(offer.ids));
   const listRef = useRef<HTMLDivElement>(null);
-  const confirm = () => {
-    if (!chosen) return;
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-aug="${chosen}"] .aug-badge`);
-    if (el) flyToMine(el);
-    onPick(chosen);
+  const choose = (id: string) => {
+    if (busy || picked) return;
+    setPicked(id);
+    const go = () => {
+      const el = listRef.current?.querySelector<HTMLElement>(`[data-aug="${id}"] .aug-badge`);
+      if (el) flyToMine(el);
+      onPick(id);
+    };
+    if (reduced()) go();
+    else window.setTimeout(go, 420);
   };
   return (
-    <div className="modal-bg aug-bg" onClick={onHide}>
-      <DialogBox className={`modal aug-pick t-${offer.tier}`} aria-label={`${TIER_NAME[offer.tier]} 증강 고르기`} onClick={(e) => e.stopPropagation()}>
-        <div className="aug-head">
-          <div>
-            <h3>
-              <span className={`aug-tier t-${offer.tier}`}>{TIER_NAME[offer.tier]}</span> 증강을 골라요
-            </h3>
-            <p className="muted small">
-              판 끝까지 이어지는 내 효과예요. {endsIn ? `${endsIn} 안에` : '오늘 장이 끝나기 전에'} 안 고르면 셋 중 하나가 무작위로 정해져요.
-            </p>
-          </div>
-          <button className="btn ghost small aug-hide" onClick={onHide}>
-            <Icon name="chart" size={16} /> 시세 보기
-          </button>
-        </div>
-        <div ref={listRef} className={'aug-list aug-row3' + (chosen ? ' has-sel' : '')} role="radiogroup" aria-label="증강 3개">
+    <div className="aug-float" onClick={onHide}>
+      <DialogBox className={`aug-stage t-${offer.tier}`} aria-label={`${TIER_NAME[offer.tier]} 증강 고르기`} onClick={(e) => e.stopPropagation()}>
+        <p className="aug-cap">
+          <b>증강 선택</b> · 하나를 누르면 바로 정해져요 · {endsIn ? `${endsIn} 안에` : '오늘 장이 끝나기 전에'} 안 고르면 무작위
+        </p>
+        <div ref={listRef} className={'aug-list aug-row3' + (picked ? ' picked' : '')} role="group" aria-label={`${TIER_NAME[offer.tier]} 증강 3개`}>
           {offer.ids.map((id, i) => {
             const a = AUG_MAP[id];
             if (!a) return null;
             const c = conds(id);
-            const on = chosen === id;
             return (
-              <div key={id} data-aug={id} className={'aug-opt' + (on ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
-                <button className="aug-card" role="radio" aria-checked={on} aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째`} onClick={() => setSel(id)} disabled={busy}>
-                  <span className={`aug-tier t-${a.tier}`}>{TIER_NAME[a.tier]}</span>
-                  <AugBadge id={id} size={30} />
+              <div key={id} data-aug={id} className={'aug-opt' + (picked === id ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
+                <button className="aug-card" aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째. 누르면 바로 선택`} onClick={() => choose(id)} disabled={busy || !!picked}>
+                  <span className="aug-art" aria-hidden>
+                    <svg className="aug-art-line" viewBox="0 0 200 80" preserveAspectRatio="none">
+                      <path d="M0 62 L28 54 L52 60 L80 38 L104 46 L132 22 L160 30 L200 8" />
+                    </svg>
+                    <span className="aug-emblem">
+                      <span className="aug-emblem-in">
+                        <AugArt id={id} size={36} />
+                      </span>
+                    </span>
+                  </span>
                   <b className="aug-name">{a.name}</b>
                   {recommend === id && <span className="aug-rec">처음이라면 추천</span>}
-                  <span className="aug-desc">{a.desc}</span>
-                  <span className="aug-meta">
-                    {TAG_NAME[a.tag]}
-                    {c.map((x) => ' · ' + x)}
-                  </span>
-                  {on && <Icon name="check" size={18} className="aug-check" />}
-                  {/* 카드 뒷면 — 처음 뜰 때·다시 뽑을 때 뒤집히며 사라짐 */}
-                  <span className={`aug-back t-${a.tier}`} aria-hidden>
-                    <AugBackArt />
-                    <span className="aug-back-tier">{TIER_NAME[a.tier]}</span>
+                  <span className="aug-rule" aria-hidden />
+                  <span className="aug-desc">{hl(a.desc)}</span>
+                  <span className="aug-foot">
+                    <span className="aug-tag">
+                      <Icon name={TAG_ICON[a.tag]} size={13} /> {TAG_NAME[a.tag]}
+                      {c.length > 0 && ' · ' + c.join(' · ')}
+                    </span>
+                    <span className="aug-pips" aria-hidden>
+                      {Array.from({ length: a.tier === 'silver' ? 1 : a.tier === 'gold' ? 2 : 3 }, (_, k) => (
+                        <i key={k} />
+                      ))}
+                    </span>
                   </span>
                 </button>
-                {!recommend && <button className="btn ghost small aug-reroll" disabled={busy || !offer.canReroll[i]} onClick={() => (setSel(null), onReroll(i))} aria-label={`${i + 1}번째 칸 다시 뽑기`}>
-                  <Icon name="refresh" size={14} /> {offer.canReroll[i] ? '다시 뽑기' : '다시 뽑기 끝'}
-                </button>}
+                {!recommend && (
+                  <button className="aug-reroll" disabled={busy || !!picked || !offer.canReroll[i]} onClick={() => onReroll(i)} aria-label={`${i + 1}번째 칸 새로고침${offer.canReroll[i] ? '' : ' (다 씀)'}`} title="이 칸만 새로고침">
+                    <Icon name="refresh" size={18} />
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
-        <button key={chosen ?? 'none'} className={'btn primary block aug-go' + (chosen ? ' ready' : '')} disabled={!chosen || busy} onClick={confirm}>
-          {chosen ? `'${AUG_MAP[chosen].name}' 고르기` : '하나를 눌러 고르세요'}
+        <button className="aug-hide" onClick={onHide} aria-label="증강 창 숨기고 시세 보기">
+          <Icon name="eyeOff" size={16} /> 숨기기
         </button>
       </DialogBox>
     </div>
-  );
-}
-
-/** 카드 뒷면 무늬: 개미리그 V자 차트 한 줄 (등급 색은 CSS) */
-function AugBackArt() {
-  return (
-    <svg viewBox="0 0 40 40" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 12 L17 27 L22 21 L34 8" />
-      <path d="M28 8 L34 8 L34 14" />
-    </svg>
   );
 }
 
@@ -179,7 +184,7 @@ function Got({ value }: { value: number }) {
 export function AugPill({ tier, endsIn, onOpen }: { tier: AugTier; endsIn: string | null; onOpen: () => void }) {
   return (
     <button className={`aug-pill t-${tier}`} onClick={onOpen}>
-      <Icon name="sparkles" size={16} /> {TIER_NAME[tier]} 증강 고르기{endsIn ? ` · ${endsIn}` : ''}
+      <Icon name="eye" size={16} /> 증강 선택 열기{endsIn ? ` · ${endsIn}` : ''}
     </button>
   );
 }

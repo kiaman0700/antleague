@@ -145,12 +145,22 @@ export const TIER_PATTERNS: [AugTier[], number][] = [
   [['prism', 'prism', 'prism'], 1],
 ];
 
-/** 방 전체가 같이 쓰는 등급 묶음 — 판 시작 때 서버 비밀값으로 한 번 */
-export function tierPattern(salt: string, picks: number): AugTier[] {
+const S: AugTier = 'silver';
+const G: AugTier = 'gold';
+const P: AugTier = 'prism';
+/** (v28) 롤토체스에 공개된 등급 조합 확률 (합 100) — 실버로 시작하는 판이 더 흔함 */
+export const TIER_PATTERNS_V28: [AugTier[], number][] = [
+  [[S, S, G], 24], [[S, G, G], 15], [[G, S, G], 12], [[G, G, G], 10], [[S, S, P], 6], [[G, S, S], 5], [[P, S, G], 5], [[S, G, P], 4],
+  [[P, G, G], 4], [[G, G, P], 3], [[S, P, S], 3], [[G, P, G], 3], [[G, S, P], 2], [[P, P, P], 2], [[P, S, P], 1], [[S, P, P], 1],
+];
+
+/** 방 전체가 같이 쓰는 등급 묶음 — 판 시작 때 서버 비밀값으로 한 번. 진행 중인 v27 판은 예전 표 그대로 */
+export function tierPattern(salt: string, picks: number, version = 27): AugTier[] {
+  const table = version >= 28 ? TIER_PATTERNS_V28 : TIER_PATTERNS;
   const rng = seeded(`${salt}:augtier`);
   let x = rng() * 100;
-  let base: AugTier[] = TIER_PATTERNS[0][0];
-  for (const [p, w] of TIER_PATTERNS) {
+  let base: AugTier[] = table[0][0];
+  for (const [p, w] of table) {
     if (x < w) {
       base = p;
       break;

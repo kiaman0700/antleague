@@ -99,7 +99,7 @@ export function deriveAugs(d: GameData): AugState {
   const r = d.room;
   const days = augmentDays(r.total_days);
   const salt = saltOf(d);
-  const tiers = tierPattern(salt, days.length);
+  const tiers = tierPattern(salt, days.length, r.version ?? 27);
   const seats = seatsOf(d);
   const multi = d.players.length >= 2;
   const finished = r.status === 'finished' || r.day >= r.total_days;

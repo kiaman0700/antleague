@@ -2265,3 +2265,90 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 }
 .aug-back { flex-direction: column; gap: 6px; }
 .aug-back-tier { font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
+
+/* ── 증강 3판 (롤토체스 구성): 상자 없이 카드만 게임 화면 위에. 등급은 테두리 색으로만, 한 번 눌러 선택 ── */
+@property --aug-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.aug-float { position: fixed; inset: 0; z-index: 85; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.5); animation: fade 180ms ease-out; }
+.aug-stage { width: 100%; max-width: 880px; display: flex; flex-direction: column; align-items: center; gap: 14px; outline: none; }
+.aug-cap { margin: 0; font-size: 13px; color: #d6d6d6; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.aug-cap b { color: #fff; }
+.aug-stage .aug-row3 { width: 100%; gap: 16px; }
+.aug-stage .aug-row3 .aug-opt { align-items: center; gap: 10px; }
+.aug-stage .aug-row3 .aug-card { width: 100%; min-height: 340px; padding: 26px 16px 20px; gap: 10px; background: #1a1a1a; border: 2px solid var(--t-silver); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); transition: transform 140ms var(--ease-out), filter 140ms; cursor: pointer; }
+.aug-stage .aug-row3 .t-gold .aug-card { border-color: var(--t-gold); }
+/* 프리즘만 무지갯빛 테두리가 천천히 돎 */
+.aug-stage .aug-row3 .t-prism .aug-card { border: 3px solid transparent; background: linear-gradient(#1a1a1a, #1a1a1a) padding-box, conic-gradient(from var(--aug-ang), #f6a8d8, #9fd8ff, #b9a6ff, #fff3b0, #f6a8d8) border-box; animation: aug-prism 6s linear infinite; }
+@keyframes aug-prism { to { --aug-ang: 360deg; } }
+.aug-stage .aug-row3 .aug-card:hover:not(:disabled), .aug-stage .aug-row3 .aug-card:focus-visible { transform: scale(1.04); filter: brightness(1.12); }
+.aug-stage .aug-row3 .aug-card:active:not(:disabled) { transform: scale(0.99); }
+.aug-stage .aug-row3 .aug-card .aug-badge { margin: 0 0 6px; border-radius: 14px; }
+.aug-stage .aug-row3 .aug-name { font-size: 17px; }
+.aug-stage .aug-row3 .aug-desc { font-size: 14.5px; color: #dcdcdc; }
+.aug-stage .aug-row3 .aug-meta { margin-top: auto; }
+.aug-stage .aug-reroll { width: 44px; height: 44px; padding: 0; margin: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; align-self: center; background: #242424; color: #f2f2f2; border: 1px solid #4a4a4a; cursor: pointer; transition: transform 140ms var(--ease-out); }
+.aug-stage .aug-reroll:hover:not(:disabled) { transform: rotate(40deg); }
+.aug-stage .aug-reroll:disabled { opacity: 0.3; cursor: default; }
+.aug-stage .aug-hide { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 16px; border-radius: 999px; background: #242424; color: #f2f2f2; border: 1px solid #4a4a4a; font-weight: 700; font-size: 14px; cursor: pointer; }
+
+/* 움직임: 함께 커지며 나타남(왼쪽부터 아주 짧게), 새로고침은 그 칸만 번쩍 바뀜, 고르면 그 카드만 커지고 나머지는 사라짐 */
+@keyframes aug-appear { 0% { transform: scale(0.88); opacity: 0; filter: brightness(1.9); } 60% { opacity: 1; } 100% { transform: none; opacity: 1; filter: none; } }
+@keyframes aug-reswap { 0% { transform: scale(0.94); opacity: 0; filter: brightness(2.2); } 100% { transform: none; opacity: 1; filter: none; } }
+@keyframes aug-chosen { 0% { transform: none; filter: none; } 50% { transform: scale(1.09); filter: brightness(1.45); } 100% { transform: scale(1.06); filter: brightness(1.2); } }
+@keyframes aug-gone { to { opacity: 0; transform: scale(0.94); } }
+.aug-stage .aug-row3 .aug-opt.enter, .aug-stage .aug-row3 .aug-opt.t-gold.enter { animation: aug-appear 380ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 55ms); }
+.aug-stage .aug-row3 .aug-opt.swap, .aug-stage .aug-row3 .aug-opt.t-gold.swap { animation: aug-reswap 340ms var(--ease-out) both; }
+.aug-stage .aug-row3 .aug-opt .aug-card, .aug-stage .aug-row3 .aug-opt.swap .aug-card { animation: none; }
+.aug-stage .aug-row3 .t-prism .aug-card { animation: aug-prism 6s linear infinite; }
+.aug-stage .aug-row3 .aug-opt .aug-badge { animation: none; }
+.aug-stage .aug-row3 .t-prism .aug-card::after { display: none; }
+.aug-stage .aug-row3 .aug-opt.on { translate: none; }
+.aug-stage .aug-row3.picked .aug-opt.on { animation: aug-chosen 420ms var(--ease-out) both; z-index: 1; }
+.aug-stage .aug-row3.picked .aug-opt:not(.on) { animation: aug-gone 260ms ease-in both; }
+.aug-stage .aug-row3.picked .aug-reroll, .aug-stage .aug-row3.picked ~ .aug-hide { opacity: 0; transition: opacity 160ms; }
+.aug-pill { bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+@media (max-width: 860px) {
+  .aug-float { padding: 10px; align-items: center; }
+  .aug-stage .aug-row3 { gap: 8px; }
+  .aug-stage .aug-row3 .aug-card { min-height: 270px; padding: 16px 6px 12px; gap: 6px; }
+  .aug-stage .aug-row3 .aug-name { font-size: 14px; }
+  .aug-stage .aug-row3 .aug-desc { font-size: 12.5px; }
+  .aug-cap { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aug-float, .aug-stage .aug-row3 .aug-opt, .aug-stage .aug-row3 .aug-card { animation: none !important; transition: none !important; }
+}
+
+/* ── 증강 카드 얼굴 4판: 등급 색 그림 칸 + 큰 문양 + 안쪽 테두리 + 숫자 강조 + 아래 띠(종류·등급 보석) ── */
+.aug-opt.t-silver { --tc: #c9ced8; }
+.aug-opt.t-gold { --tc: #e9bb4e; }
+.aug-opt.t-prism { --tc: #b9a6ff; }
+.aug-stage .aug-row3 .aug-card { padding: 0; gap: 0; background-color: #151517; color: #f2f2f2; overflow: hidden; }
+.aug-stage .aug-row3 .t-prism .aug-card { background: linear-gradient(#151517, #151517) padding-box, conic-gradient(from var(--aug-ang), #f6a8d8, #9fd8ff, #b9a6ff, #fff3b0, #f6a8d8) border-box; }
+.aug-stage .aug-row3 .aug-card::before { content: ''; position: absolute; inset: 5px; border: 1px solid color-mix(in srgb, var(--tc) 30%, transparent); border-radius: 9px; pointer-events: none; z-index: 1; }
+.aug-art { position: relative; width: 100%; height: 132px; flex: none; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--tc) 15%, #151517); border-bottom: 1px solid color-mix(in srgb, var(--tc) 40%, transparent); }
+.aug-art-line { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--tc); stroke-width: 2; opacity: 0.28; stroke-linejoin: round; stroke-linecap: round; }
+.aug-emblem { position: relative; width: 74px; height: 74px; transform: rotate(45deg); border-radius: 16px; background: #111113; border: 2px solid var(--tc); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45); }
+.aug-emblem::before { content: ''; position: absolute; inset: 5px; border: 1px solid color-mix(in srgb, var(--tc) 50%, transparent); border-radius: 10px; }
+.aug-emblem-in { transform: rotate(-45deg); display: flex; color: var(--tc); }
+.aug-stage .aug-row3 .aug-name { margin-top: 18px; padding: 0 12px; font-size: 18px; font-weight: 800; color: #fff; }
+.aug-rule { width: 34px; height: 3px; border-radius: 2px; background: var(--tc); margin: 10px 0 12px; flex: none; }
+.aug-stage .aug-row3 .aug-desc { padding: 0 16px 14px; font-size: 14.5px; line-height: 1.55; color: #d4d4d4; }
+.aug-num { font-style: normal; font-weight: 800; color: var(--tc); }
+.t-silver .aug-num { color: #fff; }
+.aug-stage .aug-row3 .aug-rec { margin-top: 8px; }
+.aug-foot { margin-top: auto; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px 12px; border-top: 1px solid #262629; font-size: 12px; color: #a0a0a6; position: relative; z-index: 2; }
+.aug-tag { display: inline-flex; align-items: center; gap: 5px; text-align: left; }
+.aug-pips { display: inline-flex; gap: 5px; flex: none; }
+.aug-pips i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--tc); border-radius: 1.5px; }
+@media (max-width: 860px) {
+  .aug-art { height: 86px; }
+  .aug-emblem { width: 52px; height: 52px; border-radius: 12px; }
+  .aug-emblem-in { transform: rotate(-45deg) scale(0.72); }
+  .aug-stage .aug-row3 .aug-name { margin-top: 12px; font-size: 14px; padding: 0 6px; }
+  .aug-rule { margin: 7px 0 8px; width: 26px; }
+  .aug-stage .aug-row3 .aug-desc { padding: 0 8px 10px; font-size: 12.5px; line-height: 1.45; }
+  .aug-foot { padding: 7px 8px 9px; font-size: 10.5px; }
+  .aug-pips i { width: 6px; height: 6px; }
+  .aug-stage .aug-row3 .aug-card::before { inset: 4px; }
+}

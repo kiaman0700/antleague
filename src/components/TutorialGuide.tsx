@@ -97,10 +97,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '증강 고르기',
-    text: () => '증강은 이번 판 내내 켜져 있는 내 능력이에요. 3개 중 1개만 골라요. 처음이라면 "귀동냥"을 추천해요 — 소식 하나가 진짜인지 알려 줘요.',
-    target: '.aug-pick',
+    text: () => '증강은 이번 판 내내 켜져 있는 내 능력이에요. 카드 3장 중 하나를 누르면 바로 정해져요. 처음이라면 "귀동냥"을 추천해요 — 소식 하나가 진짜인지 알려 줘요.',
+    target: '.aug-stage',
     wait: (c) => c.augPicked,
-    waitHint: '하나를 누르고 아래 "고르기" 버튼을 눌러 보세요',
+    waitHint: '카드 하나를 누르면 바로 정해져요',
   },
   {
     title: '소식 진위 보기',

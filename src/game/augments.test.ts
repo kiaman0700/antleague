@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUGMENTS, AUG_MAP, augmentDays, augmentOffer, eligible, shiftTier, tierPattern, TIER_PATTERNS, type OfferCtx } from './augments.js';
+import { AUGMENTS, AUG_MAP, augmentDays, augmentOffer, eligible, shiftTier, tierPattern, TIER_PATTERNS, TIER_PATTERNS_V28, type OfferCtx } from './augments.js';
 
 const base: OfferCtx = { salt: 'salt-x', seat: 'seat-a', n: 0, picks: 3, tier: 'gold', daysLeft: 10, multi: true, owned: [], takenUnique: [], heldSectors: [] };
 
@@ -26,6 +26,15 @@ describe('등급 묶음', () => {
     for (let i = 0; i < N; i++) if (tierPattern('t' + i, 3).join() === 'gold,gold,gold') ggg++;
     expect(ggg / N).toBeGreaterThan(0.2);
     expect(ggg / N).toBeLessThan(0.24);
+  });
+  it('(v28) 롤토체스 조합표: 합 100, 실버-실버-골드가 가장 흔함(약 24%), v27 판은 예전 표 그대로', () => {
+    expect(TIER_PATTERNS_V28.reduce((a, [, w]) => a + w, 0)).toBe(100);
+    let ssg = 0;
+    const N = 20000;
+    for (let i = 0; i < N; i++) if (tierPattern('v' + i, 3, 28).join() === 'silver,silver,gold') ssg++;
+    expect(ssg / N).toBeGreaterThan(0.22);
+    expect(ssg / N).toBeLessThan(0.26);
+    expect(tierPattern('s1', 3, 27)).toEqual(tierPattern('s1', 3));
   });
   it('등급 한 칸 오르내림은 실버·프리즘을 넘지 않음', () => {
     expect(shiftTier('silver', -1)).toBe('silver');
