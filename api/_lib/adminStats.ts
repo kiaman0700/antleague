@@ -27,6 +27,8 @@ interface StatRow {
   ret: number;
   trades: number;
   cards: Record<string, number> | null;
+  rank?: number;
+  aug_log?: { n: number; tier: string; offer: string[]; pick: string | null; auto: boolean; income: number }[] | null;
   created_at: string;
   version: number | null;
 }
@@ -53,7 +55,7 @@ export async function adminOverview(sb: SupabaseClient) {
   // 최근 14일 실제 유저 판 (시험 판 제외). 많아도 5000줄까지만
   const st = await sb
     .from('game_stats')
-    .select('room_id, kind, ranked, players, won, left_game, idle, bot_level, ret, trades, cards, created_at, version')
+    .select('room_id, kind, ranked, players, rank, won, left_game, idle, bot_level, ret, trades, cards, aug_log, created_at, version')
     .eq('is_test', false)
     .gt('created_at', ago(14 * DAY))
     .order('created_at', { ascending: false })
@@ -95,6 +97,47 @@ export async function adminOverview(sb: SupabaseClient) {
     return { kind: k, seats: used.length, win: used.filter((r) => r.won).length / Math.max(1, used.length), winNot: not.filter((r) => r.won).length / Math.max(1, not.length) };
   });
 
+  // 증강별 (사람 자리, 직접 고른 것만): 순위 점수 = (인원−순위)/(인원−1).
+  // 고른 자리 vs '보기에 떴는데 다른 걸 고른' 자리를 비교 — 잘하는 사람이 많이 고르는 착시를 줄임. 판이 적으면 등급 평균 쪽으로 당겨 봄(k=20)
+  const score = (r: StatRow) => (r.players > 1 && r.rank ? (r.players - r.rank) / (r.players - 1) : 0.5);
+  const augAgg: Record<string, { tier: string; offered: number; picked: number; auto: number; sp: number; sn: number; nn: number; money: number }> = {};
+  for (const r of people) {
+    for (const x of r.aug_log ?? []) {
+      for (const id of x.offer ?? []) {
+        const a = (augAgg[id] ??= { tier: x.tier, offered: 0, picked: 0, auto: 0, sp: 0, sn: 0, nn: 0, money: 0 });
+        if (x.auto) continue;
+        a.offered++;
+        if (x.pick === id) {
+          a.picked++;
+          a.sp += score(r);
+          a.money += x.income ?? 0;
+        } else {
+          a.sn += score(r);
+          a.nn++;
+        }
+      }
+      if (x.auto && x.pick && augAgg[x.pick]) augAgg[x.pick].auto++;
+    }
+  }
+  const tierMean: Record<string, number> = {};
+  for (const t of ['silver', 'gold', 'prism']) {
+    const xs = Object.values(augAgg).filter((a) => a.tier === t);
+    const n = xs.reduce((s, a) => s + a.picked, 0);
+    tierMean[t] = n ? xs.reduce((s, a) => s + a.sp, 0) / n : 0.5;
+  }
+  const K = 20;
+  const augs = Object.entries(augAgg).map(([id, a]) => ({
+    id,
+    tier: a.tier,
+    offered: a.offered,
+    picked: a.picked,
+    auto: a.auto,
+    pickRate: a.offered ? a.picked / a.offered : 0,
+    score: (a.sp + K * tierMean[a.tier]) / (a.picked + K),
+    scoreNot: a.nn ? a.sn / a.nn : null,
+    money: a.picked ? a.money / a.picked : 0,
+  }));
+
   // 봇 난이도별 사람 1위 비율 (그 판 가장 센 봇 기준)
   const lv = new Map<string, number>();
   for (const r of rows) if (r.bot_level != null) lv.set(r.room_id, Math.max(lv.get(r.room_id) ?? 0, r.bot_level));
@@ -109,6 +152,6 @@ export async function adminOverview(sb: SupabaseClient) {
     unread,
     errors: { day: errors24, recent: errs.error ? [] : errs.data },
     stats: agg.error ? null : agg.data,
-    games: { total: new Set(people.map((r) => r.room_id)).size, days, kinds, cards, cardsSince: CARDS_SINCE, bots },
+    games: { total: new Set(people.map((r) => r.room_id)).size, days, kinds, cards, cardsSince: CARDS_SINCE, bots, augs },
   };
 }

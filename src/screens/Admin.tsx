@@ -11,6 +11,7 @@ import { api } from '../net/api';
 import { Icon } from '../components/Icon';
 import { ITEM_MAP, type ItemKind } from '../game/items';
 import { STOCK_MAP } from '../game/stocks';
+import { AUG_MAP } from '../game/augments';
 
 interface Row {
   id: number;
@@ -54,6 +55,7 @@ interface Overview {
     /** 1위 차이는 이 규칙 버전부터의 판만 */
     cardsSince?: number;
     bots: { level: number; games: number; win: number }[];
+    augs?: { id: string; tier: string; offered: number; picked: number; auto: number; pickRate: number; score: number; scoreNot: number | null; money: number }[];
   };
 }
 
@@ -237,6 +239,47 @@ function OverviewTab({ onInbox }: { onInbox: () => void }) {
           {s ? <BarList rows={TIER_ROWS.map(([k, label]) => ({ label, value: s.tiers[k] }))} /> : <p className="muted small">-</p>}
         </section>
       </div>
+
+      <section className="aov-card">
+        <h3>증강 · 14일</h3>
+        <p className="muted small">사람 자리에서 직접 고른 것만. 순위 점수 = (인원−순위)/(인원−1), 1이 1위. '안 고른 자리'는 보기에 떴는데 다른 걸 고른 자리라 실력 차이가 덜 섞여요. 판이 적은 증강은 등급 평균 쪽으로 당겨 보여요.</p>
+        {!(o.games.augs ?? []).length ? (
+          <p className="muted small">아직 증강 기록이 없어요.</p>
+        ) : (
+          <div className="aov-scroll">
+            <table className="aov-table">
+              <thead>
+                <tr>
+                  <th>증강</th>
+                  <th>뜬 횟수</th>
+                  <th>고른 비율</th>
+                  <th>점수 (고름)</th>
+                  <th>점수 (안 고름)</th>
+                  <th>평균 받은 돈</th>
+                  <th>자동</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...(o.games.augs ?? [])]
+                  .sort((a, b) => b.score - a.score)
+                  .map((a) => (
+                    <tr key={a.id}>
+                      <td>
+                        {AUG_MAP[a.id]?.name ?? a.id} <span className="muted small">{a.tier}</span>
+                      </td>
+                      <td>{num(a.offered)}</td>
+                      <td>{pct(a.pickRate)}</td>
+                      <td>{a.score.toFixed(2)}</td>
+                      <td>{a.scoreNot == null ? '-' : a.scoreNot.toFixed(2)}</td>
+                      <td>{a.money ? money(Math.round(a.money)) : '-'}</td>
+                      <td>{num(a.auto)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="aov-card">
         <h3>찬스 카드 · 14일</h3>

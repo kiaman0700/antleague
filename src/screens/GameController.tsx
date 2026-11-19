@@ -15,6 +15,7 @@ import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankLi
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AugPanel, AugPick, AugPill, AugStrip } from '../components/Augments';
+import { augFeeRate, augLevCap } from '../engine/augEffects';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton, loadReactMute, saveReactMute } from '../components/Reactions';
 import { StockBrowser, type BrowserFilter } from '../components/StockBrowser';
@@ -524,7 +525,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       const priceOf = (s: string) => quote(m, s, displayDay, displayClosed).krw;
       let held = 0;
       for (const [s, h] of Object.entries(portfolio.holdings)) if (isLeveraged(s)) held += h.qty * priceOf(s);
-      return Math.max(0, Math.floor((LEVERAGE_CAP * equity - held) / (priceOf(sym) * 1.0015)));
+      const capRate = view?.aug ? augLevCap(view.aug.mine.map((x) => x.id), LEVERAGE_CAP) : LEVERAGE_CAP;
+      return Math.max(0, Math.floor((capRate * equity - held) / (priceOf(sym) * 1.0015)));
     },
     allowed: canAct && !frozen && remaining !== 0,
     reason: frozen
@@ -537,6 +539,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             ? '시간이 다 됐어요. 곧 장이 마감돼요'
             : null,
     fee: feeRate,
+    feeFor: view?.aug?.mine.length
+      ? (sym: string, side: 'buy' | 'sell', qty: number) => {
+          const boughtToday = (view.myTrades ?? []).filter((t) => t.day === day && t.symbol === sym).reduce((a, t) => a + (t.side === 'buy' ? t.qty : -t.qty), 0);
+          // 서버와 같은 계산 (가장 큰 종목·업종 장악은 화면에서 대략) — 실제 체결 수수료는 서버가 정함
+          return augFeeRate(view.aug!.mine.map((x) => x.id), { symbol: sym, side, qty, held: portfolio.holdings[sym]?.qty ?? 0, boughtToday, biggest: null, ruleSector: null }, feeRate);
+        }
+      : undefined,
     busy,
     limitOnly: inPre,
   };

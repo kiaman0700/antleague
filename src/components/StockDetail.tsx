@@ -51,6 +51,8 @@ interface Props {
     allowed: boolean;
     reason: string | null;
     fee: number;
+    /** (v27) 증강으로 종목·방향마다 다른 수수료 */
+    feeFor?: (symbol: string, side: 'buy' | 'sell', qty: number) => number;
     busy: boolean;
     capFor?: (symbol: string) => number | null;
     /** (v7) 장 전: 지금 가격 거래는 안 되고 예약 주문만 */
@@ -683,7 +685,7 @@ export function TradePanel({
     setQtyRaw(v);
   };
   const [limitText, setLimitText] = useState("");
-  const fee = trade.fee;
+  const fee = trade.feeFor ? trade.feeFor(symbol, side, Math.floor(Number(qtyText) || 0)) : trade.fee;
 
   const limitNative = Number(limitText) || 0;
   const limitKrw = isUS
