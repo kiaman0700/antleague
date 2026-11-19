@@ -2352,3 +2352,21 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
   .aug-pips i { width: 6px; height: 6px; }
   .aug-stage .aug-row3 .aug-card::before { inset: 4px; }
 }
+
+/* 내 증강 칸: 고르는 날마다 마름모 한 칸 (고르기 카드의 문양과 같은 모양) */
+.aug-slots { display: inline-flex; align-items: center; gap: calc(var(--s, 30px) * 0.5); padding: 0 calc(var(--s, 30px) * 0.2); }
+.aug-slot { --tc: #c9ced8; width: var(--s, 30px); height: var(--s, 30px); flex: none; transform: rotate(45deg); border-radius: 22%; border: 2px solid var(--tc); background: #111113; display: inline-flex; align-items: center; justify-content: center; }
+.aug-slot.t-gold { --tc: #e9bb4e; }
+.aug-slot.t-prism { --tc: #b9a6ff; border-style: double; border-width: 3px; }
+.aug-slot.empty { border: 1.5px dashed #4a4a4a; background: none; }
+.aug-slot-in { transform: rotate(-45deg); display: flex; color: var(--tc); font-size: calc(var(--s, 30px) * 0.36); font-weight: 700; font-variant-numeric: tabular-nums; }
+.aug-slot.empty .aug-slot-in { color: #8a8a8a; }
+.aug-own .aug-slot { --s: 34px; margin: 4px 6px 0 6px; --tc: inherit; }
+.aug-own.t-silver .aug-slot { --tc: #c9ced8; }
+.aug-own.t-gold .aug-slot { --tc: #e9bb4e; }
+.aug-own.t-prism .aug-slot { --tc: #b9a6ff; }
+.aug-panel .aug-sec-head { align-items: center; padding: 6px 0 2px; }
+.aug-strip .aug-slots { margin: 2px 0; }
+.aug-own.t-silver { --tc: #c9ced8; }
+.aug-own.t-gold { --tc: #e9bb4e; }
+.aug-own.t-prism { --tc: #b9a6ff; }

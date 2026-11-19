@@ -189,6 +189,29 @@ export function AugPill({ tier, endsIn, onOpen }: { tier: AugTier; endsIn: strin
   );
 }
 
+/** 고르는 날마다 한 칸: 고른 증강의 문양, 아직이면 빈 칸과 열리는 날 (늘 보이는 내 증강 줄) */
+export function AugSlots({ aug, size = 30 }: { aug: AugView; size?: number }) {
+  return (
+    <span className="aug-slots" style={{ ['--s' as string]: `${size}px` }}>
+      {aug.days.map((d, n) => {
+        const m = aug.mine.find((x) => x.n === n);
+        const a = m ? AUG_MAP[m.id] : null;
+        return a ? (
+          <span key={n} className={`aug-slot t-${a.tier}`} title={`${a.name} — ${a.desc}`}>
+            <span className="aug-slot-in">
+              <AugArt id={m!.id} size={Math.round(size * 0.5)} />
+            </span>
+          </span>
+        ) : (
+          <span key={n} className="aug-slot empty" title={`${d + 1}일차에 골라요`}>
+            <span className="aug-slot-in">{d + 1}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 const USE_LABEL: Record<string, string> = { detector: '소식 진위 보기', scout: '오를지 내릴지 보기', paper: '내일 헤드라인 보기', analyst: '강한 업종 보기' };
 
 /** 내 증강 칸: 가진 증강·받은 돈·쓸 수 있는 정보·다음 고르는 날 */
@@ -200,7 +223,7 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
   return (
     <div className="aug-panel">
       <div className="aug-sec-head">
-        <h3>가진 증강 {aug.mine.length}개</h3>
+        <AugSlots aug={aug} size={38} />
         <span className="muted small">{next != null && next < totalDays ? `다음 고르기 ${next + 1}일차` : '이번 판 고르기 끝'}</span>
       </div>
       {!aug.mine.length && <p className="muted small">아직 고른 증강이 없어요.</p>}
@@ -210,14 +233,18 @@ export function AugPanel({ aug, day, totalDays, selected, todayTrades, canAct, b
           if (!a) return null;
           const got = sum(m.id);
           return (
-            <li key={m.n}>
-              <AugBadge id={m.id} />
+            <li key={m.n} className={`aug-own t-${a.tier}`}>
+              <span className="aug-slot">
+                <span className="aug-slot-in">
+                  <AugArt id={m.id} size={18} />
+                </span>
+              </span>
               <span className="aug-body">
                 <b className="aug-name">
                   {a.name} <span className={`aug-tier t-${a.tier}`}>{TIER_NAME[a.tier]}</span>
                   {m.auto && <span className="muted small"> · 자동</span>}
                 </b>
-                <span className="aug-desc">{a.desc}</span>
+                <span className="aug-desc">{hl(a.desc)}</span>
               </span>
               <Got value={got} />
             </li>
@@ -269,13 +296,8 @@ export function AugStrip({ aug, onOpen }: { aug: AugView; onOpen: () => void }) 
   return (
     <button className="aug-strip" onClick={onOpen} aria-label={`내 증강 ${aug.mine.length}개 보기`}>
       <span className="aug-strip-label">내 증강</span>
-      {aug.mine.map((m) => (
-        <span key={m.n} className="aug-strip-item">
-          <AugBadge id={m.id} size={13} />
-          {aug.mine.length <= 2 && <span>{AUG_MAP[m.id]?.name}</span>}
-        </span>
-      ))}
-      {!aug.mine.length && <span className="muted small">아직 없음</span>}
+      <AugSlots aug={aug} size={28} />
+      {aug.mine.length === 1 && <span className="aug-strip-item">{AUG_MAP[aug.mine[0].id]?.name}</span>}
       <Icon name="right" size={14} className="aug-strip-go" />
     </button>
   );
