@@ -115,7 +115,7 @@ export function Welcome({
                 <tr>
                   <td>닉네임</td>
                   <td className="n">다른 게스트와 겹칠 수 있어요</td>
-                  <td className="y">나만 쓰는 닉네임 · 회원 표시</td>
+                  <td className="y">나만 쓰는 닉네임 · 고를 수 있는 개미 사진</td>
                 </tr>
                 <tr>
                   <td>기록 보관</td>
