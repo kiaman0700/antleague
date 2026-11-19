@@ -52,3 +52,18 @@ describe('튜토리얼 게임', () => {
     expect(store.has('stockduel.solo2')).toBe(false);
   });
 });
+
+describe('튜토리얼 결과로 넘기기', () => {
+  it('고를 증강이 남아 있어도 마지막 날까지 넘어가 끝남 (화면의 finishTutorial 과 같은 순서)', () => {
+    let x = makeTutorial('나');
+    for (let i = 0; x.data.room.status === 'playing' && i < 40; i++) {
+      const offer = soloView(x, Date.now()).aug?.offer;
+      x = offer?.ids?.length ? rawAct(x, 'pickAug', { aug: offer.ids[0] }) : rawAct(x, 'endTurn', {});
+    }
+    expect(x.data.room.status).toBe('finished');
+  });
+  it('장이 열린 튜토리얼 날은 시간이 다 돼도 저절로 넘어가지 않음', () => {
+    const t = rawAct(soloAct(makeTutorial('나'), 'endTurn', {}), 'startDay', {});
+    expect(t.data.room.deadline! - Date.now()).toBeGreaterThan(86_400_000);
+  });
+});

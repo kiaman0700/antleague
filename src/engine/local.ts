@@ -240,12 +240,15 @@ export function soloAct(s: SoloSave, action: string, payload: Record<string, unk
     case 'startDay': {
       // 멈춰 있는 날만 시작 (이미 열린 날은 시간을 늘리지 않음)
       if (d.room.status === 'playing' && d.room.deadline === null) {
-        d.room = { ...d.room, ...dayDeadlines(d.room.turn_seconds, now, s.unlimited) };
+        // 튜토리얼은 설명을 읽는 동안 날이 저절로 넘어가지 않게 (가격은 움직이고, 장 마감을 눌러야 다음 날)
+        d.room = { ...d.room, ...dayDeadlines(d.room.turn_seconds, now, s.unlimited || !!s.tutorial) };
       }
       break;
     }
     case 'endTurn': {
       // 혼자 연습: 장 마감을 누르면 남은 시간을 건너뛰고 바로 다음 날
+      // 멈춘 장 전에서 바로 마감하면 장중 칸을 하나도 안 거쳐 예약 주문이 종가로만 판정됨 → 장을 먼저 연 것으로 침
+      if (!s.tutorial && d.room.status === 'playing' && d.room.deadline === null) d.room = { ...d.room, ...dayDeadlines(d.room.turn_seconds, now - (d.room.turn_seconds || 180) * 1000, s.unlimited) };
       const { day } = validateEndTurn(d, 'me', now);
       // 튜토리얼: 봇도 같이 마감
       for (const p of d.players) if (p.id === 'me' || s.tutorial) p.ended_day = day;

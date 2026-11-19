@@ -42,7 +42,13 @@ async function loadRerolls(sb: SupabaseClient, uid: string, day: string, week: s
   };
   return { ok: true, day: of(day), week: of(week) };
 }
-const applySlots = (ids: string[], slots: Record<string, string>) => ids.map((id, i) => (slots[String(i)] && MISSION_MAP[slots[String(i)]] ? slots[String(i)] : id));
+// 바꿔 둔 미션이 그사이 없어진 것(더는 못 깨는 미션)이면 원래 뽑힌 미션으로
+const applySlots = (ids: string[], slots: Record<string, string>) =>
+  ids.map((id, i) => {
+    const to = slots[String(i)];
+    const def = to ? MISSION_MAP[to] : undefined;
+    return def && !def.retired && !ids.includes(to) ? to : id;
+  });
 /** 바꾼 것까지 반영한 그 사람의 일일·주간 미션 */
 async function missionsForUser(sb: SupabaseClient, uid: string, now = Date.now()) {
   const ms = missionsFor(uid, now);

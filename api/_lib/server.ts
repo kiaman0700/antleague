@@ -983,8 +983,10 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         sb.from('feedback').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', dayAgo),
         sb.from('feedback').select('id', { count: 'exact', head: true }).gte('created_at', hourAgo),
       ]);
-      if ((mineDay.count ?? 0) >= 20) throw new GameError('오늘은 의견을 충분히 보냈어요. 내일 다시 보내 주세요.', 429);
-      if ((allHour.count ?? 0) >= 300) throw new GameError('지금 의견이 많이 몰렸어요. 잠시 후 다시 보내 주세요.', 429);
+      // 손님 계정은 쉽게 여러 개 만들 수 있어 하루 3개까지, 전체 한도도 손님에게만 — 손님 도배로 회원 의견이 막히지 않게
+      const fbMember = !!(await getProfile(sb, uid));
+      if ((mineDay.count ?? 0) >= (fbMember ? 20 : 3)) throw new GameError('오늘은 의견을 충분히 보냈어요. 내일 다시 보내 주세요.', 429);
+      if (!fbMember && (allHour.count ?? 0) >= 300) throw new GameError('지금 의견이 많이 몰렸어요. 잠시 후 다시 보내 주세요.', 429);
       // 자동 시험 계정이 보낸 의견은 읽음으로 저장 — 운영자 의견함·안 읽은 수에 시험 글이 쌓이지 않게
       const res = await sb.from('feedback').insert({ user_id: uid, kind, body: text, page, ...(testMarked.has(uid) ? { read_at: new Date().toISOString() } : {}) });
       if (res.error) throw new GameError('보내지 못했어요. 잠시 뒤 다시 해 주세요.', 503);

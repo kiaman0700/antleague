@@ -80,3 +80,19 @@ describe('기권으로 끝난 판의 재산·수익률은 기권한 날 가격�
     expect(buildView(done, 'a', Date.now()).final?.endDay).toBe(2);
   });
 });
+
+describe('기권으로 일찍 끝난 판은 그 뒤 배당도 안 받음', () => {
+  it('마지막으로 한 날 뒤 배당 기준일의 배당은 재산에 안 들어감', async () => {
+    const { portfolioOf } = await import('./engine.js');
+    const m = marketFor(11, 12, 3);
+    const late = m.dividends.find((x) => x.day > 2 && x.perShare > 0);
+    expect(late).toBeTruthy();
+    const d = duel(2);
+    d.trades = [{ player_id: 'a', day: 0, symbol: late!.symbol, side: 'buy', qty: 10, price: 1000, fee: 0 }];
+    Object.assign(d.players[1], validateLeave(d, 'b'));
+    const done = { ...d, room: { ...d.room, day: 12, status: 'finished' as const } };
+    const old = { ...done, players: done.players.map((p) => ({ ...p, left_day: undefined })) };
+    // 예전 판(기권 날 기록 없음)은 끝까지 다 받음, 새 판은 그날 것 빼고
+    expect(portfolioOf(old, 'a').cash - portfolioOf(done, 'a').cash).toBeGreaterThan(0);
+  });
+});

@@ -15,7 +15,7 @@ import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankLi
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
 import { AugPanel, AugPick, AugPill, AugStrip } from '../components/Augments';
-import { augFeeRate, augLevCap } from '../engine/augEffects';
+import { augFeeRate, augLevCap, augOrderRange } from '../engine/augEffects';
 import { AUG_MAP } from '../game/augments';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
 import { ReactionBubbles, ReactionButton, loadReactMute, saveReactMute } from '../components/Reactions';
@@ -139,7 +139,15 @@ function useGameSource(session: Session) {
   const finishTutorial = useCallback(() => {
     setSolo((cur) => {
       let x = cur;
-      for (let i = 0; x && x.tutorial && x.data.room.status === 'playing' && i < 20; i++) x = soloAct(x, 'endTurn', {});
+      // 그날 고를 증강이 남아 있으면 장 마감이 거절되므로 먼저 첫 보기를 고름. 상태 갱신 안에서 오류가 나면 화면 전체가 멈추니 잡아 둠
+      try {
+        for (let i = 0; x && x.tutorial && x.data.room.status === 'playing' && i < 40; i++) {
+          const offer = soloView(x, Date.now()).aug?.offer;
+          x = offer?.ids?.length ? soloAct(x, 'pickAug', { aug: offer.ids[0] }) : soloAct(x, 'endTurn', {});
+        }
+      } catch {
+        /* 넘기다 막히면 거기까지 */
+      }
       return x;
     });
   }, []);
@@ -543,12 +551,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     feeFor: view?.aug?.mine.length
       ? (sym: string, side: 'buy' | 'sell', qty: number) => {
           const boughtToday = (view.myTrades ?? []).filter((t) => t.day === day && t.symbol === sym).reduce((a, t) => a + (t.side === 'buy' ? t.qty : -t.qty), 0);
-          // 서버와 같은 계산 (가장 큰 종목·업종 장악은 화면에서 대략) — 실제 체결 수수료는 서버가 정함
-          return augFeeRate(view.aug!.mine.map((x) => x.id), { symbol: sym, side, qty, held: portfolio.holdings[sym]?.qty ?? 0, boughtToday, biggest: null, ruleSector: null }, feeRate);
+          // 서버와 같은 계산 (가장 큰 종목 = 어제 종가 기준, 업종 장악은 화면에서 빼고 넉넉히) — 실제 체결 수수료는 서버가 정함
+          const px = (s: string) => quote(m, s, day > 0 ? day - 1 : 0, day > 0).krw;
+          const biggest = Object.entries(portfolio.holdings).sort((a, b) => b[1].qty * px(b[0]) - a[1].qty * px(a[0]))[0]?.[0] ?? null;
+          return augFeeRate(view.aug!.mine.map((x) => x.id), { symbol: sym, side, qty, held: portfolio.holdings[sym]?.qty ?? 0, boughtToday, biggest, ruleSector: null }, feeRate);
         }
       : undefined,
     busy,
     limitOnly: inPre,
+    orderRange: augOrderRange((view?.aug?.mine ?? []).map((x) => x.id)),
+    levCapRate: view?.aug ? augLevCap(view.aug.mine.map((x) => x.id), LEVERAGE_CAP) : LEVERAGE_CAP,
+    haltOf: (sym: string) => m.halts?.find((h) => h.symbol === sym && h.day === day)?.kind ?? null,
   };
 
   const news = market?.news ?? [];

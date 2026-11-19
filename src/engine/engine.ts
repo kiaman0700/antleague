@@ -506,7 +506,10 @@ export function sliceMarket(m: Market, day: number, finished: boolean, opts: { r
 function paidDividends(d: GameData) {
   const m = marketFor(d.room.seed, d.room.total_days, d.room.version ?? 1, d.room.salt, d.room.theme);
   const finished = d.room.status === 'finished' || d.room.day >= d.room.total_days;
-  return finished ? m.dividends : m.dividends.filter((x) => x.day < d.room.day);
+  if (!finished) return m.dividends.filter((x) => x.day < d.room.day);
+  // 상대가 모두 기권해 일찍 끝난 판은 마지막으로 한 날까지만 (재산·수익률을 그날 가격으로 매기는 것과 같게)
+  const end = augEndDay(d);
+  return end === null ? m.dividends : m.dividends.filter((x) => x.day <= end);
 }
 
 /* ---------------- 상태 계산 ---------------- */

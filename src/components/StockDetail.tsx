@@ -57,6 +57,12 @@ interface Props {
     capFor?: (symbol: string) => number | null;
     /** (v7) 장 전: 지금 가격 거래는 안 되고 예약 주문만 */
     limitOnly?: boolean;
+    /** 예약 가격을 지금 가격에서 얼마나 멀리 걸 수 있나 (증강으로 넓어짐) */
+    orderRange?: number;
+    /** 레버리지·인버스 ETF 한도 비율 (증강으로 바뀜) */
+    levCapRate?: number;
+    /** (v24) 그날 거래정지·정리매매·상장폐지 */
+    haltOf?: (symbol: string) => 'halt' | 'clear' | 'delisted' | null;
   };
   onTrade: (symbol: string, side: "buy" | "sell", qty: number) => void;
   orders: OrderRow[];
@@ -710,13 +716,17 @@ export function TradePanel({
     side === "buy"
       ? buyCost(qty, unitKrw, fee)
       : sellProceeds(qty, unitKrw, fee);
+  const range = trade.orderRange ?? 0.3;
+  // (v24) 거래정지·상장폐지는 아무것도, 정리매매 날은 예약 주문만 막힘 (서버와 같은 규칙)
+  const halt = trade.haltOf?.(symbol) ?? null;
+  const haltBlock = halt === 'halt' || halt === 'delisted' || (halt === 'clear' && kind === 'limit');
   const limitOk =
     kind === "now" ||
     (side === "buy"
-      ? limitNative > 0 && limitNative < native && limitNative >= native * 0.7
-      : limitNative > native && limitNative <= native * 1.3);
+      ? limitNative > 0 && limitNative < native && limitNative >= native * (1 - range)
+      : limitNative > native && limitNative <= native * (1 + range));
   const valid =
-    trade.allowed && !trade.busy && qty > 0 && qty <= maxQty && limitOk;
+    trade.allowed && !haltBlock && !trade.busy && qty > 0 && qty <= maxQty && limitOk;
 
   const fmtN = (v: number) => (isUS ? fmtUsd(v) : num(v) + "원");
   const setLimitPct = (p: number) => {
@@ -805,9 +815,14 @@ export function TradePanel({
       {!trade.allowed && trade.reason && (
         <div className="trade-block">{trade.reason}</div>
       )}
+      {trade.allowed && haltBlock && (
+        <div className="trade-block">
+          {halt === 'halt' ? '오늘은 거래정지라 사고팔 수 없어요' : halt === 'delisted' ? '상장폐지된 종목이라 사고팔 수 없어요' : '정리매매 중엔 예약 주문을 걸 수 없어요. 지금 가격으로만 사고팔 수 있어요'}
+        </div>
+      )}
       {cap !== null && trade.allowed && (
         <div className="trade-note">
-          레버리지·인버스 ETF는 합쳐서 총재산의 {Math.round(LEVERAGE_CAP * 100)}
+          레버리지·인버스 ETF는 합쳐서 총재산의 {Math.round((trade.levCapRate ?? LEVERAGE_CAP) * 100)}
           %까지만 살 수 있어요 (지금 최대 {num(cap)}주)
         </div>
       )}
@@ -856,8 +871,8 @@ export function TradePanel({
           {!limitOk && limitText && (
             <small className="error-inline">
               {side === "buy"
-                ? "지금 가격보다 낮게, 30% 이내로"
-                : "지금 가격보다 높게, 30% 이내로"}
+                ? `지금 가격보다 낮게, ${Math.round(range * 100)}% 이내로`
+                : `지금 가격보다 높게, ${Math.round(range * 100)}% 이내로`}
             </small>
           )}
         </div>
