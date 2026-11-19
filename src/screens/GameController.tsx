@@ -1363,6 +1363,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           // 마지막 날은 1분 뒤 결과 화면으로 (결산 팝업에 멈춰 있지 않게)
           autoSec={session.mode === 'multi' ? (closing + 1 >= total ? 60 : closeAutoSec(room?.turnSeconds ?? 60, room?.rulesVersion ?? 1)) : undefined}
           pre={session.mode === 'multi' && closing + 1 < total && !!room?.preUntil && room.preUntil > now + offset}
+          held={Object.keys(portfolio.holdings).filter((k) => portfolio.holdings[k].qty > 0)}
+          augToday={(augIncome ?? []).filter((x) => x.day >= closing).reduce((a, x) => a + x.amount, 0)}
         />
       )}
       {targetPick && (

@@ -823,6 +823,10 @@ interface DayCloseProps {
   autoSec?: number;
   /** (v7) 다음은 장 전 시간 — 찌라시·예약 주문 안내 */
   pre?: boolean;
+  /** 지금 가진 종목 — 결산에 오늘 내 종목이 얼마나 움직였는지 */
+  held?: string[];
+  /** 오늘 손익에 들어간 증강 돈 (내 종목은 내렸는데 손익이 + 로 보이는 까닭) */
+  augToday?: number;
 }
 
 /** 오늘 손익을 0 에서 그 값까지 0.7초 동안 올라가며 보여 줌 (움직임 줄이기 설정이면 바로) */
@@ -850,7 +854,7 @@ function CountUp({ value }: { value: number }) {
   );
 }
 
-export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec, pre }: DayCloseProps) {
+export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday = 0, filledToday = 0, last, onNext, autoSec, pre, held = [], augToday = 0 }: DayCloseProps) {
   const [left, setLeft] = useState(autoSec ?? 0);
   // '잠깐 더 보기' — 저절로 넘어가는 걸 멈춤 (장은 서버 시계대로 이미 흐르고 있음을 함께 알림)
   const [hold, setHold] = useState(false);
@@ -875,6 +879,8 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
     const prev = day === 0 ? market.base[s.symbol] : market.bars[s.symbol][day - 1].close;
     return { s, r: market.bars[s.symbol][day].close / prev - 1 };
   }).sort((a, b) => b.r - a.r);
+  // 내 종목 오늘 등락 (많이 움직인 순, 4개까지) — 시장 전체 순위만으로는 내 판단이 맞았는지 바로 안 보였음
+  const mine = movers.filter((x) => held.includes(x.s.symbol)).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4);
   const idx = market.index[day];
   const idxPrev = day === 0 ? KR_INDEX_BASE : market.index[day - 1].close;
   const us = market.usIndex[day];
@@ -889,8 +895,9 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
           <CountUp value={myDelta} />
         </div>
         <div className="muted">오늘 내 손익 · 총자산 {wonShort(myEquity)}</div>
-        {(dividendToday > 0 || filledToday > 0) && (
+        {(dividendToday > 0 || filledToday > 0 || augToday !== 0) && (
           <div className="close-extra">
+            {augToday !== 0 && <span><Icon name="sparkles" size={13} /> 증강 {augToday > 0 ? '+' : ''}{wonShort(augToday)} 포함</span>}
             {dividendToday > 0 && <span><Icon name="coins" size={13} /> 배당 +{wonShort(dividendToday)}</span>}
             {filledToday > 0 && <span><Icon name="hourglass" size={13} /> 예약 주문 {filledToday}건 체결</span>}
           </div>
@@ -900,6 +907,18 @@ export function DayCloseOverlay({ market, day, myDelta, myEquity, dividendToday 
           <span className="ci-item"><Term k="지수">국내 종합</Term> <b>{idx.close.toFixed(2)}</b> <span className={tone(ir)}>{pct(ir)}</span></span>
           <span className="ci-item">미국500 <b>{us.close.toFixed(2)}</b> <span className={tone(ur)}>{pct(ur)}</span></span>
         </div>
+        {mine.length > 0 && (
+          <div className="close-held">
+            <small>내 종목 오늘</small>
+            <div>
+              {mine.map(({ s, r }) => (
+                <span key={s.symbol} className="ch-item">
+                  {s.name} <b className={tone(r)}>{pct(r, 1)}</b>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="movers">
           <div>
             <small>많이 오른 종목</small>

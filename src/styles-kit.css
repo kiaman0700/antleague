@@ -2655,3 +2655,8 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .notice-text .nt-li { display: flex; gap: 6px; }
 .notice-text .nt-li > .nt-bul { flex: none; color: var(--muted, #9a9a9a); }
 .notice-text .nt-li > span:last-child { min-width: 0; }
+/* 하루 결산: 내 종목 오늘 */
+.close-held { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #242424); text-align: left; }
+.close-held > small { display: block; margin-bottom: 6px; color: var(--muted, #9a9a9a); font-size: 12px; }
+.close-held > div { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.close-held .ch-item { white-space: nowrap; font-variant-numeric: tabular-nums; }
