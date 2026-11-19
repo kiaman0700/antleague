@@ -7,6 +7,7 @@ import type { Trade } from '../game/portfolio';
 import { STOCK_MAP } from '../game/stocks';
 import { Icon, type IconName } from './Icon';
 import { AugArt } from './AugArt';
+import { AugCrest, AugGems } from './AugFrame';
 import { DialogBox, useEscape } from './ui';
 import { won } from '../lib/format';
 
@@ -74,6 +75,7 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
             const c = conds(id);
             return (
               <div key={id} data-aug={id} className={'aug-opt' + (picked === id ? ' on' : '') + (firstIds.current.has(id) ? ' enter' : ' swap') + ` t-${a.tier}`} style={{ ['--i' as string]: i }}>
+                <AugCrest tier={a.tier} />
                 <button className="aug-card" aria-label={`${TIER_NAME[a.tier]} ${a.name}. ${a.desc}. ${i + 1}번째. 누르면 바로 선택`} onClick={() => choose(id)} disabled={busy || !!picked}>
                   <span className="aug-pic" aria-hidden>
                     <AugArt id={id} size={72} />
@@ -87,11 +89,7 @@ export function AugPick({ offer, busy, endsIn, onPick, onReroll, onHide, recomme
                       <Icon name={TAG_ICON[a.tag]} size={13} /> {TAG_NAME[a.tag]}
                       {c.length > 0 && ' · ' + c.join(' · ')}
                     </span>
-                    <span className="aug-pips" aria-hidden>
-                      {Array.from({ length: a.tier === 'silver' ? 1 : a.tier === 'gold' ? 2 : 3 }, (_, k) => (
-                        <i key={k} />
-                      ))}
-                    </span>
+                    <AugGems tier={a.tier} />
                   </span>
                 </button>
                 {!recommend && (
