@@ -905,8 +905,31 @@ function SnsApp({ roomKey, filter, setFilter, day, daySec, items, past, live, on
         );
     }
   };
+  // 아래로 내려 보는 동안 새 글이 위에 오면 '새 글 n개' (누르면 맨 위로)
+  const feedRef = useRef<HTMLDivElement>(null);
+  const seenTop = useRef<Set<string>>(new Set(list.map((x) => x.key)));
+  const [fresh, setFresh] = useState(0);
+  useEffect(() => {
+    const sc = feedRef.current?.closest('.ap-body') as HTMLElement | null;
+    const added = list.filter((x) => !seenTop.current.has(x.key)).length;
+    if (!sc || sc.scrollTop < 120) {
+      seenTop.current = new Set(list.map((x) => x.key));
+      setFresh(0);
+    } else if (added) setFresh(added);
+  }, [list]);
+  const toTop = () => {
+    const sc = feedRef.current?.closest('.ap-body') as HTMLElement | null;
+    sc?.scrollTo({ top: 0, behavior: 'smooth' });
+    seenTop.current = new Set(list.map((x) => x.key));
+    setFresh(0);
+  };
   return (
-    <div className="ap-feed">
+    <div className="ap-feed" ref={feedRef}>
+      {fresh > 0 && (
+        <button type="button" className="ap-newpill" onClick={toTop}>
+          <Icon name="up" size={14} /> 새 글 {fresh}개
+        </button>
+      )}
       <div className="ap-chips" role="group" aria-label="글 모양 고르기">
         {FILTERS.map((x) => {
           const n = items.filter((i) => i.platform && x.of.includes(i.platform)).length;
