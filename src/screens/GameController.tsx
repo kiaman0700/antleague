@@ -1941,7 +1941,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           }}
         >
           {layout.mTabs.map((t, i) => (
-            <button key={t} data-tab={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
+            <button key={t} data-tab={t} className={tab === t ? 'on' : ''} onClick={() => (t === 'news' && tab === 'news' ? window.dispatchEvent(new Event('antphone:home')) : setTab(t))}>
               <span>
                 <Icon name={TAB_ICON[t]} size={22} />
               </span>

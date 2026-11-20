@@ -203,6 +203,12 @@ export function AntPhone(p: Props) {
     return () => clearTimeout(t);
   }, [focusKey, app]);
   const goHome = () => !p.lockApp && (setApp(null), setShade(false));
+  // 아래 '개미폰' 탭을 다시 누르면 홈 화면으로 (휴대폰 홈 버튼처럼)
+  useEffect(() => {
+    const on = () => goHome();
+    window.addEventListener('antphone:home', on);
+    return () => window.removeEventListener('antphone:home', on);
+  });
 
   // 상태 줄을 끌어내리면 알림 모음
   const drag = useRef<number | null>(null);
