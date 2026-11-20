@@ -315,6 +315,19 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                 : '거래한 사람이 없어서 이번 판은 승부가 없어요'}
             </p>
           </>
+        ) : rankOf(session.playerId) !== 0 ? (
+          // 1위끼리 비겼어도 나는 그 안에 없음 — '무승부'는 내 결과가 아님
+          <>
+            <div className="crown"><Icon name="users" size={40} /></div>
+            <h1>공동 1위 {ranked.filter((r) => rankOf(r.id) === 0).length}명</h1>
+            <p>
+              {ranked.find((r) => r.id === session.playerId)?.left
+                ? `기권해서 이 판은 마지막 순위예요 · 나는 ${rankOf(session.playerId) + 1}위`
+                : ranked.find((r) => r.id === session.playerId)?.idle
+                ? `거래를 한 번도 안 해서 순위 맨 뒤예요 · 나는 ${rankOf(session.playerId) + 1}위`
+                : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판에 다시 도전해 봐요`}
+            </p>
+          </>
         ) : (
           <>
             <div className="crown"><Icon name="users" size={40} /></div>
