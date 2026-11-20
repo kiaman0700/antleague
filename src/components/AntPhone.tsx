@@ -92,6 +92,8 @@ interface Props {
   daySec?: number;
   /** 상태 줄 시각 ('1일차 0:42', '장 전') */
   clock: string;
+  /** 상태 줄 배터리 = 남은 날 비율 (판이 끝나 갈수록 닳음) */
+  battery?: number;
   pre: boolean;
   live: boolean;
   news: NewsEvent[];
@@ -227,7 +229,7 @@ export function AntPhone(p: Props) {
       <span className="ap-sys" aria-hidden>
         <svg width="15" height="11" viewBox="0 0 15 11"><rect x="0" y="7" width="2.6" height="4" rx=".6" fill="currentColor" /><rect x="4" y="5" width="2.6" height="6" rx=".6" fill="currentColor" /><rect x="8" y="2.5" width="2.6" height="8.5" rx=".6" fill="currentColor" /><rect x="12" y="0" width="2.6" height="11" rx=".6" fill="currentColor" /></svg>
         <svg width="14" height="11" viewBox="0 0 14 11"><path d="M7 10.2 l1.8 -2.1 a2.6 2.6 0 0 0 -3.6 0 z M2.6 5.6 l1.3 1.4 a4.4 4.4 0 0 1 6.2 0 l1.3 -1.4 a6.3 6.3 0 0 0 -8.8 0 z M0 2.9 l1.3 1.4 a8.2 8.2 0 0 1 11.4 0 L14 2.9 a10.1 10.1 0 0 0 -14 0 z" fill="currentColor" /></svg>
-        <svg width="24" height="11" viewBox="0 0 24 11"><rect x=".5" y=".5" width="20" height="10" rx="2.6" fill="none" stroke="currentColor" opacity=".55" /><rect x="2.2" y="2.2" width="14" height="6.6" rx="1.4" fill="currentColor" /><rect x="21.6" y="3.6" width="1.6" height="3.8" rx=".8" fill="currentColor" opacity=".55" /></svg>
+        <svg width="24" height="11" viewBox="0 0 24 11"><rect x=".5" y=".5" width="20" height="10" rx="2.6" fill="none" stroke="currentColor" opacity=".55" /><rect x="2.2" y="2.2" width={Math.max(1.5, 16.6 * (p.battery ?? 0.85))} height="6.6" rx="1.4" fill={(p.battery ?? 1) <= 0.2 ? '#e5484d' : 'currentColor'} /><rect x="21.6" y="3.6" width="1.6" height="3.8" rx=".8" fill="currentColor" opacity=".55" /></svg>
       </span>
     </div>
   );

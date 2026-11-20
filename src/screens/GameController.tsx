@@ -1283,6 +1283,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       day={day}
       daySec={phoneDaySec}
       clock={phoneClock}
+      battery={total > 0 ? Math.max(0, (total - day) / total) : 1}
       pre={inPre}
       live={!!view.live && !inPre && closing === null}
       news={news}
