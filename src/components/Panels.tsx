@@ -271,7 +271,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
         <button role="tab" aria-selected={mode === 'news'} className={mode === 'news' ? 'on' : ''} onClick={() => setMode('news')}>
           뉴스{dot(mode === 'news' ? 0 : unreadOf(day))}
         </button>
-        <button role="tab" aria-selected={mode === 'rumor'} className={mode === 'rumor' ? 'on' : ''} onClick={() => setMode('rumor')}>
+        <button role="tab" data-tab="rumor" aria-selected={mode === 'rumor'} className={mode === 'rumor' ? 'on' : ''} onClick={() => setMode('rumor')}>
           커뮤니티{rumorCount > 0 && mode !== 'rumor' && unreadRumors === 0 ? <span className="nm-count">{rumorCount}</span> : dot(mode === 'rumor' ? 0 : unreadRumors)}
         </button>
       </div>}
@@ -517,7 +517,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
       </h4>
       {today.length === 0 && !blackout && <p className="muted small news-empty">오늘 아침엔 새 뉴스가 없어요. 장중 속보가 뜨면 여기 맨 위에 나와요.</p>}
       {rumorCheck && !blackout && today.length > 0 && (
-        <div className="detector-sum">
+        <div className={'detector-sum' + (!today.some((n) => n.verdict) ? ' elsewhere' : '')}>
           <CardIcon kind="detector" size={15} /> {today.filter((n) => n.verdict).length < today.length ? (today.some((n) => n.verdict) ? '진위를 확인한 기사예요 (아래 표시)' : '진위를 확인한 소식은 다른 칸(커뮤니티)에 있어요') : <>진위 판정: 오늘 뉴스 {today.length}개 중 <b className="up">가짜 {today.filter((n) => n.verdict === 'false').length}개</b>, 사실 {today.filter((n) => n.verdict === 'true').length}개</>}
         </div>
       )}

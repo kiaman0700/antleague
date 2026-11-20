@@ -93,8 +93,11 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '감별 결과',
-    text: (c) => (c.augId === 'verdict1' ? "고른 소식에 '사실'이나 '가짜' 표시가 붙었어요. 뉴스엔 가짜도 섞여 있어서 이렇게 확인해요." : '뉴스엔 가짜도 섞여 있어요. 진위를 알려 주는 증강이 있으면 확인할 수 있어요.'),
-    target: '.detector-sum, .news-panel',
+    text: (c) => (c.augId === 'verdict1' ? "고른 소식에 '사실'이나 '가짜' 표시가 붙었어요(커뮤니티 글이면 '커뮤니티' 칸에). 뉴스엔 가짜도 섞여 있어서 이렇게 확인해요." : '뉴스엔 가짜도 섞여 있어요. 진위를 알려 주는 증강이 있으면 확인할 수 있어요.'),
+    // 판정이 커뮤니티 칸에 붙었으면 뉴스·커뮤니티 버튼 줄을 비춤 (안내 줄 대신 — 말풍선이 그 버튼을 덮지 않게)
+    target: '.news-panel:has(.detector-sum.elsewhere) .news-mode, .detector-sum, .news-panel',
+    // 고른 소식이 커뮤니티 글이면 판정은 '커뮤니티' 칸에 붙음 → 그 칸 버튼을 깜빡여 알려 줌
+    pulse: () => '.news-panel:has(.detector-sum.elsewhere) [data-tab="rumor"]',
     tab: 'news',
   },
   {
