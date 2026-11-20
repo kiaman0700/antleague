@@ -267,7 +267,9 @@ export function AntPhone(p: Props) {
   useEffect(() => {
     if (!focusKey) return;
     const t = setTimeout(() => {
-      const el = rootRef.current?.querySelector<HTMLElement>(`[data-k="${CSS.escape(focusKey)}"]`);
+      // 'text:글' 이면 그 글 내용으로 찾음 (감별 결과처럼 글 번호를 모를 때)
+      const key = focusKey.startsWith('text:') ? items.find((x) => x.title === focusKey.slice(5) || x.post?.text === focusKey.slice(5) || x.key.endsWith(':' + focusKey.slice(5)))?.key : focusKey;
+      const el = key ? rootRef.current?.querySelector<HTMLElement>(`[data-k="${CSS.escape(key)}"]`) : null;
       if (el) {
         el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         el.classList.add('ap-focus');
