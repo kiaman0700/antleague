@@ -43,6 +43,7 @@ import { quote } from '../game/quote';
 import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
+import { musicOn, setMusicOn, setScene, type Scene } from '../lib/music';
 import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
@@ -348,7 +349,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   /** 접어 둔 증강 고르기 (몇 번째 고르기를 접었는지) */
   const [augHidden, setAugHidden] = useState<number | null>(null);
   const [bubbles, setBubbles] = useState<(Reaction & { mine?: boolean })[]>([]);
-  const [muted, setMutedState] = useState(isMuted());
+  // 게임 안 소리 버튼은 효과음·배경 음악을 한꺼번에 켜고 끔
+  const [muted, setMutedState] = useState(() => isMuted() && !musicOn());
   const [now, setNow] = useState(Date.now());
   const toastTimer = useRef<number>();
   /** 장중 속보는 보통 알림과 따로 (자리도 따로) */
@@ -537,6 +539,17 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     : room?.status !== 'playing' ? '게임이 진행 중일 때만 할 수 있어요'
     : null;
   const cardCanAct = canAct && remaining !== 0;
+  // 배경 음악: 장 전·결산은 고요하게, 장중은 박자, 카운트다운은 조금 더 빠르게, 결과 화면은 끔(결과 효과음만)
+  const musicScene: Scene = showResult || finished ? 'off' : closing !== null || inPre ? 'pre' : room?.countdown ? 'tense' : room?.status === 'playing' ? 'market' : 'pre';
+  useEffect(() => {
+    setScene(musicScene);
+  }, [musicScene]);
+  // 장이 열리는 순간 종소리 (장 전 → 장중으로 바뀔 때만)
+  const wasPre = useRef(inPre);
+  useEffect(() => {
+    if (wasPre.current && !inPre && room?.status === 'playing' && closing === null) play('open');
+    wasPre.current = inPre;
+  }, [inPre, room?.status, closing]);
 
   const tradeState = {
     // v4: 레버리지·인버스 ETF 비중 제한 — 서버 규칙(leveragedCap)과 같은 계산을 화면에서 미리
@@ -1532,6 +1545,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
         className="icon-btn"
         onClick={() => {
           setMuted(!muted);
+          setMusicOn(muted);
           setMutedState(!muted);
         }}
         aria-label={muted ? '소리 켜기' : '소리 끄기'}

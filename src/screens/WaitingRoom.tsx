@@ -1,4 +1,5 @@
 import { shareOrCopy } from '../lib/copy';
+import { setScene } from '../lib/music';
 import { botInfo, BOT_LEVELS, MAX_BOTS } from '../engine/botInfo';
 import { Avatar } from '../components/Avatar';
 import { useEffect, useRef, useState } from 'react';
@@ -68,6 +69,9 @@ interface Props {
 }
 
 export function WaitingRoom({ roomId, playerId, nickname, onLeave, onStart }: Props) {
+  useEffect(() => {
+    setScene('lobby');
+  }, []);
   const { view, error, refresh } = useLiveView(roomId);
   // 봇 추가: 난이도를 고르는 빈자리 번호 (훅은 맨 위 — 아래 이른 return 보다 먼저)
   const [botSlot, setBotSlot] = useState<number | null>(null);

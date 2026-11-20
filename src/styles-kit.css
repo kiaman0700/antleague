@@ -2731,3 +2731,7 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .trade .qty-warn { margin: -4px 0 0; font-size: 13px; color: var(--amber, #f5b83d); }
 /* 좁은 휴대폰: 내 줄은 보라 글자로 이미 구분 — '(나)'는 화면 읽기용으로만 남기고 이름 자리를 넓힘 */
 @media (max-width: 420px) { .mr-p-name em { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+/* 설정: 음악·효과음 크기 */
+.more-sound .ms-vol { display: grid; grid-template-columns: auto 1fr 2.5em; align-items: center; gap: 12px; padding: 2px 0 12px; font-size: 13px; color: var(--muted); }
+.more-sound .ms-vol input[type=range] { width: 100%; accent-color: #6b58ee; height: 28px; }
+.more-sound .ms-vol b { text-align: right; color: var(--text-2, #c8c8c8); font-variant-numeric: tabular-nums; font-weight: 700; }

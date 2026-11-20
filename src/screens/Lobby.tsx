@@ -51,7 +51,8 @@ import { useIsMobile } from '../components/Extras';
 import { BADGE_MAP, BADGES, givesTitle, liveBadges, titleLabel, titleOf } from '../game/achievements';
 import { AVATARS } from '../game/avatars';
 import { pct, tone, wonShort } from '../lib/format';
-import { isMuted, setMuted } from '../lib/sound';
+import { getSfxVol, isMuted, play, setMuted, setSfxVol } from '../lib/sound';
+import { musicOn, musicVol, setMusicOn, setMusicVol, setScene } from '../lib/music';
 import { supabase } from '../lib/supabase';
 import { api, ApiError } from '../net/api';
 import { ForgetMe } from '../components/ForgetMe';
@@ -1896,6 +1897,9 @@ const PAGE_TAB: Partial<Record<LobbyPage, NavTab>> = {
 
 /** 로비 틀: 왼쪽 메뉴(PC) / 아래 탭바(모바일) + 고른 화면 */
 export function Lobby({ page, go, onWaiting, onGame }: Props) {
+  useEffect(() => {
+    setScene('lobby');
+  }, []);
   const account = useAccount();
   const [modal, setModal] = useState<FrameModal>(null);
   const [socialOpen, setSocialOpen] = useState(false);
@@ -2235,25 +2239,57 @@ function TierProgress({ rating }: { rating: number }) {
 /** 효과음 켜기/끄기 (이 기기에 기억) */
 function SoundSetting() {
   const [m, setM] = useState(isMuted);
+  const [mu, setMu] = useState(musicOn);
+  const [sv, setSv] = useState(getSfxVol);
+  const [mv, setMv] = useState(musicVol);
   // 다른 사람 반응(이모지) 끄기 — 게임 안에서만 찾을 수 있던 것을 설정에도 (끄면 보내기도 막힘)
   const [rm, setRm] = useState(loadReactMute);
+  // 게임 안 '소리 끄기'로 바뀐 것도 바로 반영
+  useEffect(() => {
+    const on = () => (setM(isMuted()), setMu(musicOn()));
+    window.addEventListener('soundprefs', on);
+    return () => window.removeEventListener('soundprefs', on);
+  }, []);
   return (
     <section className="panel pad more-sound">
       <div className="ms-row">
         <span>
-          <b>다른 사람 반응</b>
-          <small className="muted">게임 중 이모지 반응 · 끄면 내 반응도 보내지 않아요</small>
+          <b>배경 음악</b>
+          <small className="muted">로비·장 전·장중마다 다른 음악 · 화면을 벗어나면 멈춰요</small>
         </span>
-        <button className={'tgl' + (rm ? '' : ' on')} role="switch" aria-checked={!rm} aria-label="다른 사람 반응" onClick={() => (saveReactMute(!rm), setRm(!rm))}>
+        <button className={'tgl' + (mu ? ' on' : '')} role="switch" aria-checked={mu} aria-label="배경 음악" onClick={() => (setMusicOn(!mu), setMu(!mu))}>
           <i />
         </button>
       </div>
+      {mu && (
+        <label className="ms-vol">
+          <span>음악 크기</span>
+          <input type="range" min={0} max={100} step={5} value={Math.round(mv * 100)} onChange={(e) => (setMusicVol(+e.target.value / 100), setMv(+e.target.value / 100))} aria-label="음악 크기" />
+          <b>{Math.round(mv * 100)}</b>
+        </label>
+      )}
       <div className="ms-row">
         <span>
           <b>효과음</b>
           <small className="muted">게임 중 알림과 버튼 소리 · 끄면 진동도 꺼져요</small>
         </span>
         <button className={'tgl' + (m ? '' : ' on')} role="switch" aria-checked={!m} aria-label="효과음" onClick={() => (setMuted(!m), setM(!m))}>
+          <i />
+        </button>
+      </div>
+      {!m && (
+        <label className="ms-vol">
+          <span>효과음 크기</span>
+          <input type="range" min={0} max={100} step={5} value={Math.round(sv * 100)} onChange={(e) => (setSfxVol(+e.target.value / 100), setSv(+e.target.value / 100))} onPointerUp={() => play('buy')} onKeyUp={() => play('buy')} aria-label="효과음 크기" />
+          <b>{Math.round(sv * 100)}</b>
+        </label>
+      )}
+      <div className="ms-row">
+        <span>
+          <b>다른 사람 반응</b>
+          <small className="muted">게임 중 이모지 반응 · 끄면 내 반응도 보내지 않아요</small>
+        </span>
+        <button className={'tgl' + (rm ? '' : ' on')} role="switch" aria-checked={!rm} aria-label="다른 사람 반응" onClick={() => (saveReactMute(!rm), setRm(!rm))}>
           <i />
         </button>
       </div>
