@@ -228,3 +228,9 @@
 .ap-dock .ap-ic svg.pf-icon { width: 44px; height: 44px; }
 .ap-dock .ap-name { font-size: 11px; }
 .antphone.m-inline .ap-dock { margin: 0 0 8px; }
+/* 태블릿처럼 넓은 화면: 휴대폰이 옆으로 늘어나지 않게 폭을 두고 가운데 */
+@media (min-width: 640px) and (min-height: 501px) {
+  .ap-layer { align-items: center; padding-bottom: 10px; }
+  .ap-layer > .antphone { width: 100%; max-width: 480px; }
+  .antphone.m-full .ap-screen { border-radius: 28px; }
+}
