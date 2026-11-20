@@ -1433,7 +1433,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 <li key={'n' + n.headline}>
                   <button onClick={() => (setDetectorPick(false), useCard('detector', { pick: n.headline }))}>
                     <span className="det-kind">{n.rumor ? '소문 기사' : n.label ?? '뉴스'}</span>
-                    <span>{n.headline.replace('[루머] ', '')}</span>
+                    {/* 머리말은 왼쪽 칸에 이미 있어서 제목 앞 같은 머리말은 뺌 */}
+                    <span>{n.label && n.headline.startsWith(`[${n.label}] `) ? n.headline.slice(n.label.length + 3) : n.headline.replace('[루머] ', '')}</span>
                   </button>
                 </li>
               ))}
