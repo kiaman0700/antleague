@@ -790,7 +790,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       play('item');
       if (kind === 'undo') return showToast('그 거래를 없던 일로 했어요. 수수료도 돌려받아요');
       if (kind === 'timing') return showToast('오늘 장이 끝나면 그날 최저가로 다시 계산해 차액을 받아요');
-      showToast('결과가 소식 칸에 나왔어요');
+      showToast(session.tutorial ? '결과가 소식 칸에 나왔어요' : '결과가 개미폰 개미경제 앱에 나왔어요');
       setTab('news');
       setDrawer(null);
       const cls = ({ paper: 'paper', analyst: 'analyst', scout: 'scout' } as Record<string, string>)[kind];
@@ -1231,8 +1231,6 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     />
   );
   const newsPanel = newsPanelFor();
-  // 소식 칸 = 개미폰 (design/news-phone.md) — 뉴스 앱은 지금의 소식 칸(뉴스만), 커뮤니티 글은 플랫폼 앱으로.
-  // 튜토리얼은 뉴스 앱을 열어 둔 채 예전 소식 칸(뉴스·커뮤니티) 그대로 — 단계가 그 칸을 비춤
   const phoneDaySec = (view.room.rulesVersion ?? 1) >= GAME_TIME_VERSION ? (view.room.turnSeconds > 0 ? view.room.turnSeconds : 180) : undefined;
   const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, Math.floor(sec % 60))).padStart(2, '0')}`;
   const phoneClock = inPre ? '장 전' : closing !== null ? `${day + 1}일차 정리` : remaining !== null && daySecs > 0 ? `${day + 1}일차 ${mmss(Math.max(0, daySecs - remaining))}` : `${day + 1}일차`;
