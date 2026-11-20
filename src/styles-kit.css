@@ -2745,3 +2745,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .guest-start .gs-more > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); margin-left: 2px; }
 .guest-start .gs-more[open] > summary::after { transform: rotate(-135deg) translate(-2px, 0); }
 .guest-start .gs-more > p { margin: 8px 0; }
+/* 좁은 칸: 공감·댓글 숫자는 한 덩어리로 (꼬리표는 끝까지 보이고, 숫자 둘이 함께 다음 줄로) */
+.cf-foot .cf-stats { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; }

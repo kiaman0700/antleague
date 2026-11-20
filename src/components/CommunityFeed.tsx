@@ -101,11 +101,14 @@ export function Post({ p, onSelect, onSelectSector, past, time, daySec, fresh }:
           <button className={'sp-tag ' + p.tone} onClick={() => (p.symbol && STOCK_MAP[p.symbol] ? onSelect(p.symbol) : onSelectSector(p.sector))} title={p.symbol ? '이 종목 보기' : '이 업종 종목 보기'}>
             <SectorIcon id={p.sector} /> #{target} {p.re ? (p.tone === 'good' ? '좋은 소식 반응' : '나쁜 소식 반응') : p.tone === 'good' ? '호재설' : '악재설'}
           </button>
-          <span className="sp-stat" aria-label={`공감 ${p.likes}`}>
-            <Icon name="heart" size={13} /> {p.likes.toLocaleString('ko-KR')}
-          </span>
-          <span className="sp-stat" aria-label={`댓글 ${p.replies}`}>
-            <Icon name="chat" size={13} /> {p.replies}
+          {/* 공감·댓글은 함께 움직임 (좁은 칸에서 하나만 다음 줄로 떨어지지 않게) */}
+          <span className="cf-stats">
+            <span className="sp-stat" aria-label={`공감 ${p.likes}`}>
+              <Icon name="heart" size={13} /> {p.likes.toLocaleString('ko-KR')}
+            </span>
+            <span className="sp-stat" aria-label={`댓글 ${p.replies}`}>
+              <Icon name="chat" size={13} /> {p.replies}
+            </span>
           </span>
         </div>
       </div>
