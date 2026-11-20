@@ -116,6 +116,16 @@ const VIBE: Partial<Record<Sfx, number | number[]>> = {
 const lastAt = new Map<Sfx, number>();
 let lastAny = 0;
 
+/** 짧은 진동 (안드로이드 등 지원하는 기기만) — 소리를 끄면 진동도 없음 */
+export function buzz(ms = 25) {
+  if (muted || !userActivated()) return;
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* 진동을 못 쓰는 기기 */
+  }
+}
+
 export function play(s: Sfx) {
   if (muted) return;
   const now = performance.now();

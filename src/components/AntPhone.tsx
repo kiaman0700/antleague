@@ -11,7 +11,7 @@ import { pct, tone, wonShort } from '../lib/format';
 import { Icon, SectorIcon } from './Icon';
 import { PlatformIcon, prePostsOf } from './CommunityFeed';
 import { AntHead, artHash, PostArt } from './PostArt';
-import { play } from '../lib/sound';
+import { buzz, play } from '../lib/sound';
 
 export type PhoneApp = 'news' | 'sns' | 'stock' | 'aug' | 'settings';
 const APP_ORDER: PhoneApp[] = ['news', 'sns', 'stock', 'aug', 'settings'];
@@ -170,6 +170,7 @@ export function AntPhone(p: Props) {
     if (show) {
       setBanner(show);
       play('noti');
+      buzz();
     }
   }, [items, notif, app]);
   useEffect(() => {
@@ -534,7 +535,7 @@ function Settings({ notif, onChange }: { notif: Record<string, boolean>; onChang
   return (
     <div className="ap-settings">
       <h4>알림</h4>
-      <p className="muted small">끄면 위쪽 알림만 안 떠요. 앱 안에서는 늘 다 보여요.</p>
+      <p className="muted small">끄면 위쪽 알림만 안 떠요. 앱 안에서는 늘 다 보여요. 알림 소리·진동은 게임 소리 설정을 따라요.</p>
       <ul>
         {row('news', <AppIcon id="news" small />, '개미경제', '뉴스·장중 속보')}
         {row('sns', <AppIcon id="sns" small />, '개미피드', '커뮤니티·SNS 글 전체')}
