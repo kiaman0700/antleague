@@ -909,7 +909,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       return;
     }
     // 버튼 이름과 같게: 혼자 하는 판(시간 제한 없음)은 '장 시작', 대결은 '준비 완료'
-    showToast(`장 전 시간이에요. 커뮤니티 글을 보고 예약 주문을 걸어 두세요. 다 했으면 ${freePre ? "'장 시작'을" : "'준비 완료'를"} 눌러 주세요`, 'warn');
+    showToast(`장 전 시간이에요. 개미폰 '개미피드' 글을 보고 예약 주문을 걸어 두세요. 다 했으면 ${freePre ? "'장 시작'을" : "'준비 완료'를"} 눌러 주세요`, 'warn');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 처음 한 번만 (freePre 가 바뀌어도 다시 띄우지 않음)
   }, [inPre, showToast]);
   const canCancelEnd = !solo && endedToday && room?.status === 'playing' && closing === null && viewDay === serverDay && remaining !== 0 && !showResult;
@@ -1452,7 +1452,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       {intro && room && (
         <MatchIntro
           title={room.ranked ? '랭킹전' : room.kind === 'match' ? '일반전' : room.kind === 'bot' ? '봇전' : '대결 시작'}
-          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 열리기 전이에요 · 커뮤니티 글을 보고 준비해요' : '장이 열렸어요'}`}
+          sub={`${room.totalDays}일 · 하루 ${room.turnSeconds % 60 === 0 ? room.turnSeconds / 60 + '분' : room.turnSeconds + '초'} · ${room.preUntil && room.preUntil > now + offset ? '장 열리기 전이에요 · 개미피드 글을 보고 준비해요' : '장이 열렸어요'}`}
           players={players.filter((p) => p.status !== 'left')}
           meId={me}
           onClose={() => setIntro(false)}

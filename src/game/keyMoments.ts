@@ -53,7 +53,7 @@ export function keyMoments(m: Market, myTrades: Trade[], lastDay = m.totalDays -
       if (n.tone === 'good' && move > 0.04) {
         const gain = held(s, d) * (c - o) + buys.reduce((a, t) => a + (c - t.price) * t.qty, 0);
         if (gain > 0) caught.push({ kind: 'caught', day: d, symbol: s, title: `${d + 1}일차, 속보를 잡았어요`, text: `'${short(n.headline)}' — ${name(s)} 하루 +${(move * 100).toFixed(1)}%. 이 종목으로 +${Math.round(gain).toLocaleString('ko-KR')}원`, amount: Math.round(gain) });
-        else if (held(s, d) <= 0 && !buys.length && move > 0.08) missed.push({ kind: 'missed', day: d, symbol: s, title: `${d + 1}일차, 놓친 속보`, text: `'${short(n.headline)}' — ${name(s)} 하루 +${(move * 100).toFixed(1)}%. 장 전 커뮤니티 글에 단서가 있었는지 복기해 봐요`, amount: 0 });
+        else if (held(s, d) <= 0 && !buys.length && move > 0.08) missed.push({ kind: 'missed', day: d, symbol: s, title: `${d + 1}일차, 놓친 속보`, text: `'${short(n.headline)}' — ${name(s)} 하루 +${(move * 100).toFixed(1)}%. 장 전 개미피드 글에 단서가 있었는지 복기해 봐요`, amount: 0 });
       }
       // 나쁜 속보 날: 그날 종가보다 비싸게 팔아서 피함
       if (n.tone === 'bad' && move < -0.04 && sells.length) {
