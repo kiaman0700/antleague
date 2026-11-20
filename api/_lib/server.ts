@@ -283,12 +283,19 @@ function newCode() {
   return s;
 }
 
-async function loadGame(roomId: string): Promise<GameData> {
+/**
+ * forWrite: 거래·카드·주문·증강을 넣기 전 — 자리(버전)를 먼저 읽고 나머지를 읽음.
+ * 같이 읽으면 다른 요청이 막 넣은 거래는 못 보고 그 버전만 볼 수 있어, 그 버전으로 검증을 통과해 현금보다 많이 살 수 있었음.
+ * 먼저 본 버전이 최신이면 그 버전과 함께 들어간 줄도 뒤에 읽는 쪽에 보임 (bump_insert 가 둘을 한 번에 넣음)
+ */
+async function loadGame(roomId: string, forWrite = false): Promise<GameData> {
   const sb = db();
+  const playersQ = () => sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step, left_day').eq('room_id', roomId);
+  const first = forWrite ? await playersQ() : null;
   const [room, secret, players, trades, items, orders, augs] = await Promise.all([
     sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
     sb.from('room_secrets').select('*').eq('room_id', roomId).maybeSingle(),
-    sb.from('players').select('id, room_id, nickname, mode, ready, ended_day, created_at, version, left_game, last_seen, pre_day, bot_level, bot_step, left_day').eq('room_id', roomId),
+    first ?? playersQ(),
     sb.from('trades').select('id, player_id, day, symbol, side, qty, price, fee, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('items').select('id, player_id, day, kind, action, cost, payload, created_at').eq('room_id', roomId).order('created_at'),
     sb.from('orders').select('id, player_id, day, symbol, side, qty, limit_price, fee, status, fill_price, created_at').eq('room_id', roomId).order('created_at'),
@@ -400,6 +407,34 @@ async function insertOnce(table: 'trades' | 'items' | 'orders', row: Record<stri
   must(await db().from(table).insert(row), what);
   return false;
 }
+/**
+ * (072) 자리 버전 올리기 + 줄 넣기를 한 트랜잭션으로. 'dup' = 같은 요청 번호(또는 같은 증강 차례)가 이미 있음.
+ * 함수가 없으면(마이그레이션 전) 예전처럼 따로 — 서버가 죽지 않게
+ */
+let atomicFn = true;
+async function bumpInsert(d: GameData, playerId: string, table: 'trades' | 'items' | 'orders' | 'augments', row: Record<string, unknown>, reqId: string | null, what: string): Promise<'ok' | 'dup'> {
+  const me = d.players.find((p) => p.id === playerId)!;
+  if (atomicFn) {
+    const r = await db().rpc('bump_insert', { p_player: playerId, p_version: me.version, p_table: table, p_row: reqId && reqCols ? { ...row, req_id: reqId } : row });
+    if (!r.error) {
+      if (r.data === 'conflict') throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
+      return r.data === 'dup' ? 'dup' : 'ok';
+    }
+    const code = (r.error as { code?: string }).code;
+    if (code === 'PGRST202' || code === '42883') atomicFn = false;
+    else if (noReqCol(r.error)) reqCols = false;
+    else must(r, what);
+  }
+  await bumpPlayer(d, playerId);
+  if (table === 'augments') {
+    const ins = await db().from('augments').insert({ ...row, ...(reqId && reqCols ? { req_id: reqId } : {}) });
+    if (ins.error && (ins.error as { code?: string }).code === '23505') return 'dup';
+    must(ins, what);
+    return 'ok';
+  }
+  return (await insertOnce(table, row, reqId, what)) ? 'dup' : 'ok';
+}
+
 /** 같은 번호로 내용이 다른 요청 */
 const reqMismatch = () => new GameError('같은 요청 번호로 다른 주문을 보냈어요. 다시 해 주세요.', 422);
 
@@ -1505,10 +1540,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       };
       const before = await findByReq<Done>('trades', playerId, reqId, 'symbol, side, qty, price, fee');
       if (before) return sameTrade(before);
-      const d = await loadGame(roomId);
+      const d = await loadGame(roomId, true);
       const t = validateTrade(d, playerId, Date.now(), b);
-      await bumpPlayer(d, playerId);
-      if (await insertOnce('trades', { room_id: roomId, ...t }, reqId, 'trade')) {
+      if ((await bumpInsert(d, playerId, 'trades', { room_id: roomId, ...t }, reqId, 'trade')) === 'dup') {
         const won = await findByReq<Done>('trades', playerId, reqId, 'symbol, side, qty, price, fee');
         if (won) return sameTrade(won);
       }
@@ -1526,10 +1560,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       };
       const before = await findByReq<{ kind: string; action: string }>('items', playerId, reqId, 'kind, action');
       if (before) return sameItem(before);
-      const d = await loadGame(roomId);
+      const d = await loadGame(roomId, true);
       const row = action === 'buyItem' ? validateBuyItem(d, playerId, Date.now(), b) : validateUseItem(d, playerId, Date.now(), b);
-      await bumpPlayer(d, playerId);
-      if (await insertOnce('items', { room_id: roomId, ...row }, reqId, 'item')) {
+      if ((await bumpInsert(d, playerId, 'items', { room_id: roomId, ...row }, reqId, 'item')) === 'dup') {
         const won = await findByReq<{ kind: string; action: string }>('items', playerId, reqId, 'kind, action');
         if (won) return sameItem(won);
       }
@@ -1547,20 +1580,15 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (before.action !== { pickAug: 'pick', rerollAug: 'reroll', useAug: 'use' }[action]) throw reqMismatch();
         return { ok: true, dup: true };
       }
-      const d = await loadGame(roomId);
+      const d = await loadGame(roomId, true);
       const now = Date.now();
       let row: AugRow;
       let undo: Trade | undefined;
       if (action === 'pickAug') row = validatePickAug(d, playerId, now, b);
       else if (action === 'rerollAug') row = validateRerollAug(d, playerId, now, b);
       else ({ row, undo } = validateUseAug(d, playerId, now, b));
-      await bumpPlayer(d, playerId);
-      const ins = await sb.from('augments').insert({ room_id: roomId, ...row, ...(reqId ? { req_id: reqId } : {}) });
-      if (ins.error) {
-        // 같은 요청이 두 번 왔거나, 같은 차례를 동시에 두 번 고른 경우 — DB 유니크가 하나만 남김
-        if ((ins.error as { code?: string }).code === '23505') return { ok: true, dup: true };
-        must(ins, 'aug');
-      }
+      // 같은 요청이 두 번 왔거나, 같은 차례를 동시에 두 번 고른 경우 — DB 유니크가 하나만 남김
+      if ((await bumpInsert(d, playerId, 'augments', { room_id: roomId, ...row }, reqId, 'aug')) === 'dup') return { ok: true, dup: true };
       // 검증과 넣기 사이에 날이 넘어갔으면(그 차례는 이미 자동으로 정해져 화면에 나감) 방금 줄을 없던 일로
       if (action !== 'useAug') {
         const nowRoom = (await sb.from('rooms').select('day, status').eq('id', roomId).maybeSingle()).data as { day: number; status: string } | null;
@@ -1590,10 +1618,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       };
       const before = await findByReq<Placed>('orders', playerId, reqId, 'symbol, side, qty');
       if (before) return sameOrder(before);
-      const d = await loadGame(roomId);
+      const d = await loadGame(roomId, true);
       const o = validatePlaceOrder(d, playerId, Date.now(), b);
-      await bumpPlayer(d, playerId);
-      if (await insertOnce('orders', { room_id: roomId, ...o }, reqId, 'order')) {
+      if ((await bumpInsert(d, playerId, 'orders', { room_id: roomId, ...o }, reqId, 'order')) === 'dup') {
         const won = await findByReq<Placed>('orders', playerId, reqId, 'symbol, side, qty');
         if (won) return sameOrder(won);
       }
