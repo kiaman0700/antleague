@@ -50,7 +50,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '아침 뉴스',
-    text: () => '뉴스가 가장 큰 힌트예요. 빨강 ▲ 좋은 소식, 파랑 ▼ 나쁜 소식.',
+    text: () => "뉴스는 개미폰의 '개미경제' 앱으로 와요. 가장 큰 힌트예요 — 빨강 ▲ 좋은 소식, 파랑 ▼ 나쁜 소식.",
     target: '.news-panel',
     tab: 'news',
   },
@@ -119,7 +119,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: '튜토리얼 끝!',
-    text: () => '잘했어요! 위 순위 칸에서 연습봇과 재산을 비교해 보고, 이제 일반전에서 겨뤄 봐요.',
+    text: () => "잘했어요! 위 순위 칸에서 연습봇과 재산을 비교해 보세요. 실제 판에선 개미폰의 '개미피드' 앱에 SNS 소문도 올라와요(가짜도 섞여 있어요).",
     target: '.vs-box, .rank-strip, .mh-cmp',
   },
 ];
