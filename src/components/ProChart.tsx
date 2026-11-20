@@ -60,7 +60,8 @@ interface Props {
   onExpand?: () => void;
   /** 장중(오늘 5초 가격을 묶은 봉)처럼 '날'이 아닌 칸일 때: 가로축·툴팁 글자, 기간 버튼, 선 저장 칸 */
   unit?: {
-    axis: (i: number) => string;
+    /** prev: 바로 앞 눈금 칸 (없으면 처음) — 날이 바뀌는 눈금에 날짜를 붙이는 데 씀 */
+    axis: (i: number, prev?: number) => string;
     tip: (i: number) => string;
     /** 최고·최저 표시에 쓸 시각 (예: '2일 0:45') — 없으면 axis */
     when?: (i: number) => string;
@@ -718,7 +719,7 @@ export function ProChart({
               className="axis"
               textAnchor="middle"
             >
-              {unit ? unit.axis(d) : `${d + 1}일`}
+              {unit ? unit.axis(d, visible(d - dayStep) && x(d - dayStep) > padL ? d - dayStep : undefined) : `${d + 1}일`}
             </text>
           ))}
 

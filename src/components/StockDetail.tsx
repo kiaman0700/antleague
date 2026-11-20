@@ -321,9 +321,10 @@ export function StockDetail(props: Props) {
           tall={big || tallChart}
           onExpand={big ? undefined : () => setFull(true)}
           unit={{
-            axis: (i) => {
+            // 여러 날이 이어진 축: 날이 바뀐 첫 눈금은 날짜로 (0:40 → 0:05 처럼 시간이 거꾸로 가 보이지 않게)
+            axis: (i, prev) => {
               const { d, sec } = at(i);
-              return sec === 0 ? `${d + 1}일` : clock(sec);
+              return sec === 0 || (prev !== undefined && at(prev).d !== d) ? `${d + 1}일` : clock(sec);
             },
             when: (i) => {
               const { d, sec } = at(i);
