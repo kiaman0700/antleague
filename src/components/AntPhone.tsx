@@ -28,6 +28,21 @@ interface Item {
   time?: string;
 }
 
+type PhoneRumor = { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' };
+function phoneItems(news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[], day: number, daySec?: number): Item[] {
+  const out: Item[] = [];
+  for (const n of news) if (n.day === day) out.push({ key: `n:${n.day}:${n.headline}`, app: 'news', at: n.at ?? -1, title: n.headline.replace('[루머] ', '') });
+  for (const { p: post, time } of prePostsOf(rumors, day)) out.push({ key: `pre:${day}:${post.text}`, app: 'sns', platform: post.platform, at: -0.5, title: post.text, post, time: time(daySec) });
+  for (const post of posts) out.push({ key: `p:${post.day}:${post.id}`, app: 'sns', platform: post.platform, at: post.at, title: post.text, post });
+  return out;
+}
+
+/** 휴대폰을 내려 둔 동안 아래 탭 배지에 쓰는 안 읽은 수 — 개미폰 앱 배지와 같은 기준 */
+export function phoneUnread(roomKey: string, news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[], day: number): number {
+  const seen = loadSeen(`stockduel.phoneSeen:${roomKey}`);
+  return phoneItems(news, posts, rumors, day).filter((x) => !seen.has(x.key)).length;
+}
+
 /* ---------- 알림 켜고 끄기 (이 기기) — 앱(뉴스·피드)과 피드 안 모양별 ---------- */
 const NOTIF_KEY = 'stockduel.phoneNotif';
 const NOTIF_DEFAULT: Record<string, boolean> = { live: false };
@@ -82,7 +97,7 @@ interface Props {
   news: NewsEvent[];
   posts: PublicPost[];
   pastPosts: PublicPost[];
-  rumors: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[];
+  rumors: PhoneRumor[];
   /** 뉴스 앱 안에 그릴 지금의 뉴스 칸 (관련 종목 칩·감별기·튜토리얼이 그대로 동작하게) */
   newsApp: ReactNode;
   /** 내 주식 앱 = 게임의 내 재산 칸 */
@@ -125,13 +140,7 @@ export function AntPhone(p: Props) {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all');
 
   // 오늘 소식 (뉴스 앱·피드 앱)
-  const items = useMemo(() => {
-    const out: Item[] = [];
-    for (const n of p.news) if (n.day === p.day) out.push({ key: `n:${n.day}:${n.headline}`, app: 'news', at: n.at ?? -1, title: n.headline.replace('[루머] ', '') });
-    for (const { p: post, time } of prePostsOf(p.rumors, p.day)) out.push({ key: `pre:${p.day}:${post.text}`, app: 'sns', platform: post.platform, at: -0.5, title: post.text, post, time: time(p.daySec) });
-    for (const post of p.posts) out.push({ key: `p:${post.day}:${post.id}`, app: 'sns', platform: post.platform, at: post.at, title: post.text, post });
-    return out;
-  }, [p.news, p.posts, p.rumors, p.day, p.daySec]);
+  const items = useMemo(() => phoneItems(p.news, p.posts, p.rumors, p.day, p.daySec), [p.news, p.posts, p.rumors, p.day, p.daySec]);
 
   const unread = (a: PhoneApp) => (a === 'news' || a === 'sns' ? items.filter((x) => x.app === a && !seen.has(x.key)).length : 0);
 

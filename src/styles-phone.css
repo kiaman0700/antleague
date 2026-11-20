@@ -208,3 +208,13 @@
 .antphone.m-full .ap-banner { top: 60px; }
 .antphone.m-full .ap-shade { inset: 56px 0 auto 0; max-height: calc(100% - 56px); }
 .ap-lower { min-height: 28px; } .ap-homebar { height: 26px; }
+/* 가로로 눕힌 휴대폰: 높이가 낮아 위젯을 한 줄로, 앱도 한 줄로 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .antphone.m-full .ap-lower { min-height: 24px; padding: 2px 0 0; }
+  .antphone.m-full .ap-home { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; align-content: start; }
+  .antphone.m-full .ap-home > .ap-alert, .antphone.m-full .ap-home > .ap-grid, .antphone.m-full .ap-home > .ap-hint { grid-column: 1 / -1; }
+  .antphone.m-full .ap-w-wallet { margin: 0; }
+  .antphone.m-full .ap-w-row { margin: 0; }
+  .antphone.m-full .ap-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .antphone.m-full .ap-hint { display: none; }
+}

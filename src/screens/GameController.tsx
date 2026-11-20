@@ -44,7 +44,7 @@ import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
 import { musicOn, setMusicOn, setScene, type Scene } from '../lib/music';
-import { AntPhone } from '../components/AntPhone';
+import { AntPhone, phoneUnread } from '../components/AntPhone';
 import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
@@ -1277,6 +1277,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       .sort((a, b) => b.value - a.value)
       .slice(0, 3),
   };
+  // 튜토리얼은 예전 소식 칸 기준(뉴스 읽음)
+  const phoneBadge = session.tutorial ? unreadToday(news, day) : phoneUnread(view.room.id, news, view.community ?? [], view.rumors ?? [], day);
   const phoneFor = (mode: 'framed' | 'full' | 'inline', onLower?: () => void) => (
     <AntPhone
       roomKey={view.room.id}
@@ -1944,7 +1946,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                 <Icon name={TAB_ICON[t]} size={22} />
               </span>
               {t === 'assets' ? (easy ? '내 재산' : '자산') : t === 'cards' && augMode ? '증강' : TAB_LABEL[t]}
-              {t === 'news' && tab !== 'news' && unreadToday(news, day) > 0 && <i className="nav-count hot">{unreadToday(news, day)}</i>}
+              {t === 'news' && tab !== 'news' && phoneBadge > 0 && <i className="nav-count hot">{phoneBadge > 99 ? '99+' : phoneBadge}</i>}
               {t === 'cards' && !augMode && view.myItems.total > 0 && <i className="nav-count">{view.myItems.total}</i>}
               {t === 'cards' && augMode && view.aug?.offer && <i className="nav-dot gold" />}
               {t === 'assets' && myOrders.some((o) => o.status === 'open' && o.day === day) && <i className="nav-dot gold" />}
