@@ -38,7 +38,7 @@
 .antphone.m-framed .ap-pull { width: 64px; height: 18px; margin-left: -32px; top: 6px; border-radius: 10px; background: #000; }
 
 /* 홈 화면 */
-.ap-home { padding: 10px 16px 18px; background: radial-gradient(120% 70% at 50% 0%, #1d1a2b 0%, #0f0f11 60%); }
+.ap-home { padding: 10px 16px 18px; }
 /* 홈 화면 위젯 */
 .ap-w { display: grid; gap: 4px; align-content: start; width: 100%; padding: 12px 14px; border-radius: 18px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.06); color: #f2f2f2; text-align: left; cursor: pointer; font: inherit; }
 .ap-w:hover { background: rgba(255,255,255,.09); }
@@ -246,3 +246,13 @@
 .ap-w-h:has(.ap-w-mis-n) { display: flex; }
 .ap-w-mis-bar { display: block; height: 6px; margin: 4px 0 2px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; }
 .ap-w-mis-bar i { display: block; height: 100%; border-radius: 6px; background: #2fb380; }
+/* 배경 화면 */
+.antphone .ap-screen.wp-night, .ap-wall-pv.wp-night { background: radial-gradient(120% 70% at 50% 0%, #1d1a2b 0%, #0f0f11 60%); }
+.antphone .ap-screen.wp-tunnel, .ap-wall-pv.wp-tunnel { background-color: #17120e; background-image: radial-gradient(ellipse 34px 16px at 20% 30%, #2a1f17 60%, transparent 62%), radial-gradient(ellipse 46px 18px at 75% 55%, #2a1f17 60%, transparent 62%), radial-gradient(ellipse 30px 14px at 35% 82%, #2a1f17 60%, transparent 62%); }
+.antphone .ap-screen.wp-chart, .ap-wall-pv.wp-chart { background-color: #0f1210; background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px); background-size: 22px 22px; }
+.antphone .ap-screen.wp-plain, .ap-wall-pv.wp-plain { background: #0a0a0a; }
+.ap-walls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.ap-wall { display: grid; justify-items: center; gap: 6px; padding: 6px 4px 8px; border: 2px solid transparent; border-radius: 14px; background: #18181b; color: #c8c8c8; cursor: pointer; }
+.ap-wall.on { border-color: #8b7bff; color: #f2f2f2; }
+.ap-wall small { font-size: 12px; }
+.ap-wall-pv { display: block; width: 100%; aspect-ratio: 9 / 14; border-radius: 9px; border: 1px solid #2a2a30; }

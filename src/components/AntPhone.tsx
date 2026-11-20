@@ -62,6 +62,24 @@ function saveNotif(v: Record<string, boolean>) {
 }
 const notifOn = (n: Record<string, boolean>, x: Item) => n[x.app] !== false && (!x.platform || n[x.platform] !== false);
 
+/* ---------- 배경 화면 (이 기기) ---------- */
+const WALL_KEY = 'stockduel.phoneWall';
+const WALLS = [
+  { id: 'night', name: '보랏빛 밤' },
+  { id: 'tunnel', name: '개미굴' },
+  { id: 'chart', name: '차트 모눈' },
+  { id: 'plain', name: '검정' },
+] as const;
+type Wall = (typeof WALLS)[number]['id'];
+function loadWall(): Wall {
+  try {
+    const v = localStorage.getItem(WALL_KEY);
+    return WALLS.some((w) => w.id === v) ? (v as Wall) : 'night';
+  } catch {
+    return 'night';
+  }
+}
+
 /* ---------- 읽음 (이 판·이 창) ---------- */
 function loadSeen(key: string): Set<string> {
   try {
@@ -139,6 +157,7 @@ export function AntPhone(p: Props) {
     if (p.lockApp) setApp(p.lockApp);
   }, [p.lockApp]);
   const [notif, setNotif] = useState(loadNotif);
+  const [wall, setWall] = useState(loadWall);
   const [seen, setSeen] = useState(() => loadSeen(seenKey));
   const [shade, setShade] = useState(false);
   const [banner, setBanner] = useState<Item | null>(null);
@@ -397,7 +416,19 @@ export function AntPhone(p: Props) {
           ) : app === 'missions' ? (
             <div className="ap-embed">{p.missionsApp}</div>
           ) : app === 'settings' ? (
-            <Settings notif={notif} onChange={(n) => (setNotif(n), saveNotif(n))} />
+            <Settings
+              notif={notif}
+              onChange={(n) => (setNotif(n), saveNotif(n))}
+              wall={wall}
+              onWall={(w) => {
+                setWall(w);
+                try {
+                  localStorage.setItem(WALL_KEY, w);
+                } catch {
+                  /* 저장 못 해도 이번 화면은 바뀜 */
+                }
+              }}
+            />
           ) : (
             <SnsApp roomKey={p.roomKey} filter={feedFilter} setFilter={setFeedFilter} day={p.day} daySec={p.daySec} items={items.filter((x) => x.app === 'sns')} past={p.pastPosts.filter((x) => x.day === p.day - 1)} live={p.live} onSelect={p.onSelect} onSelectSector={p.onSelectSector} />
           )}
@@ -408,7 +439,7 @@ export function AntPhone(p: Props) {
 
   return (
     <section ref={rootRef} className={'antphone m-' + p.mode} aria-label="개미폰">
-      <div className="ap-screen">
+      <div className={'ap-screen' + (app ? '' : ' wp-' + wall)}>
         {lowerBar}
         {statusBar}
         {banner && (
@@ -552,7 +583,7 @@ function AppIcon({ id, small }: { id: PhoneApp; small?: boolean }) {
   }
 }
 
-function Settings({ notif, onChange }: { notif: Record<string, boolean>; onChange: (n: Record<string, boolean>) => void }) {
+function Settings({ notif, onChange, wall, onWall }: { notif: Record<string, boolean>; onChange: (n: Record<string, boolean>) => void; wall: Wall; onWall: (w: Wall) => void }) {
   const row = (key: string, icon: ReactNode, name: string, kind: string, sub?: boolean) => {
     const on = notif[key] !== false;
     const parentOff = sub && notif.sns === false;
@@ -579,6 +610,15 @@ function Settings({ notif, onChange }: { notif: Record<string, boolean>; onChang
       </ul>
       <h4 className="ap-set-h2">개미피드 안에서</h4>
       <ul>{(Object.keys(PLATFORMS) as Platform[]).map((pf) => row(pf, <PlatformIcon id={pf} size={20} />, PLATFORMS[pf].name, PLATFORMS[pf].kind, true))}</ul>
+      <h4 className="ap-set-h2">배경 화면</h4>
+      <div className="ap-walls" role="radiogroup" aria-label="배경 화면">
+        {WALLS.map((w) => (
+          <button key={w.id} type="button" role="radio" aria-checked={wall === w.id} className={'ap-wall' + (wall === w.id ? ' on' : '')} onClick={() => onWall(w.id)}>
+            <span className={'ap-wall-pv wp-' + w.id} aria-hidden />
+            <small>{w.name}</small>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
