@@ -37,6 +37,8 @@ const MyProfilePage = lazy(() => import('./Account').then((m) => ({ default: m.M
 const RankingPage = lazy(() => import('./Account').then((m) => ({ default: m.RankingPage })));
 import { OPERATOR } from '../lib/operator';
 const LegalSheet = lazy(() => import('../components/Legal').then((m) => ({ default: m.LegalSheet })));
+const PrivacyBody = lazy(() => import('../components/Legal').then((m) => ({ default: m.PrivacyBody })));
+const TermsBody = lazy(() => import('../components/Legal').then((m) => ({ default: m.TermsBody })));
 import { FeedbackSheet } from '../components/FeedbackSheet';
 import { FriendsPage, useFriendsPoll } from './Friends';
 import { InviteCenter } from '../components/InviteCenter';
@@ -95,10 +97,10 @@ interface MatchResult {
 }
 
 /** 로비 안의 페이지 (각각 주소가 있음: / · /rooms · /create · /records) */
-export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking' | 'notices' | 'league' | 'install';
+export type LobbyPage = 'home' | 'ranked' | 'casual' | 'custom' | 'friends' | 'practice' | 'more' | 'rooms' | 'create' | 'records' | 'customize' | 'companies' | 'tutorial' | 'admin' | 'login' | 'signup' | 'me' | 'ranking' | 'notices' | 'league' | 'install' | 'privacy' | 'terms';
 const PAGE_TITLE: Partial<Record<LobbyPage, string>> = {
   ranked: '랭킹전', casual: '일반전', custom: '커스텀', friends: '친구', practice: '연습', more: '설정·더보기', rooms: '방 찾기', create: '방 만들기',
-  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '운영자', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹', notices: '공지사항', league: '주간 리그', install: '앱처럼 쓰기',
+  records: '업적', customize: '화면 편집', companies: '공부', tutorial: '튜토리얼', admin: '운영자', login: '로그인', signup: '회원가입', me: '마이프로필', ranking: '랭킹', notices: '공지사항', league: '주간 리그', install: '앱처럼 쓰기', privacy: '개인정보처리방침', terms: '이용약관',
 };
 
 interface Props {
@@ -2020,6 +2022,18 @@ export function Lobby({ page, go, onWaiting, onGame }: Props) {
         <Suspense fallback={<Loading />}>
           <NoticesPage onBack={back} onGo={go} />
         </Suspense>
+      );
+      break;
+    case 'privacy':
+    case 'terms':
+      // 스토어 등록·링크 공유용으로 바로 열리는 주소 (/privacy · /terms)
+      body = (
+        <div className="lobby page legal-page">
+          <PageHead title={resolved === 'privacy' ? '개인정보처리방침' : '이용약관'} onBack={back} top />
+          <section className="panel pad legal-body">
+            <Suspense fallback={<Loading />}>{resolved === 'privacy' ? <PrivacyBody /> : <TermsBody />}</Suspense>
+          </section>
+        </div>
       );
       break;
     case 'install':

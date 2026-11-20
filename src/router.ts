@@ -32,7 +32,7 @@ const TITLES: Record<Route['kind'], string> = {
   resolve: '개미리그',
 };
 
-const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/league': 'league', '/install': 'install', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking', '/notices': 'notices' };
+const LOBBY_PAGES: Record<string, LobbyPage> = { '/': 'home', '': 'home', '/ranked': 'ranked', '/casual': 'casual', '/custom': 'custom', '/friends': 'friends', '/learn': 'practice', '/more': 'more', '/signup': 'signup', '/rooms': 'rooms', '/create': 'create', '/records': 'records', '/league': 'league', '/install': 'install', '/customize': 'customize', '/companies': 'companies', '/tutorial': 'tutorial', '/admin': 'admin', '/login': 'login', '/me': 'me', '/ranking': 'ranking', '/notices': 'notices', '/privacy': 'privacy', '/terms': 'terms' };
 /** 사이트 안 주소 → 로비 페이지 (공지 글 속 링크처럼 우리 화면으로만 가게 확인할 때) */
 export function lobbyPageOf(path: string): LobbyPage | null {
   return LOBBY_PAGES[path.replace(/\/+$/, '') || '/'] ?? null;
