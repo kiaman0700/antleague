@@ -40,6 +40,43 @@ const q2 = Math.floor(cash2 / 2 / Math.round(price2 * 0.9)) + 1;
 const ords = await Promise.all([1, 2, 3, 4].map(() => A({ action: 'placeOrder', roomId, symbol: sym, side: 'buy', qty: q2, limit: Math.round(price2 * 0.9), reqId: randomUUID() })));
 ok('예약 사기를 동시에 4번 → 많아야 한 번만 걸림', ords.filter((r) => r.s === 200).length <= 1, JSON.stringify(ords.map((r) => r.s)));
 
+await new Promise((r) => setTimeout(r, 21_000)); // 앞 시험의 요청 제한이 풀리게
+// 예약 체결과 직접 거래가 같은 순간 — 예약(현금의 절반 넘게)이 닿는 순간 직접 사기(절반 넘게)·상태 요청을 함께 → 쓴 돈이 현금을 넘지 않음 (073 fill_order)
+for (const o of (((await A({ action: 'state', roomId })).b.myOrders) ?? []).filter((x) => x.status === 'open')) await A({ action: 'cancelOrder', roomId, orderId: o.id });
+for (let round = 1; round <= 2; round++) {
+  if (round > 1) await new Promise((r) => setTimeout(r, 21_000)); // 요청 제한(20초 40번) 넘지 않게
+  const s3 = (await A({ action: 'state', roomId })).b;
+  const held3 = (s3.myTrades ?? []).filter((t) => t.symbol === sym).reduce((s, t) => s + (t.side === 'buy' ? 1 : -1) * Number(t.qty), 0);
+  if (held3 > 0) await A({ action: 'trade', roomId, symbol: sym, side: 'sell', qty: held3, reqId: randomUUID() });
+  const s4 = (await A({ action: 'state', roomId })).b;
+  const cash4 = 1_000_000 - spentOf(s4.myTrades ?? []);
+  const live = s4.live?.krw?.[sym];
+  const p4 = Array.isArray(live) && live.length ? live[live.length - 1] : s4.market.bars[sym][s4.room.day].open;
+  // 지금 가격 바로 아래 — 가격이 조금만 흔들려도 곧 닿음
+  const lim = Math.floor(p4 * 0.999);
+  const q4 = Math.floor(cash4 / 2 / lim) + 1;
+  const placed = await A({ action: 'placeOrder', roomId, symbol: sym, side: 'buy', qty: q4, limit: lim, reqId: randomUUID() });
+  if (placed.s !== 200) { ok(`${round}회차 예약 넣기`, false, JSON.stringify(placed.b)); continue; }
+  let burst = [];
+  for (let k = 0; k < 8; k++) {
+    burst = await Promise.all([
+      A({ action: 'state', roomId }),
+      A({ action: 'trade', roomId, symbol: sym, side: 'buy', qty: q4, reqId: randomUUID() }),
+      A({ action: 'state', roomId }),
+    ]);
+    const now = (await A({ action: 'state', roomId })).b;
+    if (!(now.myOrders ?? []).some((x) => x.status === 'open')) break;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  const s5 = (await A({ action: 'state', roomId })).b;
+  const spent5 = spentOf(s5.myTrades ?? []);
+  ok(`예약 체결 겹침 ${round}회차: 쓴 돈이 시작 현금을 넘지 않음`, spent5 <= 1_000_000, `쓴 돈 ${Math.round(spent5)} · ${JSON.stringify(burst.map((r) => r.s))}`);
+  for (const o of (s5.myOrders ?? []).filter((x) => x.status === 'open')) {
+    const c = await A({ action: 'cancelOrder', roomId, orderId: o.id });
+    ok(`${round}회차: 남은 예약 취소 응답은 200 또는 이미 체결 409`, c.s === 200 || c.s === 409, String(c.s));
+  }
+}
+
 await A({ action: 'leave', roomId });
 await B({ action: 'leave', roomId });
 done();

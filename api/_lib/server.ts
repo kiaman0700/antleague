@@ -412,10 +412,10 @@ async function insertOnce(table: 'trades' | 'items' | 'orders', row: Record<stri
  * 함수가 없으면(마이그레이션 전) 예전처럼 따로 — 서버가 죽지 않게
  */
 let atomicFn = true;
-async function bumpInsert(d: GameData, playerId: string, table: 'trades' | 'items' | 'orders' | 'augments', row: Record<string, unknown>, reqId: string | null, what: string): Promise<'ok' | 'dup'> {
+async function bumpInsert(d: GameData, playerId: string, table: 'trades' | 'items' | 'orders' | 'augments', row: Record<string, unknown>, reqId: string | null, what: string, trade?: Record<string, unknown>): Promise<'ok' | 'dup'> {
   const me = d.players.find((p) => p.id === playerId)!;
   if (atomicFn) {
-    const r = await db().rpc('bump_insert', { p_player: playerId, p_version: me.version, p_table: table, p_row: reqId && reqCols ? { ...row, req_id: reqId } : row });
+    const r = await db().rpc('bump_insert', { p_player: playerId, p_version: me.version, p_table: table, p_row: reqId && reqCols ? { ...row, req_id: reqId } : row, ...(trade ? { p_trade: trade } : {}) });
     if (!r.error) {
       if (r.data === 'conflict') throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
       return r.data === 'dup' ? 'dup' : 'ok';
@@ -430,6 +430,7 @@ async function bumpInsert(d: GameData, playerId: string, table: 'trades' | 'item
     const ins = await db().from('augments').insert({ ...row, ...(reqId && reqCols ? { req_id: reqId } : {}) });
     if (ins.error && (ins.error as { code?: string }).code === '23505') return 'dup';
     must(ins, what);
+    if (trade) must(await db().from('trades').insert(trade), what + ' trade');
     return 'ok';
   }
   return (await insertOnce(table, row, reqId, what)) ? 'dup' : 'ok';
@@ -557,14 +558,36 @@ async function seen(d: GameData, playerId: string) {
  * 오늘(day)·진행 중인 방만 갱신. day_deadline 컬럼이 아직 없으면(005 마이그레이션 전) 그 값만 빼고 다시 시도.
  * 바뀐 행 수를 돌려줌
  */
-async function updatePlayingRoom(roomId: string, day: number, patch: Record<string, unknown>, label: string): Promise<number> {
-  const run = (p: Record<string, unknown>) => db().from('rooms').update(p).eq('id', roomId).eq('day', day).eq('status', 'playing').select('id');
+async function updatePlayingRoom(roomId: string, day: number, patch: Record<string, unknown>, label: string, expectDeadline?: number | null): Promise<number> {
+  const run = (p: Record<string, unknown>) => {
+    let q = db().from('rooms').update(p).eq('id', roomId).eq('day', day).eq('status', 'playing');
+    // 읽은 뒤 다른 요청이 마감 시각을 바꿨으면 덮어쓰지 않음
+    if (expectDeadline !== undefined) q = expectDeadline === null ? q.is('turn_deadline', null) : q.eq('turn_deadline', iso(expectDeadline));
+    return q.select('id');
+  };
   let res = await run(patch);
   if (res.error && /day_deadline/.test(res.error.message) && 'day_deadline' in patch) {
     const { day_deadline: _d, ...rest } = patch;
     res = await run(rest);
   }
   return must(res, label).length;
+}
+
+/**
+ * 마감·마감 취소·기권 뒤: 지금 마감 인원에 맞게 카운트다운을 당기거나(grace) 원래대로 되돌림(restore).
+ * 읽은 마감 시각이 그대로일 때만 씀 — 장 마감과 마감 취소가 동시에 오면 낡은 판단이 나중에 덮어써
+ * 기준보다 적게 마감했는데 카운트다운이 돌거나, 맞는 카운트다운이 지워질 수 있었음. 겹치면 새로 읽어 다시
+ */
+async function settleDeadline(roomId: string): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    let fresh = await loadGame(roomId);
+    if (await moveBots(fresh)) fresh = await loadGame(roomId);
+    if (await maybeAdvance(fresh)) return;
+    const now = Date.now();
+    const target = graceDeadline(fresh, now) ?? restoreDeadline(fresh);
+    if (target === null || target === fresh.room.deadline) return;
+    if ((await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(target) }, 'deadline', fresh.room.deadline)) > 0) return;
+  }
 }
 
 /** 진행 중인데 마감 시각이 없는 예전 '무제한' 방에 마감 시각을 붙인다 */
@@ -575,19 +598,47 @@ async function ensureDeadline(d: GameData): Promise<boolean> {
 }
 
 /** 예약 주문 결과 저장 — 주문마다 '아직 open 인 것만' 바꿔서 두 번 체결되지 않게. 체결 시각은 가격이 닿은 칸의 시각 */
-async function applyOrders(d: GameData, results: ReturnType<typeof resolveOrders>): Promise<number> {
+/**
+ * (073) 예약 체결은 자리 버전 올리기·주문 상태 바꾸기·체결 거래 넣기를 한 트랜잭션(fill_order)으로.
+ * 따로 하면 그 사이 직접 거래가 같은 현금을 또 쓸 수 있었음. 버전이 이미 바뀐 체결은 conflicts 로 돌려줘 새 데이터로 다시 판단
+ */
+let fillFn = true;
+async function applyOrders(d: GameData, results: ReturnType<typeof resolveOrders>): Promise<{ changed: number; conflicts: number }> {
   let changed = 0;
+  let conflicts = 0;
   const bumped = new Set<string>();
   for (const r of results) {
-    // 체결로 현금이 바뀌는 사람은 버전을 올려 둠 → 같은 순간의 직접 거래와 겹치면 한쪽만 성공 (현금이 마이너스 되지 않게)
+    const pl = r.trade ? d.players.find((x) => x.id === r.trade!.player_id) : undefined;
+    if (fillFn) {
+      const o = d.orders.find((x) => x.id === r.id);
+      const res = await db().rpc('fill_order', {
+        p_player: r.trade?.player_id ?? o?.player_id,
+        p_version: pl?.version ?? 0,
+        p_order: r.id,
+        p_status: r.status,
+        p_fill: r.trade?.price ?? null,
+        p_trade: r.trade ? { room_id: d.room.id, ...r.trade } : null,
+      });
+      if (!res.error) {
+        if (res.data === 'ok') {
+          changed++;
+          if (pl && r.trade) pl.version += 1;
+        } else if (res.data === 'conflict') conflicts++;
+        continue;
+      }
+      const code = (res.error as { code?: string }).code;
+      if (code === 'PGRST202' || code === '42883') fillFn = false;
+      else must(res, 'order fill');
+    }
+    // 073 적용 전: 예전 방식 (체결로 현금이 바뀌는 사람은 버전을 먼저 올림)
     if (r.trade && !bumped.has(r.trade.player_id)) {
       try {
         await bumpPlayer(d, r.trade.player_id);
-        const pl = d.players.find((x) => x.id === r.trade!.player_id);
         if (pl) pl.version += 1;
         bumped.add(r.trade.player_id);
       } catch {
-        continue; // 다음 요청 때 새 데이터로 다시 판단
+        conflicts++;
+        continue;
       }
     }
     const upd = must(
@@ -597,13 +648,18 @@ async function applyOrders(d: GameData, results: ReturnType<typeof resolveOrders
     if (upd.length) changed++;
     if (upd.length && r.trade) must(await db().from('trades').insert({ room_id: d.room.id, ...r.trade }), 'order fill');
   }
-  return changed;
+  return { changed, conflicts };
 }
 
 /** 장중: 지금 칸까지 가격이 닿은 예약 주문을 바로 체결 */
-async function fillOrdersNow(d: GameData): Promise<boolean> {
-  if (d.room.status !== 'playing' || !d.orders.some((o) => o.day === d.room.day && o.status === 'open')) return false;
-  return (await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, Date.now()).tick, false))) > 0;
+async function fillOrdersNow(d0: GameData): Promise<boolean> {
+  if (d0.room.status !== 'playing' || !d0.orders.some((o) => o.day === d0.room.day && o.status === 'open')) return false;
+  const tick = dayClock(d0.room, Date.now()).tick;
+  if (!resolveOrders(d0, d0.room.day, tick, false).some((r) => r.trade)) return false;
+  // 닿은 주문이 있을 때만 자리를 먼저 읽는 새 데이터로 다시 판단 (매초 상태 요청은 그대로 가볍게)
+  const d = await loadGame(d0.room.id, true);
+  if (d.room.day !== d0.room.day) return false;
+  return (await applyOrders(d, resolveOrders(d, d.room.day, tick, false))).changed > 0;
 }
 
 /**
@@ -695,8 +751,14 @@ async function maybeAdvance(d: GameData): Promise<boolean> {
   if (!next) return false;
   const advanced = (await updatePlayingRoom(d.room.id, d.room.day, { day: next.day, status: next.status, turn_deadline: iso(next.deadline), day_deadline: iso(next.day_deadline) }, 'advance')) > 0;
   if (!advanced) return false;
-  // 오늘 남은 예약 주문 처리: 끝까지 안 닿은 건 만료
-  await applyOrders(d, resolveOrders(d, d.room.day, dayClock(d.room, 0).n, true));
+  // 오늘 남은 예약 주문 처리: 끝까지 안 닿은 건 만료. 같은 순간 거래와 겹쳐 못 한 체결은 새 데이터로 몇 번 다시
+  let cur = d;
+  for (let i = 0; i < 3; i++) {
+    const { conflicts } = await applyOrders(cur, resolveOrders(cur, d.room.day, dayClock(d.room, 0).n, true));
+    if (!conflicts) break;
+    const fresh = await loadGame(d.room.id, true);
+    cur = { ...fresh, room: d.room };
+  }
   if (next.status === 'finished') await finishRecords(d.room.id);
   return true;
 }
@@ -1232,7 +1294,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         for (const m of members) {
           const p = ins.find((x) => x.user_id === m.user_id);
           if (!p) throw new GameError('방을 만들지 못했어요.', 500);
-          must(await sb.from('match_tickets').update({ room_id: room.id, player_id: p.id, nickname: m.nickname, matched_at: matchedAt }).eq('id', m.id), 'match ticket');
+          // 아직 이 묶음이 잡은 표일 때만 — 방 만들기가 늦어져(15초) 다른 요청이 다시 잡았으면 덮어쓰지 않고 이 방을 버림
+          const linked = must(await sb.from('match_tickets').update({ room_id: room.id, player_id: p.id, nickname: m.nickname, matched_at: matchedAt }).eq('id', m.id).eq('claim', batch).is('room_id', null).select('id'), 'match ticket');
+          if (!linked.length) throw new GameError('매칭이 바뀌었어요. 다시 찾을게요.', 409);
         }
         must(await sb.from('rooms').update({ host_id: ins[0].id, status: 'playing', day: 0, turn_deadline: deadline, day_deadline: deadline }).eq('id', room.id), 'match start');
         const meP = ins.find((x) => x.user_id === uid)!;
@@ -1588,21 +1652,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       else if (action === 'rerollAug') row = validateRerollAug(d, playerId, now, b);
       else ({ row, undo } = validateUseAug(d, playerId, now, b));
       // 같은 요청이 두 번 왔거나, 같은 차례를 동시에 두 번 고른 경우 — DB 유니크가 하나만 남김
-      if ((await bumpInsert(d, playerId, 'augments', { room_id: roomId, ...row }, reqId, 'aug')) === 'dup') return { ok: true, dup: true };
+      // 되돌리기 증강의 반대 거래도 같은 트랜잭션으로 (따로 넣으면 그 사이 다른 거래가 같은 현금·주식을 또 쓸 수 있었음)
+      if ((await bumpInsert(d, playerId, 'augments', { room_id: roomId, ...row }, reqId, 'aug', undo ? { room_id: roomId, ...undo } : undefined)) === 'dup') return { ok: true, dup: true };
       // 검증과 넣기 사이에 날이 넘어갔으면(그 차례는 이미 자동으로 정해져 화면에 나감) 방금 줄을 없던 일로
       if (action !== 'useAug') {
         const nowRoom = (await sb.from('rooms').select('day, status').eq('id', roomId).maybeSingle()).data as { day: number; status: string } | null;
         if (nowRoom && (nowRoom.day !== row.day || nowRoom.status !== 'playing')) {
           await sb.from('augments').delete().eq('player_id', playerId).eq('n', row.n).eq('action', row.action).eq('aug', row.aug).eq('day', row.day);
           throw new GameError('오늘 장이 끝났어요. 증강은 자동으로 정해졌어요.', 409);
-        }
-      }
-      if (undo) {
-        const ins = await sb.from('trades').insert({ room_id: roomId, ...undo });
-        if (ins.error) {
-          // 반대 거래가 안 들어가면 증강 쓰기도 없던 일로
-          await sb.from('augments').delete().eq('player_id', playerId).eq('action', 'use').eq('aug', 'undo');
-          must(ins, 'undo trade');
         }
       }
       return { ok: true };
@@ -1632,7 +1689,9 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const d = await loadGame(roomId);
       const id = validateCancelOrder(d, playerId, Date.now(), b);
       await bumpPlayer(d, playerId);
-      must(await sb.from('orders').update({ status: 'cancelled' }).eq('id', id).eq('status', 'open'), 'cancel');
+      const cancelled = must(await sb.from('orders').update({ status: 'cancelled' }).eq('id', id).eq('status', 'open').select('id'), 'cancel');
+      // 같은 순간 체결이 먼저 됐으면 취소된 척하지 않음
+      if (!cancelled.length) throw new GameError('이미 체결됐거나 끝난 예약이에요.', 409);
       return { ok: true };
     }
 
@@ -1644,13 +1703,8 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       const d = await loadGame(roomId);
       const { day } = validateEndTurn(d, playerId, Date.now());
       await bumpPlayer(d, playerId, { ended_day: day });
-      let fresh = await loadGame(roomId);
-      if (await moveBots(fresh)) fresh = await loadGame(roomId);
-      if (!(await maybeAdvance(fresh))) {
-        // 마감 인원이 기준에 닿으면 카운트다운(1대1 90초, 3인 이상 ⅔ 마감 시 30초) — 더 이를 때만 당김
-        const grace = graceDeadline(fresh, Date.now());
-        if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
-      }
+      // 마감 인원이 기준에 닿으면 카운트다운(1대1 90초, 3인 이상 ⅔ 마감 시 30초) — 더 이를 때만 당김
+      await settleDeadline(roomId);
       await touchRoom(roomId);
       return { ok: true };
     }
@@ -1676,9 +1730,7 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
       cancelAt.set(playerId, Date.now());
       if (cancelAt.size > 5000) cancelAt.clear();
       // 마감 인원이 기준 아래로 내려가면 카운트다운을 멈추고 원래 마감 시각으로
-      const fresh = await loadGame(roomId);
-      const back = restoreDeadline(fresh);
-      if (back !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(back) }, 'restore');
+      await settleDeadline(roomId);
       await touchRoom(roomId);
       return { ok: true };
     }
@@ -2141,25 +2193,32 @@ async function leaveSeat(roomId: string, playerId: string): Promise<{ ok: true }
   const room = must(await sb.from('rooms').select('status, host_id').eq('id', roomId).single(), 'room') as { status: string; host_id: string };
   if (room.status === 'playing') {
     // 게임 중 나가기 = 기권: 기록·순위는 남고, 남은 사람들은 더 이상 기다리지 않음
-    const d = await loadGame(roomId);
-    const patch = validateLeave(d, playerId);
-    // 오늘의 도전: 중간에 나가면 지금 재산으로 기록하고 그날 기회는 끝 (자리 갱신이 된 뒤에 기록 — 아래)
+    // 기권도 자리 버전을 올림 — 같은 순간 들어온 거래가 기권 전 데이터로 검증을 통과해 기권 뒤에 들어가지 않게 (겹치면 새 데이터로 다시)
+    let d = await loadGame(roomId, true);
+    let patch = validateLeave(d, playerId);
+    let res: { error: { message: string } | null; data: unknown } = { error: null, data: null };
+    for (let i = 0; i < 3; i++) {
+      const me = d.players.find((p) => p.id === playerId)!;
+      res = await sb.from('players').update({ ...patch, version: me.version + 1, updated_at: new Date().toISOString() }).eq('id', playerId).eq('version', me.version).select('id');
+      if (res.error || ((res.data as unknown[] | null) ?? []).length) break;
+      d = await loadGame(roomId, true);
+      patch = validateLeave(d, playerId);
+    }
+    if (!res.error && !((res.data as unknown[] | null) ?? []).length) throw new GameError('동시에 여러 요청이 들어왔어요. 다시 해 주세요.', 409);
+    // 오늘의 도전: 중간에 나가면 지금 재산으로 기록하고 그날 기회는 끝 — 기권한 그 데이터 기준
     const dailyRet = d.room.kind === 'daily' ? (() => {
       const meNow = buildView(d, playerId, Date.now()).players.find((p) => p.id === playerId);
       return meNow ? meNow.equity / startCashFor(d.room.version) - 1 : null;
     })() : null;
-    let res = await sb.from('players').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', playerId);
     // 050(left_day) 적용 전이면 그 칸만 빼고
     if (res.error && /left_day/.test(res.error.message)) res = await sb.from('players').update({ left_game: true, ended_day: patch.ended_day, updated_at: new Date().toISOString() }).eq('id', playerId);
     if (res.error && /left_game/.test(res.error.message)) must(await sb.from('players').update({ ended_day: patch.ended_day }).eq('id', playerId), 'leave');
     else must(res, 'leave');
     if (dailyRet !== null) await recordDaily(roomId, dailyRet, d.trades.length);
-    let fresh = await loadGame(roomId);
-    if (await moveBots(fresh)) fresh = await loadGame(roomId);
-    if (!(await maybeAdvance(fresh))) {
-      const grace = graceDeadline(fresh, Date.now());
-      if (grace !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(grace) }, 'grace');
-      // (v7) 장 전: 남은 사람이 모두 준비 완료였으면 바로 장을 엶
+    await settleDeadline(roomId);
+    // (v7) 장 전: 남은 사람이 모두 준비 완료였으면 바로 장을 엶
+    const fresh = await loadGame(roomId);
+    if (fresh.room.status === 'playing') {
       const open = preAllReadyDeadline(fresh, Date.now());
       if (open !== null) await updatePlayingRoom(roomId, fresh.room.day, { turn_deadline: iso(open), day_deadline: iso(open) }, 'preopen');
     }
