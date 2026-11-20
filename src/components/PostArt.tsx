@@ -2,7 +2,7 @@
  * 개미폰 SNS·방송 글에 붙는 그림 — 이 게임에서 직접 그린 단순한 장면(외부 사진 없음).
  * 장면·하늘·색은 글 내용 해시와 공개된 값(업종·호재/악재)으로만 고름 → 같은 글은 늘 같은 그림, 그림으로 진위가 보이지 않음.
  */
-import { useId } from 'react';
+import { memo, useId } from 'react';
 import { SectorIcon } from './Icon';
 
 export type ArtScene = 'chart' | 'factory' | 'tower' | 'meeting' | 'product' | 'broadcast' | 'ant';
@@ -46,7 +46,9 @@ const SKIES = [
   ['#141824', '#2b2440'], // 밤
 ];
 
-export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; text: string; sector: string; tone: 'good' | 'bad' }; ratio?: 'wide' | 'square'; only?: ArtScene[]; label?: string }) {
+type ArtProps = { p: { id: string; text: string; sector: string; tone: 'good' | 'bad' }; ratio?: 'wide' | 'square'; only?: ArtScene[]; label?: string };
+
+function PostArtView({ p, ratio = 'wide', only, label }: ArtProps) {
   const { scene, sky, seed } = pickArt(p, only);
   const uid = useId().replace(/:/g, '');
   const W = 160;
@@ -224,3 +226,6 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
     </figure>
   );
 }
+
+/** 장중엔 화면이 1초마다 새로 그려짐 — 그림을 고르는 값이 같으면 다시 그리지 않음 */
+export const PostArt = memo(PostArtView, (a, b) => a.p.text === b.p.text && a.p.sector === b.p.sector && a.p.tone === b.p.tone && a.ratio === b.ratio && a.label === b.label && (a.only ?? []).join() === (b.only ?? []).join());
