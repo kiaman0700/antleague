@@ -48,3 +48,6 @@
 
 ## 개인정보처리방침 주소
 https://antleague.vercel.app/privacy (이용약관: /terms)
+
+## 대표 그림
+design/store/feature-graphic.png (1024×500, 다시 만들기: node scripts/__feature.mjs — 시험 스크립트라 커밋 안 함)
