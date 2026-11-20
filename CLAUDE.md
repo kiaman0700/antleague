@@ -300,6 +300,17 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 주석은 '왜'만 — 사용자 요청·날짜·조사 이야기는 주석에 쓰지 않음(사용자 지시). 검사 도구: 스크래치 samecode.mjs(주석 뺀 코드 비교)
 - 조사는 쉬지 않고 이어서(조사 담당이 끝나면 다음 조사를 바로 띄움). 오늘 조사한 것: 연속 기록·동시 접속·빠른 참가·임시 닉네임·테마, 화면 세부·국내 모의투자, 매칭·부계정·점수 공개·리그·법, 첫 10분·지는 사람·웹 푸시·접근성, 보안 점검표, 성능·느린 망, 테마 실제 규칙, 결과·복기, 봇 설계, 소셜, 쉬운 말
 
+## 정식 출시 준비 (2026-11-20, design/launch-plan.md · launch-report.md)
+- 출시 플랫폼: 웹 + 설치형 웹앱(PWA)으로 먼저, 다음은 구글 플레이(TWA — 같은 웹을 감쌈, 순서 design/google-play-twa.md). 스팀·앱스토어는 지금은 안 함
+- 서비스 워커 `public/sw.js`: 화면 이동이 인터넷 실패일 때만 `offline.html` 안내 화면(늘 no-store 로 받음 — 브라우저 보관본 index.html 로 로딩에서 멈추던 것). 게임 코드·데이터는 저장 안 함. 배포본에서만 등록(main.tsx), vercel.json 에 sw.js no-cache. 시험은 Playwright setOffline 이 서비스 워커 요청엔 안 먹어서 미리보기 서버를 실제로 끄고 확인
+- 매니페스트: 바로가기 3개·분류·스크린샷(public/brand/screens, 다시 찍기 scripts/__richshots.mjs·__storeshots.mjs — 시험 스크립트라 커밋 안 함). 스토어 자료 design/store-listing.md·design/store/feature-graphic.png, 수익 구조 design/monetization.md(꾸미기만·확률형 없음·광고 없음)
+- /privacy · /terms 주소(로비 페이지, 본문은 Legal.tsx lazy)
+- 사운드 2판: `src/lib/music.ts` 배경 음악 합성(장면 off/lobby/pre/market/tense — 로비·대기실은 lobby, 게임은 장 전·결산 pre·장중 market·카운트다운 tense·결과 off), 화면이 뒤로 가면 멈춤, 큰 효과음 땐 잠깐 작게(`sfxduck`), 장 열림 종소리 'open'. 효과음·음악 음량 따로(stockduel.sfxVol·stockduel.music·stockduel.musicVol), 설정 '배경 음악'·크기 막대, 게임 안 소리 버튼은 둘 다. sound.ts `audio()` 가 소리 장치·효과음 줄·음악 줄을 함께 줌, 아이폰 audioSession 'ambient'
+- 처음 온 사람 시작 창: '바로 시작하기'(게스트)가 주 버튼, 게스트·회원 차이표는 접어 둠, 닉네임은 무작위 이름으로 미리 채움(`randomGuestName`). 저장된 로그인이 없는 기기는 처음부터 status 'visitor'(account.ts) — 세션 확인을 기다리지 않음
+- 게임 코드 미리 받기(App.tsx)는 글꼴을 다 받고 한가할 때만, 데이터 절약·2G/3G 는 안 함. 공지 띠는 목록을 받기 전 같은 높이 빈 띠로 자리를 잡음(느린 망 CLS 0.048→0.003)
+- 개발 서버(vite.config.ts)는 시험 표시가 없는 요청에만 시험 표시를 붙임(가짜 표시 거절 e2e testkey 가 로컬에서도 통과)
+- 시험 스크립트에 `timeout N` 을 걸면 그 시각에 브라우저가 통째로 꺼져 Playwright 가 'Target crashed' 를 냄 — 게임 버그로 착각하지 말 것(2026-11-20 튜토리얼 뒤 '멈춤'이 이것)
+
 ## 튜토리얼 2판 (2026-11-20)
 - 게임 기초 단계 16 → 10 (읽기만 하던 내 재산·커뮤니티·차트·내 보유·내 증강·순위를 합치거나 뺌, 직접 해 보는 단계는 그대로). 말풍선은 할 일 먼저 한 문장, 단계 숫자 대신 진행 막대
 - 단계별 이탈 기록(DB 069 `tutorial_steps` 날짜·단계·사건 숫자만, `tutorial_step_hit` 서버 전용): 화면이 `tutorialStep {step, ev: show|quit|done}`, 시험 계정은 안 셈. 보기 `npm run db -- tutorial [일수]`
