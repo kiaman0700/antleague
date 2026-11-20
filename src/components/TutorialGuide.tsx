@@ -83,10 +83,13 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: '소식 진위 보기',
     text: (c) =>
       c.augId === 'verdict1'
-        ? "'증강' 칸에서 '소식 진위 보기'를 누르고 확인할 소식을 골라 보세요."
+        ? c.mobile
+          ? "'증강' 칸에서 '소식 진위 보기'를 누르고 확인할 소식을 골라 보세요."
+          : "오른쪽 아래 '내 증강'을 열고 '소식 진위 보기'를 누른 뒤 확인할 소식을 골라 보세요."
         : "고른 증강은 '증강' 칸에 있어요. 실제 대결에서는 이렇게 정해진 날마다 하나씩 더 골라요.",
-    target: '.aug-panel',
-    pulse: (c) => (c.augId === 'verdict1' && !c.detectorUsed ? '.aug-uses button' : ''),
+    // PC 는 증강 칸이 오른쪽 아래 '내 증강' 줄(누르면 서랍)로 접혀 있음 → 그 줄을 비추고 깜빡임
+    target: '.aug-panel, .aug-strip',
+    pulse: (c) => (c.augId === 'verdict1' && !c.detectorUsed ? '.aug-uses button, .desk .aug-strip' : ''),
     tab: 'cards',
     wait: (c) => c.augId !== 'verdict1' || c.detectorUsed,
     waitHint: "'소식 진위 보기'를 누르고 소식 하나를 골라 보세요",
@@ -172,8 +175,10 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
   useEffect(() => {
     if (!pulseSel) return;
     const mark = () => {
-      const el = document.querySelector<HTMLElement>(pulseSel);
-      if (el && !el.classList.contains('tut-pulse')) el.classList.add('tut-pulse');
+      // 여러 곳일 수 있음 (PC: 접힌 '내 증강' 줄과 열린 서랍 안 버튼)
+      document.querySelectorAll<HTMLElement>(pulseSel).forEach((el) => {
+        if (el.offsetParent !== null && !el.classList.contains('tut-pulse')) el.classList.add('tut-pulse');
+      });
     };
     mark();
     // 눌러야 할 것이 화면 밖(작은 휴대폰에서 아래 메뉴 밑)에 있으면 한 번 가운데로 — 강조할 칸 스크롤이 끝난 뒤에

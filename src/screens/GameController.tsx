@@ -760,7 +760,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const useAug = (kind: string, given?: Record<string, string>) => {
     let payload: Record<string, string> = { ...(given ?? {}) };
     if (kind === 'scout' && !payload.symbol) payload = { ...payload, symbol: selected };
-    if (kind === 'detector' && !payload.pick) return setDetectorPick(true);
+    // 고르기 창은 서랍(내 증강)보다 아래 층이라 서랍을 먼저 닫음 (PC 에서 창 오른쪽이 서랍에 가려 누를 수 없었음)
+    if (kind === 'detector' && !payload.pick) return setDrawer(null), setDetectorPick(true);
     run('useAug', { kind, payload }, () => {
       play('item');
       if (kind === 'undo') return showToast('그 거래를 없던 일로 했어요. 수수료도 돌려받아요');
@@ -800,7 +801,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     // (v14) 오늘 이미 다른 정보 카드를 썼으면 고르기 창을 열지 않고 바로 알림
     const limit = infoLimitReason(view?.room.rulesVersion ?? 1, kind, usedToday);
     if (limit) return showToast(limit, 'warn');
-    if (kind === 'detector' && (view?.room.rulesVersion ?? 1) >= 14 && !payload.pick) return setDetectorPick(true);
+    if (kind === 'detector' && (view?.room.rulesVersion ?? 1) >= 14 && !payload.pick) return setDrawer(null), setDetectorPick(true);
     if (kind === 'fake' && !payload.symbol) {
       setFakeTarget(payload.target ?? null);
       return setFakeModal(true);
