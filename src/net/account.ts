@@ -76,7 +76,16 @@ export interface SkillInfo {
   older: SkillSummary | null;
 }
 
-let state: AccountState = { status: 'loading', profile: null, recent: [], badges: {} };
+/** 이 기기에 저장된 로그인(세션)이 아예 없으면 처음부터 '둘러보기'로 — 서버·세션 확인을 기다리지 않고 환영 창을 바로 (느린 휴대폰 첫 화면) */
+function noStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) if (/^sb-.*-auth-token$/.test(localStorage.key(i) ?? '')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+let state: AccountState = { status: supabase && noStoredSession() ? 'visitor' : 'loading', profile: null, recent: [], badges: {} };
 const subs = new Set<() => void>();
 const set = (s: AccountState) => {
   state = s;
