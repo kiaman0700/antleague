@@ -134,3 +134,7 @@
 @media (prefers-reduced-motion: reduce) { .ap-banner, .ap-shade { animation: none; } .ap-ic { transition: none; } }
 .antphone .news-only-h { display: none; }
 .ap-onair { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: #e5484d; vertical-align: 1px; }
+.ap-focus { animation: apFocus 1.8s ease-out; }
+@keyframes apFocus { 0%, 40% { background: rgba(107, 88, 238, .22); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ap-focus { animation: none; outline: 2px solid #8b7bff; outline-offset: -2px; } }
+.antphone .cf-stats { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }

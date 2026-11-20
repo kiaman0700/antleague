@@ -10,6 +10,7 @@ import { SECTOR_MAP, STOCK_MAP } from '../game/stocks';
 import { Icon, SectorIcon } from './Icon';
 import { PlatformIcon, prePostsOf } from './CommunityFeed';
 import { artHash, PostArt } from './PostArt';
+import { play } from '../lib/sound';
 
 export type PhoneApp = 'news' | Platform | 'settings';
 const APP_ORDER: PhoneApp[] = ['news', 'square', 'board', 'chirp', 'feedgram', 'talk', 'live', 'settings'];
@@ -94,6 +95,8 @@ export function AntPhone(p: Props) {
   const [seen, setSeen] = useState(() => loadSeen(seenKey));
   const [shade, setShade] = useState(false);
   const [banner, setBanner] = useState<Item | null>(null);
+  // 알림을 눌러 열었으면 그 글로 스크롤하고 잠깐 강조
+  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // 앱마다 오늘 소식
   const items = useMemo(() => {
@@ -127,7 +130,10 @@ export function AntPhone(p: Props) {
     const fresh = items.filter((x) => !known.current!.has(x.key));
     for (const x of fresh) known.current.add(x.key);
     const show = fresh.filter((x) => notifOn(notif, x.app) && x.app !== app).sort((a, b) => b.at - a.at)[0];
-    if (show) setBanner(show);
+    if (show) {
+      setBanner(show);
+      play('noti');
+    }
   }, [items, notif, app]);
   useEffect(() => {
     if (!banner) return;
@@ -135,11 +141,26 @@ export function AntPhone(p: Props) {
     return () => clearTimeout(t);
   }, [banner]);
 
-  const open = (a: PhoneApp) => {
+  const open = (a: PhoneApp, key?: string) => {
     setShade(false);
     setBanner(null);
     setApp(a);
+    setFocusKey(key ?? null);
   };
+  const rootRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!focusKey) return;
+    const t = setTimeout(() => {
+      const el = rootRef.current?.querySelector<HTMLElement>(`[data-k="${CSS.escape(focusKey)}"]`);
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.classList.add('ap-focus');
+        setTimeout(() => el.classList.remove('ap-focus'), 1800);
+      }
+      setFocusKey(null);
+    }, 120);
+    return () => clearTimeout(t);
+  }, [focusKey, app]);
   const back = () => !p.lockApp && setApp(null);
 
   // 상태 줄을 끌어내리면 알림 모음
@@ -234,11 +255,11 @@ export function AntPhone(p: Props) {
   })();
 
   return (
-    <section className={'antphone' + (p.framed ? ' framed' : '')} aria-label="개미폰 — 소식">
+    <section ref={rootRef} className={'antphone' + (p.framed ? ' framed' : '')} aria-label="개미폰 — 소식">
       <div className="ap-screen">
         {statusBar}
         {banner && (
-          <button type="button" className="ap-banner" onClick={() => open(banner.app)} aria-live="polite">
+          <button type="button" className="ap-banner" onClick={() => open(banner.app, banner.key)} aria-live="polite">
             <AppIcon id={banner.app} small />
             <span>
               <b>
@@ -270,7 +291,7 @@ export function AntPhone(p: Props) {
               <ul>
                 {shadeList.map((x) => (
                   <li key={x.key}>
-                    <button type="button" className={'ap-noti' + (seen.has(x.key) ? '' : ' unread')} onClick={() => open(x.app)}>
+                    <button type="button" className={'ap-noti' + (seen.has(x.key) ? '' : ' unread')} onClick={() => open(x.app, x.key)}>
                       <AppIcon id={x.app} small />
                       <span>
                         <b>
@@ -377,7 +398,7 @@ function PlatformApp({ app, day, daySec, items, past, live, onSelect, onSelectSe
       case 'square':
       case 'board':
         return (
-          <li key={x.key} className="ap-row">
+          <li key={x.key} data-k={x.key} className="ap-row">
             <p className="ap-row-t">{post.text}</p>
             <div className="ap-row-m">
               {author(post)} <span className="muted">{t}</span> {stats(post)}
@@ -388,7 +409,7 @@ function PlatformApp({ app, day, daySec, items, past, live, onSelect, onSelectSe
         );
       case 'chirp':
         return (
-          <li key={x.key} className="ap-chirp">
+          <li key={x.key} data-k={x.key} className="ap-chirp">
             <span className="ap-av" aria-hidden>{post.author.slice(0, 1)}</span>
             <div>
               <div className="ap-row-m">
@@ -405,7 +426,7 @@ function PlatformApp({ app, day, daySec, items, past, live, onSelect, onSelectSe
         );
       case 'feedgram':
         return (
-          <li key={x.key} className="ap-gram">
+          <li key={x.key} data-k={x.key} className="ap-gram">
             <div className="ap-gram-h">
               <span className="ap-av" aria-hidden>{post.author.slice(0, 1)}</span>
               {author(post)} <span className="muted">{t}</span>
@@ -421,7 +442,7 @@ function PlatformApp({ app, day, daySec, items, past, live, onSelect, onSelectSe
         );
       case 'talk':
         return (
-          <li key={x.key} className="ap-talk">
+          <li key={x.key} data-k={x.key} className="ap-talk">
             <span className="ap-av" aria-hidden>{post.author.slice(0, 1)}</span>
             <div>
               {author(post)}
@@ -436,7 +457,7 @@ function PlatformApp({ app, day, daySec, items, past, live, onSelect, onSelectSe
         );
       case 'live':
         return (
-          <li key={x.key} className="ap-livechat">
+          <li key={x.key} data-k={x.key} className="ap-livechat">
             {author(post)} <span className="ap-livechat-t">{post.text}</span> <small className="muted">{t}</small>
             <div className="ap-row-f">{tag(post)}</div>
             {stamp(post)}

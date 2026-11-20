@@ -523,7 +523,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
       )}
       {/* 장중 속보는 그날 장이 끝날 때까지 맨 위에 (최신 속보부터), 그다음 새로 들어온 기사 */}
       {[...today].sort((a, b) => Number(b.at !== undefined) - Number(a.at !== undefined) || (b.at ?? 0) - (a.at ?? 0) || Number(isFresh(b)) - Number(isFresh(a))).map((n, i) => (
-        <div key={n.day + n.headline} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
+        <div key={n.day + n.headline} data-k={`n:${n.day}:${n.headline}`} className={'news-card ' + n.tone + (isFresh(n) ? ' fresh' : '') + (n.at !== undefined ? ' breaking' : '')}>
           <div className="news-meta">
             {n.at !== undefined && <span className="breaking-badge">{n.label === '시황' ? '장중 시황' : n.rumor ? '장중 소문' : '장중 속보'}{daySec ? ` · ${gameTime(n.at, daySec)}` : ''}</span>}
             {isFresh(n) && <span className="new-badge">새 기사</span>}

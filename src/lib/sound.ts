@@ -1,7 +1,7 @@
 import { loadMute, saveMute } from '../session';
 
 /** 외부 파일 없이 WebAudio 로 합성하는 효과음 (배경 음악은 music.ts — 같은 소리 장치를 씀) */
-type Sfx = 'buy' | 'sell' | 'news' | 'close' | 'item' | 'attack' | 'blocked' | 'win' | 'lose' | 'react' | 'tap' | 'error' | 'open' | 'tick';
+type Sfx = 'buy' | 'sell' | 'news' | 'close' | 'item' | 'attack' | 'blocked' | 'win' | 'lose' | 'react' | 'tap' | 'error' | 'open' | 'tick' | 'noti';
 
 let ctx: AudioContext | null = null;
 /** 모든 소리가 거쳐 가는 전체 음량 — 여러 소리가 겹쳐도 한꺼번에 너무 커지지 않게 */
@@ -167,6 +167,11 @@ export function play(s: Sfx) {
         break;
       case 'error':
         tone(200, 0, 0.15, 'square', 0.05);
+        break;
+      case 'noti':
+        // 개미폰 알림: 짧고 작은 두 음
+        tone(1568, 0, 0.07, 'sine', 0.05);
+        tone(2093, 0.08, 0.1, 'sine', 0.04);
         break;
       case 'tick':
         // 장 마감 직전 똑딱 (아주 짧고 작게)
