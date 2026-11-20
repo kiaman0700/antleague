@@ -1864,7 +1864,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </>
           )}
           {tab === 'news' &&
-            (session.tutorial ? (
+            (session.tutorial || editing ? (
               <>
                 {effectsOnMe.map((t, i) => (
                   <div key={i} className="effect-banner">
