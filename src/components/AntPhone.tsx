@@ -207,6 +207,25 @@ export function AntPhone(p: Props) {
   }, [p.lockApp]);
   const [notif, setNotif] = useState(loadNotif);
   const [wall, setWall] = useState(loadWall);
+  // 휴대폰을 처음 올렸을 때 한 번: 내리는 법·알림 모음 여는 법
+  const [hint, setHint] = useState(() => {
+    if (p.mode !== 'full') return false;
+    try {
+      return !localStorage.getItem('stockduel.phoneHint');
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (!hint) return;
+    try {
+      localStorage.setItem('stockduel.phoneHint', '1');
+    } catch {
+      /* 저장 못 하면 다음에 한 번 더 보임 */
+    }
+    const t = setTimeout(() => setHint(false), 7000);
+    return () => clearTimeout(t);
+  }, [hint]);
   const [seen, setSeen] = useState(() => loadSeen(seenKey));
   const [shade, setShade] = useState(false);
   const [banner, setBanner] = useState<Item | null>(null);
@@ -505,6 +524,12 @@ export function AntPhone(p: Props) {
     <section ref={rootRef} className={'antphone m-' + p.mode} aria-label="개미폰">
       <div className={'ap-screen' + (app ? '' : ' wp-' + wall)}>
         {lowerBar}
+        {hint && (
+          <button type="button" className="ap-hintpop" onClick={() => setHint(false)}>
+            <b>개미폰이에요</b>
+            <span>뉴스·피드·내 주식·증강을 여기서 봐요. 시세 화면으로 가려면 위 '내리기'를 누르거나 아래로 쓸어요.</span>
+          </button>
+        )}
         {statusBar}
         {banner && (
           <button type="button" className="ap-banner" onClick={() => open(banner.app, banner.key)} aria-live="polite">

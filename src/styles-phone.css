@@ -266,3 +266,8 @@
 @media (prefers-reduced-motion: reduce) { .ap-peek { animation: none; } }
 /* 개미폰을 올렸을 때 화면 아래 알약(증강 선택 열기·진행 중)이 앱 독을 가리지 않게 위로 */
 body:has(.ap-layer) .aug-pill { bottom: calc(var(--m-nav-h, 64px) + 124px + env(safe-area-inset-bottom)); }
+/* 처음 올렸을 때 한 번 뜨는 안내 */
+.ap-hintpop { position: absolute; z-index: 8; left: 10px; right: 10px; top: 58px; display: grid; gap: 3px; padding: 12px 14px; border-radius: 16px; border: 1px solid #5b4bd6; background: #241f3d; color: #ece9ff; text-align: left; font: inherit; box-shadow: 0 10px 26px rgba(0,0,0,.5); cursor: pointer; animation: apDrop .28s cubic-bezier(.2,.8,.2,1); }
+.ap-hintpop b { font-size: 14px; }
+.ap-hintpop span { font-size: 13px; line-height: 1.5; color: #d6d1ff; }
+@media (prefers-reduced-motion: reduce) { .ap-hintpop { animation: none; } }
