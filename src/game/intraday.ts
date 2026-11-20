@@ -232,7 +232,11 @@ function fineTicks(
   const trend: number[] = [];
   const dev: number[] = [];
   for (let j = 0; j <= n; j++) {
-    trend.push(lo + warp(j / n, at, jump, quiet) * (lc - lo));
+    // (v30) 흐름이 속보와 반대인 날: 속보 순간 속보 쪽으로 튀었다가 점점 원래 흐름으로
+    const f = j / n;
+    const spike = bar.spike && at !== null && f >= at ? bar.spike * Math.exp(-(f - at) / 0.12) * (1 - f) : 0;
+    // 그런 날은 속보 순간 반대쪽으로 크게 뛰는 몫(jump)은 빼고, 원래 흐름은 속보 뒤 천천히
+    trend.push(lo + warp(f, at, bar.spike ? 0 : jump, quiet) * (lc - lo) + spike);
     const common = flow ? flow.beta * flow.mk[j] + flow.sb * flow.sf[j] : 0;
     dev.push(common + (w[j] - (j / n) * w[n]) * idioAmp);
   }

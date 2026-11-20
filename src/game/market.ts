@@ -52,6 +52,9 @@ export interface NewsEvent {
 export type NewsRel = 'link' | 'peer' | 'rival' | 'chain' | 'etf';
 export type NewsLabel = '속보' | '단독' | '시황' | '특징주' | '해외';
 
+/** 속보 순간 속보 쪽으로 먼저 움직임 (intraday.ts 와 함께) */
+export const NEWS_SPIKE_VERSION = 30;
+
 export interface Bar {
   open: number;
   close: number;
@@ -61,6 +64,8 @@ export interface Bar {
   path: number[];
   /** (v23, 서버 전용) 장중 속보 종목의 흔들림 크기 — 일봉 범위를 넓히기 전 값 (화면 데이터에는 안 보냄) */
   span?: number;
+  /** (v30, 서버 전용) 그날 흐름이 속보와 반대인 날, 속보 순간 속보 쪽으로 잠깐 튀는 크기(로그, +는 위) */
+  spike?: number;
 }
 
 export interface Macro {
@@ -980,6 +985,39 @@ export function generateMarket(seed: number, totalDays: number, version = 1, sal
         b.span = span;
         b.high = Math.max(b.high, Math.min(capUp, round(b.open * Math.exp(span / 2))));
         b.low = Math.min(b.low, Math.max(capDn, round(b.open * Math.exp(-span / 2))));
+      }
+    }
+  }
+  // (v30) 장중 속보인데 그날 흐름(시가→종가)이 속보와 반대면, 속보 순간 가격이 반대로 뛰어 '나쁜 속보에 급등'처럼 보였음
+  //   → 속보 순간엔 속보 쪽으로 잠깐 튀었다가(1.5~3.5%) 원래 흐름으로 (재료 소멸·되돌림처럼). 시가·종가는 그대로, 고가·저가만 그만큼 넓힘
+  if (version >= NEWS_SPIKE_VERSION) {
+    const done = new Set<string>();
+    for (const nw of news) {
+      if (nw.day >= totalDays || !nw.symbol || nw.at == null || nw.fake || nw.rumor || nw.label === '시황') continue;
+      const k = nw.symbol + ':' + nw.day;
+      if (done.has(k)) continue;
+      done.add(k);
+      const def = STOCK_MAP[nw.symbol];
+      if (!def || (def.etf && (def.etf.track.type === 'basket' || def.etf.track.type === 'index'))) continue;
+      const krwRound = def.etf ? (v: number) => Math.max(5, Math.round(v / 5) * 5) : roundPrice;
+      // 가격 난수와 섞이지 않게 고정 해시로 크기를 정함 (같은 판이면 서버·화면이 같은 값)
+      let h = (seed ^ 0x9e3779b9) >>> 0;
+      for (const ch of k) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+      const size = 0.015 + 0.02 * (h / 0xffffffff);
+      for (const [arr, round, base0] of [
+        [bars[nw.symbol], krwRound, base[nw.symbol]],
+        [usd[nw.symbol], roundUsd, baseUsd[nw.symbol]],
+      ] as [Bar[] | undefined, (v: number) => number, number | undefined][]) {
+        const b = arr?.[nw.day];
+        if (!b) continue;
+        const up = nw.tone === 'good';
+        if (up ? b.close > b.open : b.close < b.open) continue;
+        const prev = nw.day > 0 ? arr![nw.day - 1].close : (base0 ?? b.open);
+        const capUp = arr === usd[nw.symbol] ? prev * 1.5 : prev * LIMIT_UP;
+        const capDn = arr === usd[nw.symbol] ? prev * 0.5 : prev * LIMIT_DOWN;
+        b.spike = up ? size : -size;
+        if (up) b.high = Math.max(b.high, Math.min(capUp, round(b.open * Math.exp(size))));
+        else b.low = Math.min(b.low, Math.max(capDn, round(b.open * Math.exp(-size))));
       }
     }
   }
