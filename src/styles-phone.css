@@ -218,3 +218,7 @@
   .antphone.m-full .ap-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .antphone.m-full .ap-hint { display: none; }
 }
+.ap-w-sched { cursor: default; margin-top: 18px; }
+.ap-w-sched:hover { background: rgba(255,255,255,.06); }
+.ap-w-sched .calendar { display: grid; gap: 6px; margin: 4px 0 0; }
+.ap-w-sched .cal-row { margin: 0; padding: 8px 0 0; border: 0; border-top: 1px solid rgba(255,255,255,.07); background: none; border-radius: 0; }

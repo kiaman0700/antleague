@@ -110,6 +110,8 @@ interface Props {
   /** 오늘 고를 차례 등 눌러 볼 일이 있음 */
   augAlert?: boolean;
   wallet: PhoneWallet;
+  /** 홈 화면 '다가오는 일정' 위젯 안 (없으면 위젯 없음) */
+  schedule?: ReactNode;
   /** 나에게 걸린 효과 알림 (홈 화면 위 카드) */
   alerts?: ReactNode[];
   onSelect: (s: string) => void;
@@ -331,6 +333,14 @@ export function AntPhone(p: Props) {
               );
             })}
           </ul>
+          {p.schedule && (
+            <section className="ap-w ap-w-sched" aria-label="다가오는 일정">
+              <span className="ap-w-h">
+                <Icon name="calendar" size={15} /> 다가오는 일정
+              </span>
+              {p.schedule}
+            </section>
+          )}
           <p className="ap-hint">위 상태 줄을 내리면 알림이 모여 있어요</p>
         </div>
       );

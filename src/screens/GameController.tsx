@@ -1296,6 +1296,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       augWidget={view.aug ? <AugSlots aug={view.aug} size={22} /> : <span className="ap-w-sub">카드 {view.myItems.total}장</span>}
       augAlert={!!view.aug?.offer}
       wallet={phoneWallet}
+      schedule={m.events.some((e) => e.day >= day) ? <Calendar market={m} day={day} compact hideTitle onSelect={selectStock} /> : undefined}
       alerts={mode === 'full' ? effectsOnMe : undefined}
       onSelect={selectStock}
       onSelectSector={selectSector}
