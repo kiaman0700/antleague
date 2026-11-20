@@ -2,7 +2,7 @@
  * 환영 창 (design/onboarding.md): 처음 온 사람·둘러보기 중인 사람이 '하는' 버튼을 누를 때.
  * 게스트로 시작(닉네임) / 로그인 / 회원가입, 게스트는 '이어하기 코드로 불러오기'
  */
-import { nickNotice } from '../game/nickname';
+import { nickNotice, randomGuestName } from '../game/nickname';
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { useDialogFocus, useEscape } from './ui';
@@ -39,7 +39,8 @@ export function Welcome({
     const c = new URLSearchParams(location.search).get('room')?.toUpperCase() ?? '';
     return /^[A-Z0-9]{6}$/.test(c) ? c : '';
   });
-  const [nick, setNick] = useState(loadNick());
+  // 처음 온 사람은 닉네임을 바로 떠올리기 어려움 → 무작위 이름을 채워 두고 고칠 수 있게
+  const [nick, setNick] = useState(() => loadNick() || randomGuestName((n) => Math.floor(Math.random() * n)));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -83,60 +84,63 @@ export function Welcome({
         </button>
         {step === 'intro' ? (
           <>
-            <h3>
-              어떻게 시작할까요?
-            </h3>
+            <h3>개미리그에 온 걸 환영해요</h3>
             {/* 친구가 보낸 초대 링크(?room=코드)로 왔으면: 왜 이 창이 떴는지 먼저 */}
-            {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작 방법을 골라 주세요. 고르면 그 방으로 들어갈 수 있어요.</p>}
-            <p className="muted small">회원가입은 무료예요. 아이디·비밀번호·닉네임만 받고 이메일·전화번호는 받지 않아요.</p>
-            <table className="gs-compare">
-              <thead>
-                <tr>
-                  <th />
-                  <th>게스트</th>
-                  <th className="gs-member">회원</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>일반전·커스텀</td>
-                  <td className="y">가능</td>
-                  <td className="y">가능</td>
-                </tr>
-                <tr>
-                  <td>랭킹전·랭킹</td>
-                  <td className="n">안 돼요</td>
-                  <td className="y">가능</td>
-                </tr>
-                <tr>
-                  <td>다른 기기에서</td>
-                  <td className="n">이어하기 코드로</td>
-                  <td className="y">아이디로 로그인하면 그대로</td>
-                </tr>
-                <tr>
-                  <td>닉네임</td>
-                  <td className="n">다른 게스트와 겹칠 수 있고, 회원이 같은 닉네임을 쓰면 바뀌어요</td>
-                  <td className="y">나만 쓰는 닉네임 · 고를 수 있는 개미 사진</td>
-                </tr>
-                <tr>
-                  <td>기록 보관</td>
-                  <td className="n">사흘 동안 활동이 없으면 자동 삭제</td>
-                  <td className="y">탈퇴할 때까지 보관</td>
-                </tr>
-              </tbody>
-            </table>
+            {inviteCode && <p className="gs-invite">친구가 보낸 방(코드 {inviteCode})에 들어가려면 먼저 시작해 주세요. 시작하면 그 방으로 들어가요.</p>}
+            <p className="gs-pitch">같은 시장, 같은 뉴스로 겨루는 모의 주식 대결이에요. 진짜 돈은 쓰지 않아요.</p>
+            {/* 먼저 해 보고, 가입은 나중에 — 처음 온 사람이 표부터 읽지 않게 */}
             <div className="gs-actions">
-              <button className="btn primary full" onClick={onSignup}>
+              <button className="btn primary full" onClick={() => setStep('nick')}>
+                바로 시작하기
+              </button>
+              <button className="btn full" onClick={onSignup}>
                 <Icon name="userPlus" size={16} /> 회원가입하고 시작
               </button>
-              <button className="btn full" onClick={onLogin}>
+              <button className="btn ghost full" onClick={onLogin}>
                 이미 회원이에요 · 로그인
               </button>
-              <button className="btn ghost full" onClick={() => setStep('nick')}>
-                게스트로 시작
-              </button>
             </div>
-            <small className="muted">게스트로 하다가 나중에 가입해도 지금 기록이 그대로 이어져요. {GUEST_EXPIRY_NOTICE}{visitor ? ' 고르기 전에는 둘러보기만 할 수 있어요.' : ''}</small>
+            <details className="gs-more">
+              <summary>게스트와 회원은 뭐가 달라요?</summary>
+              <p className="muted small">회원가입은 무료예요. 아이디·비밀번호·닉네임만 받고 이메일·전화번호는 받지 않아요.</p>
+              <table className="gs-compare">
+                <thead>
+                  <tr>
+                    <th />
+                    <th>게스트</th>
+                    <th className="gs-member">회원</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>일반전·커스텀</td>
+                    <td className="y">가능</td>
+                    <td className="y">가능</td>
+                  </tr>
+                  <tr>
+                    <td>랭킹전·랭킹</td>
+                    <td className="n">안 돼요</td>
+                    <td className="y">가능</td>
+                  </tr>
+                  <tr>
+                    <td>다른 기기에서</td>
+                    <td className="n">이어하기 코드로</td>
+                    <td className="y">아이디로 로그인하면 그대로</td>
+                  </tr>
+                  <tr>
+                    <td>닉네임</td>
+                    <td className="n">다른 게스트와 겹칠 수 있고, 회원이 같은 닉네임을 쓰면 바뀌어요</td>
+                    <td className="y">나만 쓰는 닉네임 · 고를 수 있는 개미 사진</td>
+                  </tr>
+                  <tr>
+                    <td>기록 보관</td>
+                    <td className="n">사흘 동안 활동이 없으면 자동 삭제</td>
+                    <td className="y">탈퇴할 때까지 보관</td>
+                  </tr>
+                </tbody>
+              </table>
+            </details>
+            <small className="muted">'바로 시작하기'는 게스트로 해요. 나중에 가입해도 지금 기록이 그대로 이어져요. {GUEST_EXPIRY_NOTICE}</small>
           </>
         ) : step === 'nick' ? (
           <form
@@ -145,17 +149,15 @@ export function Welcome({
               void go();
             }}
           >
-            <h3>
-              게스트 닉네임
-            </h3>
+            <h3>닉네임을 정해 주세요</h3>
             <label className={'field' + (check === 'ok' ? ' good' : check === 'taken' || check === 'invalid' ? ' invalid' : '')}>
               <span>닉네임 (1~10자)</span>
-              <input autoFocus value={nick} maxLength={10} placeholder="예: 개미왕" onChange={(e) => setNick(e.target.value)} />
+              <input autoFocus value={nick} maxLength={10} placeholder="예: 개미왕" onFocus={(e) => e.currentTarget.select()} onChange={(e) => setNick(e.target.value)} />
               {check === 'taken' && <small className="error">회원이 쓰는 닉네임이에요. 다른 닉네임을 써 주세요.</small>}
               {check === 'invalid' && nick && <small className="error">{nickNotice(nick) ?? '1~10자, 글자·숫자로 정해 주세요.'}</small>}
               {check === 'ok' && <small className="good-msg">쓸 수 있어요</small>}
             </label>
-            <small className="muted">나중에 '설정·더보기'에서 바꿀 수 있어요.</small>
+            <small className="muted">아무거나 골라 뒀어요. 그대로 써도 되고, 나중에 '설정·더보기'에서 바꿀 수 있어요.</small>
             {err && (
               <p className="error" role="alert">
                 {err}
@@ -166,7 +168,7 @@ export function Welcome({
                 뒤로
               </button>
               <button type="submit" className="btn primary" disabled={!ready || busy}>
-                {busy ? '시작하는 중…' : '게스트로 시작'}
+                {busy ? '시작하는 중…' : '시작하기'}
               </button>
             </div>
             {visitor && (

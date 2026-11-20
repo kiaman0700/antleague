@@ -115,7 +115,7 @@ async function startGuest(ctx, p, base) {
   await go.click();
   await p.waitForTimeout(400);
   const d = p.locator('[role=dialog]').last();
-  await d.locator('button', { hasText: '게스트로 시작' }).click().catch(() => {});
+  await d.locator('button', { hasText: '바로 시작하기' }).click().catch(() => {});
   await p.waitForTimeout(300);
   await d.locator('input').fill('점검개미' + Math.floor(Math.random() * 900)).catch(() => {});
   await p.waitForTimeout(1200);

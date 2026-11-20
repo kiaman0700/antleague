@@ -63,7 +63,7 @@ const STATE = 'scripts/e2e/.shots/guest-state.json';
   await p0.locator('button', { hasText: '시작하기' }).first().click();
   await p0.waitForTimeout(400);
   const d0 = p0.locator('[role=dialog]').last();
-  await d0.locator('button', { hasText: '게스트로 시작' }).click();
+  await d0.locator('button', { hasText: '바로 시작하기' }).click();
   await p0.waitForTimeout(300);
   await d0.locator('input').fill('기기개미' + Math.floor(Math.random() * 900));
   await p0.waitForTimeout(1200);

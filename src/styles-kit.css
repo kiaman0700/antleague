@@ -2737,3 +2737,11 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 .more-sound .ms-vol b { text-align: right; color: var(--text-2, #c8c8c8); font-variant-numeric: tabular-nums; font-weight: 700; }
 /* 약관·방침 바로 열리는 주소: 긴 글은 한 줄이 너무 길지 않게 */
 .lobby.page.legal-page { max-width: 860px; }
+/* 시작 창: 소개 한 줄 + 바로 시작 / 차이표는 접어 둠 */
+.guest-start .gs-pitch { margin: 2px 0 14px; font-size: 15px; line-height: 1.6; color: var(--text-2, #c8c8c8); }
+.guest-start .gs-more { margin: 14px 0 10px; border-top: 1px solid var(--line, #2e2e2e); padding-top: 12px; }
+.guest-start .gs-more > summary { cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text-2, #c8c8c8); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 32px; }
+.guest-start .gs-more > summary::-webkit-details-marker { display: none; }
+.guest-start .gs-more > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); margin-left: 2px; }
+.guest-start .gs-more[open] > summary::after { transform: rotate(-135deg) translate(-2px, 0); }
+.guest-start .gs-more > p { margin: 8px 0; }
