@@ -545,6 +545,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     setScene(musicScene);
   }, [musicScene]);
   // 장이 열리는 순간 종소리 (장 전 → 장중으로 바뀔 때만)
+  // 장이 닫히기 5초 전부터 1초마다 작은 똑딱 소리 (마지막 정리를 놓치지 않게) — 장중·결산 전에만
+  const tickSec = !inPre && closing === null && room?.status === 'playing' && remaining !== null ? Math.ceil(remaining) : null;
+  useEffect(() => {
+    if (tickSec !== null && tickSec >= 1 && tickSec <= 5) play('tick');
+  }, [tickSec]);
   const wasPre = useRef(inPre);
   useEffect(() => {
     if (wasPre.current && !inPre && room?.status === 'playing' && closing === null) play('open');
