@@ -2726,3 +2726,4 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 @media (min-width: 1280px) and (max-width: 1439px) { .cl-right .acc-chip .acc-txt { max-width: 4.5em; } }
 /* 6명 판: 순위 칸 최소 너비 170px 로는 1280px 화면에 다 안 들어가 마지막 칸이 잘렸음 — 6칸일 땐 더 좁게 */
 .desk .rank-strip:has(> .rank-chip:nth-child(6)) .rank-chip { min-width: 120px; }
+.trade .qty-warn { margin: -4px 0 0; font-size: 13px; color: var(--amber, #f5b83d); }

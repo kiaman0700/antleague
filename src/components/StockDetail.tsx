@@ -950,6 +950,10 @@ export function TradePanel({
           </div>
         </div>
       </div>
+      {/* 지금 팔면 예약 팔기에 걸어 둔 주식이 모자라 그 예약은 체결 때 취소됨 — 미리 알림 */}
+      {side === "sell" && kind !== "limit" && reservedSell > 0 && qty > held - reservedSell && (
+        <p className="qty-warn">이만큼 지금 팔면 걸어 둔 예약 팔기({num(reservedSell)}주)는 취소돼요</p>
+      )}
 
       <div className="quick">
         {easy && side === "buy"
