@@ -201,11 +201,13 @@ export async function accountAct(sb: SupabaseClient, action: string, b: Body, us
     }
 
     case 'checkAvailable': {
-      // 가입 화면 실시간 중복 확인. 남의 아이디를 마구 알아보는 데 쓰이지 않게 1분에 40번까지
+      // 가입 화면 실시간 중복 확인. 남의 아이디를 마구 알아보는 데 쓰이지 않게 계정마다 1분에 20번
       rateLimit(uid + ':avail', 20, 60_000);
       const out: { username?: 'ok' | 'taken' | 'invalid'; nickname?: 'ok' | 'taken' | 'invalid' } = {};
       if (b.username !== undefined) {
         const u = typeof b.username === 'string' ? b.username.trim().toLowerCase() : '';
+        // 아이디 확인은 가입하려는 손님만 — 회원은 아이디를 바꿀 수 없으니 남의 아이디가 있는지 알아보는 데만 쓰이게 됨
+        if (await getProfile(sb, uid)) throw new GameError('이미 가입한 계정이에요.', 409);
         if (!USERNAME_RE.test(u)) out.username = 'invalid';
         else out.username = (await sb.from('profiles').select('user_id').eq('username', u).maybeSingle()).data ? 'taken' : 'ok';
       }

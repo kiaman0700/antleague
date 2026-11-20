@@ -61,6 +61,11 @@ const av = (await G0({ action: 'checkAvailable', username: ua, nickname: 'A' + r
 ok('이미 쓰는 아이디·닉네임은 taken', av.username === 'taken' && av.nickname === 'taken', JSON.stringify(av));
 const av2 = (await G0({ action: 'checkAvailable', username: 'free' + rnd, nickname: '새' + rnd })).b;
 ok('빈 아이디·닉네임은 ok', av2.username === 'ok' && av2.nickname === 'ok', JSON.stringify(av2));
+// 회원은 아이디를 바꿀 수 없으니 남의 아이디가 있는지 알아보는 데만 쓰임 → 회원은 아이디 확인 불가, 닉네임 확인은 됨
+const avMem = await A({ action: 'checkAvailable', username: ub });
+ok('회원은 아이디 확인 불가 (409)', avMem.s === 409, JSON.stringify(avMem.b));
+const avMemN = await A({ action: 'checkAvailable', nickname: '새' + rnd });
+ok('회원도 닉네임 확인은 됨', avMemN.s === 200 && avMemN.b.nickname === 'ok', JSON.stringify(avMemN.b));
 // 게스트는 회원 닉네임을 못 씀 (사칭 방지) — 방 만들기·매칭 모두
 // 회원 닉네임이 우선 — 같은 닉네임의 게스트는 거절 대신 겹치지 않는 무작위 이름으로 바뀌고 응답에 알림
 const impC = await G0({ action: 'create', nickname: 'A' + rnd, mode: 'easy', totalDays: 10, turnSeconds: 180, maxPlayers: 2, title: '이름 시험' });
