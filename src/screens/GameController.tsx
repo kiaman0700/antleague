@@ -44,7 +44,7 @@ import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
 import { musicOn, setMusicOn, setScene, type Scene } from '../lib/music';
-import { AntPhone, phoneUnread } from '../components/AntPhone';
+import { AntPhone, openPhoneAt, phoneUnread, usePhonePeek } from '../components/AntPhone';
 import { MissionsPanel, useMissions } from '../components/Missions';
 import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
@@ -161,6 +161,9 @@ function useGameSource(session: Session) {
 }
 
 /** 모바일: 탭 = 페이지. 주소(#news 등)와 연결해서 뒤로 가기로 이전 탭으로 */
+const NO_POSTS: never[] = [];
+const NO_RUMORS: never[] = [];
+
 function useMobileTab(mobile: boolean, start: Tab = 'news') {
   const fromHash = (): Tab => {
     const h = location.hash.slice(1) as Tab;
@@ -617,6 +620,8 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   };
 
   const news = market?.news ?? [];
+  // 휴대폰을 내려 둔 동안 새 소식은 위에 잠깐 알림 → 누르면 개미폰을 올려 그 글로
+  const [peek, closePeek] = usePhonePeek(mobile && !session.tutorial && !editing && tab !== 'news', news, view?.community ?? NO_POSTS, view?.rumors ?? NO_RUMORS, day);
   const newsSymbols = useMemo(() => {
     const set = new Set<string>();
     for (const n of news.filter((x) => x.day === day)) n.related.forEach((s) => set.add(s));
@@ -1973,6 +1978,25 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
             </button>
           ))}
         </nav>
+
+        {peek && (
+          <button
+            type="button"
+            className="ap-peek"
+            aria-live="polite"
+            onClick={() => {
+              openPhoneAt(peek.app, peek.key);
+              closePeek();
+              setTab('news');
+            }}
+          >
+            <Icon name="phone" size={16} />
+            <span>
+              <b>{peek.name}</b>
+              <em>{peek.title}</em>
+            </span>
+          </button>
+        )}
 
         {/* 사기·팔기 창은 PC·모바일 같은 것 (overlays) */}
 

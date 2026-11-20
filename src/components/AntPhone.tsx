@@ -38,6 +38,53 @@ function phoneItems(news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[]
 }
 
 /** 휴대폰을 내려 둔 동안 아래 탭 배지에 쓰는 안 읽은 수 — 개미폰 앱 배지와 같은 기준 */
+/** 휴대폰을 내려 둔 동안 새 소식 알림 (주머니 속 휴대폰처럼 위에 잠깐) — 알림 켠 곳만, 처음 그릴 때 있던 소식은 빼고 */
+export interface PhonePeek {
+  key: string;
+  app: 'news' | 'sns';
+  name: string;
+  title: string;
+}
+export function usePhonePeek(on: boolean, news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[], day: number): [PhonePeek | null, () => void] {
+  const items = useMemo(() => phoneItems(news, posts, rumors, day), [news, posts, rumors, day]);
+  const known = useRef<Set<string> | null>(null);
+  const [peek, setPeek] = useState<PhonePeek | null>(null);
+  // 거래하는 동안 방해되지 않게 20초에 한 번까지
+  const lastAt = useRef(0);
+  useEffect(() => {
+    if (known.current === null) {
+      known.current = new Set(items.map((x) => x.key));
+      return;
+    }
+    const fresh = items.filter((x) => !known.current!.has(x.key));
+    for (const x of fresh) known.current.add(x.key);
+    if (!on) return;
+    const n = loadNotif();
+    // 뉴스 속보는 게임 화면의 큰 속보 알림이 따로 있어 피드 글만
+    const show = fresh.filter((x) => x.app === 'sns' && notifOn(n, x)).sort((a, b) => b.at - a.at)[0];
+    if (!show || Date.now() - lastAt.current < 20_000) return;
+    lastAt.current = Date.now();
+    setPeek({ key: show.key, app: show.app, name: show.app === 'news' ? '개미경제' : `개미피드 · ${show.platform ? PLATFORMS[show.platform].name : ''}`, title: show.title });
+    play('noti');
+    buzz();
+  }, [items, on]);
+  useEffect(() => {
+    if (!on) setPeek(null);
+  }, [on]);
+  useEffect(() => {
+    if (!peek) return;
+    const t = setTimeout(() => setPeek(null), 4000);
+    return () => clearTimeout(t);
+  }, [peek]);
+  return [peek, () => setPeek(null)];
+}
+
+/** 알림을 눌러 휴대폰을 올렸을 때 열 앱·글 (휴대폰이 그려지며 한 번 씀) */
+let pendingOpen: { app: PhoneApp; key: string } | null = null;
+export function openPhoneAt(app: PhoneApp, key: string) {
+  pendingOpen = { app, key };
+}
+
 export function phoneUnread(roomKey: string, news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[], day: number): number {
   const seen = loadSeen(`stockduel.phoneSeen:${roomKey}`);
   return phoneItems(news, posts, rumors, day).filter((x) => !seen.has(x.key)).length;
@@ -152,7 +199,7 @@ interface Props {
 export function AntPhone(p: Props) {
   const APP_NAME: Record<PhoneApp, string> = { news: '개미경제', sns: '개미피드', stock: '개미증권', aug: p.augName, settings: '설정', missions: '오늘 미션' };
   const seenKey = `stockduel.phoneSeen:${p.roomKey}`;
-  const [app, setApp] = useState<PhoneApp | null>(p.lockApp ?? null);
+  const [app, setApp] = useState<PhoneApp | null>(() => p.lockApp ?? pendingOpen?.app ?? null);
   useEffect(() => {
     if (p.lockApp) setApp(p.lockApp);
   }, [p.lockApp]);
@@ -162,7 +209,11 @@ export function AntPhone(p: Props) {
   const [shade, setShade] = useState(false);
   const [banner, setBanner] = useState<Item | null>(null);
   // 알림을 눌러 열었으면 그 글로 스크롤하고 잠깐 강조
-  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [focusKey, setFocusKey] = useState<string | null>(() => (p.lockApp ? null : (pendingOpen?.key ?? null)));
+  // 처음 그림이 끝난 뒤에 비움 (그리기를 두 번 해도 같은 값을 쓰게)
+  useEffect(() => {
+    pendingOpen = null;
+  }, []);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all');
 
   // 오늘 소식 (뉴스 앱·피드 앱)
