@@ -499,7 +499,15 @@ export function AntPhone(p: Props) {
         </header>
         <div className="ap-body">
           {app === 'news' ? (
-            p.newsApp
+            <>
+              <div className="ap-mast" aria-hidden>
+                <b>개미경제신문</b>
+                <small>
+                  {p.day + 1}일차 {p.pre ? '조간' : p.live ? '실시간판' : '마감판'} · 개미들의 경제 소식
+                </small>
+              </div>
+              {p.newsApp}
+            </>
           ) : app === 'stock' ? (
             <div className="ap-embed">{p.stockApp}</div>
           ) : app === 'aug' ? (
