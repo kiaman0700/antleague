@@ -270,82 +270,84 @@ export function AntPhone(p: Props) {
       const w = p.wallet;
       const unreadAll = items.filter((x) => !seen.has(x.key)).length;
       return (
-        <div className="ap-home">
-          {(p.alerts ?? []).map((a, i) => (
-            <div key={i} className="ap-alert" role="status">
-              <Icon name="bell" size={15} /> <span>{a}</span>
-            </div>
-          ))}
-          <button type="button" className="ap-w ap-w-wallet" onClick={() => open('stock')} aria-label={`내 재산 ${wonShort(w.equity)}, ${pct(w.ret, 1)} — 개미증권 열기`}>
-            <span className="ap-w-h">
-              <AppIcon id="stock" small /> 내 재산
-            </span>
-            <span className="ap-w-big">
-              {wonShort(w.equity)} <em className={tone(w.ret)}>{pct(w.ret, 1)}</em>
-            </span>
-            <span className="ap-w-sub">현금 {wonShort(w.cash)}</span>
-            {w.top.length > 0 ? (
-              <span className="ap-w-hold">
-                {w.top.map((h) => (
-                  <span key={h.sym}>
-                    <b>{h.name}</b>
-                    <small>{wonShort(h.value)}</small>
-                    <em className={tone(h.ch)}>{pct(h.ch, 1)}</em>
-                  </span>
-                ))}
-              </span>
-            ) : (
-              <span className="ap-w-sub">아직 산 주식이 없어요</span>
-            )}
-          </button>
-          <div className="ap-w-row">
-            <button type="button" className={'ap-w ap-w-aug' + (p.augAlert ? ' due' : '')} onClick={() => open('aug')} aria-label={`${p.augName} 열기${p.augAlert ? ' — 지금 고를 차례' : ''}`}>
+        <>
+          <div className="ap-home">
+            {(p.alerts ?? []).map((a, i) => (
+              <div key={i} className="ap-alert" role="status">
+                <Icon name="bell" size={15} /> <span>{a}</span>
+              </div>
+            ))}
+            <button type="button" className="ap-w ap-w-wallet" onClick={() => open('stock')} aria-label={`내 재산 ${wonShort(w.equity)}, ${pct(w.ret, 1)} — 개미증권 열기`}>
               <span className="ap-w-h">
-                <AppIcon id="aug" small /> {p.augName}
+                <AppIcon id="stock" small /> 내 재산
               </span>
-              <span className="ap-w-aug-in">{p.augWidget}</span>
-              {p.augAlert && <span className="ap-w-due">지금 고를 차례예요</span>}
-            </button>
-            <button type="button" className="ap-w ap-w-day" onClick={() => setShade(true)} aria-label={`오늘 소식 ${items.length}개, 안 읽은 ${unreadAll}개 — 알림 모음 열기`}>
-              <span className="ap-w-h">{p.pre ? '장 열리기 전' : p.live ? '장 열려 있음' : '오늘 장 정리'}</span>
-              <span className="ap-w-big">{unreadAll}</span>
-              <span className="ap-w-sub">안 읽은 소식 · 오늘 {items.length}개</span>
-            </button>
-          </div>
-          <ul className="ap-grid" aria-label="앱">
-            {APP_ORDER.map((a) => {
-              const n = unread(a);
-              const due = a === 'aug' && p.augAlert;
-              const muted = (a === 'news' || a === 'sns') && notif[a] === false;
-              return (
-                <li key={a}>
-                  <button type="button" className="ap-app" data-app={a} onClick={() => open(a)} aria-label={`${APP_NAME[a]}${n ? `, 안 읽은 소식 ${n}개` : ''}${due ? ', 고를 차례' : ''}`}>
-                    <span className="ap-ic">
-                      <AppIcon id={a} />
-                      {n > 0 && <i className="ap-badge">{n > 99 ? '99+' : n}</i>}
-                      {due && <i className="ap-badge">!</i>}
-                      {muted && (
-                        <i className="ap-muted" aria-hidden>
-                          <Icon name="mute" size={10} />
-                        </i>
-                      )}
+              <span className="ap-w-big">
+                {wonShort(w.equity)} <em className={tone(w.ret)}>{pct(w.ret, 1)}</em>
+              </span>
+              <span className="ap-w-sub">현금 {wonShort(w.cash)}</span>
+              {w.top.length > 0 ? (
+                <span className="ap-w-hold">
+                  {w.top.map((h) => (
+                    <span key={h.sym}>
+                      <b>{h.name}</b>
+                      <small>{wonShort(h.value)}</small>
+                      <em className={tone(h.ch)}>{pct(h.ch, 1)}</em>
                     </span>
-                    <span className="ap-name">{APP_NAME[a]}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {p.schedule && (
-            <section className="ap-w ap-w-sched" aria-label="다가오는 일정">
-              <span className="ap-w-h">
-                <Icon name="calendar" size={15} /> 다가오는 일정
-              </span>
-              {p.schedule}
-            </section>
-          )}
-          <p className="ap-hint">위 상태 줄을 내리면 알림이 모여 있어요</p>
-        </div>
+                  ))}
+                </span>
+              ) : (
+                <span className="ap-w-sub">아직 산 주식이 없어요</span>
+              )}
+            </button>
+            <div className="ap-w-row">
+              <button type="button" className={'ap-w ap-w-aug' + (p.augAlert ? ' due' : '')} onClick={() => open('aug')} aria-label={`${p.augName} 열기${p.augAlert ? ' — 지금 고를 차례' : ''}`}>
+                <span className="ap-w-h">
+                  <AppIcon id="aug" small /> {p.augName}
+                </span>
+                <span className="ap-w-aug-in">{p.augWidget}</span>
+                {p.augAlert && <span className="ap-w-due">지금 고를 차례예요</span>}
+              </button>
+              <button type="button" className="ap-w ap-w-day" onClick={() => setShade(true)} aria-label={`오늘 소식 ${items.length}개, 안 읽은 ${unreadAll}개 — 알림 모음 열기`}>
+                <span className="ap-w-h">{p.pre ? '장 열리기 전' : p.live ? '장 열려 있음' : '오늘 장 정리'}</span>
+                <span className="ap-w-big">{unreadAll}</span>
+                <span className="ap-w-sub">안 읽은 소식 · 오늘 {items.length}개</span>
+              </button>
+            </div>
+            {p.schedule && (
+              <section className="ap-w ap-w-sched" aria-label="다가오는 일정">
+                <span className="ap-w-h">
+                  <Icon name="calendar" size={15} /> 다가오는 일정
+                </span>
+                {p.schedule}
+              </section>
+            )}
+            <p className="ap-hint">위 상태 줄을 내리면 알림이 모여 있어요</p>
+          </div>
+            <ul className="ap-grid ap-dock" aria-label="앱">
+              {APP_ORDER.map((a) => {
+                const n = unread(a);
+                const due = a === 'aug' && p.augAlert;
+                const muted = (a === 'news' || a === 'sns') && notif[a] === false;
+                return (
+                  <li key={a}>
+                    <button type="button" className="ap-app" data-app={a} onClick={() => open(a)} aria-label={`${APP_NAME[a]}${n ? `, 안 읽은 소식 ${n}개` : ''}${due ? ', 고를 차례' : ''}`}>
+                      <span className="ap-ic">
+                        <AppIcon id={a} />
+                        {n > 0 && <i className="ap-badge">{n > 99 ? '99+' : n}</i>}
+                        {due && <i className="ap-badge">!</i>}
+                        {muted && (
+                          <i className="ap-muted" aria-hidden>
+                            <Icon name="mute" size={10} />
+                          </i>
+                        )}
+                      </span>
+                      <span className="ap-name">{APP_NAME[a]}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+        </>
       );
     }
     return (
