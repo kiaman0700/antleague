@@ -281,6 +281,9 @@ export async function evaluateMissions(sb: SupabaseClient, d: GameData, fin: Ret
         : await sb.from('mission_progress').insert(row).select('mission');
       if (w.error || !(w.data ?? []).length) continue;
       if (done && xp > 0) {
+        // 판정하는 사이 이 미션을 다른 것으로 바꿨으면(바꾸기와 판 끝이 겹침) 경험치는 주지 않음 — 같은 칸에서 두 번 받지 않게
+        const nowIds = await missionsForUser(sb, uid, now);
+        if (!(t.period === ms.day ? nowIds.dayIds : nowIds.weekIds).includes(t.id)) continue;
         if (def.scope === 'day') budget -= xp;
         const add = await sb.rpc('add_xp', { p_user: uid, p_xp: xp });
         if (add.error) console.error('[api] add_xp', add.error.message);
