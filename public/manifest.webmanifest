@@ -74,5 +74,42 @@
         }
       ]
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/brand/screens/phone-lobby.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "같은 시장, 같은 뉴스로 겨루는 대결 찾기"
+    },
+    {
+      "src": "/brand/screens/phone-news.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "진짜와 가짜가 섞인 뉴스와 커뮤니티"
+    },
+    {
+      "src": "/brand/screens/phone-chart.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "1초마다 움직이는 실시간 장"
+    },
+    {
+      "src": "/brand/screens/pc-game.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "PC 에서는 한 화면에 차트·뉴스·보유 종목"
+    },
+    {
+      "src": "/brand/screens/pc-lobby.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "랭킹전·일반전·봇전"
+    }
   ]
 }
