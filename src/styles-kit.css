@@ -2345,7 +2345,8 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 .t-silver .aug-num { color: #fff; }
 .aug-stage .aug-row3 .aug-rec { margin-top: 8px; }
 .aug-foot { margin-top: auto; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px 12px; border-top: 1px solid #262629; font-size: 12px; color: #a0a0a6; position: relative; z-index: 2; }
-.aug-tag { display: inline-flex; align-items: center; gap: 5px; text-align: left; }
+.aug-tag { display: inline-flex; align-items: flex-start; gap: 5px; text-align: left; }
+.aug-tag > svg { flex: none; margin-top: 1px; }
 .aug-pips { display: inline-flex; gap: 5px; flex: none; }
 .aug-pips i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--tc); border-radius: 1.5px; }
 @media (max-width: 860px) {

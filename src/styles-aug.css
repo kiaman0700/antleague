@@ -127,7 +127,7 @@
   .aug-stage .aug-row3 .aug-name { margin-top: 10px; font-size: 14px; }
   .aug-stage .aug-row3 .aug-rule { width: 56px; margin: 8px 0; }
   .aug-stage .aug-row3 .aug-desc { padding: 0 2px; font-size: 12px; line-height: 1.45; }
-  .aug-stage .aug-row3 .aug-foot { padding: 10px 2px 2px; font-size: 10.5px; }
+  .aug-stage .aug-row3 .aug-foot { padding: 10px 2px 2px; font-size: 11px; }
   .aug-stage .aug-row3 .aug-foot .aug-gems { bottom: -17px; transform: translateX(-50%) scale(0.75); }
 }
 

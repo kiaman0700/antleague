@@ -711,11 +711,11 @@ function SnsApp({ filter, setFilter, day, daySec, items, past, live, onSelect, o
   };
   return (
     <div className="ap-feed">
-      <div className="ap-chips" role="tablist" aria-label="글 모양 고르기">
+      <div className="ap-chips" role="group" aria-label="글 모양 고르기">
         {FILTERS.map((x) => {
           const n = items.filter((i) => i.platform && x.of.includes(i.platform)).length;
           return (
-            <button key={x.id} type="button" role="tab" aria-selected={filter === x.id} className={'ap-chip' + (filter === x.id ? ' on' : '')} onClick={() => setFilter(x.id)}>
+            <button key={x.id} type="button" aria-pressed={filter === x.id} className={'ap-chip' + (filter === x.id ? ' on' : '')} onClick={() => setFilter(x.id)}>
               {x.name}
               {x.id !== 'all' && n > 0 && <small>{n}</small>}
             </button>
