@@ -45,6 +45,7 @@ import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
 import { musicOn, setMusicOn, setScene, type Scene } from '../lib/music';
 import { AntPhone, phoneUnread } from '../components/AntPhone';
+import { MissionsPanel, useMissions } from '../components/Missions';
 import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
@@ -291,6 +292,9 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 튜토리얼은 '뉴스에서 종목 찾기'를 직접 해 보도록 처음 선택을 튜토리얼 종목이 아닌 것으로
   const [selected, setSelected] = useState(() => STOCKS.find((x) => x.symbol !== tutorialInfo?.symbol)!.symbol);
   const [tab, setTab] = useMobileTab(mobile, effective(prefs).layout.mStart);
+  // 개미폰 '오늘 미션' 위젯 — 미션은 서버 판에서만 셈 (혼자 연습·튜토리얼·화면 편집 판은 없음)
+  const misOn = !session.tutorial && session.mode !== 'solo' && !session.demo;
+  const mis = useMissions(misOn);
   // 개미폰을 내리면 올리기 전 탭으로
   const lastTab = useRef<Tab>('list');
   useEffect(() => {
@@ -1297,6 +1301,12 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       augWidget={view.aug ? <AugSlots aug={view.aug} size={22} /> : <span className="ap-w-sub">카드 {view.myItems.total}장</span>}
       augAlert={!!view.aug?.offer}
       wallet={phoneWallet}
+      missions={
+        misOn && mis.info?.member
+          ? { done: mis.info.today.list.filter((x) => x.done).length, total: mis.info.today.list.length, next: mis.info.today.list.find((x) => !x.done)?.title }
+          : undefined
+      }
+      missionsApp={misOn ? <MissionsPanel src={mis} noLevel /> : undefined}
       schedule={m.events.some((e) => e.day >= day) ? <Calendar market={m} day={day} compact hideTitle onSelect={selectStock} /> : undefined}
       alerts={mode === 'full' ? effectsOnMe : undefined}
       onSelect={selectStock}

@@ -13,7 +13,7 @@ import { PlatformIcon, prePostsOf } from './CommunityFeed';
 import { AntHead, artHash, PostArt } from './PostArt';
 import { buzz, play } from '../lib/sound';
 
-export type PhoneApp = 'news' | 'sns' | 'stock' | 'aug' | 'settings';
+export type PhoneApp = 'news' | 'sns' | 'stock' | 'aug' | 'settings' | 'missions';
 const APP_ORDER: PhoneApp[] = ['news', 'sns', 'stock', 'aug', 'settings'];
 type FeedApp = 'news' | 'sns';
 
@@ -112,6 +112,9 @@ interface Props {
   /** 오늘 고를 차례 등 눌러 볼 일이 있음 */
   augAlert?: boolean;
   wallet: PhoneWallet;
+  /** 오늘 미션 위젯 (서버 판·회원만) — 누르면 미션 화면 */
+  missions?: { done: number; total: number; next?: string };
+  missionsApp?: ReactNode;
   /** 홈 화면 '다가오는 일정' 위젯 안 (없으면 위젯 없음) */
   schedule?: ReactNode;
   /** 나에게 걸린 효과 알림 (홈 화면 위 카드) */
@@ -129,7 +132,7 @@ interface Props {
 }
 
 export function AntPhone(p: Props) {
-  const APP_NAME: Record<PhoneApp, string> = { news: '개미경제', sns: '개미피드', stock: '개미증권', aug: p.augName, settings: '설정' };
+  const APP_NAME: Record<PhoneApp, string> = { news: '개미경제', sns: '개미피드', stock: '개미증권', aug: p.augName, settings: '설정', missions: '오늘 미션' };
   const seenKey = `stockduel.phoneSeen:${p.roomKey}`;
   const [app, setApp] = useState<PhoneApp | null>(p.lockApp ?? null);
   useEffect(() => {
@@ -319,7 +322,18 @@ export function AntPhone(p: Props) {
                 <span className="ap-w-sub">안 읽은 소식 · 오늘 {items.length}개</span>
               </button>
             </div>
-            {p.schedule && (
+            {p.missions && p.missionsApp && (
+            <button type="button" className="ap-w ap-w-mis" onClick={() => open('missions')} aria-label={`오늘 미션 ${p.missions.done}/${p.missions.total} — 미션 열기`}>
+              <span className="ap-w-h">
+                <AppIcon id="missions" small /> 오늘 미션 <b className="ap-w-mis-n">{p.missions.done}/{p.missions.total}</b>
+              </span>
+              <span className="ap-w-mis-bar" aria-hidden>
+                <i style={{ width: `${p.missions.total ? (100 * p.missions.done) / p.missions.total : 0}%` }} />
+              </span>
+              {p.missions.next && <span className="ap-w-sub">다음: {p.missions.next}</span>}
+            </button>
+          )}
+          {p.schedule && (
               <section className="ap-w ap-w-sched" aria-label="다가오는 일정">
                 <span className="ap-w-h">
                   <Icon name="calendar" size={15} /> 다가오는 일정
@@ -380,6 +394,8 @@ export function AntPhone(p: Props) {
             <div className="ap-embed">{p.stockApp}</div>
           ) : app === 'aug' ? (
             <div className="ap-embed">{p.augApp}</div>
+          ) : app === 'missions' ? (
+            <div className="ap-embed">{p.missionsApp}</div>
           ) : app === 'settings' ? (
             <Settings notif={notif} onChange={(n) => (setNotif(n), saveNotif(n))} />
           ) : (
@@ -509,6 +525,17 @@ function AppIcon({ id, small }: { id: PhoneApp; small?: boolean }) {
           <path d="M15 8 l7.6 5 l-7.6 11 l-7.6 -11 z" fill="#f5b83d" />
           <path d="M7.4 13 h15.2 M15 8 l-3.4 5 l3.4 11 l3.4 -11 z" fill="none" stroke="#a8761b" strokeWidth="1" strokeLinejoin="round" />
           <path d="M15 8 l3.4 5 h4.2 z" fill="#ffd98a" />
+        </>,
+      );
+    case 'missions': // 과녁 위 개미 깃발
+      return tile(
+        '#2fb380',
+        <>
+          <circle cx="15" cy="16" r="9" fill="#fff" />
+          <circle cx="15" cy="16" r="6" fill="#2fb380" />
+          <circle cx="15" cy="16" r="3" fill="#fff" />
+          <path d="M15 16 L22.5 6.5" stroke="#1c1c1c" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M22.5 6.5 l-3.4 .4 l2.6 -2.6 z" fill="#f5b83d" />
         </>,
       );
     case 'settings':

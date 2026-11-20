@@ -241,3 +241,8 @@
 .ap-like:active svg { transform: scale(1.25); }
 .ap-like svg { transition: transform .12s; }
 @media (prefers-reduced-motion: reduce) { .ap-like svg { transition: none; } }
+.ap-w-mis { margin-top: 10px; }
+.ap-w-mis-n { margin-left: auto; color: #f2f2f2; font-variant-numeric: tabular-nums; }
+.ap-w-h:has(.ap-w-mis-n) { display: flex; }
+.ap-w-mis-bar { display: block; height: 6px; margin: 4px 0 2px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; }
+.ap-w-mis-bar i { display: block; height: 100%; border-radius: 6px; background: #2fb380; }
