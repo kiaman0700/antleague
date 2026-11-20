@@ -234,3 +234,10 @@
   .ap-layer > .antphone { width: 100%; max-width: 480px; }
   .antphone.m-full .ap-screen { border-radius: 28px; }
 }
+.ap-like { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; margin: -6px -6px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.ap-like:hover { background: #222226; }
+.ap-like.on { color: #ff6b7a; }
+.ap-like.on svg { fill: currentColor; }
+.ap-like:active svg { transform: scale(1.25); }
+.ap-like svg { transition: transform .12s; }
+@media (prefers-reduced-motion: reduce) { .ap-like svg { transition: none; } }

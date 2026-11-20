@@ -383,7 +383,7 @@ export function AntPhone(p: Props) {
           ) : app === 'settings' ? (
             <Settings notif={notif} onChange={(n) => (setNotif(n), saveNotif(n))} />
           ) : (
-            <SnsApp filter={feedFilter} setFilter={setFeedFilter} day={p.day} daySec={p.daySec} items={items.filter((x) => x.app === 'sns')} past={p.pastPosts.filter((x) => x.day === p.day - 1)} live={p.live} onSelect={p.onSelect} onSelectSector={p.onSelectSector} />
+            <SnsApp roomKey={p.roomKey} filter={feedFilter} setFilter={setFeedFilter} day={p.day} daySec={p.daySec} items={items.filter((x) => x.app === 'sns')} past={p.pastPosts.filter((x) => x.day === p.day - 1)} live={p.live} onSelect={p.onSelect} onSelectSector={p.onSelectSector} />
           )}
         </div>
       </div>
@@ -567,7 +567,7 @@ const FILTERS: { id: FeedFilter; name: string; of: Platform[] }[] = [
   { id: 'live', name: '라이브', of: ['live'] },
 ];
 
-function SnsApp({ filter, setFilter, day, daySec, items, past, live, onSelect, onSelectSector }: { filter: FeedFilter; setFilter: (f: FeedFilter) => void; day: number; daySec?: number; items: Item[]; past: PublicPost[]; live: boolean; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
+function SnsApp({ roomKey, filter, setFilter, day, daySec, items, past, live, onSelect, onSelectSector }: { filter: FeedFilter; setFilter: (f: FeedFilter) => void; day: number; daySec?: number; items: Item[]; past: PublicPost[]; live: boolean; onSelect: (s: string) => void; onSelectSector: (s: string) => void; roomKey: string }) {
   const f = FILTERS.find((x) => x.id === filter)!;
   const mixed = filter === 'all';
   const list = items.filter((x) => x.platform && f.of.includes(x.platform)).sort((a, b) => b.at - a.at);
@@ -592,16 +592,29 @@ function SnsApp({ filter, setFilter, day, daySec, items, past, live, onSelect, o
     </b>
   );
   const stamp = (post: PublicPost) => post.verdict && <em className={'rb-stamp ' + post.verdict}>{post.verdict === 'true' ? '맞았어요' : '헛소문'}</em>;
-  const stats = (post: PublicPost) => (
-    <span className="cf-stats">
-      <span className="sp-stat" aria-label={`공감 ${post.likes}`}>
-        <Icon name="heart" size={13} /> {post.likes.toLocaleString('ko-KR')}
+  // 내 공감(하트)은 이 창에서만 — 게임·다른 사람에게 아무 영향 없음
+  const likeKey = `stockduel.phoneLikes:${roomKey}`;
+  const [liked, setLiked] = useState<Set<string>>(() => loadSeen(likeKey));
+  const toggleLike = (id: string) => {
+    const next = new Set(liked);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setLiked(next);
+    saveSeen(likeKey, next);
+  };
+  const stats = (post: PublicPost) => {
+    const on = liked.has(post.id);
+    return (
+      <span className="cf-stats">
+        <button type="button" className={'sp-stat ap-like' + (on ? ' on' : '')} aria-pressed={on} aria-label={`공감 ${post.likes + (on ? 1 : 0)}`} onClick={() => toggleLike(post.id)}>
+          <Icon name="heart" size={13} /> {(post.likes + (on ? 1 : 0)).toLocaleString('ko-KR')}
+        </button>
+        <span className="sp-stat" aria-label={`댓글 ${post.replies}`}>
+          <Icon name="chat" size={13} /> {post.replies}
+        </span>
       </span>
-      <span className="sp-stat" aria-label={`댓글 ${post.replies}`}>
-        <Icon name="chat" size={13} /> {post.replies}
-      </span>
-    </span>
-  );
+    );
+  };
   // 글쓴이 사진 = 이름으로 고른 개미 얼굴색 (진위와 무관)
   const av = (post: PublicPost, size = 34) => {
     const hue = ['#8b7bff', '#e5484d', '#3b82f6', '#2fb380', '#f5b83d', '#d16bd9'][artHash(post.author) % 6];
