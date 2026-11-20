@@ -10,8 +10,69 @@
   "theme_color": "#111111",
   "lang": "ko",
   "icons": [
-    { "src": "/brand/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/brand/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/brand/app-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/brand/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "games",
+    "finance",
+    "education"
+  ],
+  "orientation": "any",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "일반전 찾기",
+      "short_name": "일반전",
+      "description": "점수 없이 가볍게 한 판",
+      "url": "/casual",
+      "icons": [
+        {
+          "src": "/brand/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "봇전 · 연습",
+      "short_name": "연습",
+      "description": "기다림 없이 봇과 바로 한 판",
+      "url": "/learn",
+      "icons": [
+        {
+          "src": "/brand/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "랭킹전",
+      "short_name": "랭킹전",
+      "description": "점수를 걸고 겨루기",
+      "url": "/ranked",
+      "icons": [
+        {
+          "src": "/brand/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

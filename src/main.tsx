@@ -71,3 +71,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>,
 );
+
+// 설치형 웹앱: 인터넷이 끊겼을 때 안내 화면 (배포본에서만 — 개발 서버는 바뀐 코드를 바로 봐야 해서)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* 막힌 브라우저는 그냥 웹으로 */
+    });
+  });
+}
