@@ -1902,6 +1902,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 :root:not([data-device="pc"]) .sheet-bg { top: var(--vv-top, 0px); bottom: auto; height: var(--vv-h, 100%); }
 :root:not([data-device="pc"]) .sheet { max-height: calc(var(--vv-h, 100dvh) * 0.92); }
 :root:not([data-device="pc"]) .sheet-body .trade > .btn.xl { position: sticky; bottom: 4px; z-index: 1; box-shadow: 0 -12px 0 var(--surface), 0 40px 0 24px var(--surface); }
+:root:not([data-device="pc"]) .sheet-body .trade > .sum { position: sticky; bottom: calc(14px + var(--trade-btn-h, 56px)); z-index: 1; background: var(--surface); padding-top: 8px; margin-top: -8px; } /* 버튼만 붙으면 바로 위 금액 줄을 덮음 — 금액 줄도 버튼 위에 함께 붙임 */
 
 /* ===== 영역 구분: 바탕 #111 → 고정 영역 #1c1c1c → 칸 #242424 → 고른 것 #2e2e2e. 칸 안에 칸을 또 두르지 않고 바탕색으로 나눔 ===== */
 /* 휴대폰 게임 위 고정 영역(내 재산·장 마감 + 시장·일정·현금 줄)은 한 덩어리, 맨 아래만 선 */
@@ -2026,7 +2027,7 @@ i.toon-i { display: grid; place-items: center; flex: none; font-style: normal; b
 /* ===== 태블릿·가로 휴대폰 ===== */
 /* 가로 휴대폰(높이 500 이하): 주문 버튼을 아래에 붙이면 금액 줄을 가림 → 붙이지 않음 */
 @media (max-height: 500px) and (orientation: landscape) {
-  :root:not([data-device="pc"]) .sheet-body .trade > .btn.xl { position: static; box-shadow: none; }
+  :root:not([data-device="pc"]) .sheet-body .trade > .btn.xl, :root:not([data-device="pc"]) .sheet-body .trade > .sum { position: static; box-shadow: none; }
   .m-game .pc-svg { max-height: calc(100dvh - 190px); }
   .m-page.p-list:not(.split) { max-width: 600px; margin-left: auto; margin-right: auto; }
 }
