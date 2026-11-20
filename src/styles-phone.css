@@ -264,3 +264,5 @@
 .ap-peek em { font-style: normal; font-size: 14px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (min-width: 640px) { .ap-peek { left: auto; width: 420px; } }
 @media (prefers-reduced-motion: reduce) { .ap-peek { animation: none; } }
+/* 개미폰을 올렸을 때 화면 아래 알약(증강 선택 열기·진행 중)이 앱 독을 가리지 않게 위로 */
+body:has(.ap-layer) .aug-pill { bottom: calc(var(--m-nav-h, 64px) + 124px + env(safe-area-inset-bottom)); }
