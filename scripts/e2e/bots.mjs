@@ -75,6 +75,15 @@ ok('사람이 모두 나가면 봇만 남은 판은 끝남', Array.isArray(sFin)
   ok('봇이 실제로 거래했음', botTrades.length > 0, `${botTrades.length}건`);
   const keys = botTrades.map((t) => [t.player_id, t.day, t.symbol, t.side, t.qty, t.created_at].join('|'));
   ok('봇 거래가 두 번씩 들어가지 않음 (동시 요청)', new Set(keys).size === keys.length);
+  // 한 판 더: 지난 판의 봇이 같은 난이도로 새 방에 다시 앉음
+  const rm = await A({ action: 'rematch', roomId: r1 });
+  ok('봇 방 한 판 더', rm.s === 200, rm.b?.error);
+  if (rm.s === 200) {
+    const sr = (await A({ action: 'state', roomId: rm.b.roomId })).b;
+    const rb = (sr?.players ?? []).filter((p) => p.bot);
+    ok('한 판 더 방에 봇이 같은 난이도로 다시 있음', rb.length === 1 && rb[0].bot === 1, JSON.stringify(rb.map((p) => [p.nickname, p.bot])));
+    await A({ action: 'leave', roomId: rm.b.roomId });
+  }
 }
 
 // 사람이 모두 나가면 판이 끝남 (새 방)

@@ -948,6 +948,14 @@ async function act(action: string, b: Body, uid: string): Promise<unknown> {
         if (!nr) throw new GameError('다시 하기 방이 사라졌어요.', 404);
         return addToRoom(nr, uid, me.nickname, me.mode);
       }
+      // '이 사람들과 한 판 더': 지난 판의 봇도 같은 난이도·이름으로 다시 앉힘 (사람은 각자 눌러 들어옴)
+      const oldBots = ((await sb.from('players').select('nickname, bot_level').eq('room_id', roomId).not('bot_level', 'is', null).order('created_at')).data ?? []) as { nickname: string; bot_level: number }[];
+      for (const bot of oldBots.slice(0, Math.min(MAX_BOTS, old.max_players - 1))) {
+        if (![1, 2, 3].includes(bot.bot_level)) continue;
+        const jr = await sb.rpc('join_room', { p_room: room.id, p_user: null, p_nick: bot.nickname, p_mode: 'pro', p_bot: bot.bot_level });
+        if (jr.error && /join_room/.test(jr.error.message)) await sb.from('players').insert({ room_id: room.id, user_id: null, nickname: bot.nickname, mode: 'pro', ready: true, bot_level: bot.bot_level });
+      }
+      if (oldBots.length) await touchRoom(room.id);
       return { roomId: room.id, playerId: p.id, code: room.code };
     }
 
