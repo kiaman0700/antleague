@@ -65,10 +65,23 @@ export default function App() {
   }, [lobbyGame]);
   // 연습 '같은 설정으로 한 판 더' 때 게임 화면을 새로 그리기 위한 번호
   const [replay, setReplay] = useState(0);
-  // 로비가 뜨고 잠시 뒤 게임 화면 코드를 미리 받아 둠 (한가할 때)
+  // 로비가 뜨고 잠시 뒤 게임 화면 코드를 미리 받아 둠 — 글꼴을 다 받고 한가할 때만 (느린 망에선 첫 화면 글꼴과 다투지 않게).
+  // 데이터 절약·2G/3G 에선 미리 받지 않고 게임에 들어갈 때 받음
   useEffect(() => {
-    const t = setTimeout(() => void loadGame().catch(() => {}), 1500);
-    return () => clearTimeout(t);
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (conn?.saveData || /(^|-)(2g|3g)$/.test(conn?.effectiveType ?? '')) return;
+    let gone = false;
+    const go = () => !gone && void loadGame().catch(() => {});
+    const idle = (f: () => void) => ('requestIdleCallback' in window ? window.requestIdleCallback(f, { timeout: 4000 }) : setTimeout(f, 300));
+    const t = setTimeout(() => {
+      const ready = document.fonts?.ready;
+      if (ready) ready.then(() => idle(go)).catch(go);
+      else idle(go);
+    }, 2500);
+    return () => {
+      gone = true;
+      clearTimeout(t);
+    };
   }, []);
   // 매칭이 잡히면 어느 화면(로비·튜토리얼·화면 편집·연습)에 있든 바로 그 게임으로
   const match = useMatch();
