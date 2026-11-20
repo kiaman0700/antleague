@@ -38,7 +38,13 @@ function load(force = false) {
       cache = { at: Date.now(), list: Array.isArray(list) ? list : [] };
       emit();
     })
-    .catch(() => {})
+    // 못 받으면 빈 목록으로 (자리 잡아 둔 빈 띠가 남지 않게) — 처음 받은 적이 없을 때만
+    .catch(() => {
+      if (!cache) {
+        cache = { at: 0, list: [] };
+        emit();
+      }
+    })
     .finally(() => {
       loading = null;
     });
@@ -160,6 +166,18 @@ export function NoticeTicker() {
   const list = tickerList(useNoticeList());
   const [, force] = useState(0);
   useEffect(() => onReadChange(() => force((x) => x + 1)), []);
+  // 목록을 받기 전엔 같은 높이의 빈 띠로 자리를 잡아 둠 — 받은 뒤 띠가 생기며 아래 화면이 밀리지 않게 (느린 망 첫 화면)
+  if (!cache)
+    return (
+      <div className="nt-strip" aria-hidden style={{ visibility: 'hidden' }}>
+        <span className="nt-bar">
+          <span className="nt-tag">공지</span>
+          <span className="nt-win">
+            <span className="nt-title">&nbsp;</span>
+          </span>
+        </span>
+      </div>
+    );
   if (!list.length) return null;
   const n = list[0];
   const read = readIds();
