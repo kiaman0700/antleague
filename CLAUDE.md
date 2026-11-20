@@ -315,6 +315,7 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 게임 소식 칸 = 가상 휴대폰 `AntPhone`: 상태 줄(게임 시각 — 누르거나 끌어내리면 알림 모음), 홈 화면 앱 8개(개미경제 뉴스·개미광장·종목토론방·짹짹·피드그램·개미톡·개미TV·설정), 앱 아이콘 안 읽은 수 배지, 새 소식이 오면 알림 켠 앱만 위쪽 배너 3.5초, 설정에서 앱마다 알림 켜고 끄기(localStorage stockduel.phoneNotif, 기본 개미TV만 끔). 읽음은 sessionStorage stockduel.phoneSeen:<방>. 휴대폰 게임은 소식 탭에 틀 없이, PC 는 소식 칸에 둥근 휴대폰 틀(framed). '크게 보기'는 예전 두 칸 그대로
 - 화면이 이미 받는 공개 소식만 앱별로 나눔(서버·DB·규칙 변경 없음). 장 전 소문은 `prePostsOf`(CommunityFeed)로 같은 플랫폼에 들어감. 그림(`PostArt` — 차트 화면·공장·빌딩·회의실·신제품·방송·개미 표정)은 글 내용 해시·업종·호재/악재로만 고름(진위와 무관 — PostArt.test.ts)
 - 뉴스 앱 = 기존 `NewsPanel only='news'`. 튜토리얼은 `lockApp='news'` + 예전 소식 칸(뉴스·커뮤니티) — 단계가 .news-panel·관련 종목 칩·커뮤니티 탭을 비춤
+- 2판(2026-11-20): 앱은 개미경제·개미피드(SNS 하나에 여러 모양 섞음, 칩으로 거름)·개미증권(assets 칸)·증강(cards 칸)·설정, 홈 위젯(재산·증강·안 읽은 수), 아이콘·사진·그림에 개미(`AntHead`, PostArt.tsx). PC 칸 = 휴대폰(`.p-phone`, mode 'framed'), 휴대폰은 탭 '개미폰' = `.ap-layer` 전체 화면(mode 'full', top `--m-top-h`·bottom `--m-nav-h`), 아래 메뉴 위로 쓸기로 올림·'내리기'로 이전 탭(`lastTab`). 튜토리얼은 mode 'inline'
 
 ## 튜토리얼 2판 (2026-11-20)
 - 게임 기초 단계 16 → 10 (읽기만 하던 내 재산·커뮤니티·차트·내 보유·내 증강·순위를 합치거나 뺌, 직접 해 보는 단계는 그대로). 말풍선은 할 일 먼저 한 문장, 단계 숫자 대신 진행 막대

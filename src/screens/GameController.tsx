@@ -16,7 +16,7 @@ import { applyMoneyUnit, effective, isCustom, moved, resetLayout, setLayout, set
 import { bandText, loadPins, MarketGridPinnable, MarketTicker, EndStatus, RankList, rankRows, RankStrip, PlayerPic, savePins, ScheduleStrip, TargetPicker } from '../components/Board';
 import { AssetSummary, CardTray, Drawer, Timeline } from '../components/Desk';
 import { BottomSheet, Calendar, OrdersAndDividends, useIsMobile, useMobileLayout } from '../components/Extras';
-import { AugPanel, AugPick, AugPill, AugStrip } from '../components/Augments';
+import { AugPanel, AugPick, AugPill, AugSlots, AugStrip } from '../components/Augments';
 import { augFeeRate, augLevCap, augOrderRange } from '../engine/augEffects';
 import { AUG_MAP } from '../game/augments';
 import { AssetsPanel, CardsPanel, DayCloseOverlay, FakeNewsModal, MatchIntro, NewsPanel, Tutorial, unreadToday } from '../components/Panels';
@@ -61,8 +61,8 @@ interface Props {
 
 type Tab = 'list' | 'detail' | 'news' | 'assets' | 'cards';
 const TABS: Tab[] = ['list', 'detail', 'news', 'assets', 'cards'];
-const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '소식', assets: '내 재산', cards: '증강' };
-const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'news', assets: 'wallet', cards: 'cards' };
+const TAB_LABEL: Record<Tab, string> = { list: '종목', detail: '차트', news: '개미폰', assets: '내 재산', cards: '증강' };
+const TAB_ICON: Record<Tab, IconName> = { list: 'list', detail: 'chart', news: 'phone', assets: 'wallet', cards: 'cards' };
 const HEADER_LABEL: Record<MHeaderRow, string> = { ticker: '시장 지표', schedule: '일정', assets: '내 재산 요약' };
 
 /** 연습을 '그만두기'로 나갔는지 (나간 뒤 1초 타이머가 다시 저장하지 않게) */
@@ -268,6 +268,19 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     ro.observe(el);
     mFlowRo.current = ro;
   }, []);
+  // 아래 메뉴 높이 — 올린 개미폰이 그 위까지만 덮게
+  const [mNavH, setMNavH] = useState(64);
+  const mNavRo = useRef<ResizeObserver | null>(null);
+  const mNavRef = useCallback((el: HTMLElement | null) => {
+    mNavRo.current?.disconnect();
+    mNavRo.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setMNavH(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    mNavRo.current = ro;
+  }, []);
+  // 아래 메뉴를 위로 쓸어 올리면 개미폰 (그 손짓 뒤의 누름은 탭 바꾸기로 치지 않음)
+  const navSwipe = useRef<{ y: number; done: boolean } | null>(null);
   const layout = effective(prefs).layout;
   const startEdit = () => {
     setPrefs({ enabled: true });
@@ -278,6 +291,11 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   // 튜토리얼은 '뉴스에서 종목 찾기'를 직접 해 보도록 처음 선택을 튜토리얼 종목이 아닌 것으로
   const [selected, setSelected] = useState(() => STOCKS.find((x) => x.symbol !== tutorialInfo?.symbol)!.symbol);
   const [tab, setTab] = useMobileTab(mobile, effective(prefs).layout.mStart);
+  // 개미폰을 내리면 올리기 전 탭으로
+  const lastTab = useRef<Tab>('list');
+  useEffect(() => {
+    if (tab !== 'news') lastTab.current = tab;
+  }, [tab]);
   // 튜토리얼: 단계에 맞는 탭을 모바일에서 열어 줌 (훅은 항상 같은 순서로 — 화면 준비 전 return 보다 위)
   const tutTab = session.tutorial ? TUTORIAL_STEPS[tutStep]?.tab : undefined;
   useEffect(() => {
@@ -1218,25 +1236,6 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
   const phoneDaySec = (view.room.rulesVersion ?? 1) >= GAME_TIME_VERSION ? (view.room.turnSeconds > 0 ? view.room.turnSeconds : 180) : undefined;
   const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, Math.floor(sec % 60))).padStart(2, '0')}`;
   const phoneClock = inPre ? '장 전' : closing !== null ? `${day + 1}일차 정리` : remaining !== null && daySecs > 0 ? `${day + 1}일차 ${mmss(Math.max(0, daySecs - remaining))}` : `${day + 1}일차`;
-  const phoneFor = (framed: boolean) => (
-    <AntPhone
-      roomKey={view.room.id}
-      day={day}
-      daySec={phoneDaySec}
-      clock={phoneClock}
-      pre={inPre}
-      live={!!view.live && !inPre && closing === null}
-      news={news}
-      posts={view.community ?? []}
-      pastPosts={market?.community ?? []}
-      rumors={view.rumors ?? []}
-      newsApp={session.tutorial ? newsPanel : newsPanelFor('news')}
-      onSelect={selectStock}
-      onSelectSector={selectSector}
-      framed={framed}
-      lockApp={session.tutorial ? 'news' : undefined}
-    />
-  );
   const assets = (
     <>
       <AssetsPanel ui={ui} portfolio={portfolio} prices={prices} equity={equity} start={START_CASH} onSelect={selectStock} />
@@ -1265,6 +1264,45 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       onUse={(k) => useCard(k)}
       effectsOnMe={effectsOnMe}
       busy={busy}
+    />
+  );
+  // 개미폰 (design/news-phone.md) — 뉴스·피드·내 주식·증강 앱. 튜토리얼은 뉴스 앱을 열어 둔 채 예전 소식 칸(뉴스·커뮤니티) 그대로 — 단계가 그 칸을 비춤
+  const phoneWallet = {
+    equity,
+    ret: myRet,
+    cash: portfolio.cash,
+    top: Object.entries(portfolio.holdings)
+      .filter(([, h]) => h.qty > 0)
+      .map(([sym, h]) => ({ sym, name: STOCK_MAP[sym]?.name ?? sym, value: h.qty * (prices[sym] ?? 0), ch: change(sym) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3),
+  };
+  const phoneFor = (mode: 'framed' | 'full' | 'inline', onLower?: () => void) => (
+    <AntPhone
+      roomKey={view.room.id}
+      day={day}
+      daySec={phoneDaySec}
+      clock={phoneClock}
+      pre={inPre}
+      live={!!view.live && !inPre && closing === null}
+      news={news}
+      posts={view.community ?? []}
+      pastPosts={market?.community ?? []}
+      rumors={view.rumors ?? []}
+      newsApp={session.tutorial ? newsPanel : newsPanelFor('news')}
+      stockApp={assets}
+      augApp={cards}
+      augName={augMode ? '증강' : '찬스 카드'}
+      augWidget={view.aug ? <AugSlots aug={view.aug} size={22} /> : <span className="ap-w-sub">카드 {view.myItems.total}장</span>}
+      augAlert={!!view.aug?.offer}
+      wallet={phoneWallet}
+      alerts={mode === 'full' ? effectsOnMe : undefined}
+      onSelect={selectStock}
+      onSelectSector={selectSector}
+      onExpand={mode === 'framed' ? () => setNewsBig(true) : undefined}
+      mode={mode}
+      onLower={onLower}
+      lockApp={session.tutorial ? 'news' : undefined}
     />
   );
   // ---------- 튜토리얼 ----------
@@ -1712,7 +1750,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       ),
     };
     return (
-      <div className={'m-game ui-' + ui + (editing ? ' editing' : '')} style={{ ['--m-top-h' as string]: mTopH + 'px', ['--m-stick-h' as string]: mTopH + mFlowH + 'px' }}>
+      <div className={'m-game ui-' + ui + (editing ? ' editing' : '')} style={{ ['--m-top-h' as string]: mTopH + 'px', ['--m-stick-h' as string]: mTopH + mFlowH + 'px', ['--m-nav-h' as string]: mNavH + 'px' }}>
         {editBar}
         {/* 차트 탭은 화면을 차트에 양보하려고 위쪽 시장·일정·재산 줄을 접어 둠 (편집 중에는 펼쳐 둠) */}
         <header className="m-top" ref={mTopRef}>
@@ -1823,17 +1861,20 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               {tab === 'detail' && detail}
             </>
           )}
-          {tab === 'news' && (
-            <>
-              {effectsOnMe.map((t, i) => (
-                <div key={i} className="effect-banner">
-                  {t}
-                </div>
-              ))}
-              {phoneFor(false)}
-              {cardTray(() => setTab('cards'))}
-            </>
-          )}
+          {tab === 'news' &&
+            (session.tutorial ? (
+              <>
+                {effectsOnMe.map((t, i) => (
+                  <div key={i} className="effect-banner">
+                    {t}
+                  </div>
+                ))}
+                {phoneFor('inline')}
+                {cardTray(() => setTab('cards'))}
+              </>
+            ) : (
+              <div className="ap-layer">{phoneFor('full', () => setTab(lastTab.current))}</div>
+            ))}
           {tab === 'assets' && (
             <>
               {assets}
@@ -1864,7 +1905,39 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           </div>
         )}
 
-        <nav className="bottom-nav five">
+        <nav
+          className="bottom-nav five"
+          ref={mNavRef}
+          onPointerDown={(e) => {
+            if (editing) return;
+            const sw = { y: e.clientY, done: false };
+            navSwipe.current = sw;
+            // 손가락·마우스가 메뉴 밖으로 올라가도 따라가게 창 전체에서 봄
+            const move = (ev: PointerEvent) => {
+              if (!sw.done && sw.y - ev.clientY > 36) {
+                sw.done = true;
+                setTab('news');
+              }
+            };
+            const end = () => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', end);
+              window.removeEventListener('pointercancel', end);
+              // 메뉴 밖에서 손을 떼면 누름이 안 생김 — 다음 누름을 막지 않게 비움
+              setTimeout(() => navSwipe.current === sw && (navSwipe.current = null), 0);
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', end);
+            window.addEventListener('pointercancel', end);
+          }}
+          onClickCapture={(e) => {
+            if (navSwipe.current?.done) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+            navSwipe.current = null;
+          }}
+        >
           {layout.mTabs.map((t, i) => (
             <button key={t} data-tab={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
               <span>
@@ -2056,22 +2129,13 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
               />
             </section>
           ) : id === 'news' ? (
-            <section className="pane p-news">
-              {/* 뉴스 칸 제목 + 크게 보기 (카드 칸 제목과 같은 모양) */}
-              <div className="news-bar">
-                <b><Icon name="news" size={15} /> 소식</b>
-                <button className="btn sm ghost" onClick={() => setNewsBig(true)}>
-                  <Icon name="grid" size={14} /> 크게 보기
-                </button>
-              </div>
-              <div className="news-scroll">
-                {effectsOnMe.map((t, k) => (
-                  <div key={k} className="effect-banner">
-                    {t}
-                  </div>
-                ))}
-                {phoneFor(true)}
-              </div>
+            <section className="pane p-news p-phone">
+              {effectsOnMe.map((t, k) => (
+                <div key={k} className="effect-banner">
+                  {t}
+                </div>
+              ))}
+              {phoneFor('framed')}
             </section>
           ) : (
             <section className="pane p-cards">

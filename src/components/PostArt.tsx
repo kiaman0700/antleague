@@ -21,6 +21,25 @@ export function pickArt(p: { id: string; text: string; sector: string; tone: 'go
   return { scene: list[h % list.length], sky: (h >>> 8) % 3, seed: h };
 }
 
+/** 개미리그 개미 머리 (앱 아이콘·글쓴이 사진·그림 속 사람 자리) — SVG 안에 넣는 조각 */
+export function AntHead({ cx, cy, r, fill, face = '#1a1a1a', mood = 'smile', hat }: { cx: number; cy: number; r: number; fill: string; face?: string; mood?: 'smile' | 'sad' | 'plain'; hat?: string }) {
+  const w = Math.max(0.6, r * 0.16);
+  return (
+    <g>
+      <path d={`M${cx - r * 0.42} ${cy - r * 0.78} q${-r * 0.25} ${-r * 0.62} ${-r * 0.78} ${-r * 0.62} M${cx + r * 0.42} ${cy - r * 0.78} q${r * 0.25} ${-r * 0.62} ${r * 0.78} ${-r * 0.62}`} stroke={fill} strokeWidth={w} strokeLinecap="round" fill="none" />
+      <circle cx={cx - r * 1.2} cy={cy - r * 1.4} r={w * 1.15} fill={fill} />
+      <circle cx={cx + r * 1.2} cy={cy - r * 1.4} r={w * 1.15} fill={fill} />
+      <ellipse cx={cx} cy={cy} rx={r} ry={r * 0.9} fill={fill} />
+      {hat && <path d={`M${cx - r * 1.05} ${cy - r * 0.35} a${r * 1.05} ${r * 0.85} 0 0 1 ${r * 2.1} 0 z`} fill={hat} />}
+      <ellipse cx={cx - r * 0.36} cy={cy - r * 0.06} rx={r * 0.17} ry={r * 0.23} fill={face} />
+      <ellipse cx={cx + r * 0.36} cy={cy - r * 0.06} rx={r * 0.17} ry={r * 0.23} fill={face} />
+      {r >= 5 && mood !== 'plain' && (
+        <path d={mood === 'smile' ? `M${cx - r * 0.3} ${cy + r * 0.34} q${r * 0.3} ${r * 0.3} ${r * 0.6} 0` : `M${cx - r * 0.3} ${cy + r * 0.5} q${r * 0.3} ${-r * 0.26} ${r * 0.6} 0`} stroke={face} strokeWidth={Math.max(0.7, r * 0.1)} strokeLinecap="round" fill="none" />
+      )}
+    </g>
+  );
+}
+
 const SKIES = [
   ['#2a3550', '#55406a'], // 새벽
   ['#3d5f8c', '#7a9cc6'], // 낮
@@ -75,6 +94,8 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
             <polyline fill="none" stroke="#f5b83d" strokeWidth="1.4" points={bars.map((b) => `${14 + b.i * bw + bw * 0.35},${y((b.o + b.c) / 2)}`).join(' ')} />
             <rect x="8" y={H - 16} width="58" height="10" rx="3" fill={accent} opacity=".9" />
             <text x="12" y={H - 8.5} fontSize="7" fontWeight="800" fill="#fff">{up ? '▲ 급등' : '▼ 급락'}</text>
+            {/* 화면을 들여다보는 개미 */}
+            <AntHead cx={W - 18} cy={H - 4} r={11} fill="#8b7bff" mood={up ? 'smile' : 'sad'} />
           </>
         );
       }
@@ -93,6 +114,9 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
               <rect key={i} x={106 + i * 12} y={ground - 22} width="7" height="6" fill="#f5d27a" opacity={sky === 2 ? 0.9 : 0.45} />
             ))}
             <rect y={ground} width={W} height={H - ground} fill="#1f2228" />
+            {/* 안전모 쓴 개미 직원 */}
+            <rect x="83" y={ground - 6} width="12" height="9" rx="3" fill="#f5b83d" />
+            <AntHead cx={89} cy={ground - 12} r={6.5} fill="#8b7bff" hat="#f5b83d" mood={up ? 'smile' : 'sad'} />
           </>
         );
       case 'tower':
@@ -120,8 +144,8 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
             <path d={`M14 ${H} L30 ${H * 0.66} H130 L146 ${H} z`} fill="#4a3a2c" />
             {[44, 68, 92, 116].map((x, i) => (
               <g key={x}>
-                <circle cx={x} cy={H * 0.6} r="6" fill="#1c1c1c" />
                 <rect x={x - 8} y={H * 0.64} width="16" height="10" rx="4" fill={i % 2 ? '#30343c' : '#24272d'} />
+                <AntHead cx={x} cy={H * 0.6} r={5.6} fill={['#8b7bff', '#6f63c9', '#9d8cff', '#7a6be0'][i]} mood="plain" />
               </g>
             ))}
           </>
@@ -137,6 +161,10 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
             <path d={`M0 0 L${W / 2 - 12} ${ground - 54} H${W / 2 + 12} L${W} 0 z`} fill="#fff" opacity=".05" />
             <rect x="8" y="8" width="38" height="11" rx="3" fill="#6b58ee" />
             <text x="12" y="16" fontSize="7" fontWeight="800" fill="#fff">NEW</text>
+            {/* 발표하는 개미 */}
+            <rect x={W - 34} y={ground - 12} width="16" height="14" rx="4" fill="#30343c" />
+            <path d={`M${W - 34} ${ground - 8} L${W / 2 + 26} ${ground - 34}`} stroke="#c8c8c8" strokeWidth="1.4" strokeLinecap="round" />
+            <AntHead cx={W - 26} cy={ground - 20} r={8} fill="#8b7bff" mood={up ? 'smile' : 'plain'} />
           </>
         );
       case 'broadcast':
@@ -145,9 +173,11 @@ export function PostArt({ p, ratio = 'wide', only, label }: { p: { id: string; t
             <rect width={W} height={H} fill="#16213a" />
             <rect x="10" y="8" width="62" height={H * 0.5} rx="3" fill="#24345a" />
             <polyline fill="none" stroke={accent} strokeWidth="2.2" points={up ? '14,40 28,34 42,37 56,24 68,18' : '14,18 28,24 42,21 56,34 68,40'} transform={`translate(0 ${H * 0.02})`} />
-            <circle cx="112" cy={H * 0.42} r="13" fill="#e8c9a8" />
-            <path d={`M92 ${H * 0.8} q20 -24 40 0 z`} fill="#2d3e66" />
-            <path d={`M99 ${H * 0.36} q13 -14 26 0 q-2 -10 -13 -10 q-11 0 -13 10 z`} fill="#2b2b2b" />
+            {/* 개미 앵커: 정장 + 넥타이 */}
+            <path d={`M86 ${H - 18} q0 ${-H * 0.3} 26 ${-H * 0.32} q26 ${H * 0.02} 26 ${H * 0.32} z`} fill="#2d3e66" />
+            <path d={`M106 ${H * 0.5 - 1} l6 6 l6 -6 z`} fill="#e9e9ee" />
+            <path d={`M109.6 ${H * 0.55} h4.8 l1.4 ${H * 0.2} l-3.8 4 l-3.8 -4 z`} fill={accent} />
+            <AntHead cx={112} cy={H * 0.44} r={12} fill="#8b7bff" mood={up ? 'smile' : 'plain'} />
             <rect y={H - 18} width={W} height="18" fill={up ? '#b4232f' : '#1d4ed8'} />
             <rect x="0" y={H - 18} width="34" height="18" fill="#111" />
             <text x="6" y={H - 6} fontSize="8" fontWeight="800" fill="#fff">LIVE</text>
