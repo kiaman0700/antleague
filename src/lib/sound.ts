@@ -54,6 +54,13 @@ export function audio(): { ctx: AudioContext; sfx: GainNode; music: GainNode } |
   if (!ctx) {
     const C = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;
+    // 아이폰: 무음 스위치를 따르고, 듣던 음악 앱을 끄지 않고 섞여 나오게 (사파리 16.4+)
+    try {
+      const sess = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (sess) sess.type = 'ambient';
+    } catch {
+      /* 지원 안 하면 그대로 */
+    }
     ctx = new C();
     master = ctx.createGain();
     master.gain.value = 0.7;
