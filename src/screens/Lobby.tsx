@@ -1562,6 +1562,13 @@ function FlashNote() {
   return text ? <Toast text={text} tone={flashTone()} /> : null;
 }
 
+/** 전적 펼침의 순위 숫자: 재산이 같고 기권·거래 0회 여부도 같으면 같은 순위 (봇 다섯이 비기면 모두 1) */
+function tiedRank(rs: { equity: number; left?: boolean; idle?: boolean }[], i: number): number {
+  let k = i;
+  while (k > 0 && rs[k - 1].equity === rs[i].equity && !!rs[k - 1].left === !!rs[i].left && !!rs[k - 1].idle === !!rs[i].idle) k--;
+  return k + 1;
+}
+
 function Records({ go }: Pick<Props, 'go'>) {
   const acc = useAccount();
   const [history, setHistory] = useState<MatchResult[] | null>(null);
@@ -1669,9 +1676,9 @@ function Records({ go }: Pick<Props, 'go'>) {
                       <ol className="mr-players">
                         {h.results.map((r, i) => (
                           <li key={r.nickname + i} className={r.nickname === h.me ? 'me' : ''}>
-                            <span className="mr-p-rank">{i + 1}</span>
+                            <span className="mr-p-rank">{tiedRank(h.results, i)}</span>
                             <span className="mr-p-name">
-                              {r.nickname}
+                              <span className="mr-p-nick">{r.nickname}</span>
                               {r.nickname === h.me && <em> (나)</em>}
                               {!!r.bot && <span className="bot-tag">봇</span>}
                               {r.left && <span className="mr-tag">기권</span>}

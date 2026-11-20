@@ -1070,7 +1070,9 @@ ul.mr-list button.mr-row .mr-pts { display: inline-flex; align-items: center; ga
 .mr-players > li:last-child { border-bottom: 0; }
 .mr-players > li.me .mr-p-name { color: var(--accent-text); font-weight: 700; }
 .mr-p-rank { font-weight: 800; color: var(--muted); text-align: center; }
-.mr-p-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mr-p-name { min-width: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.mr-p-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mr-p-name > :not(.mr-p-nick) { flex: none; } /* 이름이 길면 이름만 줄이고 (나)·봇·기권 표시는 그대로 */
 .mr-p-name em { font-style: normal; color: var(--muted); }
 .mr-tag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 11px; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.12); }
 .mr-p-ret { font-weight: 700; text-align: right; }
@@ -2727,3 +2729,5 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 6명 판: 순위 칸 최소 너비 170px 로는 1280px 화면에 다 안 들어가 마지막 칸이 잘렸음 — 6칸일 땐 더 좁게 */
 .desk .rank-strip:has(> .rank-chip:nth-child(6)) .rank-chip { min-width: 120px; }
 .trade .qty-warn { margin: -4px 0 0; font-size: 13px; color: var(--amber, #f5b83d); }
+/* 좁은 휴대폰: 내 줄은 보라 글자로 이미 구분 — '(나)'는 화면 읽기용으로만 남기고 이름 자리를 넓힘 */
+@media (max-width: 420px) { .mr-p-name em { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
