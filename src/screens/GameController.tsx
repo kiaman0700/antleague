@@ -799,7 +799,10 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
       play('item');
       if (kind === 'undo') return showToast('그 거래를 없던 일로 했어요. 수수료도 돌려받아요');
       if (kind === 'timing') return showToast('오늘 장이 끝나면 그날 최저가로 다시 계산해 차액을 받아요');
-      showToast(session.tutorial ? '결과가 소식 칸에 나왔어요' : '결과가 개미폰 개미경제 앱에 나왔어요');
+      // 감별기로 고른 것이 피드 글(장 전 소문·커뮤니티)이면 결과도 개미피드 쪽에 붙음
+      const inFeed = kind === 'detector' && !!payload.pick && !news.some((n) => n.headline === payload.pick);
+      showToast(session.tutorial ? '결과가 소식 칸에 나왔어요' : `결과가 개미폰 ${inFeed ? '개미피드' : '개미경제'} 앱에 나왔어요`);
+      if (!session.tutorial) openPhoneAt(inFeed ? 'sns' : 'news', '');
       setTab('news');
       setDrawer(null);
       const cls = ({ paper: 'paper', analyst: 'analyst', scout: 'scout' } as Record<string, string>)[kind];

@@ -83,6 +83,8 @@ export function usePhonePeek(on: boolean, news: NewsEvent[], posts: PublicPost[]
 let pendingOpen: { app: PhoneApp; key: string } | null = null;
 export function openPhoneAt(app: PhoneApp, key: string) {
   pendingOpen = { app, key };
+  // 이미 그려진 휴대폰(PC 칸)은 바로 엶
+  window.dispatchEvent(new Event('antphone:open'));
 }
 
 export function phoneUnread(roomKey: string, news: NewsEvent[], posts: PublicPost[], rumors: PhoneRumor[], day: number): number {
@@ -281,6 +283,15 @@ export function AntPhone(p: Props) {
     const on = () => goHome();
     window.addEventListener('antphone:home', on);
     return () => window.removeEventListener('antphone:home', on);
+  });
+  useEffect(() => {
+    const on = () => {
+      const o = pendingOpen;
+      pendingOpen = null;
+      if (o && !p.lockApp) open(o.app, o.key || undefined);
+    };
+    window.addEventListener('antphone:open', on);
+    return () => window.removeEventListener('antphone:open', on);
   });
 
   // 상태 줄을 끌어내리면 알림 모음
