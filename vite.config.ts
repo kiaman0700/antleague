@@ -21,8 +21,8 @@ function devApi(): Plugin {
         for await (const c of req) chunks.push(c as Buffer);
         const headers = new Headers();
         for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers.set(k, v);
-        // 이 컴퓨터의 개발 서버로 한 판은 모두 시험 판으로 (점검·시험 판이 운영 통계·공개 랭킹에 섞이지 않게) — 배포된 사이트엔 이 단계가 없음
-        if (process.env.SUPABASE_SECRET_KEY) headers.set('x-stockduel-test', createHmac('sha256', process.env.SUPABASE_SECRET_KEY).update('e2e-test').digest('hex').slice(0, 32));
+        // 이 컴퓨터의 개발 서버로 한 판은 모두 시험 판으로 (점검·시험 판이 운영 통계·공개 랭킹에 섞이지 않게) — 배포된 사이트엔 이 단계가 없음 (이미 시험 표시를 붙여 온 요청은 그대로 — 가짜 표시 거절 시험용)
+        if (process.env.SUPABASE_SECRET_KEY && !headers.has('x-stockduel-test')) headers.set('x-stockduel-test', createHmac('sha256', process.env.SUPABASE_SECRET_KEY).update('e2e-test').digest('hex').slice(0, 32));
         const request = new Request('http://' + (req.headers.host ?? 'localhost') + '/api/game', { method: 'POST', headers, body: Buffer.concat(chunks) });
         const mod = (await server.ssrLoadModule('/api/game.ts')) as { POST: (r: Request) => Promise<Response> };
         const out = await mod.POST(request);
