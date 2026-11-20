@@ -193,8 +193,10 @@ export function CommunityFeed({ today, past, day, live, daySec, onSelect, onSele
   );
 }
 
-/** (v20+) 장 전 커뮤니티 글을 실시간 피드와 같은 모양으로 — 플랫폼·글쓴이는 글 내용으로만 정한 꾸밈(진위와 상관없음) */
-export function PrePosts({ rumors, day, daySec, onSelect, onSelectSector }: { daySec?: number; rumors: { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' }[]; day: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
+type PreRumor = { text: string; sector: string; symbol?: string; tone: 'good' | 'bad'; verdict?: 'true' | 'false' };
+
+/** (v20+) 장 전 커뮤니티 글을 실시간 글과 같은 모양으로 — 플랫폼·글쓴이는 글 내용으로만 정한 꾸밈(진위와 상관없음). 개미폰 앱도 같은 플랫폼으로 나눔 */
+export function prePostsOf(rumors: PreRumor[], day: number): { p: PublicPost; time: (daySec?: number) => string }[] {
   const ids: Platform[] = ['square', 'board', 'chirp', 'feedgram', 'talk', 'live'];
   const nicks = NICKS;
   const h = (t: string) => {
@@ -202,15 +204,21 @@ export function PrePosts({ rumors, day, daySec, onSelect, onSelectSector }: { da
     for (let i = 0; i < t.length; i++) x = Math.imul(x ^ t.charCodeAt(i), 16777619);
     return x >>> 0;
   };
+  return rumors
+    .map((r, i) => ({ r, i, k: h(day + ':' + r.text) }))
+    .sort((a, b) => ((b.k >>> 21) % 49) - ((a.k >>> 21) % 49))
+    .map(({ r, i, k }) => ({
+      p: { id: 'pre-' + i, day, at: 0, platform: ids[k % ids.length], author: nicks[(k >>> 4) % nicks.length] + ((k >>> 9) % 2 ? String(10 + ((k >>> 11) % 90)) : ''), verified: null, text: r.text, symbol: r.symbol, sector: r.sector, tone: r.tone, likes: 20 + ((k >>> 13) % 600), replies: (k >>> 17) % 90, verdict: r.verdict },
+      time: (daySec?: number) => (daySec ? '장 전' : `장 전 08:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`),
+    }));
+}
+
+export function PrePosts({ rumors, day, daySec, onSelect, onSelectSector }: { daySec?: number; rumors: PreRumor[]; day: number; onSelect: (s: string) => void; onSelectSector: (s: string) => void }) {
   return (
     <ul className="cf-list">
-      {rumors
-        .map((r, i) => ({ r, i, k: h(day + ':' + r.text) }))
-        .sort((a, b) => ((b.k >>> 21) % 49) - ((a.k >>> 21) % 49))
-        .map(({ r, i, k }) => {
-        const p: PublicPost = { id: 'pre-' + i, day, at: 0, platform: ids[k % ids.length], author: nicks[(k >>> 4) % nicks.length] + ((k >>> 9) % 2 ? String(10 + ((k >>> 11) % 90)) : ''), verified: null, text: r.text, symbol: r.symbol, sector: r.sector, tone: r.tone, likes: 20 + ((k >>> 13) % 600), replies: (k >>> 17) % 90, verdict: r.verdict };
-        return <Post key={i} p={p} time={daySec ? '장 전' : `장 전 08:${String(10 + ((k >>> 21) % 49)).padStart(2, '0')}`} onSelect={onSelect} onSelectSector={onSelectSector} />;
-      })}
+      {prePostsOf(rumors, day).map(({ p, time }, i) => (
+        <Post key={i} p={p} time={time(daySec)} onSelect={onSelect} onSelectSector={onSelectSector} />
+      ))}
     </ul>
   );
 }

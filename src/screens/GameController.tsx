@@ -44,6 +44,7 @@ import { SECTOR_MAP, STOCK_MAP, STOCKS } from '../game/stocks';
 import { num, pct, tone, wonShort } from '../lib/format';
 import { isMuted, play, setMuted } from '../lib/sound';
 import { musicOn, setMusicOn, setScene, type Scene } from '../lib/music';
+import { AntPhone } from '../components/AntPhone';
 import { api, ApiError, useLiveView, useReactions, type Reaction } from '../net/api';
 import { loadWatch, markTutorialSeen, saveUi, saveWatch, tutorialSeen, type Session, type UiMode } from '../session';
 import { ResultScreen } from './ResultScreen';
@@ -1212,6 +1213,30 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
     />
   );
   const newsPanel = newsPanelFor();
+  // 소식 칸 = 개미폰 (design/news-phone.md) — 뉴스 앱은 지금의 소식 칸(뉴스만), 커뮤니티 글은 플랫폼 앱으로.
+  // 튜토리얼은 뉴스 앱을 열어 둔 채 예전 소식 칸(뉴스·커뮤니티) 그대로 — 단계가 그 칸을 비춤
+  const phoneDaySec = (view.room.rulesVersion ?? 1) >= GAME_TIME_VERSION ? (view.room.turnSeconds > 0 ? view.room.turnSeconds : 180) : undefined;
+  const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.max(0, Math.floor(sec % 60))).padStart(2, '0')}`;
+  const phoneClock = inPre ? '장 전' : closing !== null ? `${day + 1}일차 정리` : remaining !== null && daySecs > 0 ? `${day + 1}일차 ${mmss(Math.max(0, daySecs - remaining))}` : `${day + 1}일차`;
+  const phoneFor = (framed: boolean) => (
+    <AntPhone
+      roomKey={view.room.id}
+      day={day}
+      daySec={phoneDaySec}
+      clock={phoneClock}
+      pre={inPre}
+      live={!!view.live && !inPre && closing === null}
+      news={news}
+      posts={view.community ?? []}
+      pastPosts={market?.community ?? []}
+      rumors={view.rumors ?? []}
+      newsApp={session.tutorial ? newsPanel : newsPanelFor('news')}
+      onSelect={selectStock}
+      onSelectSector={selectSector}
+      framed={framed}
+      lockApp={session.tutorial ? 'news' : undefined}
+    />
+  );
   const assets = (
     <>
       <AssetsPanel ui={ui} portfolio={portfolio} prices={prices} equity={equity} start={START_CASH} onSelect={selectStock} />
@@ -1805,7 +1830,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                   {t}
                 </div>
               ))}
-              {newsPanel}
+              {phoneFor(false)}
               {cardTray(() => setTab('cards'))}
             </>
           )}
@@ -2045,7 +2070,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
                     {t}
                   </div>
                 ))}
-                {newsPanel}
+                {phoneFor(true)}
               </div>
             </section>
           ) : (

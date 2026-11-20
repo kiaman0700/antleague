@@ -311,6 +311,11 @@ Vercel 환경변수는 4개만 필요: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_
 - 개발 서버(vite.config.ts)는 시험 표시가 없는 요청에만 시험 표시를 붙임(가짜 표시 거절 e2e testkey 가 로컬에서도 통과)
 - 시험 스크립트에 `timeout N` 을 걸면 그 시각에 브라우저가 통째로 꺼져 Playwright 가 'Target crashed' 를 냄 — 게임 버그로 착각하지 말 것(2026-11-20 튜토리얼 뒤 '멈춤'이 이것)
 
+## 개미폰 (2026-11-20, 사용자 요청, design/news-phone.md)
+- 게임 소식 칸 = 가상 휴대폰 `AntPhone`: 상태 줄(게임 시각 — 누르거나 끌어내리면 알림 모음), 홈 화면 앱 8개(개미경제 뉴스·개미광장·종목토론방·짹짹·피드그램·개미톡·개미TV·설정), 앱 아이콘 안 읽은 수 배지, 새 소식이 오면 알림 켠 앱만 위쪽 배너 3.5초, 설정에서 앱마다 알림 켜고 끄기(localStorage stockduel.phoneNotif, 기본 개미TV만 끔). 읽음은 sessionStorage stockduel.phoneSeen:<방>. 휴대폰 게임은 소식 탭에 틀 없이, PC 는 소식 칸에 둥근 휴대폰 틀(framed). '크게 보기'는 예전 두 칸 그대로
+- 화면이 이미 받는 공개 소식만 앱별로 나눔(서버·DB·규칙 변경 없음). 장 전 소문은 `prePostsOf`(CommunityFeed)로 같은 플랫폼에 들어감. 그림(`PostArt` — 차트 화면·공장·빌딩·회의실·신제품·방송·개미 표정)은 글 내용 해시·업종·호재/악재로만 고름(진위와 무관 — PostArt.test.ts)
+- 뉴스 앱 = 기존 `NewsPanel only='news'`. 튜토리얼은 `lockApp='news'` + 예전 소식 칸(뉴스·커뮤니티) — 단계가 .news-panel·관련 종목 칩·커뮤니티 탭을 비춤
+
 ## 튜토리얼 2판 (2026-11-20)
 - 게임 기초 단계 16 → 10 (읽기만 하던 내 재산·커뮤니티·차트·내 보유·내 증강·순위를 합치거나 뺌, 직접 해 보는 단계는 그대로). 말풍선은 할 일 먼저 한 문장, 단계 숫자 대신 진행 막대
 - 단계별 이탈 기록(DB 069 `tutorial_steps` 날짜·단계·사건 숫자만, `tutorial_step_hit` 서버 전용): 화면이 `tutorialStep {step, ev: show|quit|done}`, 시험 계정은 안 셈. 보기 `npm run db -- tutorial [일수]`

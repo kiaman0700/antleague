@@ -1,0 +1,136 @@
+/* ===== 개미폰 (design/news-phone.md) — 소식 칸을 휴대폰처럼 ===== */
+.antphone { position: relative; width: 100%; min-width: 0; }
+.antphone .ap-screen { position: relative; display: flex; flex-direction: column; min-height: 100%; background: #0f0f11; border-radius: 14px; overflow: hidden; }
+/* PC: 둥근 휴대폰 틀 — 칸 높이를 꽉 채우고 안에서만 스크롤 */
+.antphone.framed { height: 100%; padding: 7px; border-radius: 30px; background: #2a2a2e; box-shadow: inset 0 0 0 1px #3a3a40; }
+.antphone.framed .ap-screen { height: 100%; border-radius: 24px; }
+.antphone.framed .ap-body, .antphone.framed .ap-home, .antphone.framed .ap-feed { overflow-y: auto; }
+.antphone.framed .ap-appview { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.antphone.framed .ap-body { flex: 1; min-height: 0; }
+.antphone.framed .ap-home { flex: 1; min-height: 0; }
+
+/* 상태 줄: 누르거나 끌어내리면 알림 모음 */
+.ap-status { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 30px; padding: 0 16px; color: #f2f2f2; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; touch-action: none; flex: none; }
+.ap-status:focus-visible { outline: 2px solid #8b7bff; outline-offset: -2px; border-radius: 10px; }
+.ap-sys { display: inline-flex; align-items: center; gap: 5px; color: #e8e8e8; }
+.ap-pull { position: absolute; left: 50%; top: 5px; width: 34px; height: 4px; margin-left: -17px; border-radius: 4px; background: #3a3a40; }
+.antphone.framed .ap-pull { width: 64px; height: 18px; margin-left: -32px; top: 6px; border-radius: 10px; background: #000; }
+
+/* 홈 화면 */
+.ap-home { padding: 10px 16px 18px; background: radial-gradient(120% 70% at 50% 0%, #1d1a2b 0%, #0f0f11 60%); }
+.ap-widget { display: grid; gap: 3px; margin: 6px 2px 16px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); }
+.ap-widget b { font-size: 14px; color: #f2f2f2; }
+.ap-widget small { font-size: 12px; color: #9a9a9a; }
+.ap-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 6px; }
+.ap-app { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 4px 0; background: none; border: 0; color: #f2f2f2; cursor: pointer; border-radius: 14px; }
+.ap-app:focus-visible { outline: 2px solid #8b7bff; outline-offset: 2px; }
+.ap-app:active .ap-ic { transform: scale(.94); }
+.ap-ic { position: relative; display: inline-flex; transition: transform .12s; }
+.ap-ic .pf-icon { border-radius: 13px; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.ap-badge { position: absolute; top: -6px; right: -8px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: #c8303f; color: #fff; font-size: 11px; font-weight: 800; font-style: normal; line-height: 19px; text-align: center; box-shadow: 0 0 0 2px #0f0f11; font-variant-numeric: tabular-nums; }
+.ap-muted { position: absolute; bottom: -3px; right: -4px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #2e2e2e; color: #c8c8c8; box-shadow: 0 0 0 2px #0f0f11; }
+.ap-name { font-size: 11.5px; font-weight: 700; color: #e6e6e6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ap-hint { margin: 18px 0 0; text-align: center; font-size: 11.5px; color: #6f6f75; }
+
+/* 앱 화면 */
+.ap-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; background: #151518; border-bottom: 1px solid #232327; }
+.ap-back { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; border: 0; background: none; color: #f2f2f2; cursor: pointer; }
+.ap-back:hover { background: #222226; }
+.ap-title { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #f2f2f2; }
+.ap-title .pf-icon { border-radius: 6px; }
+.ap-kind { margin-left: auto; color: #8a8a90; font-size: 11.5px; }
+.ap-body { padding: 0; }
+.app-news .ap-body > .news-panel { padding: 10px 12px 14px; }
+.ap-feed { padding: 6px 0 14px; }
+.ap-empty { margin: 28px 16px; text-align: center; color: #8a8a90; font-size: 13px; }
+.ap-list { list-style: none; margin: 0; padding: 0; }
+.ap-list > li { position: relative; }
+.ap-author { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: #f2f2f2; }
+.ap-verified { padding: 1px 6px; border-radius: 6px; background: #6b58ee; color: #fff; font-size: 10.5px; font-weight: 800; }
+.ap-av { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #2e2a45; color: #c9c1ff; font-size: 14px; font-weight: 800; }
+.ap-row-t { margin: 4px 0; font-size: 14px; line-height: 1.5; color: #ececec; word-break: keep-all; overflow-wrap: anywhere; }
+.ap-row-m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; }
+.ap-row-f { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; }
+.ap-list .rb-stamp { position: absolute; top: 10px; right: 12px; }
+
+/* 게시판(개미광장·종목토론방) */
+.list-square > li, .list-board > li { padding: 12px 16px; border-bottom: 1px solid #1f1f23; }
+.list-board > li { border-left: 3px solid #2fb380; }
+.list-square .ap-row-t, .list-board .ap-row-t { font-weight: 700; padding-right: 60px; }
+
+/* 짹짹 타임라인 */
+.ap-chirp { display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #1f1f23; }
+.ap-chirp > div { min-width: 0; flex: 1; }
+.ap-chirp .post-art { margin: 8px 0 2px; }
+
+/* 피드그램 사진 카드 */
+.ap-gram { padding: 10px 0 14px; border-bottom: 1px solid #1f1f23; }
+.ap-gram-h { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; font-size: 12px; }
+.ap-gram .ap-av { width: 28px; height: 28px; font-size: 12px; background: linear-gradient(#8b5cf6, #8b5cf6) padding-box; box-shadow: 0 0 0 2px #0f0f11, 0 0 0 3.5px #8b5cf6; }
+.ap-gram .post-art { border-radius: 0; }
+.ap-gram .ap-row-f, .ap-gram .ap-row-t { padding: 0 12px; }
+
+/* 개미톡 말풍선 */
+.list-talk { padding: 6px 0; background: #121a24; }
+.ap-talk { display: flex; gap: 8px; padding: 8px 12px; }
+.ap-talk > div { min-width: 0; flex: 1; }
+.ap-talk .ap-av { width: 32px; height: 32px; border-radius: 12px; background: #2a3b4f; color: #bfe0ff; }
+.ap-bubble-row { display: flex; align-items: flex-end; gap: 6px; margin-top: 3px; }
+.ap-bubble { margin: 0; max-width: 82%; padding: 8px 11px; border-radius: 4px 14px 14px 14px; background: #f2f2f2; color: #151515; font-size: 13.5px; line-height: 1.45; word-break: keep-all; overflow-wrap: anywhere; }
+.ap-talk .ap-row-f { margin-top: 4px; }
+
+/* 개미TV 방송 + 채팅 */
+.ap-live-top { padding: 0 0 8px; border-bottom: 1px solid #1f1f23; }
+.ap-live-top .post-art { border-radius: 0; }
+.ap-live-meta { display: grid; gap: 2px; padding: 8px 12px 0; }
+.ap-live-meta b { font-size: 13.5px; color: #f2f2f2; }
+.list-live { padding: 4px 0; }
+.ap-livechat { padding: 7px 12px; font-size: 13px; line-height: 1.45; border-bottom: 1px solid #18181b; }
+.ap-livechat .ap-author { font-size: 12.5px; color: #f5b83d; margin-right: 4px; }
+.ap-livechat-t { color: #e6e6e6; }
+.ap-livechat .ap-row-f { margin-top: 4px; }
+
+/* 그림 */
+.post-art { position: relative; margin: 0; border-radius: 12px; overflow: hidden; background: #15161a; line-height: 0; }
+.post-art svg { display: block; width: 100%; height: auto; }
+.pa-sector { position: absolute; right: 8px; bottom: 8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; line-height: 1; }
+
+/* 위쪽 알림 배너 */
+.ap-banner { position: absolute; z-index: 6; left: 8px; right: 8px; top: 34px; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 16px; border: 1px solid #34343a; background: #232327; color: #f2f2f2; text-align: left; box-shadow: 0 10px 26px rgba(0,0,0,.55); cursor: pointer; animation: apDrop .28s cubic-bezier(.2,.8,.2,1); }
+.ap-banner > span { display: grid; gap: 2px; min-width: 0; }
+.ap-banner b { font-size: 12px; color: #c8c8c8; }
+.ap-banner b small { font-weight: 600; color: #8a8a90; }
+.ap-banner em { font-style: normal; font-size: 13.5px; font-weight: 700; color: #f2f2f2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@keyframes apDrop { from { transform: translateY(-18px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 알림 모음 (상태 줄을 내리면) */
+.ap-shade { position: absolute; z-index: 7; inset: 30px 0 auto 0; max-height: calc(100% - 30px); display: flex; flex-direction: column; background: rgba(20,20,23,.98); border-bottom: 1px solid #2e2e33; border-radius: 0 0 22px 22px; box-shadow: 0 18px 30px rgba(0,0,0,.6); animation: apShade .24s cubic-bezier(.2,.8,.2,1); }
+@keyframes apShade { from { transform: translateY(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ap-shade header { display: flex; align-items: center; gap: 4px; padding: 10px 12px 6px 16px; }
+.ap-shade header b { flex: 1; font-size: 15px; color: #f2f2f2; }
+.ap-text-btn { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: #c8c8c8; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.ap-text-btn:hover { background: #26262a; }
+.ap-shade ul { list-style: none; margin: 0; padding: 0 8px 8px; overflow-y: auto; }
+.ap-noti { display: flex; align-items: flex-start; gap: 10px; width: 100%; margin: 3px 0; padding: 10px; border-radius: 14px; border: 0; background: #1f1f23; color: #f2f2f2; text-align: left; cursor: pointer; }
+.ap-noti.unread { background: #262338; }
+.ap-noti > span { display: grid; gap: 2px; min-width: 0; }
+.ap-noti b { font-size: 12px; color: #c8c8c8; }
+.ap-noti b small { font-weight: 600; color: #8a8a90; margin-left: 4px; }
+.ap-noti em { font-style: normal; font-size: 13px; color: #ececec; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ap-shade-close { flex: none; display: block; width: 46px; height: 18px; margin: 4px auto 8px; border: 0; border-radius: 10px; background: none; cursor: pointer; position: relative; }
+.ap-shade-close::after { content: ''; position: absolute; left: 8px; right: 8px; top: 7px; height: 4px; border-radius: 4px; background: #4a4a50; }
+.ap-empty { padding: 0 6px; }
+
+/* 설정 앱 */
+.ap-settings { padding: 14px 16px; }
+.ap-settings h4 { margin: 0 0 4px; font-size: 15px; color: #f2f2f2; }
+.ap-settings ul { list-style: none; margin: 12px 0 0; padding: 0; border-radius: 14px; overflow: hidden; background: #18181b; }
+.ap-settings li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #222226; }
+.ap-settings li:last-child { border-bottom: 0; }
+.ap-settings li > span { display: grid; flex: 1; min-width: 0; }
+.ap-settings li b { font-size: 14px; color: #f2f2f2; }
+.ap-settings li small { font-size: 11.5px; color: #8a8a90; }
+
+@media (prefers-reduced-motion: reduce) { .ap-banner, .ap-shade { animation: none; } .ap-ic { transition: none; } }
+.antphone .news-only-h { display: none; }
+.ap-onair { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: #e5484d; vertical-align: 1px; }

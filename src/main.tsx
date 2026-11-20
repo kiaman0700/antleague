@@ -22,6 +22,7 @@ import './styles-kit.css';
 import './styles-v2.css';
 import './styles-aug.css';
 import './styles-premium.css';
+import './styles-phone.css';
 import { startDeviceWatch } from './lib/device';
 import { startInstallWatch } from './lib/install';
 import { startRadioKeys } from './lib/radioKeys';
