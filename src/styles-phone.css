@@ -271,3 +271,6 @@ body:has(.ap-layer) .aug-pill { bottom: calc(var(--m-nav-h, 64px) + 124px + env(
 .ap-hintpop b { font-size: 14px; }
 .ap-hintpop span { font-size: 13px; line-height: 1.5; color: #d6d1ff; }
 @media (prefers-reduced-motion: reduce) { .ap-hintpop { animation: none; } }
+.ap-clock { display: inline-flex; align-items: center; gap: 6px; }
+.ap-sbic { display: inline-flex; }
+.ap-sbic .pf-icon { width: 13px; height: 13px; border-radius: 3px; }

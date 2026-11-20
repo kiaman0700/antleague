@@ -335,7 +335,15 @@ export function AntPhone(p: Props) {
       }}
       onPointerUp={() => (drag.current = null)}
     >
-      <span className="ap-clock">{p.clock}</span>
+      <span className="ap-clock">
+        {p.clock}
+        {/* 안 읽은 소식이 있는 앱 — 진짜 휴대폰 상태 줄의 알림 아이콘처럼 */}
+        {(['news', 'sns'] as const).filter((a) => unread(a) > 0).map((a) => (
+          <span key={a} className="ap-sbic" aria-hidden>
+            <AppIcon id={a} small />
+          </span>
+        ))}
+      </span>
       <span className="ap-pull" aria-hidden />
       <span className="ap-sys" aria-hidden>
         <svg width="15" height="11" viewBox="0 0 15 11"><rect x="0" y="7" width="2.6" height="4" rx=".6" fill="currentColor" /><rect x="4" y="5" width="2.6" height="6" rx=".6" fill="currentColor" /><rect x="8" y="2.5" width="2.6" height="8.5" rx=".6" fill="currentColor" /><rect x="12" y="0" width="2.6" height="11" rx=".6" fill="currentColor" /></svg>
