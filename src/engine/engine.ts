@@ -609,9 +609,11 @@ export function buildView(d: GameData, meId: string, now: number, clientMarketKe
     mine = { ...mine, infoUses: info.uses.map((u) => ({ kind: u.aug as ItemKind, day: u.day, symbol: u.payload?.symbol, pick: u.payload?.pick })) };
   }
 
-  // 재산·수익률은 상대도 원 단위로 지금 가격 그대로 보여 줌.
+  // 재산·수익률은 상대도 원 단위로 보여 주지만, 장이 열린 동안 상대는 그날 시가로 계산.
+  // 지금 가격으로 매초 보내면 같은 응답의 1초 가격과 맞춰 풀어 상대 보유 종목·수량이 그대로 나왔음 (장이 끝나면 종가로 정확히)
   // 무엇을 샀는지(보유 종목·거래·카드·주문)와 오늘 거래 횟수는 여전히 안 보냄
-  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), prices))]));
+  const openPrices = open ? priceMap(m, day, false) : prices;
+  const exacts = new Map(players.map((p) => [p.id, Math.round(equityWith(portfolioOf(d, p.id), p.id === meId ? prices : openPrices))]));
   base.players = players.map((p) => {
     const exact = exacts.get(p.id)!;
     const mine = p.id === meId || finished;

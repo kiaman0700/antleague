@@ -158,7 +158,7 @@ export function RankList({ rows }: { rows: RankRow[] }) {
   const flip = useFlip<HTMLDivElement>(rows.map((r) => r.id).join(','));
   return (
     <div ref={flip} className="rank-list">
-      <p className="muted small">상대의 재산과 수익률은 보이지만, 무엇을 샀는지는 보이지 않아요.</p>
+      <p className="muted small">상대의 재산과 수익률은 보이지만, 무엇을 샀는지는 보이지 않아요. 장이 열린 동안 상대 재산은 그날 장 시작 가격으로 계산하고, 장이 끝나면 종가로 바뀌어요.</p>
       {rows.map((r, i) => (
         <div key={r.id} data-flip={r.id} className={'rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{rankBadge((r.rank ?? i + 1) - 1)}</span>

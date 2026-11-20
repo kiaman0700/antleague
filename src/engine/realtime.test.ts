@@ -82,7 +82,7 @@ describe('화면 데이터: 지금 칸까지만', () => {
     }
     expect(checked).toBe(5);
   });
-  it('상대 재산도 지금 가격 기준 원 단위, 상대 거래는 안 보임', () => {
+  it('내 재산은 지금 가격, 상대 재산은 장중엔 그날 시가 기준 원 단위 (상대 거래는 안 보임)', () => {
     const d = game();
     d.trades.push({ player_id: 'b', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
     d.trades.push({ player_id: 'a', day: 2, symbol: 'NEOT', side: 'buy', qty: 100, price: 1, fee: 0, created_at: iso(at(0)) });
@@ -92,10 +92,22 @@ describe('화면 데이터: 지금 칸까지만', () => {
     const t = dayTicks(m, 'NEOT', 2, N);
     const eq = (v: typeof v0, id: string) => v.players.find((p) => p.id === id)!.equity;
     expect(eq(v1, 'a') - eq(v0, 'a')).toBe(100 * (t[30] - t[0]));
-    // 같은 거래를 한 상대도 같은 재산 (원 단위)
-    expect(eq(v1, 'b')).toBe(eq(v1, 'a'));
+    // 상대 재산은 장중에 움직이지 않음 — 매초 재산과 1초 가격을 맞춰 보유 종목을 풀어낼 수 없게
+    expect(eq(v1, 'b')).toBe(eq(v0, 'b'));
+    const open = m.bars.NEOT[2].open;
+    // 같은 거래를 한 나를 시가로 계산한 값과 같음
+    expect(eq(v1, 'b') - eq(v1, 'a')).toBe(100 * (open - t[30]));
     expect(v1.players.find((p) => p.id === 'b')!.band).toBeNull();
     expect(v1.myTrades.every((x) => x.player_id === 'a')).toBe(true);
+  });
+
+  it('장중 여러 칸 동안 상대 재산은 한 값 — 1초 가격으로 보유 종목을 역산할 수 없음', () => {
+    const d = game();
+    d.trades.push({ player_id: 'b', day: 2, symbol: 'NEOT', side: 'buy', qty: 37, price: 1, fee: 0, created_at: iso(at(0)) });
+    d.trades.push({ player_id: 'b', day: 2, symbol: 'CORE', side: 'buy', qty: 11, price: 1, fee: 0, created_at: iso(at(0)) });
+    const seen = new Set<number>();
+    for (const k of [1, 5, 12, 20, 33, 47, 60]) seen.add(buildView(d, 'a', at(k)).players.find((p) => p.id === 'b')!.equity);
+    expect(seen.size).toBe(1);
   });
 });
 

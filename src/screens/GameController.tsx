@@ -2012,7 +2012,7 @@ export function GameController({ session, onExit, onWaiting, onReplay }: Props) 
           <Calendar market={m} day={day} hideTitle onSelect={(sym) => (setSchedSheet(false), selectStock(sym))} />
         </BottomSheet>
 
-        <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="실시간 순위">
+        <BottomSheet open={rankSheet} onClose={() => setRankSheet(false)} title="순위">
           <RankList rows={rows} />
         </BottomSheet>
 
