@@ -2720,3 +2720,6 @@ details.study-card { min-height: 0 !important; margin: 0 !important; }
 /* 좁은 휴대폰에서 네 칸 고르기의 글자가 '상관없/음'처럼 꺾이지 않게: 옆 여백을 줄이고 글자는 한 줄 */
 .qj-seg button { padding-inline: 4px; white-space: nowrap; }
 @media (max-width: 400px) { .qj-seg button b { font-size: 15px; } }
+/* 긴 닉네임(최대 10자)이 메뉴바 프로필 칸을 넓혀 미션 버튼이 보조 메뉴를 덮지 않게: 중간 폭 PC 에선 이름 칸 너비를 묶고 끝을 … 로 */
+@media (min-width: 1280px) and (max-width: 1679px) { .cl-right .acc-chip .acc-txt { max-width: 6.5em; } }
+@media (min-width: 1280px) and (max-width: 1439px) { .cl-right .acc-chip .acc-txt { max-width: 4.5em; } }
