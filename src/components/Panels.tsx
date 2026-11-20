@@ -74,6 +74,14 @@ function markSeen(keys: string[]) {
 }
 const newsKey = (n: NewsEvent) => 'n:' + n.day + ':' + n.headline;
 /** 오늘 뉴스 중 아직 안 본 수 (휴대폰 아래 뉴스 탭 숫자) */
+
+/** 화면에 쓸 제목: 머리말 표시([단독] 등)를 따로 그리므로 제목 안 같은 머리말·[루머]는 뺌 (사건 기사는 제목에도 머리말이 있어 두 번 보였음) */
+function headText(n: { headline: string; label?: string }) {
+  let h = n.headline.replace('[루머] ', '');
+  if (n.label && h.startsWith(`[${n.label}] `)) h = h.slice(n.label.length + 3);
+  return h;
+}
+
 export function unreadToday(news: NewsEvent[], day: number): number {
   return news.filter((n) => n.day === day && !seenNews.has(newsKey(n))).length;
 }
@@ -316,7 +324,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
                 <div className="news-headline">
                   <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
                   {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
-                  {n.headline.replace('[루머] ', '')}
+                  {headText(n)}
                 </div>
                 {n.article && <ArticleBody a={n.article} />}
                 <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 4)} change={change} onSelect={onSelect} />
@@ -535,7 +543,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
           <div className="news-headline">
             <span className="arrow">{n.tone === 'good' ? '▲' : '▼'}</span>
             {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
-            {n.headline.replace('[루머] ', '')}
+            {headText(n)}
           </div>
           {n.article && <ArticleBody a={n.article} />}
           <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related} change={change} onSelect={onSelect} />
@@ -558,7 +566,7 @@ export function NewsPanel({ only, ui, day, news, tomorrow, rumorCheck, bestSecto
                   <span className="d">{n.day + 1}일</span>
                   <span className="old-body">
                     {n.label && <span className={'nlabel l-' + n.label}>[{n.label}]</span>}
-                    {n.headline}
+                    {headText(n)}
                     {n.verdict === 'false' && <em className="old-verdict false">가짜로 밝혀짐</em>}
                     {n.verdict === 'true' && n.rumor && <em className="old-verdict true">사실로 확인</em>}
                     <RelatedChips rel={n.rel} tone={n.tone} symbols={n.related.slice(0, 3)} change={change} onSelect={onSelect} />

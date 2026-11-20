@@ -136,6 +136,10 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
   // 비춘 곳 안의 눌러야 할 버튼(예: 결산 창 '2일차 시작') — 말풍선이 이 버튼을 가리지 않게
   const [keyBtn, setKeyBtn] = useState<{ top: number; bottom: number } | null>(null);
 
+  // 깜빡이는(눌러야 할) 것 — 말풍선이 이것도 가리지 않게 위치 계산에 씀
+  const pulseRef = useRef('');
+  pulseRef.current = s?.pulse?.(ctx) ?? '';
+
   // 비출 곳 위치를 계속 따라감 (화면이 바뀌거나 스크롤돼도)
   useEffect(() => {
     if (!s?.target) {
@@ -146,7 +150,7 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
       const el = s.target!.split(',').map((q) => document.querySelector<HTMLElement>(q.trim())).find((e) => e && e.getBoundingClientRect().width > 0);
       const r = el?.getBoundingClientRect() ?? null;
       setRect((p) => (p && r && p.top === r.top && p.left === r.left && p.width === r.width && p.height === r.height ? p : r));
-      const kb = el?.querySelector('.btn.primary')?.getBoundingClientRect();
+      const kb = (el?.querySelector('.btn.primary') ?? (pulseRef.current ? document.querySelector(pulseRef.current) : null))?.getBoundingClientRect();
       setKeyBtn((p) => (kb && kb.width > 0 ? (p && p.top === kb.top && p.bottom === kb.bottom ? p : { top: kb.top, bottom: kb.bottom }) : null));
       // 카드 자세히 창·소식 고르기 창처럼 위에 뜬 창 (튜토리얼 자신의 확인 창은 빼고)
       const m = [...document.querySelectorAll<HTMLElement>('.gc-detail, .modal-bg > .modal, .modal-bg > [role="dialog"]')].map((e) => e.getBoundingClientRect()).find((r) => r.width > 0 && r.height > 0);
@@ -169,9 +173,24 @@ export function TutorialGuide({ step, ctx, onNext, onExit, onFinish, onOpenCards
       if (el && !el.classList.contains('tut-pulse')) el.classList.add('tut-pulse');
     };
     mark();
+    // 눌러야 할 것이 화면 밖(작은 휴대폰에서 아래 메뉴 밑)에 있으면 한 번 가운데로 — 강조할 칸 스크롤이 끝난 뒤에
+    const t = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(pulseSel);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      // 휴대폰은 위(재산·시장 줄)와 아래 메뉴가 고정이라 그 사이 보이는 칸의 가운데로
+      const nav = document.querySelector('.bottom-nav')?.getBoundingClientRect().top ?? window.innerHeight;
+      const head = Math.max(0, ...[...document.querySelectorAll('.m-top, .m-top-flow')].map((e) => e.getBoundingClientRect().bottom));
+      if (r.bottom <= nav - 8 && r.top >= head + 8) return;
+      const delta = r.top + r.height / 2 - (head + nav) / 2;
+      let sc: HTMLElement | null = el.parentElement;
+      while (sc && !(sc.scrollHeight > sc.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+      (sc ?? document.scrollingElement ?? document.documentElement).scrollBy({ top: delta, behavior: 'smooth' });
+    }, 500);
     const id = setInterval(mark, 400);
     return () => {
       clearInterval(id);
+      clearTimeout(t);
       document.querySelectorAll('.tut-pulse').forEach((e) => e.classList.remove('tut-pulse'));
     };
   }, [pulseSel]);
