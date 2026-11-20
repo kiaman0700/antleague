@@ -300,7 +300,7 @@ export function ResultScreen({ theme, session, market: fullMarket, final, onExit
                         ? ranked.slice(1).every((r) => r.left) ? '다른 사람들이 모두 기권해서 이겼어요' : '다른 사람들이 기권했거나 거래를 안 해서 이겼어요'
                         : ranked[1].idle ? '상대가 거래를 한 번도 안 해서 이겼어요' : '상대가 기권해서 이겼어요'
                       : `2위와 ${wonShort(Math.abs(ranked[0].equity - ranked[1].equity))} 차이`}{' '}
-                    · {iWon ? '이번 판 1등이에요' : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판에 다시 도전해 봐요`}
+                    · {iWon ? '이번 판 1등이에요' : me.trades === 0 ? `나는 ${rankOf(session.playerId) + 1}위 · 한 번도 사지 않았어요. 다음 판엔 뉴스를 보고 사 보세요` : `나는 ${rankOf(session.playerId) + 1}위 · 다음 판에 다시 도전해 봐요`}
                   </>}
             </p>
           </>
